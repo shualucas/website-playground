@@ -1,6 +1,8 @@
-# Josh Lucas — portfolio realm
+# Josh Lucas — a journey through design
 
-A React portfolio with a full-screen charcoal ASCII sky, six copper-and-ivory dragons rendered as shaded character tiles, a compact monospaced introduction, generated ambient sound, and reusable case study scaffolds below the scene. The original frog pond is preserved at `/pond.html`.
+A React + Three.js portfolio inspired by the uploaded cinematic map reference. A fixed 3D coastal landscape moves beneath a restrained narrative as visitors scroll through chapters. The bottom timeline supports direct navigation, and case study chapters open a five-part story scaffold.
+
+The scene is an original, locally generated landscape, not the reference's exact geographic map. Text, colors, positioning, camera travel, and navigation follow the reference's direction. Employer histories, dates, outcomes, and locations have not been invented. Replace the clearly labeled project placeholders with verified details.
 
 ## Develop
 
@@ -11,33 +13,26 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-No external services, fonts, image requests, or credentials are required. All landscape art is drawn from characters on Canvas; project visuals are CSS and SVG. Sound is synthesized locally and is off by default.
+No external services, map tokens, remote tiles, fonts, or runtime credentials are required. The original frog pond remains accessible at `/pond.html`.
 
-## Edit the portfolio
+## Edit
 
-- `src/portfolio/main.jsx`: React layout, navigation, project cards, dialogs, sound.
-- `src/portfolio/Realm.jsx`: procedural dragon model, low-resolution color sampling, screen-aligned character tiles, wing animation, and cursor effects.
-- `src/portfolio/portfolio.css`: colors, typography, responsive layouts, visual styling.
-- `src/portfolio/projects.js`: placeholder project content and five reusable story chapters.
+- `src/journey/chapters.js`: chapter labels, copy, notes, and case study prompts.
+- `src/journey/main.jsx`: React navigation, scrolling, dialogs, index, and accessibility controls.
+- `src/journey/MapScene.jsx`: Three.js coastal terrain, streets, buildings, contours, camera paths, and non-WebGL fallback.
+- `src/journey/journey.css`: warm brown palette, centered text, fading treatment, timeline, and responsive layout.
 
-Project content is intentionally labeled as a scaffold. Replace it with verified details and actual project imagery. The contact section currently links to the existing portfolio instead of inventing contact information. Nothing has been published to the live domain.
+Scroll or swipe to move through the journey. Click a timeline label, use the index, or press arrow keys to jump chapters. Home/End work when the page background is focused. The motion control turns off camera smoothing and pointer parallax; system reduced-motion preferences are respected. The reveal-text control removes the decorative paragraph fade. Case study dialogs close with Escape and contain placeholders for real project evidence.
 
-## Validate and build
+The WebGL scene is lazy-loaded and stops redrawing when idle. A local 2D illustration keeps the narrative and case study flow usable if WebGL is unavailable. Viewport resizing and touch scrolling are supported.
+
+## Validate
 
 ```sh
 npm run build
 npm test
 ```
 
-Browser tests use the environment's Chromium at `/usr/bin/chromium`; the Playwright configuration starts a development server when needed. Checks cover animation and pause, case study navigation, modal close behavior, sound controls, mobile scene layout, light/dark mode, reduced-motion startup, and the original pond interactions. Production output is in `dist`, including both portfolio and pond pages.
+Tests use Chromium at `/usr/bin/chromium` with software WebGL for this cloud environment. Playwright starts or reuses a development server. Tests exercise actual map rendering, scroll-driven camera changes, timeline and keyboard navigation, case study chapters, the index, readable text, mobile sizing, reduced motion, the no-WebGL fallback, and the original pond interactions.
 
-## Interactions
-
-- Explore work: scroll to project cards; select any card to explore the five-chapter case study scaffold.
-- About: open the designer introduction and a link to the frog pond.
-- Light/dark: switch the entire page and sky palette, including when animation is paused.
-- Sound: enable quiet wind and click-to-chime effects. Audio only starts after explicit interaction.
-- Pause: stop the dragons and ambient visual effects; Space also toggles pause when the page background has focus.
-- Reduced motion: the scene starts still, with an explicit Resume option.
-
-The current Framer site and domain settings are unchanged. A separate hosting deployment is needed for a public preview.
+Production output is in `dist`. Vercel can deploy this Vite project using `npm run build` and output directory `dist`. This repository does not change the live Framer domain or DNS.
