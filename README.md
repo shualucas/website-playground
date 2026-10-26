@@ -1,6 +1,6 @@
 # Josh Lucas — portfolio realm
 
-A React portfolio landing page with a living ASCII fantasy landscape, flying dragons, a distant castle, generated ambient sound, and reusable case study scaffolds. The original frog pond is preserved at `/pond.html`.
+A React portfolio with a full-screen charcoal ASCII sky, six copper-and-ivory dragons rendered as shaded character tiles, a compact monospaced introduction, generated ambient sound, and reusable case study scaffolds below the scene. The original frog pond is preserved at `/pond.html`.
 
 ## Develop
 
@@ -16,7 +16,7 @@ No external services, fonts, image requests, or credentials are required. All la
 ## Edit the portfolio
 
 - `src/portfolio/main.jsx`: React layout, navigation, project cards, dialogs, sound.
-- `src/portfolio/Realm.jsx`: landscape, dragon sprites and animation, cursor effects.
+- `src/portfolio/Realm.jsx`: procedural dragon model, low-resolution color sampling, screen-aligned character tiles, wing animation, and cursor effects.
 - `src/portfolio/portfolio.css`: colors, typography, responsive layouts, visual styling.
 - `src/portfolio/projects.js`: placeholder project content and five reusable story chapters.
 
@@ -29,12 +29,13 @@ npm run build
 npm test
 ```
 
-Browser tests use the environment's Chromium at `/usr/bin/chromium`; the Playwright configuration starts a development server when needed. Checks cover animation and pause, case study navigation, modal close behavior, sound controls, mobile navigation, reduced-motion startup, and the original pond interactions. Production output is in `dist`, including both portfolio and pond pages.
+Browser tests use the environment's Chromium at `/usr/bin/chromium`; the Playwright configuration starts a development server when needed. Checks cover animation and pause, case study navigation, modal close behavior, sound controls, mobile scene layout, light/dark mode, reduced-motion startup, and the original pond interactions. Production output is in `dist`, including both portfolio and pond pages.
 
 ## Interactions
 
 - Explore work: scroll to project cards; select any card to explore the five-chapter case study scaffold.
 - About: open the designer introduction and a link to the frog pond.
+- Light/dark: switch the entire page and sky palette, including when animation is paused.
 - Sound: enable quiet wind and click-to-chime effects. Audio only starts after explicit interaction.
 - Pause: stop the dragons and ambient visual effects; Space also toggles pause when the page background has focus.
 - Reduced motion: the scene starts still, with an explicit Resume option.
