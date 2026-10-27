@@ -1,27 +1,10 @@
-# Josh Lucas — a geographic journey through design
+# Meadow
 
-A React + MapLibre portfolio with a white map, quiet typography, selective color accents, and a scroll-driven geographic story:
+A fresh React + Canvas experiment: a sunlit, pixel-rendered field of grass. The previous portfolio, maps, case studies, and pond have been removed from the current codebase. Earlier versions remain in Git history.
 
-1. San Francisco — today
-2. Cumming, Georgia — the beginning
-3. Irvine, California — Blizzard
-4. San Francisco — Google
+The landscape is generated locally; it is not a video, image, or external map. Thousands of depth-sorted blades receive coherent moving wind waves. Cursor proximity and movement velocity apply separate pressure forces. Damped springs retain a wake and let the blades settle naturally after the cursor leaves. A low-resolution rendering buffer and nearest-neighbor scaling produce the pixel treatment.
 
-These locations and employers were supplied by Josh. Dates, roles, project details, and outcomes remain unspecified. Pins are city centers, not office or home addresses.
-
-## Map data
-
-The landscape is no longer procedural. MapLibre renders real geographic data:
-
-- **Regional map:** bundled Natural Earth coastlines, state boundaries, and actual roads. This remains usable when external services are blocked.
-- **Detailed live map:** OpenFreeMap's OpenStreetMap-based Positron style, restyled in white. It needs access to `https://tiles.openfreemap.org`, but no API key. Where available, building heights come from the source data; missing heights are not invented.
-- **Without WebGL:** a local SVG view uses the same geographic coordinates and datasets.
-
-Attribution remains visible. See `public/data/SOURCES.md` for provenance, licenses, city coordinates, and limitations. Natural Earth is regional data, not a detailed street map. The connection arcs link story locations; they do not claim actual flight or driving routes. This version does not use real elevation tiles or claim measured 3D terrain.
-
-The workspace currently cannot connect successfully to the live tile host. Regional data rendering is verified here. The live-style transition has a controlled fixture test; that is not verification of the external provider. A deployed browser with normal Internet access can load the detailed tiles. A failed live upgrade falls back to the real regional dataset.
-
-## Develop
+## Run
 
 Use Node.js 20.19+ or 22.12+ (validated with Node 24).
 
@@ -30,25 +13,31 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-The MapLibre worker is bundled locally; it does not depend on a CDN. The original frog pond remains at `/pond.html`.
+No external assets, services, API keys, or network access are required at runtime.
+
+## Controls
+
+- Move the mouse through the field or drag a finger to part the grass.
+- Gentle / steady / gusty changes the ambient wind strength.
+- Pause / resume freezes or restarts the simulation. Space is the keyboard shortcut when a control is not focused.
+- Just the field hides the interface; Show interface restores it. H also toggles this view.
+- Reduced-motion preferences start the field paused; it can be explicitly resumed.
 
 ## Edit
 
-- `src/journey/chapters.js`: journey order, city coordinates, camera settings, employer accents, copy, and case study prompts.
-- `src/journey/main.jsx`: React story, timeline, index, dialogs, keyboard support, and motion controls.
-- `src/journey/MapScene.jsx`: MapLibre, local data layers, live style, routes, markers, flights, attribution, and no-WebGL fallback.
-- `src/journey/journey.css`: white palette, typography, responsive layout, and selective color.
-- `public/data/*.geojson`: the real regional datasets shipped with the site.
+- `src/meadow.js`: seeded landscape, grass blades, wind, cursor forces, damped recovery, and pixel rendering.
+- `src/main.jsx`: React controls, state, and keyboard interaction.
+- `src/style.css`: responsive, unobtrusive interface.
 
-Scroll/swipe, use timeline labels or the index, or use the arrow keys to move between chapters. Reduced motion disables camera flights. Reveal text removes the decorative paragraph fade. Case study dialogs use five chapters and close with Escape.
+The simulation targets 30 frames per second, caps the internal pixel resolution, skips updates while the document is hidden, and releases its animation frame and listeners on cleanup.
 
-## Validate and deploy
+## Verify and deploy
 
 ```sh
 npm run build
 npm test
 ```
 
-Browser tests use Chromium at `/usr/bin/chromium` with software WebGL. They verify real local road rendering, city camera coordinates, the requested order, white styling, attribution, company accents, case studies, keyboard/mobile navigation, reduced motion, SVG fallback, live-style loader behavior with a fixture, and the preserved pond.
+Browser checks cover actual canvas changes under ambient wind, pause, wind strength, cursor-only interaction and spring recovery, touch, responsive sizing, keyboard controls, immersive mode, and reduced motion. Tests use the environment's Chromium at `/usr/bin/chromium`.
 
-Vercel settings: build command `npm run build`, output `dist`. Domain and DNS changes are separate from deploying this repository.
+Vercel: build command `npm run build`, output directory `dist`. Domain/DNS settings remain separate from repository deployment.
