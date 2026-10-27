@@ -1,0 +1,4 @@
+interface:
+  display_name: "3D Interaction Refinement"
+  short_description: "Refine believable, performant Three.js interactions"
+  default_prompt: "Use $3d-interaction-refinement to inspect this 3D scene, propose a focused improvement plan, and implement only the selected refinements."
