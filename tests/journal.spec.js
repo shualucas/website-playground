@@ -44,7 +44,7 @@ test("the RISO zine has thin stock, shared printed pages, and an explicit readin
   expect(Number((await state(page)).capturedPages)).toBe(3);
   expect((await state(page)).format).toBe("riso-zine");
   expect(Number((await state(page)).bindingThickness)).toBeLessThan(0.12);
-  expect((await state(page)).pageCount).toBe("16");
+  expect((await state(page)).pageCount).toBe("8");
   expect(await page.evaluate(() => window.glyphs)).toBeGreaterThan(1000);
   expect(await page.locator(".book-printing .page-recto").innerText()).toBe("");
   await expect(page.locator(".book-printing .page-verso h1")).toHaveText(
@@ -193,7 +193,7 @@ test("the lightweight zine opening stays in frame and R resets its first spread"
     for (const coordinate of Object.values(JSON.parse(sample.bookBounds)))
       expect(Math.abs(coordinate)).toBeLessThan(0.98);
   const final = await state(page);
-  expect(Number(final.riffleCount)).toBe(8);
+  expect(Number(final.riffleCount)).toBe(4);
   expect(Number(final.duration)).toBe(3.4);
   expect(final.project).toBe("0");
   expect(JSON.parse(final.bookPosition)).toEqual([0, 0, 0]);
@@ -255,7 +255,8 @@ test("touch rotates in place and tapping a leaf turns pages on mobile", async ({
   expect((await state(page)).anchorPosition).toBe(before.anchorPosition);
   expect((await state(page)).bookPosition).toBe(before.bookPosition);
   expect((await state(page)).rotation).not.toBe(before.rotation);
-  await page.getByRole("button", { name: "Turn to next spread" }).tap();
+  const nextHit = JSON.parse((await state(page)).rightHit);
+  await page.touchscreen.tap(nextHit.x, nextHit.y);
   await expect(stage(page)).toHaveAttribute("data-project", "1");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
@@ -380,11 +381,13 @@ test("rapid leaf clicks accumulate through spreads and covers in both directions
   await ready(page);
 });
 
-test("opening a printed cover keeps the flat left page and stack hidden until the handoff", async ({
+test("the cover and inside artwork remain the same physical leaf through opening", async ({
   page,
 }) => {
   test.setTimeout(90000);
   await openBook(page);
+  const original = JSON.parse((await state(page)).leafStates);
+  expect((await state(page)).geometryMode).toBe("gpu-skinning");
   await page.getByRole("button", { name: "Cover", exact: true }).click();
   await expect(stage(page)).toHaveAttribute("data-view", "cover");
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -409,13 +412,41 @@ test("opening a printed cover keeps the flat left page and stack hidden until th
   );
   expect(samples.length).toBeGreaterThan(2);
   for (const sample of samples) {
-    expect(sample.leftPrintedVisible).toBe("false");
-    expect(sample.leftStackVisible).toBe("false");
-    expect(sample.coverPrintedArtwork).not.toBe("");
+    const leaf = JSON.parse(sample.leafStates)[0];
+    expect(leaf.object).toBe(original[0].object);
+    expect(leaf.front).toBe(original[0].front);
+    expect(leaf.back).toBe(original[0].back);
+    expect(leaf.verticesVersion).toBe(original[0].verticesVersion);
   }
-  await expect(stage(page)).toHaveAttribute(
-    "data-left-printed-visible",
-    "true",
-  );
-  await expect(stage(page)).toHaveAttribute("data-left-stack-visible", "true");
+  expect((await state(page)).leftArtwork).toBe(original[0].back);
+});
+
+test("overlapping turns keep physical page identities and handle an interrupted destination", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await openBook(page);
+  const before = JSON.parse((await state(page)).leafStates);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "Back cover", exact: true }).click();
+  await expect
+    .poll(async () => Number((await state(page)).activeLeafCount))
+    .toBeGreaterThan(1);
+  await page.getByRole("button", { name: "Cover", exact: true }).click();
+  await page.getByRole("button", { name: "Page 2", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-settled-boundary", "2", {
+    timeout: 45000,
+  });
+  await ready(page);
+  const after = await state(page),
+    leaves = JSON.parse(after.leafStates);
+  expect(Number(after.maxConcurrent)).toBeGreaterThan(1);
+  expect(after.project).toBe("1");
+  for (let i = 0; i < leaves.length; i++) {
+    expect(leaves[i].object).toBe(before[i].object);
+    expect(leaves[i].front).toBe(before[i].front);
+    expect(leaves[i].back).toBe(before[i].back);
+    expect(leaves[i].verticesVersion).toBe(before[i].verticesVersion);
+    expect(leaves[i].progress).toBe(i < 2 ? 1 : 0);
+  }
 });

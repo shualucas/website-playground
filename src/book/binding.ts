@@ -50,24 +50,3 @@ export function createBinding(cover: Surface, paper: Surface, metal: Surface) {
   update(SURFACE, SURFACE, 1);
   return { spine, fold, seams, update };
 }
-/** Compress the inner paper edge into the same sewn gutter rather than ending in a square cut. */
-export function shapeInnerEdge(
-  geometry: THREE.BufferGeometry,
-  centerX: number,
-  depth: number,
-  fraction = 1,
-) {
-  const p = geometry.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i) + centerX,
-      weight =
-        depth > 0.05
-          ? THREE.MathUtils.clamp((p.getY(i) + depth / 2) / depth, 0, 1)
-          : fraction;
-    p.setY(i, p.getY(i) + gutterDip(x) * weight * 0.88);
-  }
-  p.needsUpdate = true;
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  return geometry;
-}

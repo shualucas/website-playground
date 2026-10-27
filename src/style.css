@@ -827,3 +827,9 @@ h1 {
     sans-serif;
   letter-spacing: -0.07em;
 }
+
+/* Page-wide pointer input follows the skinned mesh. DOM leaves retain keyboard actions. */
+.print-overlay .metadata-turn-page,
+.print-overlay .portal-hit {
+  pointer-events: none !important;
+}
