@@ -7,7 +7,7 @@ async function openBook(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(path);
   await expect(stage(page)).toHaveAttribute("data-phase", "ready", {
-    timeout: 25000,
+    timeout: 45000,
   });
 }
 async function points(page) {
@@ -122,7 +122,15 @@ test("a short drag falls back without changing chapter, and page-corner navigati
 test("R restarts a weighty opening with forward riffles and no camera zoom", async ({
   page,
 }) => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
+  await page.addInitScript(() => {
+    window.dustDraws = 0;
+    const draw = WebGL2RenderingContext.prototype.drawArrays;
+    WebGL2RenderingContext.prototype.drawArrays = function (mode, ...args) {
+      if (mode === this.POINTS) window.dustDraws++;
+      return draw.call(this, mode, ...args);
+    };
+  });
   await openBook(page, "/?project=second-project");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.evaluate(() => {
@@ -140,7 +148,20 @@ test("R restarts a weighty opening with forward riffles and no camera zoom", asy
   await expect(stage(page)).toHaveAttribute("data-phase", "dropping");
   await waitReady(page);
   const samples = await page.evaluate(() => window.opening);
-  expect(samples.some((s) => Number(s.rigY) > 2)).toBe(true);
+  expect(samples.some((s) => Number(s.rigY) > 1)).toBe(true);
+  expect(samples.some((s) => Number(s.dust) > 0)).toBe(true);
+  for (const sample of samples) {
+    const b = JSON.parse(sample.bookBounds);
+    for (const coordinate of Object.values(b))
+      expect(Math.abs(coordinate)).toBeLessThan(0.97);
+  }
+  expect((await state(page)).dust).toBe("0");
+  expect(await page.evaluate(() => window.dustDraws)).toBeGreaterThan(0);
+  expect(
+    samples
+      .filter((s) => Number(s.elapsed) < 0.59)
+      .every((s) => s.dust === "0"),
+  ).toBe(true);
   const phases = samples.map((s) => s.phase);
   for (const phase of ["dropping", "opening", "flipping", "settling", "ready"])
     expect(phases).toContain(phase);

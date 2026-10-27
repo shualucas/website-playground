@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { surfaceDetail } from "./surfaces";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
@@ -57,11 +58,33 @@ function grain(
     );
   }
 }
-export function leatherTexture() {
+export function leatherTexture(detail?: THREE.DataTexture) {
   const { element, ctx } = canvas();
   ctx.fillStyle = "#38271e";
   ctx.fillRect(0, 0, 900, 1260);
   grain(ctx, 900, 1260, true);
+  if (detail) {
+    const source = document.createElement("canvas");
+    source.width = source.height = 512;
+    source
+      .getContext("2d")!
+      .putImageData(
+        new ImageData(
+          new Uint8ClampedArray(detail.image.data as Uint8Array),
+          512,
+          512,
+        ),
+        0,
+        0,
+      );
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.scale(900 / (512 * 2.3), 1260 / (512 * 3.2));
+    ctx.fillStyle = ctx.createPattern(source, "repeat")!;
+    ctx.fillRect(0, 0, 512 * 2.3, 512 * 3.2);
+    ctx.restore();
+  }
+
   ctx.strokeStyle = "#98774a";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -118,14 +141,12 @@ export function leatherTexture() {
 }
 export function paperTexture() {
   const { element, ctx } = canvas();
-  ctx.fillStyle = "#eee2c5";
-  ctx.fillRect(0, 0, 900, 1260);
-  grain(ctx, 900, 1260);
+  ctx.drawImage(paperTextureCanvas(), 0, 0);
   const g = ctx.createLinearGradient(0, 0, 900, 0);
-  g.addColorStop(0, "#ae946c44");
-  g.addColorStop(0.1, "#eadfc100");
+  g.addColorStop(0, "#6e542536");
+  g.addColorStop(0.08, "#eadfc100");
   g.addColorStop(0.9, "#eadfc100");
-  g.addColorStop(1, "#ae946c22");
+  g.addColorStop(1, "#93723a20");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 900, 1260);
   return texture(element);
@@ -242,6 +263,41 @@ function paperTextureCanvas() {
     ctx.fillStyle = "#eee2c5";
     ctx.fillRect(0, 0, 900, 1260);
     grain(ctx, 900, 1260);
+    let seed = 17;
+    const random = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < 18000; i++) {
+      const x = random() * 900,
+        y = random() * 1260,
+        angle = random() * Math.PI * 2,
+        length = 2 + random() * 15;
+      ctx.strokeStyle = i % 3 ? "rgba(107,86,49,.10)" : "rgba(255,250,230,.34)";
+      ctx.lineWidth = 0.4 + random() * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+      ctx.stroke();
+    }
+    const clouds = document.createElement("canvas");
+    clouds.width = 45;
+    clouds.height = 63;
+    const c = clouds.getContext("2d")!,
+      pixels = c.createImageData(45, 63);
+    for (let i = 0; i < 45 * 63; i++) {
+      const v = 85 + Math.round(random() * 145);
+      pixels.data.set(
+        [v, Math.round(v * 0.85), Math.round(v * 0.62), 60],
+        i * 4,
+      );
+    }
+    c.putImageData(pixels, 0, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    ctx.filter = "blur(13px)";
+    ctx.drawImage(clouds, 0, 0, 900, 1260);
+    ctx.restore();
     paperCanvas = element;
   }
   return paperCanvas;
@@ -309,7 +365,7 @@ vec3 color=vec3(.018,.035,.027)+vec3(.055,.20,.067)*haze+ring*vec3(.18,.52,.05)*
 color+=vec3(.65,.95,.26)*wisps*ring*.8;color*=.28+.72*core;
 float edge=exp(-abs(arch)*80.);color+=edge*vec3(.19,.49,.055);gl_FragColor=vec4(color,1.);
 }`;
-export function makePortal() {
+export function makePortal(simple = false) {
   const group = new THREE.Group();
   group.position.set(PAGE_WIDTH / 2, SURFACE + 0.045, -0.22);
   const uniform = { uTime: { value: 0 } };
@@ -356,18 +412,28 @@ export function makePortal() {
   const normalized = stones.map((g) => (g.index ? g.toNonIndexed() : g));
   const geometry = mergeGeometries(normalized, false)!;
   for (const g of new Set([...stones, ...normalized])) g.dispose();
-  const stone = new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({ color: "#454b3e", roughness: 0.94 }),
-  );
+  const detail = surfaceDetail("stone");
+  const stoneMaterial = simple
+    ? new THREE.MeshPhongMaterial({
+        color: "#4b5147",
+        map: detail.albedo,
+        normalMap: detail.normal,
+        normalScale: new THREE.Vector2(0.6, 0.6),
+        shininess: 2,
+        specular: new THREE.Color("#181b15"),
+      })
+    : new THREE.MeshStandardMaterial({
+        color: "#4b5147",
+        map: detail.albedo,
+        normalMap: detail.normal,
+        normalScale: new THREE.Vector2(0.7, 0.7),
+        roughnessMap: detail.roughness,
+        roughness: 0.96,
+      });
+  const stone = new THREE.Mesh(geometry, stoneMaterial);
   stone.castShadow = stone.receiveShadow = true;
   group.add(stone);
-  const runeMaterial = new THREE.MeshStandardMaterial({
-    color: "#b2df72",
-    emissive: "#6edc32",
-    emissiveIntensity: 0.65,
-    roughness: 0.6,
-  });
+  const runeMaterial = new THREE.MeshBasicMaterial({ color: "#b2df72" });
   for (const sign of [-1, 1])
     for (let i = 0; i < 4; i++) {
       const glyph = new THREE.Mesh(
@@ -382,5 +448,11 @@ export function makePortal() {
   const light = new THREE.PointLight("#8ede44", 0.85, 2.6, 2);
   light.position.set(0, 0.55, 0.05);
   group.add(light);
-  return { group, uniform, material };
+  return {
+    group,
+    uniform,
+    material,
+    light,
+    textures: [detail.normal, detail.roughness, detail.albedo],
+  };
 }

@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { surfaceDetail, studioEnvironment, roundedSlab } from "./surfaces";
+import { ImpactDust, contactShadow } from "./effects";
 import {
   CSS3DObject,
   CSS3DRenderer,
@@ -38,7 +40,10 @@ type Callbacks = {
   onOpen: () => void;
 };
 type Sheet = {
-  mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  mesh: THREE.Mesh<
+    THREE.PlaneGeometry,
+    THREE.MeshStandardMaterial | THREE.MeshPhongMaterial
+  >;
   back: { value: THREE.Texture };
   start: number;
   duration: number;
@@ -71,7 +76,7 @@ export class BookScene {
   rightPage = document.createElement("div");
   private scene = new THREE.Scene();
   private printing = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(30, 1, 0.1, 80);
+  private camera = new THREE.PerspectiveCamera(24, 1, 0.1, 160);
   private renderer: THREE.WebGLRenderer;
   private css = new CSS3DRenderer();
   private rig = new THREE.Group();
@@ -84,7 +89,12 @@ export class BookScene {
   private turnSheet!: Sheet;
   private textures = new Set<THREE.Texture>();
   private pageCache = new Map<string, THREE.Texture>();
-  private portal = makePortal();
+  private portal: ReturnType<typeof makePortal>;
+  private dust = new ImpactDust();
+  private contact = contactShadow();
+  private environment: THREE.WebGLRenderTarget | null = null;
+  private envelope: THREE.Vector3[] = [];
+  private scratch = new THREE.Vector3();
   private raf = 0;
   private last = 0;
   private elapsed = 0;
@@ -120,8 +130,9 @@ export class BookScene {
       /swiftshader|llvmpipe/i.test(
         String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)),
       );
+    this.portal = makePortal(this.software);
     this.renderer.setPixelRatio(
-      Math.min(devicePixelRatio, this.software ? 1 : 1.5),
+      Math.min(devicePixelRatio, this.software ? 0.7 : 1.5),
     );
     this.renderer.setClearColor(0xffffff, 0);
     this.renderer.shadowMap.enabled = true;
@@ -134,11 +145,25 @@ export class BookScene {
     this.renderer.domElement.setAttribute("aria-hidden", "true");
     this.css.domElement.className = "book-printing";
     this.host.append(this.renderer.domElement, this.css.domElement);
-    this.scene.add(this.rig);
+    this.environment = studioEnvironment(this.renderer, this.software);
+    this.scene.environment = this.environment.texture;
+    this.scene.environmentIntensity = 0.72;
+    this.scene.add(this.rig, this.dust.mesh, this.contact.mesh);
+    this.keep(this.contact.texture);
+    this.portal.textures.forEach((t) => this.keep(t));
     this.printing.add(this.printRig);
     this.light();
     this.buildBook();
     this.buildPrinting();
+    this.sampleEnvelope();
+    // Compile hidden leaf materials once, with the same light count used by every pose.
+    this.sheets.forEach((s) => (s.mesh.visible = true));
+    this.dust.mesh.visible = true;
+    this.turnSheet.mesh.visible = true;
+    this.renderer.compile(this.scene, this.camera);
+    this.dust.mesh.visible = false;
+    this.sheets.forEach((s) => (s.mesh.visible = false));
+    this.turnSheet.mesh.visible = false;
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(host);
     this.intersection = new IntersectionObserver(([entry]) => {
@@ -164,8 +189,8 @@ export class BookScene {
     else this.schedule();
   }
   private light() {
-    this.scene.add(new THREE.HemisphereLight("#fff9e9", "#a7a38e", 2.0));
-    const key = new THREE.DirectionalLight("#fff4de", 3.0);
+    this.scene.add(new THREE.HemisphereLight("#fff9e9", "#a7a38e", 0.7));
+    const key = new THREE.DirectionalLight("#fff4de", 2.6);
     key.position.set(-4, 10, 5);
     key.castShadow = true;
     key.shadow.mapSize.set(
@@ -180,15 +205,16 @@ export class BookScene {
       near: 1,
       far: 22,
     });
-    key.shadow.normalBias = 0.025;
+    key.shadow.radius = 4;
+    key.shadow.normalBias = 0.018;
     key.shadow.bias = -0.00015;
     this.scene.add(key);
-    const fill = new THREE.DirectionalLight("#eef6ff", 1.2);
+    const fill = new THREE.DirectionalLight("#eef6ff", 0.65);
     fill.position.set(5, 6, -4);
     this.scene.add(fill);
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(120, 120),
-      new THREE.ShadowMaterial({ opacity: 0.23 }),
+      new THREE.ShadowMaterial({ opacity: 0.16 }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.18;
@@ -196,6 +222,12 @@ export class BookScene {
     this.scene.add(floor);
   }
   private keep(texture: THREE.Texture) {
+    texture.anisotropy = this.software
+      ? 1
+      : Math.min(
+          texture.anisotropy,
+          this.renderer.capabilities.getMaxAnisotropy(),
+        );
     this.textures.add(texture);
     return texture;
   }
@@ -208,34 +240,73 @@ export class BookScene {
       );
     return this.pageCache.get(key)!;
   }
+  private surface(
+    params: THREE.MeshPhysicalMaterialParameters,
+  ): THREE.MeshStandardMaterial | THREE.MeshPhongMaterial {
+    if (!this.software) return new THREE.MeshPhysicalMaterial(params);
+    const rough = params.roughness ?? 0.8,
+      metal = params.metalness ?? 0;
+    return new THREE.MeshPhongMaterial({
+      color: params.color,
+      map: params.map,
+      normalMap: params.normalMap,
+      normalScale: params.normalScale,
+      side: params.side,
+      shininess: metal > 0 ? 65 : Math.max(2, (1 - rough) * 65),
+      specular: new THREE.Color(
+        metal > 0 ? "#b9a77e" : rough > 0.9 ? "#15150f" : "#4c4030",
+      ),
+      envMap: rough < 0.9 ? this.environment!.texture : null,
+      combine: THREE.MixOperation,
+      reflectivity: metal > 0 ? 0.58 : 0.095,
+    });
+  }
   private buildBook() {
-    const leather = this.keep(leatherTexture()),
+    const leatherDetail = surfaceDetail("leather"),
+      paperDetail = surfaceDetail("paper");
+    for (const detail of [leatherDetail, paperDetail])
+      for (const map of Object.values(detail)) this.keep(map);
+    const leather = this.keep(leatherTexture(leatherDetail.albedo)),
       paper = this.keep(paperTexture()),
       edges = this.keep(edgeTexture());
-    const brown = new THREE.MeshStandardMaterial({
-      color: "#38261d",
-      roughness: 0.83,
+    const brown = this.surface({
+      color: "#4c3223",
+      map: leatherDetail.albedo,
+      normalMap: leatherDetail.normal,
+      normalScale: new THREE.Vector2(0.65, 0.65),
+      roughnessMap: leatherDetail.roughness,
+      roughness: 0.86,
+      sheen: this.software ? 0 : 0.12,
+      sheenColor: new THREE.Color("#997450"),
     });
-    const cover = new THREE.MeshStandardMaterial({
+    const cover = this.surface({
       map: leather,
-      bumpMap: leather,
-      bumpScale: 0.024,
-      roughness: 0.78,
+      normalMap: leatherDetail.normal,
+      normalScale: new THREE.Vector2(0.72, 0.72),
+      roughnessMap: leatherDetail.roughness,
+      roughness: 0.79,
+      clearcoat: this.software ? 0 : 0.08,
+      clearcoatRoughness: 0.65,
+      sheen: this.software ? 0 : 0.16,
+      sheenColor: new THREE.Color("#997450"),
     });
-    const liner = new THREE.MeshStandardMaterial({
-      color: "#695035",
-      roughness: 1,
+    const liner = this.surface({
+      color: "#604a32",
+      map: leatherDetail.albedo,
+      normalMap: leatherDetail.normal,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      roughness: 0.93,
     });
-    const materials = [brown, brown, cover, liner, brown, brown];
+    const materials = [cover, liner, brown];
     const bottom = new THREE.Mesh(
-      new RoundedBoxGeometry(W + 0.25, 0.23, H + 0.3, 4, 0.105),
-      [brown, brown, liner, brown, brown, brown],
+      roundedSlab(W + 0.25, H + 0.3, 0.23, 0.28, 0.045),
+      [liner, cover, brown],
     );
     bottom.position.set(W / 2, -0.035, 0);
     bottom.castShadow = bottom.receiveShadow = true;
     this.rig.add(bottom);
     const top = new THREE.Mesh(
-      new RoundedBoxGeometry(W + 0.25, 0.23, H + 0.3, 4, 0.105),
+      roundedSlab(W + 0.25, H + 0.3, 0.23, 0.28, 0.045),
       materials,
     );
     top.position.x = W / 2;
@@ -249,11 +320,37 @@ export class BookScene {
     this.spine.position.y = 0.26;
     this.spine.castShadow = true;
     this.rig.add(this.spine);
-    const brass = new THREE.MeshStandardMaterial({
-      color: "#9c7945",
-      metalness: 0.64,
-      roughness: 0.48,
+    const brass = this.surface({
+      color: "#b09a72",
+      metalness: 0.92,
+      roughness: 0.29,
+      envMapIntensity: 1.6,
+      normalMap: paperDetail.normal,
+      normalScale: new THREE.Vector2(0.055, 0.055),
     });
+    // Very shallow foil catches the studio lights instead of being painted yellow.
+    for (const radius of [0.534, 0.582]) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(radius, 0.003, 4, 80),
+        brass,
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(W / 2, 0.119, 0);
+      this.lid.add(ring);
+    }
+    const mark = new THREE.Shape();
+    mark.moveTo(0, -0.488);
+    mark.lineTo(0.052, -0.096);
+    mark.lineTo(0, -0.01);
+    mark.lineTo(-0.052, -0.096);
+    mark.closePath();
+    const markGeometry = new THREE.ShapeGeometry(mark);
+    for (let i = 0; i < 8; i++) {
+      const foil = new THREE.Mesh(markGeometry, brass);
+      foil.rotation.set(-Math.PI / 2, 0, (i * Math.PI) / 4);
+      foil.position.set(W / 2, 0.12, 0);
+      this.lid.add(foil);
+    }
     for (const z of [-H * 0.36, H * 0.36]) {
       const band = new THREE.Mesh(
         new RoundedBoxGeometry(0.46, 0.8, 0.1, 3, 0.04),
@@ -273,11 +370,14 @@ export class BookScene {
         fitting.castShadow = true;
         this.lid.add(fitting);
       }
-    const pageMat = new THREE.MeshStandardMaterial({
+    const pageMat = this.surface({
       map: paper,
+      normalMap: paperDetail.normal,
+      normalScale: new THREE.Vector2(0.24, 0.24),
+      roughnessMap: paperDetail.roughness,
       roughness: 1,
     });
-    const edgeMat = new THREE.MeshStandardMaterial({
+    const edgeMat = this.surface({
       map: edges,
       color: "#eadabd",
       roughness: 1,
@@ -286,20 +386,20 @@ export class BookScene {
       const group = new THREE.Group();
       group.position.y = 0.1;
       const block = new THREE.Mesh(
-        new RoundedBoxGeometry(W - 0.035, STACK, H - 0.025, 4, 0.09),
-        [edgeMat, edgeMat, pageMat, edgeMat, edgeMat, edgeMat],
+        roundedSlab(W - 0.035, H - 0.025, STACK, 0.21, 0.025),
+        [pageMat, pageMat, edgeMat],
       );
       block.position.set((sign * W) / 2, STACK / 2, 0);
       block.castShadow = block.receiveShadow = true;
       group.add(block);
       // Additional thin, uneven signatures make the fore-edge read as hundreds of leaves.
-      const signatureMat = new THREE.MeshStandardMaterial({
+      const signatureMat = this.surface({
         color: "#d8c5a0",
         roughness: 1,
       });
       for (let i = 0; i < 9; i++) {
         const signature = new THREE.Mesh(
-          new RoundedBoxGeometry(W - 0.02, 0.012, H - 0.005, 2, 0.006),
+          roundedSlab(W - 0.04, H - 0.025, 0.012, 0.21, 0.002),
           signatureMat,
         );
         signature.position.set(
@@ -324,7 +424,7 @@ export class BookScene {
     ribbonShape.closePath();
     const ribbon = new THREE.Mesh(
       new THREE.ShapeGeometry(ribbonShape),
-      new THREE.MeshStandardMaterial({
+      this.surface({
         color: "#556b3b",
         side: THREE.DoubleSide,
         roughness: 0.8,
@@ -352,6 +452,8 @@ export class BookScene {
       16,
     );
     this.rig.add(this.portal.group);
+    this.portal.light.position.add(this.portal.group.position);
+    this.rig.add(this.portal.light);
     this.portal.group.visible = false;
   }
   private makeSheet(
@@ -366,7 +468,7 @@ export class BookScene {
       columns,
       rows,
     );
-    const material = new THREE.MeshStandardMaterial({
+    const material = this.surface({
       map: front,
       roughness: 0.97,
       side: THREE.DoubleSide,
@@ -432,6 +534,7 @@ export class BookScene {
     }
     pos.needsUpdate = true;
     geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
     sheet.mesh.visible = true;
   }
   private buildPrinting() {
@@ -477,13 +580,27 @@ export class BookScene {
     this.callbacks.onPhase(phase);
   }
   private updateIntro() {
-    const t = this.elapsed,
-      cover = ease((t - 1.02) / 1.48),
+    const t = this.elapsed;
+    this.poseIntro(t);
+    this.dust.update(t - 0.59, this.motion.matches);
+    this.setPhase(
+      t < 1.02
+        ? "dropping"
+        : t < 2.05
+          ? "opening"
+          : t < 3.7
+            ? "flipping"
+            : "settling",
+    );
+    if (t >= END) this.skip();
+  }
+  private poseIntro(t: number) {
+    const cover = ease((t - 1.02) / 1.48),
       transfer = ease((t - 2.05) / 2.65);
     const impact = t - 0.59;
     const height =
       t < 0.59
-        ? 3.65 * (1 - (t / 0.59) ** 2)
+        ? 1.65 * (1 - (t / 0.59) ** 2)
         : 0.31 * Math.exp(-4.8 * impact) * Math.abs(Math.sin(11 * impact));
     const wobble =
       t < 0.59
@@ -520,16 +637,6 @@ export class BookScene {
     }
     this.syncRig();
     this.portal.group.visible = false;
-    this.setPhase(
-      t < 1.02
-        ? "dropping"
-        : t < 2.05
-          ? "opening"
-          : t < 3.7
-            ? "flipping"
-            : "settling",
-    );
-    if (t >= END) this.skip();
   }
   skip = () => {
     this.elapsed = END;
@@ -543,6 +650,7 @@ export class BookScene {
     this.setOpen();
     this.setPrint(true, true);
     this.portal.group.visible = true;
+    this.dust.update(-1);
     this.setPhase("ready");
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
@@ -555,6 +663,7 @@ export class BookScene {
     this.turn = null;
     this.turnSheet.mesh.visible = false;
     this.elapsed = 0;
+    this.dust.update(-1);
     this.portal.uniform.uTime.value = 0;
     this.last = 0;
     this.setPrint(false, false);
@@ -620,16 +729,21 @@ export class BookScene {
   private stepTurn(dt: number) {
     const turn = this.turn;
     if (!turn) return;
-    const count = Math.ceil(Math.min(dt, 0.1) * 120) || 1,
-      step = Math.min(dt, 0.1) / count;
-    for (let i = 0; i < count; i++) {
-      const stiffness = turn.released ? 158 : 520,
-        damping = turn.released ? 23 : 43;
-      turn.velocity +=
-        ((turn.target - turn.progress) * stiffness - turn.velocity * damping) *
-        step;
-      turn.progress += turn.velocity * step;
-    }
+    const stiffness = turn.released ? 158 : 520,
+      damping = turn.released ? 23 : 43,
+      half = damping / 2,
+      omega = Math.sqrt(stiffness - half * half),
+      time = Math.min(Math.max(dt, 0), 1),
+      offset = turn.progress - turn.target,
+      coefficient = (turn.velocity + half * offset) / omega,
+      decay = Math.exp(-half * time),
+      cos = Math.cos(omega * time),
+      sin = Math.sin(omega * time);
+    turn.progress = turn.target + decay * (offset * cos + coefficient * sin);
+    turn.velocity =
+      decay *
+      (turn.velocity * cos -
+        ((half * turn.velocity + stiffness * offset) / omega) * sin);
     const p = clamp(turn.progress, 0, 1);
     this.bend(this.turnSheet, p, turn.direction, turn.twist);
     this.portal.group.visible = turn.direction > 0 ? p > 0.25 : p < 0.5;
@@ -815,30 +929,123 @@ export class BookScene {
       this.suppressClick = false;
     }
   };
+  private corners(visit: (p: THREE.Vector3) => void) {
+    this.rig.updateMatrixWorld(true);
+    this.rig.traverseVisible((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      const geometry = obj.geometry;
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      const b = geometry.boundingBox;
+      if (!b) return;
+      for (let i = 0; i < 8; i++) {
+        this.scratch
+          .set(
+            i & 1 ? b.max.x : b.min.x,
+            i & 2 ? b.max.y : b.min.y,
+            i & 4 ? b.max.z : b.min.z,
+          )
+          .applyMatrix4(obj.matrixWorld);
+        visit(this.scratch);
+      }
+    });
+  }
+  private sampleEnvelope() {
+    for (let frame = 0; frame <= 108; frame++) {
+      this.poseIntro((frame / 108) * END);
+      this.corners((p) => this.envelope.push(p.clone()));
+    }
+    this.setOpen();
+    for (const sheet of this.sheets) sheet.mesh.visible = false;
+    this.portal.group.visible = true;
+    for (const direction of [-1, 1])
+      for (let step = 0; step <= 24; step++)
+        for (const twist of [-0.65, 0.65]) {
+          this.bend(this.turnSheet, step / 24, direction, twist);
+          this.corners((p) => this.envelope.push(p.clone()));
+        }
+    this.turnSheet.mesh.visible = false;
+    // Leave room for the impact dust around the closed book.
+    for (const x of [-2.6, 2.6])
+      for (const z of [-3.1, 3.1])
+        this.envelope.push(new THREE.Vector3(x, 0.25, z));
+  }
+  private fitCamera() {
+    const rect = this.host.getBoundingClientRect(),
+      aim = new THREE.Vector3(0, 0.52, 0),
+      direction = new THREE.Vector3(0, 0.972, 0.235).normalize();
+    const measure = (distance: number) => {
+      this.camera.clearViewOffset();
+      this.camera.position.copy(direction).multiplyScalar(distance).add(aim);
+      this.camera.lookAt(aim);
+      this.camera.updateProjectionMatrix();
+      this.camera.updateMatrixWorld(true);
+      let minY = Infinity,
+        maxY = -Infinity,
+        maxX = 0;
+      for (const point of this.envelope) {
+        const p = this.scratch.copy(point).project(this.camera);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+        maxX = Math.max(maxX, Math.abs(p.x));
+      }
+      return { minY, maxY, maxX };
+    };
+    let low = 7,
+      high = 85;
+    for (let trial = 0; trial < 18; trial++) {
+      const distance = (low + high) / 2,
+        b = measure(distance);
+      if (b.maxX <= 0.91 && b.maxY - b.minY <= 1.8) high = distance;
+      else low = distance;
+    }
+    const bounds = measure(high),
+      center = (bounds.minY + bounds.maxY) / 2;
+    // A static lens shift balances the motion envelope without any animated camera zoom.
+    this.camera.setViewOffset(
+      rect.width,
+      rect.height,
+      0,
+      (-center * rect.height) / 2,
+      rect.width,
+      rect.height,
+    );
+  }
+  private visibleBounds() {
+    const bounds = { left: 1, right: -1, top: 1, bottom: -1 };
+    this.corners((p) => {
+      const projected = p.clone().project(this.camera);
+      bounds.left = Math.min(bounds.left, projected.x);
+      bounds.right = Math.max(bounds.right, projected.x);
+      bounds.top = Math.min(bounds.top, projected.y);
+      bounds.bottom = Math.max(bounds.bottom, projected.y);
+    });
+    return bounds;
+  }
   private resize = () => {
     const rect = this.host.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return;
     this.renderer.setSize(rect.width, rect.height);
     this.css.setSize(rect.width, rect.height);
     this.camera.aspect = rect.width / rect.height;
-    const fov = THREE.MathUtils.degToRad(15),
-      distance = Math.max(
-        8.0 / (2 * Math.tan(fov) * this.camera.aspect),
-        7.2 / (2 * Math.tan(fov)),
-      );
-    this.camera.position.set(0, distance * 0.935, distance * 0.355);
-    this.camera.lookAt(0, 0.25, 0);
-    this.camera.updateProjectionMatrix();
+    this.fitCamera();
+    this.dust.resize(
+      rect.height * this.renderer.getPixelRatio(),
+      this.camera.fov,
+    );
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
   };
   private frame = (now: number) => {
     this.raf = 0;
     if (this.disposed || !this.visible || document.hidden) return;
+    if (this.software && this.last && now - this.last < 100) {
+      this.schedule();
+      return;
+    }
     const dt = this.last ? (now - this.last) / 1000 : 0;
     this.last = now;
     if (this.elapsed < END) {
-      this.elapsed += dt;
+      this.elapsed += Math.min(dt, 0.25);
       this.updateIntro();
       this.renderer.shadowMap.needsUpdate = true;
     } else if (this.turn) {
@@ -851,6 +1058,27 @@ export class BookScene {
     this.schedule();
   };
   private render() {
+    const density = this.software
+      ? this.elapsed < END || this.turn
+        ? 0.5
+        : 0.7
+      : Math.min(devicePixelRatio, 1.5);
+    if (this.renderer.getPixelRatio() !== density) {
+      this.renderer.setPixelRatio(density);
+      this.dust.resize(this.host.clientHeight * density, this.camera.fov);
+    }
+    this.portal.light.intensity = this.portal.group.visible ? 0.85 : 0;
+    this.contact.mesh.material.opacity = THREE.MathUtils.clamp(
+      1 - this.rig.position.y * 0.3,
+      0.15,
+      1,
+    );
+    const open = clamp(this.lid.rotation.z / Math.PI, 0, 1);
+    this.contact.mesh.scale.set(
+      (0.52 + 0.48 * open) * (1 + this.rig.position.y * 0.06),
+      1 + this.rig.position.y * 0.06,
+      1,
+    );
     this.renderer.render(this.scene, this.camera);
     this.css.render(this.printing, this.camera);
     this.report();
@@ -870,6 +1098,9 @@ export class BookScene {
     data.zoom = String(this.camera.zoom);
     data.camera = JSON.stringify(this.camera.position.toArray());
     data.pageCount = "220";
+    data.dust = String(this.dust.visibleCount);
+    data.elapsed = this.elapsed.toFixed(4);
+    data.bookBounds = JSON.stringify(this.visibleBounds());
     data.bindingThickness = String(STACK * 2 + 0.46);
     data.rigY = this.rig.position.y.toFixed(4);
     data.coverAngle = this.lid.rotation.z.toFixed(4);
@@ -962,6 +1193,8 @@ export class BookScene {
     geometries.forEach((g) => g.dispose());
     materials.forEach((m) => m.dispose());
     this.textures.forEach((t) => t.dispose());
+    this.dust.dispose();
+    this.environment?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.css.domElement.remove();

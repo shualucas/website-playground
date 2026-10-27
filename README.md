@@ -13,7 +13,7 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-The book, leather/paper textures, stonework, and swirling portal are generated locally. Fonts are bundled. No external model, image service, API key, or font CDN is required.
+The book, pebbled leather, parchment fibers, normal/roughness maps, stonework, studio reflection environment, and swirling portal are generated locally. Fonts are bundled. No external model, image service, API key, or font CDN is required.
 
 ## Interaction
 
@@ -23,9 +23,9 @@ The book, leather/paper textures, stonework, and swirling portal are generated l
 - Page-corner buttons and Left/Right keys also change projects.
 - Click/tap the portal or the case-study link to open the reading dialog. Escape closes it.
 - **R** restarts the opening from the first chapter, including after navigating to another project. Space or Escape skips an opening/turn.
-- The camera position, zoom, and book scale stay fixed during page turns. The camera only reframes on viewport resize.
+- The camera is fitted against sampled geometry from the complete drop, raised cover, page fan, and corner drags. One fixed lens/framing is then used throughout; it only reframes on viewport resize.
 - Reduced motion bypasses the ambient opening and freezes the portal. Direct dragging is still available; button navigation changes immediately.
-- Rendering suspends off-screen and while the document is hidden. Static shadows are cached; software WebGL uses lighter shadow settings.
+- Rendering suspends off-screen and while the document is hidden. Static shadows are cached. Software WebGL uses normal-mapped lighting and cube reflections, with reduced resolution during movement; GPU rendering retains physical materials and filtered studio reflections. Shaders are warmed before animation, and the portal light remains in the light set to avoid shader recompilation during turns.
 - Without WebGL, an HTML book layout retains the pages, navigation, portal illustration, and reading dialog.
 
 ## Add projects
@@ -41,7 +41,9 @@ Project URLs can be shared as `?project=first-project` or another entry ID.
 ## Implementation
 
 - `src/book/BookScene.ts`: fixed camera, rounded binding and page blocks, drop/rebound choreography, forward riffles, raycast dragging, curved leaf geometry, two-sided printed pages, spring settling, visibility and cleanup.
-- `src/book/materials.ts`: procedural leather, parchment, fine page edges, printed leaf textures, merged stone arch, runes, and the seamless portal shader.
+- `src/book/materials.ts`: procedural leather, parchment fibers, fine page edges, printed leaf textures, textured stone arch, runes, and the seamless portal shader.
+- `src/book/surfaces.ts`: albedo/normal/roughness detail, a generated HDR studio environment, and rounded slabs whose corner radius is independent of their thickness.
+- `src/book/effects.ts`: a short-lived ring of impact dust and a soft contact shadow. Dust starts at the table impact, disperses, fades, and resets with R; reduced motion suppresses it.
 - `src/main.jsx`: React content, CSS3D printing, independent underlying page content during turns, on-page controls, keyboard interaction, reading dialog, and HTML fallback.
 - `src/style.css`: book-page typography and reading layout. No surrounding site UI.
 
@@ -55,6 +57,6 @@ npm run build
 npm test
 ```
 
-Browser checks use `/usr/bin/chromium` with software WebGL. They cover the book-only composition, actual mouse/touch dragging and cancellation, page-corner controls, fixed camera, R restart, forward riffles, live/frozen portal pixels, reading dialog, and HTML fallback.
+Browser checks use `/usr/bin/chromium` with software WebGL. They cover the book-only composition, actual mouse/touch dragging and cancellation, page-corner controls, fixed camera, projected bounds through the whole opening, R restart, forward riffles, actual dust draw calls and lifecycle, live/frozen portal pixels, reading dialog, and HTML fallback.
 
 Vercel: build `npm run build`, output `dist`. See `THIRD_PARTY_NOTICES.md` for licenses.
