@@ -1,8 +1,8 @@
-# A Designer’s Field Journal
+# The Spellbook
 
-A white portfolio website centered on a Three.js leather journal. On entry, the book appears, its cover opens, pages riffle quickly, and the final sheet turns more slowly before revealing the first project. The left page contains project metadata; the right page contains its preview.
+A white, full-screen portfolio centered on a thick, rounded Three.js spellbook. There is no surrounding site header, footer, toolbar, or project list. Navigation and case-study links live on the pages.
 
-The current three chapters contain explicitly labeled sample content, ready for real UX case studies.
+On entry, the closed book drops onto the surface, rebounds, opens, and riffles from right to left. A final slower leaf lands on the first project. The left page carries its metadata; the right page holds a stone-framed, animated green portal.
 
 ## Run
 
@@ -13,30 +13,39 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-All fonts, material textures, and illustrations are local or generated in code. No API keys or external runtime service is required.
+The book, leather/paper textures, stonework, and swirling portal are generated locally. Fonts are bundled. No external model, image service, API key, or font CDN is required.
 
 ## Interaction
 
-- Skip the opening with the visible intro button.
-- Use the previous/next arrows or Left/Right keyboard keys to turn project pages.
-- Open a case study to read its scaffold in an accessible dialog; Escape closes it.
-- Replay the opening from the footer.
-- Project selection is shareable through `?project=first-project` (or another project ID).
-- Reduced motion opens directly to the first spread and changes projects without page animations.
-- Phones show the 3D spread plus a readable project section underneath.
-- Without WebGL, both pages appear in a usable HTML reading layout.
-- Rendering stops while idle, off-screen, and while the document is hidden.
+- Drag the right page toward the left to advance. Drag the left page toward the right to return.
+- The segmented leaf bends along its width, twists with the vertical drag, and follows the pointer continuously. Release past the midpoint or flick to finish; a short drag falls back with a damped spring.
+- Mouse and touch use pointer capture, including release outside the book and cancelled gestures.
+- Page-corner buttons and Left/Right keys also change projects.
+- Click/tap the portal or the case-study link to open the reading dialog. Escape closes it.
+- **R** restarts the opening from the first chapter, including after navigating to another project. Space or Escape skips an opening/turn.
+- The camera position, zoom, and book scale stay fixed during page turns. The camera only reframes on viewport resize.
+- Reduced motion bypasses the ambient opening and freezes the portal. Direct dragging is still available; button navigation changes immediately.
+- Rendering suspends off-screen and while the document is hidden. Static shadows are cached; software WebGL uses lighter shadow settings.
+- Without WebGL, an HTML book layout retains the pages, navigation, portal illustration, and reading dialog.
 
-## Add your projects
+## Add projects
 
-Edit `src/book/projects.js`. Each entry controls the title, subtitle, description, role, year, team, disciplines, preview, and case-study chapters.
+The three current chapters contain explicitly labeled sample content. Edit `src/book/projects.js` to replace it.
 
-1. Replace the sample text and set `sample: false`.
-2. Put images in `public/projects/` and set `previewImage: '/projects/your-image.webp'`. Supply descriptive `imageAlt` text. An external image URL also works.
-3. Fill the `chapters` array with your story. Add a `caseStudyUrl` if your full case study lives elsewhere.
-4. Add or remove project entries; the chapter controls and page numbers update automatically.
+1. Update title, subtitle, description, role, team, year, disciplines, and case-study chapters. Set `sample: false`.
+2. To replace the portal’s placeholder content with an image, put a file in `public/projects/`, set `previewImage: '/projects/your-image.webp'`, and write its `imageAlt`. External image URLs also work.
+3. Add a `caseStudyUrl` when the complete case study lives elsewhere. Add/remove entries as needed.
 
-`src/book/BookScene.ts` contains the physical book, generated textures, lighting, curved-page geometry, animation, responsive camera, and cleanup. React renders selectable HTML into matching CSS3D page surfaces, keeping the typography crisp. `src/main.jsx` handles the portfolio UI, dialogs, content, and keyboard interaction. `src/style.css` contains the visual system and mobile reading layout.
+Project URLs can be shared as `?project=first-project` or another entry ID.
+
+## Implementation
+
+- `src/book/BookScene.ts`: fixed camera, rounded binding and page blocks, drop/rebound choreography, forward riffles, raycast dragging, curved leaf geometry, two-sided printed pages, spring settling, visibility and cleanup.
+- `src/book/materials.ts`: procedural leather, parchment, fine page edges, printed leaf textures, merged stone arch, runes, and the seamless portal shader.
+- `src/main.jsx`: React content, CSS3D printing, independent underlying page content during turns, on-page controls, keyboard interaction, reading dialog, and HTML fallback.
+- `src/style.css`: book-page typography and reading layout. No surrounding site UI.
+
+Three.js supplies the physical geometry, lighting, depth and shadows. Crisp HTML text sits on matching CSS3D surfaces; the portion covered by a turning leaf is clipped while the leaf carries its own two-sided printed texture. The book has approximately 220 implied paper leaves, fine edge lines and uneven signatures, plus 22 animated sheets in the opening.
 
 ## Validate and deploy
 
@@ -46,6 +55,6 @@ npm run build
 npm test
 ```
 
-Browser tests use `/usr/bin/chromium` with software WebGL enabled. They cover the opening sequence, actual WebGL draw calls, page navigation, keyboard interaction, dialogs, reduced motion, mobile touch/layout, and the HTML fallback.
+Browser checks use `/usr/bin/chromium` with software WebGL. They cover the book-only composition, actual mouse/touch dragging and cancellation, page-corner controls, fixed camera, R restart, forward riffles, live/frozen portal pixels, reading dialog, and HTML fallback.
 
-Vercel: build command `npm run build`, output `dist`. See `THIRD_PARTY_NOTICES.md` for licenses.
+Vercel: build `npm run build`, output `dist`. See `THIRD_PARTY_NOTICES.md` for licenses.
