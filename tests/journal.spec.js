@@ -321,3 +321,101 @@ test("reference-style page pills open both covers and queue project jumps", asyn
     nav.getByRole("button", { name: "Page 1", exact: true }),
   ).toHaveAttribute("aria-current", "page");
 });
+
+test("dragging can complete full horizontal and vertical revolutions around the same center", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await openBook(page);
+  const before = await state(page),
+    box = await stage(page).boundingBox();
+  for (const axis of ["horizontal", "vertical"]) {
+    const point = JSON.parse((await state(page)).rightHit);
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down();
+    await page.mouse.move(
+      point.x + (axis === "horizontal" ? box.width * 1.08 : 0),
+      point.y + (axis === "vertical" ? box.height * 1.08 : 0),
+      { steps: 12 },
+    );
+    await expect(stage(page)).toHaveAttribute("data-phase", "rotating");
+    await page.mouse.up();
+    const after = await state(page),
+      angles = JSON.parse(after.rotation);
+    expect(Math.abs(angles[axis === "horizontal" ? 1 : 0])).toBeGreaterThan(
+      Math.PI * 2,
+    );
+    expect(after.anchorPosition).toBe(before.anchorPosition);
+    expect(after.bookPosition).toBe(before.bookPosition);
+    expect(after.camera).toBe(before.camera);
+    expect(after.project).toBe("0");
+    await page.keyboard.press("r");
+    await ready(page);
+  }
+});
+
+test("rapid leaf clicks accumulate through spreads and covers in both directions", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await openBook(page);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const point = JSON.parse((await state(page)).rightHit);
+  for (let i = 0; i < 3; i++) await page.mouse.click(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-requested-page", "3");
+  await expect(stage(page)).toHaveAttribute("data-view", "back", {
+    timeout: 60000,
+  });
+  await ready(page);
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(stage(page)).toHaveAttribute("data-requested-page", "0");
+  await expect(stage(page)).toHaveAttribute("data-view", "spread", {
+    timeout: 45000,
+  });
+  await expect(stage(page)).toHaveAttribute("data-project", "0", {
+    timeout: 45000,
+  });
+  await ready(page);
+});
+
+test("opening a printed cover keeps the flat left page and stack hidden until the handoff", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await openBook(page);
+  await page.getByRole("button", { name: "Cover", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-view", "cover");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.evaluate(() => {
+    window.coverSamples = [];
+    new MutationObserver(() =>
+      window.coverSamples.push({
+        ...document.querySelector(".book-stage").dataset,
+      }),
+    ).observe(document.querySelector(".book-stage"), {
+      attributes: true,
+      attributeFilter: ["data-cover-open"],
+    });
+  });
+  await page.getByRole("button", { name: "Page 1", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-phase", "opening");
+  await ready(page);
+  const samples = await page.evaluate(() =>
+    window.coverSamples.filter(
+      (s) => Number(s.coverOpen) > 0.01 && Number(s.coverOpen) < 0.985,
+    ),
+  );
+  expect(samples.length).toBeGreaterThan(2);
+  for (const sample of samples) {
+    expect(sample.leftPrintedVisible).toBe("false");
+    expect(sample.leftStackVisible).toBe("false");
+    expect(sample.coverPrintedArtwork).not.toBe("");
+  }
+  await expect(stage(page)).toHaveAttribute(
+    "data-left-printed-visible",
+    "true",
+  );
+  await expect(stage(page)).toHaveAttribute("data-left-stack-visible", "true");
+});

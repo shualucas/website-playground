@@ -202,7 +202,7 @@ svg {
     font-size: 8px;
   }
   .spellbook .book-stage {
-    inset: 70px 0 110px;
+    inset: 50px 0 100px;
   }
   .book-navigation {
     padding: 6px 10px;
@@ -222,7 +222,7 @@ svg {
 }
 .book-stage {
   position: absolute;
-  inset: 48px 0 104px;
+  inset: 12px 0 80px;
   z-index: 2;
   touch-action: none;
   outline: none;

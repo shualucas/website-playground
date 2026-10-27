@@ -52,15 +52,12 @@ export function pageJoints(
   for (let joint = 0; joint <= PAGE_JOINTS; joint++) {
     const u = joint / PAGE_JOINTS;
     // The hinge leads; the outside of the sheet catches up as it approaches its landing.
-    const trailing = motion * 0.085 * u * u;
+    const trailing = motion * 0.15 * u * u;
     const hinge = Math.PI * clamp(p - trailing);
-    const inner = 0.45 * Math.sin((Math.min(u / 0.27, 1) * Math.PI) / 2);
-    const outer = 0.28 * u * u;
+    const inner = 0.7 * Math.sin((Math.min(u / 0.27, 1) * Math.PI) / 2);
+    const outer = 0.45 * u * u;
     const fold =
-      motion *
-      Math.max(0, (u - 0.27) / 0.73) *
-      (across - 0.5) *
-      (0.075 + twist);
+      motion * Math.max(0, (u - 0.27) / 0.73) * (across - 0.5) * (0.18 + twist);
     const angle = clamp(hinge + motion * (inner - outer) + fold, 0, Math.PI);
     angles[joint] = direction > 0 ? angle : Math.PI - angle;
   }

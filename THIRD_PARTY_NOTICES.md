@@ -8,7 +8,7 @@ This RISO zine is an independent Three.js implementation. Earlier ASCII experime
 - **html-to-image** captures the local React page layout and embedded fonts into a shared print texture. MIT license: `public/licenses/html-to-image-MIT.txt`.
 - **React**, **React DOM**, **Vite**, **TypeScript**, and **Playwright** retain their licenses in their distributed packages.
 
-The thin paper geometry, original two-ink cover art, halftone/registration/grain effects, paper textures, studio environment, folded saddle and staples, duotone ASCII artwork, articulated page simulation, fixed-center rotation, and opening choreography are implemented in this repository. No external model, photograph, or runtime asset service is required.
+The thin paper geometry, original two-ink cover art, halftone/registration/grain effects, paper textures, studio environment, folded saddle and staples, duotone ASCII artwork, articulated page simulation, spring-driven flex, printed inside covers, projected ground shadows, fixed-center 360° rotation, and opening choreography are implemented in this repository. No external model, photograph, or runtime asset service is required.
 
 ## Page-turn animation reference
 

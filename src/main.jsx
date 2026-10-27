@@ -234,7 +234,11 @@ function App() {
     } else engine.current?.goTo(next);
   };
   const turn = (direction) => {
-    if (busy) return;
+    if (phase === "rotating") return;
+    if (!fallback) {
+      engine.current?.stepPage(direction);
+      return;
+    }
     const current =
       selectedPage === -1 || selectedPage === projects.length
         ? selectedPage
@@ -349,16 +353,16 @@ function App() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [phase, fallback]);
+  }, [phase, fallback, selectedPage, index]);
   const left = (
     <Metadata
       project={projects[spread.left]}
       index={spread.left}
       onRead={openRead}
-      onPrevious={() => navigate(index - 1)}
-      canPrevious={!busy}
-      onNext={() => navigate(index + 1)}
-      canNext={!busy}
+      onPrevious={() => turn(-1)}
+      canPrevious={phase !== "rotating"}
+      onNext={() => turn(1)}
+      canNext={phase !== "rotating"}
     />
   );
   const right = (
@@ -366,8 +370,8 @@ function App() {
       project={projects[spread.right]}
       index={spread.right}
       onRead={openRead}
-      onNext={() => navigate(index + 1)}
-      canNext={!busy}
+      onNext={() => turn(1)}
+      canNext={phase !== "rotating"}
       fallback={fallback}
     />
   );
@@ -398,11 +402,11 @@ function App() {
         </span>
       </button>
       <p className="sr-only" id="book-instructions">
-        Drag the zine to rotate it in place. Click the right page to go forward
-        or the left page to go back. Use the bottom navigation or Left and Right
-        keys as alternatives. Press R to reset the rotation and replay the
-        opening. Choose Read the case study on the left page to read the full
-        project.
+        Drag the zine to rotate it through 360 degrees in place. Click the right
+        page to go forward or the left page to go back. Use the bottom
+        navigation or Left and Right keys as alternatives. Press R to reset the
+        rotation and replay the opening. Choose Read the case study on the left
+        page to read the full project.
       </p>
       <div className="print-sources" aria-hidden="true" inert>
         {projects.map((item, i) => (
@@ -416,9 +420,9 @@ function App() {
               index={i}
               onRead={() => {}}
               onPrevious={() => {}}
-              canPrevious={i > 0}
+              canPrevious={true}
               onNext={() => {}}
-              canNext={i < projects.length - 1}
+              canNext={true}
             />
           </div>
         ))}

@@ -6,8 +6,8 @@ export function contactShadow() {
   canvas.height = 256;
   const ctx = canvas.getContext("2d")!,
     g = ctx.createRadialGradient(128, 128, 20, 128, 128, 126);
-  g.addColorStop(0, "rgba(37,28,17,.25)");
-  g.addColorStop(0.5, "rgba(37,28,17,.17)");
+  g.addColorStop(0, "rgba(41,36,29,.18)");
+  g.addColorStop(0.5, "rgba(41,36,29,.07)");
   g.addColorStop(1, "rgba(37,28,17,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 256, 256);
