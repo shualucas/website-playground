@@ -83,7 +83,19 @@ function RichText({ text, accent, progress }) {
       {start >= 0 ? (
         <>
           {before}
-          <span className="word-accent">{accent}</span>
+          <span className="word-accent">
+            {accent === "Google" ? (
+              <span className="google-word">
+                {"Google".split("").map((letter, i) => (
+                  <span key={i}>
+                    {letter}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              accent
+            )}
+          </span>
           {after}
         </>
       ) : (
@@ -108,6 +120,7 @@ function Study({ chapter, onClose }) {
     <dialog
       ref={dialog}
       className="study-dialog"
+      style={{ "--chapter-color": chapter.color }}
       aria-labelledby="study-title"
       onCancel={onClose}
       onClick={(e) => {
@@ -186,7 +199,7 @@ function Index({ onClose, onNavigate }) {
       aria-labelledby="index-title"
     >
       <div className="study-top">
-        <span id="index-title">a small index</span>
+        <span id="index-title">the journey</span>
         <button onClick={onClose} aria-label="Close index">
           close ×
         </button>
@@ -208,7 +221,9 @@ function Index({ onClose, onNavigate }) {
           </button>
         ))}
       </nav>
-      <p>an evolving portfolio. the project stories are placeholders.</p>
+      <p>
+        four places in the story. case study details are still taking shape.
+      </p>
     </dialog>
   );
 }
@@ -288,6 +303,7 @@ function App() {
       <div
         className={`journey-view ${sceneReady ? "scene-ready" : ""}`}
         data-scene={sceneMode}
+        style={{ "--chapter-color": chapter.color }}
       >
         <Suspense fallback={<div className="map-loading" />}>
           <MapScene
@@ -353,7 +369,7 @@ function App() {
               )}
               {chapter.kind === "intro" && (
                 <button className="quiet-link" onClick={() => navigate(1)}>
-                  explore the work <span aria-hidden="true">↓</span>
+                  back to the beginning <span aria-hidden="true">↓</span>
                 </button>
               )}
               <button

@@ -1,8 +1,25 @@
-# Josh Lucas — a journey through design
+# Josh Lucas — a geographic journey through design
 
-A React + Three.js portfolio inspired by the uploaded cinematic map reference. A fixed 3D coastal landscape moves beneath a restrained narrative as visitors scroll through chapters. The bottom timeline supports direct navigation, and case study chapters open a five-part story scaffold.
+A React + MapLibre portfolio with a white map, quiet typography, selective color accents, and a scroll-driven geographic story:
 
-The scene is an original, locally generated landscape, not the reference's exact geographic map. Text, colors, positioning, camera travel, and navigation follow the reference's direction. Employer histories, dates, outcomes, and locations have not been invented. Replace the clearly labeled project placeholders with verified details.
+1. San Francisco — today
+2. Cumming, Georgia — the beginning
+3. Irvine, California — Blizzard
+4. San Francisco — Google
+
+These locations and employers were supplied by Josh. Dates, roles, project details, and outcomes remain unspecified. Pins are city centers, not office or home addresses.
+
+## Map data
+
+The landscape is no longer procedural. MapLibre renders real geographic data:
+
+- **Regional map:** bundled Natural Earth coastlines, state boundaries, and actual roads. This remains usable when external services are blocked.
+- **Detailed live map:** OpenFreeMap's OpenStreetMap-based Positron style, restyled in white. It needs access to `https://tiles.openfreemap.org`, but no API key. Where available, building heights come from the source data; missing heights are not invented.
+- **Without WebGL:** a local SVG view uses the same geographic coordinates and datasets.
+
+Attribution remains visible. See `public/data/SOURCES.md` for provenance, licenses, city coordinates, and limitations. Natural Earth is regional data, not a detailed street map. The connection arcs link story locations; they do not claim actual flight or driving routes. This version does not use real elevation tiles or claim measured 3D terrain.
+
+The workspace currently cannot connect successfully to the live tile host. Regional data rendering is verified here. The live-style transition has a controlled fixture test; that is not verification of the external provider. A deployed browser with normal Internet access can load the detailed tiles. A failed live upgrade falls back to the real regional dataset.
 
 ## Develop
 
@@ -13,26 +30,25 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-No external services, map tokens, remote tiles, fonts, or runtime credentials are required. The original frog pond remains accessible at `/pond.html`.
+The MapLibre worker is bundled locally; it does not depend on a CDN. The original frog pond remains at `/pond.html`.
 
 ## Edit
 
-- `src/journey/chapters.js`: chapter labels, copy, notes, and case study prompts.
-- `src/journey/main.jsx`: React navigation, scrolling, dialogs, index, and accessibility controls.
-- `src/journey/MapScene.jsx`: Three.js coastal terrain, streets, buildings, contours, camera paths, and non-WebGL fallback.
-- `src/journey/journey.css`: warm brown palette, centered text, fading treatment, timeline, and responsive layout.
+- `src/journey/chapters.js`: journey order, city coordinates, camera settings, employer accents, copy, and case study prompts.
+- `src/journey/main.jsx`: React story, timeline, index, dialogs, keyboard support, and motion controls.
+- `src/journey/MapScene.jsx`: MapLibre, local data layers, live style, routes, markers, flights, attribution, and no-WebGL fallback.
+- `src/journey/journey.css`: white palette, typography, responsive layout, and selective color.
+- `public/data/*.geojson`: the real regional datasets shipped with the site.
 
-Scroll or swipe to move through the journey. Click a timeline label, use the index, or press arrow keys to jump chapters. Home/End work when the page background is focused. The motion control turns off camera smoothing and pointer parallax; system reduced-motion preferences are respected. The reveal-text control removes the decorative paragraph fade. Case study dialogs close with Escape and contain placeholders for real project evidence.
+Scroll/swipe, use timeline labels or the index, or use the arrow keys to move between chapters. Reduced motion disables camera flights. Reveal text removes the decorative paragraph fade. Case study dialogs use five chapters and close with Escape.
 
-The WebGL scene is lazy-loaded and stops redrawing when idle. A local 2D illustration keeps the narrative and case study flow usable if WebGL is unavailable. Viewport resizing and touch scrolling are supported.
-
-## Validate
+## Validate and deploy
 
 ```sh
 npm run build
 npm test
 ```
 
-Tests use Chromium at `/usr/bin/chromium` with software WebGL for this cloud environment. Playwright starts or reuses a development server. Tests exercise actual map rendering, scroll-driven camera changes, timeline and keyboard navigation, case study chapters, the index, readable text, mobile sizing, reduced motion, the no-WebGL fallback, and the original pond interactions.
+Browser tests use Chromium at `/usr/bin/chromium` with software WebGL. They verify real local road rendering, city camera coordinates, the requested order, white styling, attribution, company accents, case studies, keyboard/mobile navigation, reduced motion, SVG fallback, live-style loader behavior with a fixture, and the preserved pond.
 
-Production output is in `dist`. Vercel can deploy this Vite project using `npm run build` and output directory `dist`. This repository does not change the live Framer domain or DNS.
+Vercel settings: build command `npm run build`, output `dist`. Domain and DNS changes are separate from deploying this repository.

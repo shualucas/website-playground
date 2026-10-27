@@ -1,425 +1,564 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+maplibregl.setWorkerUrl(workerUrl);
+import { chapters } from "./chapters.js";
 
-const clamp = THREE.MathUtils.clamp;
-const coast = (z) => -66 + Math.sin(z * 0.013) * 24 + Math.sin(z * 0.041) * 8;
-function elevation(x, z) {
-  const distance = x - coast(z);
-  if (distance < 0) return -1.2;
-  const hills = Math.max(0, (x - 25) / 145);
-  return (
-    0.5 +
-    Math.min(distance / 10, 1) * 0.8 +
-    hills *
-      (9 +
-        Math.sin(z * 0.026 + x * 0.017) * 6 +
-        Math.sin(z * 0.071 - x * 0.039) * 3) +
-    Math.max(0, Math.sin(x * 0.035 + z * 0.014)) * hills * 7
-  );
-}
-const random = (x, z) => {
-  const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
-  return n - Math.floor(n);
+const LIVE_STYLE = "https://tiles.openfreemap.org/styles/positron";
+const base = "/data/";
+const localStyle = {
+  version: 8,
+  sources: {
+    land: {
+      type: "geojson",
+      data: base + "land.geojson",
+      attribution: "Natural Earth (public domain)",
+    },
+    boundaries: { type: "geojson", data: base + "boundaries.geojson" },
+    highways: { type: "geojson", data: base + "highways.geojson" },
+    roads: { type: "geojson", data: base + "roads.geojson" },
+  },
+  layers: [
+    {
+      id: "water",
+      type: "background",
+      paint: { "background-color": "#e7eff3" },
+    },
+    {
+      id: "land",
+      type: "fill",
+      source: "land",
+      paint: { "fill-color": "#f7f8f5" },
+    },
+    {
+      id: "coast",
+      type: "line",
+      source: "land",
+      paint: { "line-color": "#d5dfdf", "line-width": 1 },
+    },
+    {
+      id: "boundaries",
+      type: "line",
+      source: "boundaries",
+      paint: {
+        "line-color": "#c7ceca",
+        "line-width": 0.7,
+        "line-dasharray": [4, 4],
+      },
+    },
+    {
+      id: "highways",
+      type: "line",
+      source: "highways",
+      paint: {
+        "line-color": "#d5dbd1",
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          3,
+          0.3,
+          11,
+          1.5,
+          15,
+          3,
+        ],
+      },
+    },
+    {
+      id: "roads",
+      type: "line",
+      source: "roads",
+      paint: {
+        "line-color": "#c6cfc4",
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          6,
+          0.4,
+          12,
+          1.2,
+          16,
+          2.5,
+        ],
+      },
+    },
+  ],
 };
-const cameras = [
-  { position: [100, 155, 152], target: [5, 0, -14] },
-  { position: [32, 81, 56], target: [-17, 0, -48] },
-  { position: [105, 77, 29], target: [15, 0, -41] },
-  { position: [-35, 91, 100], target: [12, 0, 7] },
-  { position: [145, 83, 180], target: [65, 4, 85] },
-  { position: [180, 110, -13], target: [75, 4, -82] },
-  { position: [20, 140, 146], target: [-12, 0, 0] },
-];
-function makeLine(points, color, opacity = 1) {
-  return new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints(points),
-    new THREE.LineBasicMaterial({ color, transparent: true, opacity }),
+function makeArc(from, to) {
+  const rad = Math.PI / 180,
+    a = from.map((v) => v * rad),
+    b = to.map((v) => v * rad);
+  const A = [
+      Math.cos(a[1]) * Math.cos(a[0]),
+      Math.cos(a[1]) * Math.sin(a[0]),
+      Math.sin(a[1]),
+    ],
+    B = [
+      Math.cos(b[1]) * Math.cos(b[0]),
+      Math.cos(b[1]) * Math.sin(b[0]),
+      Math.sin(b[1]),
+    ];
+  const angle = Math.acos(
+    Math.max(
+      -1,
+      Math.min(
+        1,
+        A.reduce((sum, v, i) => sum + v * B[i], 0),
+      ),
+    ),
   );
+  return Array.from({ length: 65 }, (_, i) => {
+    const t = i / 64,
+      s = Math.sin(angle);
+    const p = A.map((v, k) =>
+      s < 1e-8
+        ? v
+        : (v * Math.sin((1 - t) * angle)) / s +
+          (B[k] * Math.sin(t * angle)) / s,
+    );
+    return [
+      Math.atan2(p[1], p[0]) / rad,
+      Math.atan2(p[2], Math.hypot(p[0], p[1])) / rad,
+    ];
+  });
 }
-function MapFallback() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const observer = new ResizeObserver(() => fallback(ref.current));
-    observer.observe(ref.current);
-    fallback(ref.current);
-    return () => observer.disconnect();
-  }, []);
+const routes = {
+  type: "FeatureCollection",
+  features: chapters
+    .slice(1)
+    .map((c, i) => ({
+      type: "Feature",
+      properties: { chapter: i + 1, color: c.color },
+      geometry: {
+        type: "LineString",
+        coordinates: makeArc(chapters[i].location.center, c.location.center),
+      },
+    })),
+};
+function padding() {
+  return innerWidth < 700
+    ? { left: 20, right: 20, top: 0, bottom: innerHeight * 0.46 }
+    : {
+        left: innerWidth * 0.41,
+        right: innerWidth * 0.06,
+        top: innerHeight * 0.06,
+        bottom: innerHeight * 0.16,
+      };
+}
+function camera(chapter, mode) {
+  return {
+    center: chapter.location.center,
+    zoom: mode === "live" ? chapter.location.zoom : chapter.location.localZoom,
+    pitch: chapter.location.pitch,
+    bearing: chapter.location.bearing,
+    padding: padding(),
+  };
+}
+function addJourney(map) {
+  if (map.getSource("journey-route")) return;
+  map.addSource("journey-route", { type: "geojson", data: routes });
+  map.addLayer({
+    id: "journey-route",
+    type: "line",
+    source: "journey-route",
+    paint: {
+      "line-color": ["get", "color"],
+      "line-width": 1.4,
+      "line-opacity": 0.4,
+      "line-dasharray": [2, 4],
+    },
+  });
+}
+function styleLive(style) {
+  const result = JSON.parse(JSON.stringify(style));
+  result.layers = result.layers.map((layer) => {
+    const l = { ...layer, paint: { ...layer.paint } };
+    const id = l.id.toLowerCase();
+    if (l.type === "background") l.paint["background-color"] = "#f7f8f6";
+    if (l.type === "fill") {
+      const color = id.includes("water")
+        ? "#e5eef4"
+        : id.includes("park") ||
+            id.includes("wood") ||
+            id.includes("grass") ||
+            id.includes("landcover")
+          ? "#edf1e9"
+          : id.includes("building")
+            ? "#e0e5df"
+            : "#f6f7f3";
+      l.paint["fill-color"] = color;
+    }
+    if (l.type === "line") {
+      l.paint["line-color"] = id.includes("water")
+        ? "#d7e4ea"
+        : id.includes("boundary")
+          ? "#c9d0cc"
+          : id.includes("motorway") || id.includes("trunk")
+            ? "#d2d8c9"
+            : id.includes("casing")
+              ? "#e1e6df"
+              : "#ffffff";
+    }
+    if (l.type === "symbol") {
+      l.paint["text-color"] =
+        id.includes("city") || id.includes("place") ? "#737f7c" : "#98a39e";
+      l.paint["text-halo-color"] = "#ffffff";
+    }
+    return l;
+  });
+  return result;
+}
+function Attribution({ mode }) {
   return (
-    <canvas
-      className="journey-map"
-      ref={ref}
-      role="img"
-      aria-label="A warm-toned coastal map illustration"
-    />
+    <div className="geo-attribution">
+      {mode === "live" ? (
+        <>
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+          >
+            © OpenStreetMap
+          </a>
+          <span> · </span>
+          <a href="https://openfreemap.org" target="_blank" rel="noreferrer">
+            OpenFreeMap
+          </a>
+          <span> · </span>
+          <a
+            href="https://carto.com/attributions"
+            target="_blank"
+            rel="noreferrer"
+          >
+            CARTO
+          </a>
+        </>
+      ) : (
+        <a
+          href="https://www.naturalearthdata.com/about/terms-of-use/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Natural Earth · regional geography
+        </a>
+      )}
+    </div>
   );
 }
-function fallback(canvas) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-  ctx.fillStyle = "#39282a";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#4d3837";
-  ctx.beginPath();
-  ctx.moveTo(canvas.width * 0.45, 0);
-  ctx.bezierCurveTo(
-    canvas.width * 0.2,
-    canvas.height * 0.4,
-    canvas.width * 0.6,
-    canvas.height * 0.6,
-    canvas.width * 0.1,
-    canvas.height,
+function mercator([lng, lat]) {
+  return [
+    (lng + 180) / 360,
+    (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2,
+  ];
+}
+function paths(geometry, project) {
+  const line = (coords) =>
+    coords
+      .map((p, i) => {
+        const [x, y] = project(p);
+        return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  if (geometry.type === "Polygon")
+    return geometry.coordinates.map((r) => line(r) + "Z").join(" ");
+  if (geometry.type === "MultiPolygon")
+    return geometry.coordinates
+      .map((p) => p.map((r) => line(r) + "Z").join(" "))
+      .join(" ");
+  return (
+    geometry.type === "LineString"
+      ? [geometry.coordinates]
+      : geometry.coordinates
+  )
+    .map(line)
+    .join(" ");
+}
+function GeographicFallback({ chapter, onReady }) {
+  const [data, setData] = useState(null),
+    [size, setSize] = useState([innerWidth, innerHeight]);
+  useEffect(() => {
+    let active = true;
+    Promise.all(
+      ["land", "roads", "boundaries"].map((n) =>
+        fetch(base + n + ".geojson").then((r) => {
+          if (!r.ok) throw Error("Map data unavailable");
+          return r.json();
+        }),
+      ),
+    )
+      .then((result) => {
+        if (active) {
+          setData(result);
+          onReady?.("geographic-fallback");
+        }
+      })
+      .catch(() => {
+        if (active) onReady?.("unavailable");
+      });
+    const resize = () => setSize([innerWidth, innerHeight]);
+    addEventListener("resize", resize);
+    return () => {
+      active = false;
+      removeEventListener("resize", resize);
+    };
+  }, [onReady]);
+  const [w, h] = size,
+    center = mercator(chapter.location.center),
+    scale = 256 * 2 ** (chapter.location.localZoom - 1.1),
+    project = (p) => {
+      const point = mercator(p);
+      return [
+        (point[0] - center[0]) * scale + w * (w < 700 ? 0.5 : 0.68),
+        (point[1] - center[1]) * scale + h * (w < 700 ? 0.27 : 0.46),
+      ];
+    };
+  return (
+    <>
+      <svg
+        className="journey-map"
+        viewBox={`0 0 ${w} ${h}`}
+        role="img"
+        aria-label={`Real geographic map around ${chapter.location.name}`}
+      >
+        <rect width={w} height={h} fill="#e7eff3" />
+        {data &&
+          data.map((collection, i) => (
+            <g
+              key={i}
+              fill={i === 0 ? "#f7f8f5" : "none"}
+              stroke={i === 0 ? "#d6e0dc" : i === 1 ? "#c8d1c5" : "#ccd3cd"}
+              strokeWidth={i === 1 ? 1 : 0.7}
+            >
+              {collection.features.map((feature, j) => (
+                <path key={j} d={paths(feature.geometry, project)} />
+              ))}
+            </g>
+          ))}
+        <circle
+          cx={w * (w < 700 ? 0.5 : 0.68)}
+          cy={h * (w < 700 ? 0.27 : 0.46)}
+          r="6"
+          fill={chapter.color}
+          stroke="white"
+          strokeWidth="3"
+        />
+      </svg>
+      <Attribution mode="local" />
+    </>
   );
-  ctx.lineTo(canvas.width, canvas.height);
-  ctx.lineTo(canvas.width, 0);
-  ctx.fill();
-  ctx.strokeStyle = "#82655833";
-  ctx.lineWidth = 1;
-  for (let i = -15; i < 40; i++) {
-    ctx.beginPath();
-    ctx.moveTo(i * 65, 0);
-    ctx.lineTo(i * 65 + canvas.width * 0.8, canvas.height);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, i * 55);
-    ctx.lineTo(canvas.width, i * 55 - canvas.height * 0.4);
-    ctx.stroke();
-  }
 }
 export default function MapScene({ progress, reducedMotion, onReady }) {
-  const [failed, setFailed] = useState(false);
+  const active = Math.min(chapters.length - 1, Math.round(progress)),
+    chapter = chapters[active];
   const ref = useRef(null),
-    control = useRef({ progress, reducedMotion });
-  control.current = { progress, reducedMotion };
+    mapRef = useRef(null),
+    controls = useRef({ active, reducedMotion });
+  controls.current = { active, reducedMotion };
+  const [failed, setFailed] = useState(false),
+    [mode, setMode] = useState("local"),
+    modeRef = useRef("local"),
+    markerRef = useRef(null),
+    mapReady = useRef(false);
   useEffect(() => {
-    const canvas = ref.current;
-    let renderer;
+    let map;
     try {
-      renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        alpha: false,
-        powerPreference: "low-power",
+      map = new maplibregl.Map({
+        container: ref.current,
+        style: localStyle,
+        ...camera(chapters[controls.current.active], "local"),
+        attributionControl: false,
+        interactive: false,
+        renderWorldCopies: false,
+        canvasContextAttributes: { antialias: true },
+        maxPitch: 65,
       });
     } catch {
       setFailed(true);
-      onReady?.("fallback");
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.6));
-    renderer.setClearColor("#3a292b");
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#3a292b");
-    scene.fog = new THREE.FogExp2("#3a292b", 0.0044);
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 1300);
-    scene.add(new THREE.AmbientLight("#bca49c", 1.35));
-    const sun = new THREE.DirectionalLight("#f0cbbb", 2.0);
-    sun.position.set(-90, 170, -70);
-    scene.add(sun);
-    const sea = new THREE.Mesh(
-      new THREE.PlaneGeometry(1800, 1800),
-      new THREE.MeshLambertMaterial({ color: "#35282b" }),
-    );
-    sea.rotation.x = -Math.PI / 2;
-    sea.position.y = -0.5;
-    scene.add(sea);
-    // Local, generated terrain. No access tokens, remote map tiles, or invented locations.
-    const landGeometry = new THREE.PlaneGeometry(720, 760, 220, 230);
-    landGeometry.rotateX(-Math.PI / 2);
-    const positions = landGeometry.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i),
-        z = positions.getZ(i);
-      positions.setY(i, elevation(x, z));
-    }
-    landGeometry.computeVertexNormals();
-    const land = new THREE.Mesh(
-      landGeometry,
-      new THREE.MeshLambertMaterial({ color: "#59403d", flatShading: false }),
-    );
-    scene.add(land);
-    const shore = [];
-    for (let z = -370; z <= 370; z += 2)
-      shore.push(new THREE.Vector3(coast(z), 0.22, z));
-    scene.add(makeLine(shore, "#a4826e", 0.2));
-    // A fine street network follows the topography; everything is merged into a few draw calls.
-    const roadVertices = [];
-    function addRoad(points) {
-      for (let i = 1; i < points.length; i++) {
-        const a = points[i - 1],
-          b = points[i];
-        if (a.x < coast(a.z) + 2 || b.x < coast(b.z) + 2) continue;
-        roadVertices.push(a.x, a.y, a.z, b.x, b.y, b.z);
-      }
-    }
-    for (let x = -100; x < 260; x += 6.5) {
-      const points = [];
-      for (let z = -320; z < 320; z += 4) {
-        const px = x + Math.sin(z * 0.008) * 5;
-        points.push(new THREE.Vector3(px, elevation(px, z) + 0.15, z));
-      }
-      addRoad(points);
-    }
-    for (let z = -320; z < 320; z += 7) {
-      const points = [];
-      for (let x = -110; x < 280; x += 4) {
-        const pz = z + Math.sin(x * 0.009) * 5;
-        points.push(new THREE.Vector3(x, elevation(x, pz) + 0.16, pz));
-      }
-      addRoad(points);
-    }
-    const roadsGeometry = new THREE.BufferGeometry();
-    roadsGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(roadVertices, 3),
-    );
-    scene.add(
-      new THREE.LineSegments(
-        roadsGeometry,
-        new THREE.LineBasicMaterial({
-          color: "#b89b88",
-          transparent: true,
-          opacity: 0.105,
-        }),
-      ),
-    );
-    // Coastal highways and a few connecting routes make the camera movement legible.
-    for (let route = 0; route < 4; route++) {
-      const points = [];
-      for (let z = -350; z < 350; z += 2) {
-        const x = coast(z) + 10 + route * 25 + Math.sin(z * 0.02 + route) * 10;
-        points.push(new THREE.Vector3(x, elevation(x, z) + 0.2, z));
-      }
-      scene.add(makeLine(points, "#b89b87", route === 0 ? 0.28 : 0.13));
-    }
-    for (let route = 0; route < 3; route++) {
-      const points = [];
-      for (let x = -90; x < 280; x += 2) {
-        const z = (route - 1) * 83 + Math.sin(x * 0.014) * 28;
-        points.push(new THREE.Vector3(x, elevation(x, z) + 0.22, z));
-      }
-      addRoad(points);
-      scene.add(
-        makeLine(
-          points.filter((p) => p.x > coast(p.z) + 3),
-          "#b89b87",
-          0.18,
-        ),
+    mapRef.current = map;
+    let disposed = false,
+      liveTimer;
+    map
+      .getCanvas()
+      .setAttribute(
+        "aria-label",
+        "Real geographic map showing San Francisco, Cumming, and Irvine",
       );
-    }
-    const buildingParts = [];
-    for (let x = -70; x < 125; x += 6.5)
-      for (let z = -265; z < 260; z += 7) {
-        const rx = x + Math.sin(z * 0.008) * 5 + 2,
-          rz = z + Math.sin(x * 0.009) * 5 + 2;
-        if (rx < coast(rz) + 7 || elevation(rx, rz) > 8 || random(x, z) > 0.68)
-          continue;
-        const r = random(x + 1, z),
-          high = Math.exp(-((rx - 8) ** 2 + (rz + 35) ** 2) / 1000);
-        const h = 0.35 + r * 1.1 + high * r * 3.5;
-        const geometry = new THREE.BoxGeometry(
-          1.7 + r * 1.7,
-          h,
-          1.9 + random(z, x) * 2.5,
-        );
-        geometry.translate(rx, elevation(rx, rz) + h / 2, rz);
-        buildingParts.push(geometry);
+    map.getCanvas().setAttribute("role", "img");
+    function updateMarker() {
+      const c = chapters[controls.current.active];
+      if (!markerRef.current) {
+        const el = document.createElement("div");
+        el.className = "location-marker";
+        const dot = document.createElement("span");
+        dot.className = "location-marker-dot";
+        const label = document.createElement("span");
+        label.className = "location-marker-label";
+        el.append(dot, label);
+        markerRef.current = new maplibregl.Marker({
+          element: el,
+          anchor: "center",
+        })
+          .setLngLat(c.location.center)
+          .addTo(map);
       }
-    const buildingsGeometry = mergeGeometries(buildingParts);
-    buildingParts.forEach((g) => g.dispose());
-    const buildings = new THREE.Mesh(
-      buildingsGeometry,
-      new THREE.MeshLambertMaterial({ color: "#5b4440" }),
-    );
-    scene.add(buildings);
-    // Sparse contour lines on the hills keep this close to a muted terrain map.
-    const contour = [];
-    for (let level = 4; level < 27; level += 4)
-      for (let x = 30; x < 295; x += 5)
-        for (let z = -300; z < 300; z += 5) {
-          const corners = [
-              [x, z],
-              [x + 5, z],
-              [x + 5, z + 5],
-              [x, z + 5],
-            ],
-            hits = [];
-          for (let k = 0; k < 4; k++) {
-            const a = corners[k],
-              b = corners[(k + 1) % 4],
-              ha = elevation(...a),
-              hb = elevation(...b);
-            if (ha < level !== hb < level) {
-              const ratio = (level - ha) / (hb - ha);
-              hits.push([
-                a[0] + (b[0] - a[0]) * ratio,
-                level + 0.07,
-                a[1] + (b[1] - a[1]) * ratio,
-              ]);
-            }
-          }
-          if (hits.length === 2) contour.push(...hits[0], ...hits[1]);
-        }
-    const contourGeometry = new THREE.BufferGeometry();
-    contourGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(contour, 3),
-    );
-    scene.add(
-      new THREE.LineSegments(
-        contourGeometry,
-        new THREE.LineBasicMaterial({
-          color: "#b09682",
-          transparent: true,
-          opacity: 0.12,
-        }),
-      ),
-    );
-    // Labels are deliberately abstract until the actual career journey is provided.
-    function label(text, x, z) {
-      const tile = document.createElement("canvas");
-      tile.width = 512;
-      tile.height = 64;
-      const ctx = tile.getContext("2d");
-      ctx.font = "20px Arial";
-      ctx.fillStyle = "#a38c80";
-      ctx.textAlign = "center";
-      ctx.fillText(text, 256, 38);
-      const texture = new THREE.CanvasTexture(tile);
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(35, 4.4),
-        new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          opacity: 0.4,
-          depthWrite: false,
-        }),
-      );
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(x, elevation(x, z) + 0.28, z);
-      scene.add(mesh);
+      const el = markerRef.current.getElement();
+      el.style.setProperty("--marker-color", c.color);
+      el.querySelector(".location-marker-label").textContent =
+        c.kind === "intro"
+          ? "san francisco / today"
+          : c.id === "google"
+            ? "san francisco / google"
+            : c.id === "blizzard"
+              ? "irvine / blizzard"
+              : "cumming / the beginning";
+      markerRef.current.setLngLat(c.location.center);
     }
-    label("N O R T H   S H O R E", -34, -125);
-    label("N E W   P E R S P E C T I V E S", 45, -73);
-    label("T H E   D E T A I L S", 62, 90);
-    label("S T I L L   E X P L O R I N G", 120, 10);
-    const marker = new THREE.Group();
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(1.3, 1.45, 48),
-      new THREE.MeshBasicMaterial({
-        color: "#d2b4a0",
-        transparent: true,
-        opacity: 0.4,
-        side: THREE.DoubleSide,
-      }),
-    );
-    ring.rotation.x = -Math.PI / 2;
-    marker.add(ring);
-    const dot = new THREE.Mesh(
-      new THREE.CircleGeometry(0.24, 16),
-      new THREE.MeshBasicMaterial({
-        color: "#c9a48e",
-        transparent: true,
-        opacity: 0.7,
-      }),
-    );
-    dot.rotation.x = -Math.PI / 2;
-    marker.add(dot);
-    scene.add(marker);
-    let raf,
-      last = 0,
-      smooth = control.current.progress,
-      pointer = { x: 0, y: 0 },
-      frameCount = 0,
-      disposed = false,
-      dirty = true;
-    const look = new THREE.Vector3(),
-      position = new THREE.Vector3();
-    function render(now) {
+    const load = () => {
       if (disposed) return;
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
-      const reduced = control.current.reducedMotion;
-      const before = smooth;
-      smooth = reduced
-        ? control.current.progress
-        : THREE.MathUtils.damp(smooth, control.current.progress, 5, dt);
-      const index = Math.min(
-          cameras.length - 2,
-          Math.floor(clamp(smooth, 0, cameras.length - 1)),
-        ),
-        fraction = clamp(smooth - index, 0, 1),
-        ease = fraction * fraction * (3 - 2 * fraction);
-      const a = cameras[index],
-        b = cameras[index + 1];
-      position
-        .fromArray(a.position)
-        .lerp(new THREE.Vector3(...b.position), ease);
-      look.fromArray(a.target).lerp(new THREE.Vector3(...b.target), ease);
-      if (!reduced) {
-        position.x += pointer.x * 2.6;
-        position.y += pointer.y * 1.4;
+      mapReady.current = true;
+      addJourney(map);
+      updateMarker();
+      onReady?.(
+        modeRef.current === "live" ? "maplibre-live" : "maplibre-local",
+      );
+    };
+    map.on("load", load);
+    map.on("style.load", () => {
+      if (disposed) return;
+      addJourney(map);
+      if (modeRef.current === "live") {
+        const layer = map
+          .getStyle()
+          .layers?.find((l) => l["source-layer"] === "building" && l.source);
+        if (layer && !map.getLayer("journey-buildings"))
+          map.addLayer({
+            id: "journey-buildings",
+            type: "fill-extrusion",
+            source: layer.source,
+            "source-layer": layer["source-layer"],
+            minzoom: 13.5,
+            paint: {
+              "fill-extrusion-color": "#e1e6df",
+              "fill-extrusion-height": [
+                "to-number",
+                ["coalesce", ["get", "render_height"], ["get", "height"], 0],
+              ],
+              "fill-extrusion-base": [
+                "to-number",
+                ["coalesce", ["get", "render_min_height"], 0],
+              ],
+              "fill-extrusion-opacity": 0.65,
+            },
+          });
+        onReady?.("maplibre-live");
       }
-      camera.position.copy(position);
-      camera.lookAt(look);
-      marker.position.set(look.x, elevation(look.x, look.z) + 0.45, look.z);
-      ring.scale.setScalar(1);
-      if (dirty || Math.abs(smooth - before) > 0.00001 || frameCount < 3) {
-        renderer.render(scene, camera);
-        frameCount++;
-        dirty = false;
-        if (frameCount === 2) onReady?.("webgl");
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6500);
+    // If the tile provider is unavailable, the real local geography remains in place.
+    fetch(LIVE_STYLE, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw Error("Live map unavailable");
+        return r.json();
+      })
+      .then((style) => {
+        if (disposed) return;
+        const nextStyle = styleLive(style);
+        modeRef.current = "live";
+        setMode("live");
+        map.setStyle(nextStyle);
+        map.once("style.load", () => {
+          if (!disposed) {
+            map.jumpTo(camera(chapters[controls.current.active], "live"));
+            updateMarker();
+          }
+        });
+        liveTimer = setTimeout(() => {
+          if (disposed || modeRef.current !== "live") return;
+          const sources = Object.entries(map.getStyle().sources).filter(
+            ([, s]) => s.type === "vector",
+          );
+          if (
+            sources.length &&
+            !sources.some(([id]) => map.isSourceLoaded(id))
+          ) {
+            modeRef.current = "local";
+            setMode("local");
+            map.setStyle(localStyle);
+            map.once("style.load", () => {
+              if (!disposed)
+                map.jumpTo(camera(chapters[controls.current.active], "local"));
+            });
+          }
+        }, 12000);
+      })
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+    const move = () => {
+      if (disposed) return;
+      mapReady.current = true;
+      ref.current.dataset.mapCenter = map.getCenter().toArray().join(",");
+      ref.current.dataset.mapPitch = String(map.getPitch());
+      if (modeRef.current === "local" && map.getLayer("roads")) {
+        ref.current.dataset.renderedRoads = String(
+          map.queryRenderedFeatures({ layers: ["roads"] }).length,
+        );
       }
-      raf = requestAnimationFrame(render);
-    }
+    };
+    map.on("idle", move);
+    map.on("moveend", move);
     const resize = () => {
-      const { width, height } = canvas.getBoundingClientRect();
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      dirty = true;
+      map.resize();
+      map.jumpTo(camera(chapters[controls.current.active], modeRef.current));
     };
-    const move = (e) => {
-      pointer.x = e.clientX / innerWidth - 0.5;
-      pointer.y = e.clientY / innerHeight - 0.5;
-      dirty = true;
-    };
-    const observer = new ResizeObserver(resize);
-    observer.observe(canvas);
-    resize();
-    raf = requestAnimationFrame(render);
-    window.addEventListener("pointermove", move);
+    window.addEventListener("resize", resize);
     return () => {
       disposed = true;
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-      window.removeEventListener("pointermove", move);
-      scene.traverse((object) => {
-        object.geometry?.dispose();
-        if (object.material) {
-          const materials = Array.isArray(object.material)
-            ? object.material
-            : [object.material];
-          materials.forEach((m) => {
-            m.map?.dispose();
-            m.dispose();
-          });
-        }
-      });
-      renderer.dispose();
+      clearTimeout(timeout);
+      clearTimeout(liveTimer);
+      controller.abort();
+      window.removeEventListener("resize", resize);
+      markerRef.current?.remove();
+      markerRef.current = null;
+      mapReady.current = false;
+      map.remove();
+      mapRef.current = null;
     };
   }, [onReady]);
-  if (failed) return <MapFallback />;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const c = chapters[active];
+    const el = markerRef.current?.getElement();
+    if (el) {
+      el.style.setProperty("--marker-color", c.color);
+      el.querySelector(".location-marker-label").textContent =
+        c.id === "google"
+          ? "san francisco / google"
+          : c.id === "blizzard"
+            ? "irvine / blizzard"
+            : c.id === "beginning"
+              ? "cumming / the beginning"
+              : "san francisco / today";
+      markerRef.current.setLngLat(c.location.center);
+    }
+    map.flyTo({
+      ...camera(c, modeRef.current),
+      duration: reducedMotion ? 0 : 2400,
+      essential: false,
+      curve: 1.5,
+    });
+  }, [active, reducedMotion]);
+  if (failed) return <GeographicFallback chapter={chapter} onReady={onReady} />;
   return (
-    <canvas
-      ref={ref}
-      className="journey-map"
-      role="img"
-      aria-label="An interactive three-dimensional coastal landscape, with hills, streets, and buildings, that changes perspective through each chapter"
-    />
+    <>
+      <div className="journey-map" ref={ref} />
+      <Attribution mode={mode} />
+    </>
   );
 }

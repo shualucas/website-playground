@@ -750,3 +750,298 @@ a {
   width: 10px;
   height: 10px;
 }
+/* White cartographic palette: geography stays quiet, the story supplies color. */
+:root {
+  background: #f8faf7;
+  color: #34413e;
+  color-scheme: light;
+  --ink: #34413e;
+  --muted: #7e8b83;
+  --faint: #b6beb6;
+  --accent: #258578;
+  --paper: #fff;
+  --line: #dfe5dd;
+}
+.journey-view {
+  background: #f8faf7;
+  --chapter-color: #258578;
+}
+.journey-map,
+.map-loading {
+  background: #edf2ee;
+}
+.journey-map {
+  z-index: -4;
+}
+.map-loading {
+  background: radial-gradient(ellipse at 65% 45%, #e7eff2, #f8faf7 70%);
+}
+.map-wash {
+  background:
+    linear-gradient(
+      180deg,
+      #fff8 0%,
+      transparent 28%,
+      transparent 72%,
+      #fff9 100%
+    ),
+    radial-gradient(
+      ellipse at 42% 57%,
+      #ffffffed 0%,
+      #ffffffc9 21%,
+      #ffffff38 46%,
+      transparent 70%
+    );
+}
+.map-grain {
+  opacity: 0.018;
+}
+.header-whisper {
+  color: #73877c;
+  opacity: 0.65;
+}
+.name-link {
+  color: #617169;
+  opacity: 1;
+}
+.index-toggle {
+  color: #677d6f;
+  opacity: 0.9;
+}
+.narrative h1 {
+  color: #283c32;
+}
+.chapter-description {
+  color: #34483e;
+}
+.word-accent {
+  color: var(--chapter-color);
+  font-weight: 500;
+}
+.chapter-note {
+  color: #6d8073;
+  opacity: 0.7;
+}
+.quiet-link {
+  color: var(--chapter-color);
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--chapter-color) 35%,
+    transparent
+  );
+}
+.quiet-link:hover {
+  color: #203a2c;
+  border-color: var(--chapter-color);
+}
+.read-toggle {
+  color: #657e6a;
+  opacity: 0.65;
+}
+button:hover,
+a:hover {
+  color: #203d2d;
+}
+.motion-button {
+  color: #6f8173;
+  opacity: 0.8;
+}
+.chapter-timeline > button {
+  color: #849387;
+  opacity: 0.65;
+}
+.chapter-timeline > button[aria-current] {
+  color: var(--chapter-color);
+  opacity: 1;
+}
+.chapter-timeline > button:hover {
+  color: #405c47;
+  opacity: 1;
+}
+.scroll-prompt {
+  color: #4d6d57;
+}
+.journey-progress {
+  background: #d6e1d2;
+  opacity: 0.8;
+}
+.journey-progress > span {
+  background: var(--chapter-color);
+}
+.cursor-ring {
+  border-color: #5f7d6870;
+  mix-blend-mode: multiply;
+}
+.skip-link {
+  background: #e2eee0;
+  color: #244e32;
+}
+button:focus-visible,
+a:focus-visible {
+  outline-color: var(--chapter-color, #258578);
+}
+.geo-attribution {
+  position: absolute;
+  bottom: 7px;
+  right: 14px;
+  font:
+    8px/1.5 Arial,
+    sans-serif;
+  z-index: 6;
+  color: #718376;
+  background: #ffffffbd;
+  padding: 2px 5px;
+  border-radius: 2px;
+}
+.geo-attribution a:hover {
+  text-decoration: underline;
+}
+.location-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --marker-color: #258578;
+}
+.location-marker-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--marker-color);
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 9px color-mix(in srgb, var(--marker-color) 11%, transparent),
+    0 2px 8px #35473825;
+}
+.location-marker-label {
+  position: absolute;
+  left: 22px;
+  top: -5px;
+  white-space: nowrap;
+  font:
+    10px/1.7 Arial,
+    sans-serif;
+  letter-spacing: 0.1px;
+  color: var(--marker-color);
+  background: #ffffffde;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--marker-color) 15%, transparent);
+  border-radius: 3px;
+  box-shadow: 0 2px 12px #30443506;
+}
+.maplibregl-canvas:focus {
+  outline: none;
+}
+.maplibregl-canvas {
+  filter: saturate(0.5);
+}
+.google-word > span:nth-child(1),
+.google-word > span:nth-child(4) {
+  color: #4285f4;
+}
+.google-word > span:nth-child(2),
+.google-word > span:nth-child(6) {
+  color: #db4437;
+}
+.google-word > span:nth-child(3) {
+  color: #b58817;
+}
+.google-word > span:nth-child(5) {
+  color: #208a4f;
+}
+.description-wrap .google-word {
+  font-weight: 500;
+}
+.study-dialog,
+.index-dialog {
+  background: #fbfcf9;
+  color: #324638;
+  border-color: #d6e0d2;
+}
+.study-dialog::backdrop,
+.index-dialog::backdrop {
+  background: #d6dfd7a6;
+}
+.study-top {
+  color: #6c826f;
+  border-color: #dce5d8;
+}
+.placeholder-label {
+  color: #8a9d87;
+}
+.study-dialog h2 {
+  color: var(--chapter-color, #365b41);
+}
+.study-intro,
+.study-dialog article > p {
+  color: #71846f;
+}
+.study-dialog nav {
+  border-color: #dce5d8;
+}
+.study-dialog nav button {
+  color: #7f937c;
+}
+.study-dialog nav button span {
+  color: #a3b39d;
+}
+.study-dialog nav button[aria-current] {
+  color: var(--chapter-color, #258578);
+  border-color: var(--chapter-color, #258578);
+}
+.study-chapter-label {
+  color: #8c9f87;
+}
+.study-evidence {
+  border-color: #cfddc8;
+  background: #eff4ec55;
+  color: #78916f;
+}
+.study-evidence > span {
+  color: #a6bb9c;
+}
+.study-evidence small {
+  color: #91a58a;
+}
+.study-pagination {
+  color: #8fa287;
+}
+.study-pagination button {
+  color: var(--chapter-color, #258578);
+}
+.index-dialog nav button {
+  color: #56714f;
+  border-color: #e0e8dc;
+}
+.index-dialog nav button > span:first-child,
+.index-dialog nav button > span:last-child {
+  color: #97ac8e;
+}
+.index-dialog > p {
+  color: #91a487;
+}
+@media (max-width: 700px) {
+  .map-wash {
+    background: linear-gradient(
+      180deg,
+      #ffffff40 0%,
+      #ffffff1a 22%,
+      #ffffffde 43%,
+      #ffffffef 68%,
+      #ffffff8c 100%
+    );
+  }
+  .location-marker-label {
+    font-size: 8px;
+    left: 17px;
+    padding: 3px 7px;
+  }
+  .geo-attribution {
+    font-size: 7px;
+    right: 12px;
+    bottom: 5px;
+  }
+  .journey-bottom {
+    bottom: 29px;
+  }
+}
