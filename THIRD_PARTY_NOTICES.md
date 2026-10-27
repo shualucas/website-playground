@@ -2,14 +2,14 @@
 
 ## ASCII Sharks
 
-The ASCII renderer, artificial-life world, shark shapes, species, and math helpers in `src/pond/` are adapted directly from:
+The ASCII tile renderer, shading approach, fixed-step lifecycle, and math helpers in `src/sky/` are adapted from:
 
 - Repository: https://github.com/stackedlol/ascii-sharks
 - Revision: `a0074c16a106f0abc665fe9712ca445f8f98ad8e`
 - License: MIT, Copyright (c) 2026 drewdi
-- Full license: `src/pond/LICENSE` and `public/licenses/ascii-sharks-MIT.txt`
+- Full license: `src/sky/LICENSE` and `public/licenses/ascii-sharks-MIT.txt`
 
-Local changes replace the shark silhouettes, species, fish schools, and hunting with a tadpole-only pond simulation. The upstream cell rasterization, body shading, glyph ramps, wake diffusion, math helpers, fixed-step loop, and follow-the-leader tail technique are adapted. New lily-pad geometry, directional tadpole tails, pond avoidance, keyboard pause, diagnostics, touch cleanup, visibility handling, and resize adaptation are included.
+Local changes replace the aquatic simulation with drifting hot-air balloons and clouds. The screen-aligned cell rasterization, glyph shading, math helpers, and fixed-step lifecycle are adapted from upstream. New balloon envelope geometry, striped gores, baskets, cloud-puff geometry, shared hit testing, upward lift, cloud dispersal, keyboard interaction, and responsive resizing are included.
 
 ## Dao Ho portfolio
 

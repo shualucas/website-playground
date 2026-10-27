@@ -1,6 +1,6 @@
 :root {
   font-family: "Geist Mono", ui-monospace, Menlo, monospace;
-  background: #050807;
+  background: #070a10;
   color-scheme: dark;
 }
 * {
@@ -15,13 +15,13 @@ body,
   overflow: hidden;
   overscroll-behavior: none;
 }
-.pond {
+.sky {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #050807;
+  background: #070a10;
 }
-.ascii-pond {
+.ascii-sky {
   display: block;
   width: 100%;
   height: 100%;
@@ -31,7 +31,7 @@ body,
   outline: none;
   cursor: default;
 }
-.ascii-pond:focus-visible {
-  outline: 1px solid #6ee6ff;
+.ascii-sky:focus-visible {
+  outline: 1px solid #d9c3a2;
   outline-offset: -2px;
 }

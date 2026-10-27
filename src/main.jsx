@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/geist-mono/latin-600.css";
-import { PondEngine } from "./pond/engine";
+import { SkyEngine } from "./sky/engine";
 import "./style.css";
 
 function App() {
@@ -10,7 +10,7 @@ function App() {
     let engine = null,
       disposed = false;
     const start = () => {
-      if (!disposed && canvas.current) engine = new PondEngine(canvas.current);
+      if (!disposed && canvas.current) engine = new SkyEngine(canvas.current);
     };
     // The exact 600-weight face used by the reference is served locally.
     document.fonts
@@ -22,6 +22,19 @@ function App() {
         event.preventDefault();
         engine?.togglePaused();
       }
+      if (
+        ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)
+      ) {
+        event.preventDefault();
+        engine?.select(
+          event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1,
+        );
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        engine?.activateSelected();
+      }
+      if (event.key === "Escape") engine?.clearSelection();
     };
     window.addEventListener("keydown", keydown);
     return () => {
@@ -31,13 +44,13 @@ function App() {
     };
   }, []);
   return (
-    <main className="pond">
+    <main className="sky">
       <canvas
         ref={canvas}
-        className="ascii-pond"
+        className="ascii-sky"
         tabIndex={0}
         role="img"
-        aria-label="An interactive ASCII pond with swimming tadpoles and floating lily pads. Move the pointer to disturb the water, tap or click to splash, and press Space to pause or resume."
+        aria-label="An ASCII sky with drifting hot-air balloons and slower clouds. Click a balloon to lift it or a cloud to disperse it. Arrow keys select an object, Enter activates it, and Space pauses or resumes."
       />
     </main>
   );

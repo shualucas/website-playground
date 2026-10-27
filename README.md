@@ -1,8 +1,6 @@
-# ASCII Pond
+# ASCII Sky
 
-A full-screen interactive pond with tadpoles and lily pads. The ASCII cell rasterization, glyph shading, fixed-step lifecycle, and wake diffusion are adapted from the actual [stackedlol/ascii-sharks](https://github.com/stackedlol/ascii-sharks) source. [Dao-Ho/portfolio](https://github.com/Dao-Ho/portfolio) was inspected for its single-screen composition and interaction/lifecycle patterns.
-
-There are no sharks, fish schools, predators, portfolio text, or visible controls. Tadpoles have rounded heads and long undulating tails. They wander calmly, give one another space, avoid the lily pads, and flee pointer/tap disturbances. The green leaves float gently and are rendered with the same shaded ASCII tiles as the animals.
+A full-screen interactive sky of striped hot-air balloons and puffy clouds, drawn entirely as shaded monospace glyph tiles. The rendering style and lifecycle adapt the MIT-licensed [stackedlol/ascii-sharks](https://github.com/stackedlol/ascii-sharks) source; [Dao-Ho/portfolio](https://github.com/Dao-Ho/portfolio) informed the single-screen composition.
 
 ## Run
 
@@ -13,28 +11,30 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-Geist Mono 600 is bundled locally, matching the shark reference. No font CDN, analytics, images, external runtime requests, API keys, or WebGL are needed.
+Geist Mono 600 is bundled locally. No API keys, external runtime requests, image assets, font CDN, or WebGL are needed.
 
 ## Interaction
 
-- Move the pointer or drag a finger to disturb the pond.
-- Click/tap to splash and scatter nearby tadpoles.
-- Space pauses/resumes without displaying an interface.
-- Reduced-motion preferences start at a populated still frame.
+- Balloons drift slowly across the sky; clouds drift more slowly.
+- Click/tap a balloon's envelope, ropes, or basket to give it upward lift. Further clicks add lift; a brief burner glow provides feedback.
+- Click/tap a cloud to push its puffs apart. They separate and fade, then reform off-screen to drift back into the scene.
+- Objects wrap around the sky to keep the scene populated.
+- Arrow keys select an object, Enter activates it, and Escape clears the subtle corner markers.
+- Space pauses/resumes. Reduced-motion preferences start with a populated still frame.
 - Animation suspends off-screen and while the document is hidden.
 
-The app intentionally ignores the shark demo's species query parameters: all animals remain tadpoles.
+The scene has no visible text or controls. Its canvas has a screen-reader description of the interactions.
 
 ## Edit and source attribution
 
-- `src/pond/renderer.ts`: adapted upstream glyph rasterization and wake diffusion; new tadpole silhouette, directional tails, and lily-pad rasterization.
-- `src/pond/world.ts`: pond movement, flexible tails, leaf avoidance, splash response, and responsive resizing.
-- `src/pond/engine.ts`: adapted fixed timestep, input and lifecycle; keyboard pause and diagnostics.
-- `src/pond/math.ts`: upstream math and current helpers.
-- `src/main.jsx`: React lifecycle and local font loading.
+- `src/sky/renderer.ts`: shaded ASCII cloud puffs, curved balloon stripes, ropes, and baskets.
+- `src/sky/world.ts`: cloud dispersal, balloon lift, shared hit geometry, drift, and responsive sizing.
+- `src/sky/engine.ts`: fixed timestep, pointer/keyboard interaction, lifecycle, and diagnostics.
+- `src/sky/math.ts`: upstream math helpers.
+- `src/main.jsx`: React lifecycle, keyboard handling, and local font loading.
 - `src/style.css`: full-screen composition.
 
-Licenses and pinned upstream revisions are recorded in `THIRD_PARTY_NOTICES.md`, `src/pond/LICENSE`, and `public/licenses/`. Original attribution is preserved; the font's OFL license is included.
+Licenses and pinned upstream revisions are recorded in `THIRD_PARTY_NOTICES.md`, `src/sky/LICENSE`, and `public/licenses/`.
 
 ## Validate and deploy
 
@@ -44,6 +44,6 @@ npm run build
 npm test
 ```
 
-Type checking covers the TypeScript pond engine. Browser checks cover actual glyphs, tadpole-only population, pads, local fonts, animation, pointer/splash behavior, keyboard pause, reduced motion, touch, and responsive resizing.
+Browser checks cover actual glyph drawing, local fonts, drift speeds, balloon lift, cloud dispersal/reformation, pause, reduced motion, keyboard activation, touch, and responsive sizing.
 
-Vercel: build command `npm run build`, output `dist`. Earlier experiments remain in Git history. Domain and DNS settings are unchanged.
+Vercel: build command `npm run build`, output `dist`. Earlier experiments remain in Git history.
