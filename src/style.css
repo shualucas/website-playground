@@ -1,5 +1,5 @@
 :root {
-  background: #285e2d;
+  background: #244e39;
   color-scheme: dark;
 }
 * {
@@ -17,7 +17,7 @@ body,
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #285e2d;
+  background: #244e39;
 }
 .grass-canvas {
   display: block;
@@ -28,6 +28,6 @@ body,
   outline: none;
 }
 .grass-canvas:focus-visible {
-  outline: 1px solid #92c264;
+  outline: 1px solid #afc799;
   outline-offset: -1px;
 }

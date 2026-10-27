@@ -28,7 +28,7 @@ function App() {
         className="grass-canvas"
         tabIndex={0}
         role="img"
-        aria-label="A top-down field of vibrant ASCII grass. Wind blows continuously. Move your cursor or drag a finger to bend the blades. Press Space to pause or resume."
+        aria-label="A top-down, painterly grass field with soft grain, flowing sunlight, and shimmering dew. Wind blows continuously. Move your cursor or drag a finger to bend the blades. Press Space to pause or resume."
       />
     </main>
   );

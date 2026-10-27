@@ -1,416 +1,353 @@
-// Top-down grass physics, sampled into a screen-aligned ASCII color grid.
-// All the visible marks are characters; there are no images, assets, or UI labels.
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-function seeded(seed) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+// Painterly top-down grass: flowing light, curved fine fibers, film grain and dew.
+// This is a live procedural scene, not a video or an image overlay.
+const vertexSource = `
+attribute vec2 a_position;
+varying vec2 v_uv;
+void main(){v_uv=a_position*.5+.5;gl_Position=vec4(a_position,0.,1.);}
+`;
+const fragmentSource = `
+precision highp float;
+varying vec2 v_uv;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec3 u_pointer;
+uniform vec4 u_wakes[12];
+
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+vec2 hash2(vec2 p){return vec2(hash(p),hash(p+71.37));}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}
+float fbm(vec2 p){return noise(p)*.57+noise(p*2.03+17.2)*.29+noise(p*4.11+8.7)*.14;}
+float shine(vec2 p,float t){
+  vec2 grid=p*8.6,id=floor(grid),local=fract(grid);float light=0.;
+  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec2 offset=vec2(float(x),float(y)),cell=id+offset;
+    float seed=hash(cell+12.3);vec2 point=.14+hash2(cell)*.72;
+    vec2 d=local-offset-point;d.x+=sin(t*.35+seed*20.)*.018;
+    float pulse=pow(max(0.,sin(t*.83+seed*48.)),4.);
+    float gate=smoothstep(.20,.52,seed)*pulse;
+    float horizontal=exp(-abs(d.y)*170.-abs(d.x)*12.);
+    float vertical=exp(-abs(d.x)*210.-abs(d.y)*20.);
+    float core=exp(-length(d)*115.);
+    float halo=exp(-dot(d,d)*160.)*.075;
+    light+=(horizontal*.62+vertical*.53+core*.85+halo)*gate;
+  }
+  return light;
+}
+void main(){
+  vec2 uv=vec2(v_uv.x,1.-v_uv.y);float aspect=u_resolution.x/u_resolution.y;
+  vec2 p=(uv-.5)*vec2(aspect,1.);float t=u_time;
+  vec2 drift=vec2(t*.018,t*.009);
+  float broad=fbm(p*3.3+vec2(-t*.065,t*.025));
+  float pulse=sin(p.x*3.1+p.y*8.5-t*.65+broad*3.);
+  vec2 flow=vec2(sin(p.y*4.2+p.x*2.6-t*.58),cos(p.x*3.3-p.y*2.1-t*.37));
+  vec2 q=p+flow*.041+vec2(broad*.14,0.);
+  float pressure=0.;
+  if(u_pointer.z>.5){vec2 delta=p-u_pointer.xy;float r=length(delta);float falloff=exp(-r*r*90.);q+=delta/(r+.018)*falloff*.048;pressure=falloff;}
+  for(int i=0;i<12;i++){
+    vec4 wake=u_wakes[i];float age=wake.z;
+    if(wake.w>.001&&age<4.5){
+      vec2 delta=p-wake.xy;float r=length(delta);
+      float decay=exp(-age*1.85)*wake.w;
+      float flex=cos(age*3.2)*exp(-r*r*105.);
+      q+=delta/(r+.025)*flex*decay*.025;
+      pressure+=exp(-r*r*120.)*decay*.18;
+    }
+  }
+  // Fine curved fibers and varied tufts give the surface its grassy structure.
+  vec2 fiber=q*vec2(170.,53.);
+  float bend=sin(fiber.y*1.6+noise(q*14.)*5.)*.20+noise(vec2(floor(fiber.x),fiber.y*1.2))*.95;
+  float strand=pow(max(0.,1.-abs(fract(fiber.x+bend)-.5)*2.),7.);
+  float broken=noise(vec2(floor(fiber.x),fiber.y*.9));
+  float blades=strand*smoothstep(.39,.78,broken);
+  float fine=fbm(q*vec2(75.,135.)+vec2(t*.012,0.));
+  float clump=fbm(q*9.-drift);
+  float light=fbm(q*2.7+vec2(-t*.04,0.));
+  float ribbon=pow(max(0.,1.-abs(pulse)),5.);
+  vec3 shade=vec3(.055,.205,.145);
+  vec3 green=vec3(.21,.43,.245);
+  vec3 sunlit=vec3(.54,.67,.37);
+  vec3 color=mix(shade,green,clamp(clump*.85+fine*.4,0.,1.));
+  color=mix(color,sunlit,clamp((light-.35)*.65+blades*.22+ribbon*.12,0.,.55));
+  color+=vec3(.19,.24,.12)*blades*(.25+light*.5);
+  color*=1.-clamp(pressure,0.,1.)*.16;
+  // Glancing light travels across the grass in broad, feathered wind ribbons.
+  float edge=pow(max(0.,1.-abs(pulse+.28)),14.);
+  color+=vec3(.29,.32,.20)*edge*(.10+fine*.18);
+  float sparkle=shine(q+vec2(flow.x*.004,flow.y*.003),t);
+  color+=vec3(1.0,.92,.70)*sparkle*1.35;
+  float grain=hash(gl_FragCoord.xy+floor(t*23.)*vec2(37.1,79.3))-.5;
+  color+=grain*.115;
+  color+=vec3(grain*.012,grain*.025,grain*.005);
+  float vignette=1.-smoothstep(.2,.95,length((uv-.5)*vec2(.85,1.)))*.15;
+  color*=vignette;
+  color=pow(max(color,vec3(0.)),vec3(.89));
+  gl_FragColor=vec4(color,1.);
+}
+`;
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+function compile(gl, type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    const message = gl.getShaderInfoLog(shader);
+    gl.deleteShader(shader);
+    throw Error(message);
+  }
+  return shader;
+}
+function createPainter(gl) {
+  const vertex = compile(gl, gl.VERTEX_SHADER, vertexSource),
+    fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentSource),
+    program = gl.createProgram();
+  gl.attachShader(program, vertex);
+  gl.attachShader(program, fragment);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+    throw Error(gl.getProgramInfoLog(program));
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+    gl.STATIC_DRAW,
+  );
+  gl.useProgram(program);
+  const position = gl.getAttribLocation(program, "a_position");
+  gl.enableVertexAttribArray(position);
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = Object.fromEntries(
+    ["u_resolution", "u_time", "u_pointer", "u_wakes[0]"].map((name) => [
+      name,
+      gl.getUniformLocation(program, name),
+    ]),
+  );
+  return {
+    render(width, height, time, pointer, wakes) {
+      gl.viewport(0, 0, width, height);
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.u_resolution, width, height);
+      gl.uniform1f(uniforms.u_time, time);
+      gl.uniform3f(
+        uniforms.u_pointer,
+        pointer.x,
+        pointer.y,
+        pointer.inside ? 1 : 0,
+      );
+      gl.uniform4fv(uniforms["u_wakes[0]"], wakes);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    },
+    destroy() {
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+    },
   };
 }
-const TAU = Math.PI * 2;
-const characters = [
-  ".",
-  ",",
-  ":",
-  ";",
-  "/",
-  "\\",
-  "|",
-  "i",
-  "v",
-  "!",
-  "*",
-  "+",
-  '"',
-];
-const characterIndex = Object.fromEntries(characters.map((c, i) => [c, i]));
-const palette = [
-  "#123620",
-  "#194725",
-  "#215b2a",
-  "#296f2c",
-  "#338331",
-  "#409638",
-  "#51aa3c",
-  "#65bb44",
-  "#7dcb4d",
-  "#99d75d",
-  "#b4df75",
-  "#cbe795",
-];
+function createFallback(canvas) {
+  const ctx = canvas.getContext("2d", { alpha: false }),
+    buffer = document.createElement("canvas"),
+    paint = buffer.getContext("2d", { alpha: false });
+  return {
+    render(width, height, time, pointer, wakes) {
+      buffer.width = Math.max(1, Math.round(width * 0.5));
+      buffer.height = Math.max(1, Math.round(height * 0.5));
+      const w = buffer.width,
+        h = buffer.height;
+      const floor = paint.createLinearGradient(0, 0, w, h);
+      floor.addColorStop(0, "#315c3d");
+      floor.addColorStop(0.45, "#50774a");
+      floor.addColorStop(1, "#284e36");
+      paint.fillStyle = floor;
+      paint.fillRect(0, 0, w, h);
+      for (let band = -2; band < 9; band++) {
+        const y = (band / 7 + Math.sin(time * 0.3 + band) * 0.04) * h;
+        paint.strokeStyle = band % 2 ? "#a9b47a22" : "#103d3029";
+        paint.lineWidth = h * 0.075;
+        paint.beginPath();
+        paint.moveTo(-50, y);
+        paint.bezierCurveTo(
+          w * 0.3,
+          y + Math.sin(time * 0.3 + band) * h * 0.14,
+          w * 0.65,
+          y - h * 0.12,
+          w + 50,
+          y + h * 0.05,
+        );
+        paint.stroke();
+      }
+      const image = paint.getImageData(0, 0, w, h),
+        data = image.data;
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4,
+            n =
+              Math.sin(x * 127.1 + y * 311.7 + Math.floor(time * 18) * 17.31) *
+              43758.5,
+            g = (n - Math.floor(n) - 0.5) * 28;
+          const fiber =
+            Math.pow(
+              Math.max(0, Math.sin(x * 0.9 + Math.sin(y * 0.2 - time) * 0.7)),
+              6,
+            ) * 8;
+          const px = ((x / w - 0.5) * w) / h,
+            py = y / h - 0.5,
+            dist = (px - pointer.x) ** 2 + (py - pointer.y) ** 2,
+            pressure = pointer.inside ? Math.exp(-dist * 90) : 0;
+          for (let c = 0; c < 3; c++)
+            data[i + c] = clamp(
+              data[i + c] + g + fiber - pressure * 17,
+              0,
+              255,
+            );
+        }
+      paint.putImageData(image, 0, 0);
+      for (let i = 0; i < 12; i++) {
+        const age = wakes[i * 4 + 2],
+          strength = wakes[i * 4 + 3] * Math.exp(-age * 1.85);
+        if (strength < 0.002) continue;
+        const x = (wakes[i * 4] / (w / h) + 0.5) * w,
+          y = (wakes[i * 4 + 1] + 0.5) * h,
+          r = h * 0.12;
+        const wake = paint.createRadialGradient(x, y, 0, x, y, r);
+        wake.addColorStop(0, `rgba(9,39,26,${strength * 0.13})`);
+        wake.addColorStop(1, "#09271a00");
+        paint.fillStyle = wake;
+        paint.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      for (let i = 0; i < 22; i++) {
+        const x = ((((Math.sin(i * 127.1) * 43758.5) % 1) + 1) % 1) * w,
+          y = ((((Math.sin(i * 311.7) * 31317.2) % 1) + 1) % 1) * h;
+        const pulse = Math.pow(
+          Math.max(0, Math.sin(time * 0.83 + i * 3.19)),
+          8,
+        );
+        if (pulse < 0.02) continue;
+        paint.globalCompositeOperation = "screen";
+        paint.strokeStyle = `rgba(255,246,201,${pulse * 0.8})`;
+        paint.lineWidth = 0.5;
+        paint.beginPath();
+        paint.moveTo(x - 7 * pulse, y);
+        paint.lineTo(x + 7 * pulse, y);
+        paint.moveTo(x, y - 4 * pulse);
+        paint.lineTo(x, y + 4 * pulse);
+        paint.stroke();
+        const glow = paint.createRadialGradient(x, y, 0, x, y, 5);
+        glow.addColorStop(0, `rgba(255,248,215,${pulse * 0.7})`);
+        glow.addColorStop(1, "#fff7d700");
+        paint.fillStyle = glow;
+        paint.fillRect(x - 5, y - 5, 10, 10);
+        paint.globalCompositeOperation = "source-over";
+      }
+      ctx.drawImage(buffer, 0, 0, width, height);
+    },
+    destroy() {},
+  };
+}
 export function createMeadow(canvas, options = {}) {
-  const ctx = canvas.getContext("2d", { alpha: false });
-  const field = document.createElement("canvas"),
-    paint = field.getContext("2d", { alpha: false, willReadFrequently: true });
-  const floor = document.createElement("canvas"),
-    ground = floor.getContext("2d", { alpha: false });
-  let cssWidth = 1,
-    cssHeight = 1,
-    width = 1,
+  const gl = canvas.getContext("webgl", {
+    alpha: false,
+    antialias: false,
+    preserveDrawingBuffer: true,
+    powerPreference: "low-power",
+  });
+  const painter = gl ? createPainter(gl) : createFallback(canvas);
+  let width = 1,
     height = 1,
-    cell = 9,
-    cols = 1,
-    rows = 1,
-    blades = [],
-    glyphs = [],
+    cssWidth = 1,
+    cssHeight = 1,
     time = 0,
-    frame,
     last = 0,
     lastPaint = 0,
-    accumulator = 0,
-    disposed = false;
-  const atlas = document.createElement("canvas"),
-    tiles = atlas.getContext("2d");
-  let atlasRatio = 1,
-    output,
-    outputPixels,
-    cachedTiles = [];
-  const paletteRGB = palette.map((hex) =>
-    [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)),
-  );
-  const greenLookup = Array.from({ length: 256 }, (_, g) =>
-    paletteRGB.reduce(
-      (best, rgb, i) =>
-        Math.abs(rgb[1] - g) < Math.abs(paletteRGB[best][1] - g) ? i : best,
-      0,
-    ),
-  );
-  function makeAtlas(ratio) {
-    atlasRatio = ratio;
-    atlas.width = characters.length * cell * ratio;
-    atlas.height = palette.length * 3 * cell * ratio;
-    tiles.setTransform(ratio, 0, 0, ratio, 0, 0);
-    tiles.font = `${cell - 1}px "Courier New",monospace`;
-    tiles.textAlign = "center";
-    tiles.textBaseline = "middle";
-    paletteRGB.forEach(([r, g, b], shade) => {
-      for (let variant = 0; variant < 3; variant++)
-        characters.forEach((character, index) => {
-          const x = index * cell,
-            y = (shade * 3 + variant) * cell;
-          tiles.globalAlpha = 1;
-          tiles.fillStyle = "#285e2d";
-          tiles.fillRect(x, y, cell, cell);
-          tiles.fillStyle = `rgb(${Math.round(r * 0.83)},${Math.round(g * 0.98)},${Math.round(b * 0.8)})`;
-          tiles.fillRect(x, y, cell - 1, cell - 1);
-          tiles.globalAlpha = 0.75 + variant * 0.125;
-          tiles.fillStyle = `rgb(${clamp(Math.round(r * 1.15 + 8), 0, 230)},${clamp(Math.round(g * 1.18 + 16), 0, 246)},${clamp(Math.round(b * 0.95 + 7), 0, 181)})`;
-          tiles.fillText(character, x + cell / 2, y + cell / 2 + 0.4);
-        });
-    });
-    tiles.globalAlpha = 1;
-    const image = tiles.getImageData(0, 0, atlas.width, atlas.height),
-      packed = new Uint32Array(image.data.buffer);
-    cachedTiles = [];
-    for (let row = 0; row < palette.length * 3; row++)
-      for (let col = 0; col < characters.length; col++) {
-        const tile = new Uint32Array(cell * cell);
-        for (let y = 0; y < cell; y++)
-          for (let x = 0; x < cell; x++)
-            tile[y * cell + x] =
-              packed[(row * cell + y) * atlas.width + col * cell + x];
-        cachedTiles[row * characters.length + col] = tile;
-      }
-  }
-  let paused = Boolean(options.paused),
+    frame,
     frames = 0,
-    interactions = 0;
-  const pointer = { x: -1000, y: -1000, vx: 0, vy: 0, inside: false, last: 0 };
-  function populate() {
-    const random = seeded(48307);
-    blades = [];
-    glyphs = [];
-    // Each tuft radiates around its root. There is no horizon or depth scaling.
-    const spacing = 8.6;
-    for (let y = -15; y < height + 15; y += spacing)
-      for (let x = -15; x < width + 15; x += spacing) {
-        const rootX = x + random() * spacing,
-          rootY = y + random() * spacing;
-        const density = 3 + Math.floor(random() * 3);
-        for (let k = 0; k < density; k++) {
-          const angle = (k / density) * TAU + random() * 0.8;
-          blades.push({
-            x: rootX + random() * 2 - 1,
-            y: rootY + random() * 2 - 1,
-            angle,
-            length: 4 + random() * 8,
-            width: 0.55 + random() * 0.85,
-            phase: random() * TAU,
-            color: 4 + Math.floor(random() * 6),
-            restX: Math.cos(angle),
-            restY: Math.sin(angle),
-            bendX: 0,
-            bendY: 0,
-            velocityX: 0,
-            velocityY: 0,
-          });
-        }
-      }
-    blades.sort((a, b) => a.y - b.y);
-    for (let i = 0; i < cols * rows; i++) glyphs.push(random());
-    canvas.dataset.blades = String(blades.length);
-    canvas.dataset.view = "top-down";
-    canvas.dataset.rendering = "ascii";
-  }
-  function makeGround() {
-    floor.width = width;
-    floor.height = height;
-    ground.fillStyle = "#2d7935";
-    ground.fillRect(0, 0, width, height);
-    const random = seeded(1972);
-    for (let i = 0; i < 38; i++) {
-      const x = random() * width,
-        y = random() * height,
-        r = 35 + random() * width * 0.16;
-      const patch = ground.createRadialGradient(x, y, 0, x, y, r);
-      patch.addColorStop(0, i % 3 ? "#73c43d55" : "#102f2438");
-      patch.addColorStop(1, "#183e2200");
-      ground.fillStyle = patch;
-      ground.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-  }
-  function resize() {
-    const rect = canvas.getBoundingClientRect();
-    cssWidth = rect.width;
-    cssHeight = rect.height;
-    // The physical grass buffer is independent of the final character grid.
-    const scale = Math.max(3.4, cssWidth / 540, cssHeight / 540);
-    width = Math.ceil(cssWidth / scale);
-    height = Math.ceil(cssHeight / scale);
-    cell = cssWidth < 600 ? 7 : 10;
-    cols = Math.ceil(cssWidth / cell);
-    rows = Math.ceil(cssHeight / cell);
-    field.width = width;
-    field.height = height;
-    canvas.width = Math.ceil(cssWidth);
-    canvas.height = Math.ceil(cssHeight);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    output = ctx.createImageData(canvas.width, canvas.height);
-    outputPixels = new Uint32Array(output.data.buffer);
-    makeAtlas(1);
-    makeGround();
-    populate();
-    draw(0);
-    canvas.dataset.ready = "true";
-    canvas.dataset.paused = String(paused);
-  }
-  function breeze(x, y) {
-    const wave =
-      Math.sin(x * 0.026 + y * 0.019 - time * 1.65) * 0.52 +
-      Math.sin(x * 0.011 - y * 0.024 - time * 0.76) * 0.32;
-    const gust = Math.pow(
-      (Math.sin(x * 0.009 + y * 0.012 - time * 0.64) + 1) * 0.5,
-      3,
-    );
-    return 0.3 + wave + gust * 0.67;
-  }
-  function draw(dt) {
-    paint.drawImage(floor, 0, 0);
-    const radius = clamp(width * 0.09, 26, 48);
-    const speed = clamp(Math.hypot(pointer.vx, pointer.vy) / 300, 0, 1.5);
-    if (pointer.inside) {
-      const shadow = paint.createRadialGradient(
-        pointer.x,
-        pointer.y,
-        0,
-        pointer.x,
-        pointer.y,
-        radius * 0.8,
-      );
-      shadow.addColorStop(0, "#0c30264a");
-      shadow.addColorStop(1, "#0c302600");
-      paint.fillStyle = shadow;
-      paint.fillRect(
-        pointer.x - radius,
-        pointer.y - radius,
-        radius * 2,
-        radius * 2,
-      );
-    }
-    let deflection = 0;
-    const damping = Math.exp(-7.5 * dt);
-    for (const blade of blades) {
-      const wind = breeze(blade.x, blade.y),
-        flutter = Math.sin(time * 2.2 + blade.phase) * 0.12;
-      let forceX = 0,
-        forceY = 0;
-      if (pointer.inside) {
-        const dx = blade.x - pointer.x,
-          dy = blade.y - pointer.y,
-          distance = Math.hypot(dx, dy);
-        const influence = clamp(1 - distance / radius, 0, 1);
-        if (influence > 0) {
-          const pressure = influence * influence;
-          forceX =
-            ((dx / (distance + 3)) * 1.25 +
-              clamp(pointer.vx / 500, -1, 1) * 0.55) *
-            blade.length *
-            pressure *
-            (1 + speed * 0.2);
-          forceY =
-            ((dy / (distance + 3)) * 1.25 +
-              clamp(pointer.vy / 500, -1, 1) * 0.55) *
-            blade.length *
-            pressure *
-            (1 + speed * 0.2);
-        }
-      }
-      if (dt) {
-        blade.velocityX += (forceX - blade.bendX) * 50 * dt;
-        blade.velocityY += (forceY - blade.bendY) * 50 * dt;
-        blade.velocityX *= damping;
-        blade.velocityY *= damping;
-        blade.bendX += blade.velocityX * dt;
-        blade.bendY += blade.velocityY * dt;
-      }
-      deflection += Math.abs(blade.bendX) + Math.abs(blade.bendY);
-      const x = blade.x,
-        y = blade.y,
-        L = blade.length;
-      // Project the blade from directly overhead: both X and Y respond to wind.
-      const tx =
-        x + blade.restX * L * 0.48 + (wind * 0.48 + flutter) * L + blade.bendX;
-      const ty =
-        y +
-        blade.restY * L * 0.48 +
-        (wind * 0.24 + flutter * 0.3) * L +
-        blade.bendY;
-      const brightness = clamp(
-        Math.floor(
-          blade.color + wind * 0.85 + Math.sin(x * 0.015 - y * 0.021) * 1.15,
-        ),
-        1,
-        11,
-      );
-      paint.fillStyle = palette[Math.max(0, brightness - 2)];
-      paint.beginPath();
-      paint.moveTo(x - blade.width * 0.6, y);
-      paint.quadraticCurveTo(x + (tx - x) * 0.38, y + (ty - y) * 0.22, tx, ty);
-      paint.quadraticCurveTo(
-        x + (tx - x) * 0.68,
-        y + (ty - y) * 0.53,
-        x + blade.width * 0.6,
-        y,
-      );
-      paint.fill();
-      paint.strokeStyle = palette[brightness];
-      paint.lineWidth = blade.width * 0.62;
-      paint.beginPath();
-      paint.moveTo(x + (tx - x) * 0.32, y + (ty - y) * 0.32);
-      paint.quadraticCurveTo(x + (tx - x) * 0.6, y + (ty - y) * 0.48, tx, ty);
-      paint.stroke();
-    }
-    const data = paint.getImageData(0, 0, width, height).data;
-    ctx.fillStyle = "#285e2d";
-    ctx.fillRect(0, 0, cssWidth, cssHeight);
-    ctx.font = `${cell - 1}px "Courier New",monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (let gy = 0; gy < rows; gy++)
-      for (let gx = 0; gx < cols; gx++) {
-        const px = (gx + 0.5) * cell,
-          py = (gy + 0.5) * cell;
-        const sx = clamp(Math.floor((px / cssWidth) * width), 0, width - 1),
-          sy = clamp(Math.floor((py / cssHeight) * height), 0, height - 1),
-          index = (sy * width + sx) * 4;
-        const r = data[index],
-          g = data[index + 1],
-          b = data[index + 2],
-          luma = (r * 0.24 + g * 0.65 + b * 0.11) / 255;
-        const seed = glyphs[gy * cols + gx],
-          wind = breeze(sx, sy);
-        let character;
-        if (luma < 0.24) character = seed > 0.55 ? "." : ",";
-        else if (luma < 0.33) character = seed > 0.5 ? ":" : ";";
-        else if (luma < 0.46)
-          character =
-            wind > 0.55 ? "/" : wind < -0.15 ? "\\" : seed > 0.5 ? "|" : "i";
-        else if (luma < 0.6)
-          character = seed > 0.7 ? "v" : wind > 0.2 ? "/" : "!";
-        else character = seed > 0.75 ? "*" : seed > 0.45 ? "+" : '"';
-        // Blit a cached glyph tile; no per-frame font rasterization or CSS color parsing.
-        const shade = greenLookup[g],
-          variant = Math.min(2, Math.floor(seed * 3));
-        const tile =
-            cachedTiles[
-              (shade * 3 + variant) * characters.length +
-                characterIndex[character]
-            ],
-          startX = gx * cell,
-          startY = gy * cell;
-        const drawWidth = Math.min(cell, canvas.width - startX),
-          drawHeight = Math.min(cell, canvas.height - startY);
-        for (let y = 0; y < drawHeight; y++) {
-          const dest = (startY + y) * canvas.width + startX,
-            source = y * cell;
-          for (let x = 0; x < drawWidth; x++)
-            outputPixels[dest + x] = tile[source + x];
-        }
-      }
-    ctx.putImageData(output, 0, 0);
-    ctx.globalAlpha = 1;
+    paused = Boolean(options.paused),
+    disposed = false,
+    interactions = 0,
+    lastWake = -1;
+  const pointer = { x: -10, y: -10, inside: false },
+    wakes = Array.from({ length: 12 }, () => ({
+      x: -10,
+      y: -10,
+      born: -100,
+      strength: 0,
+    })),
+    wakeUniforms = new Float32Array(48);
+  function draw() {
+    let deflection = pointer.inside ? 1000 : 0;
+    wakes.forEach((wake, i) => {
+      const age = time - wake.born;
+      wakeUniforms.set([wake.x, wake.y, age, wake.strength], i * 4);
+      deflection += Math.exp(-age * 1.85) * wake.strength * 200;
+    });
+    painter.render(width, height, time, pointer, wakeUniforms);
     frames++;
     canvas.dataset.frames = String(frames);
     canvas.dataset.time = time.toFixed(3);
     canvas.dataset.deflection = deflection.toFixed(3);
     canvas.dataset.interacting = String(pointer.inside);
   }
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    cssWidth = rect.width;
+    cssHeight = rect.height;
+    const scale = Math.max(1, cssWidth / 1280, cssHeight / 1000);
+    width = Math.max(1, Math.round(cssWidth / scale));
+    height = Math.max(1, Math.round(cssHeight / scale));
+    canvas.width = width;
+    canvas.height = height;
+    canvas.dataset.view = "top-down";
+    canvas.dataset.rendering = gl ? "painterly-webgl" : "painterly-fallback";
+    canvas.dataset.paused = String(paused);
+    draw();
+    canvas.dataset.ready = "true";
+  }
   function tick(now) {
     if (disposed) return;
-    const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
+    const dt = last ? Math.min((now - last) / 1000, 0.08) : 0;
     last = now;
     if (!paused && !document.hidden) {
-      accumulator += dt;
+      time += dt;
       if (now - lastPaint >= 1000 / 30) {
-        const step = Math.min(accumulator, 0.06);
-        time += step;
-        draw(step);
+        draw();
         lastPaint = now;
-        accumulator = 0;
-        pointer.vx *= 0.86;
-        pointer.vy *= 0.86;
       }
     }
     frame = requestAnimationFrame(tick);
   }
   function move(event) {
-    const rect = canvas.getBoundingClientRect(),
-      now = performance.now(),
-      x = ((event.clientX - rect.left) / rect.width) * width,
-      y = ((event.clientY - rect.top) / rect.height) * height,
-      dt = Math.max((now - pointer.last) / 1000, 0.012);
-    pointer.vx = pointer.inside ? clamp((x - pointer.x) / dt, -1500, 1500) : 0;
-    pointer.vy = pointer.inside ? clamp((y - pointer.y) / dt, -1500, 1500) : 0;
-    pointer.x = x;
-    pointer.y = y;
-    pointer.last = now;
+    const rect = canvas.getBoundingClientRect();
+    pointer.x =
+      (((event.clientX - rect.left) / rect.width - 0.5) * width) / height;
+    pointer.y = (event.clientY - rect.top) / rect.height - 0.5;
     pointer.inside = true;
     interactions++;
     canvas.dataset.interactions = String(interactions);
-    if (paused) draw(0.033);
+    if (time - lastWake > 0.035 || paused) {
+      wakes.shift();
+      wakes.push({ x: pointer.x, y: pointer.y, born: time, strength: 0.85 });
+      lastWake = time;
+    }
+    if (paused) draw();
   }
   function leave() {
     pointer.inside = false;
-    pointer.vx = 0;
-    pointer.vy = 0;
-    if (paused) draw(0.033);
+    if (paused) draw();
   }
-  const down = (event) => {
-    move(event);
-    canvas.setPointerCapture?.(event.pointerId);
-    if (!paused) draw(0.025);
-  };
-  const up = (event) => {
-    if (event.pointerType !== "mouse") leave();
-    if (canvas.hasPointerCapture?.(event.pointerId))
-      canvas.releasePointerCapture(event.pointerId);
-  };
+  const down = (e) => {
+      move(e);
+      canvas.setPointerCapture?.(e.pointerId);
+      draw();
+    },
+    up = (e) => {
+      if (e.pointerType !== "mouse") leave();
+      if (canvas.hasPointerCapture?.(e.pointerId))
+        canvas.releasePointerCapture(e.pointerId);
+    };
   canvas.addEventListener("pointermove", move);
-  canvas.addEventListener("pointerdown", down);
   canvas.addEventListener("pointerleave", leave);
+  canvas.addEventListener("pointerdown", down);
   canvas.addEventListener("pointerup", up);
   canvas.addEventListener("pointercancel", leave);
   const observer = new ResizeObserver(resize);
@@ -420,7 +357,6 @@ export function createMeadow(canvas, options = {}) {
   return {
     togglePaused() {
       paused = !paused;
-      accumulator = 0;
       last = performance.now();
       canvas.dataset.paused = String(paused);
     },
@@ -429,10 +365,11 @@ export function createMeadow(canvas, options = {}) {
       cancelAnimationFrame(frame);
       observer.disconnect();
       canvas.removeEventListener("pointermove", move);
-      canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointerleave", leave);
+      canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointerup", up);
       canvas.removeEventListener("pointercancel", leave);
+      painter.destroy();
     },
   };
 }
