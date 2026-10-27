@@ -1,38 +1,49 @@
-# Meadow — light through the grass
+# ASCII Pond
 
-A full-screen top-down grass field inspired by the uploaded clip's soft, grainy light and star-like sun reflections. The visible ASCII grid has been replaced with a painterly, organic rendering. The scene remains grass, with no on-screen text, controls, horizon, or overlays.
+A full-screen interactive pond with tadpoles and lily pads. The ASCII cell rasterization, glyph shading, fixed-step lifecycle, and wake diffusion are adapted from the actual [stackedlol/ascii-sharks](https://github.com/stackedlol/ascii-sharks) source. [Dao-Ho/portfolio](https://github.com/Dao-Ho/portfolio) was inspected for its single-screen composition and interaction/lifecycle patterns.
 
-The native WebGL shader renders curved fine fibers, irregular tufts, broad moving light, film grain, and small dew glints. Cursor/touch pressure bends the surface; a short history of decaying impulses leaves a wake that relaxes after the pointer leaves. Wind, grain, and glints are generated live, not played from a video. A local Canvas 2D fallback provides grainy grass, light bands, highlights, and pointer response if WebGL is unavailable.
+There are no sharks, fish schools, predators, portfolio text, or visible controls. Tadpoles have rounded heads and long undulating tails. They wander calmly, give one another space, avoid the lily pads, and flee pointer/tap disturbances. The green leaves float gently and are rendered with the same shaded ASCII tiles as the animals.
 
 ## Run
 
-Use Node.js 20.19+ or 22.12+ (validated with Node 24).
+Node.js 20.19+ or 22.12+ (validated with Node 24).
 
 ```sh
 npm ci
 npm run dev -- --port 3000
 ```
 
-No external assets, services, credentials, or runtime network requests are required.
+Geist Mono 600 is bundled locally, matching the shark reference. No font CDN, analytics, images, external runtime requests, API keys, or WebGL are needed.
 
 ## Interaction
 
-- Move the cursor or drag a finger through the grass.
-- Space pauses or resumes the entire scene without displaying an interface.
-- Reduced-motion preferences start still; Space explicitly resumes.
-- The canvas has a nonvisual screen-reader description and keyboard focus support.
+- Move the pointer or drag a finger to disturb the pond.
+- Click/tap to splash and scatter nearby tadpoles.
+- Space pauses/resumes without displaying an interface.
+- Reduced-motion preferences start at a populated still frame.
+- Animation suspends off-screen and while the document is hidden.
 
-## Edit and verify
+The app intentionally ignores the shark demo's species query parameters: all animals remain tadpoles.
 
-- `src/meadow.js`: grass shader, flowing light, grain, dew glints, cursor wake, rendering lifecycle, and 2D fallback.
-- `src/main.jsx`: canvas lifecycle and keyboard pause.
-- `src/style.css`: full-viewport scene without an interface.
+## Edit and source attribution
+
+- `src/pond/renderer.ts`: adapted upstream glyph rasterization and wake diffusion; new tadpole silhouette, directional tails, and lily-pad rasterization.
+- `src/pond/world.ts`: pond movement, flexible tails, leaf avoidance, splash response, and responsive resizing.
+- `src/pond/engine.ts`: adapted fixed timestep, input and lifecycle; keyboard pause and diagnostics.
+- `src/pond/math.ts`: upstream math and current helpers.
+- `src/main.jsx`: React lifecycle and local font loading.
+- `src/style.css`: full-screen composition.
+
+Licenses and pinned upstream revisions are recorded in `THIRD_PARTY_NOTICES.md`, `src/pond/LICENSE`, and `public/licenses/`. Original attribution is preserved; the font's OFL license is included.
+
+## Validate and deploy
 
 ```sh
+npm run typecheck
 npm run build
 npm test
 ```
 
-Browser tests use Chromium with software WebGL in the cloud environment and cover real image changes, no visible UI, pointer effects, wake recovery, pause, reduced motion, touch, resize, and the 2D fallback. Rendering resolution is capped and updates pause when the document is hidden.
+Type checking covers the TypeScript pond engine. Browser checks cover actual glyphs, tadpole-only population, pads, local fonts, animation, pointer/splash behavior, keyboard pause, reduced motion, touch, and responsive resizing.
 
-Vercel: build command `npm run build`, output directory `dist`.
+Vercel: build command `npm run build`, output `dist`. Earlier experiments remain in Git history. Domain and DNS settings are unchanged.

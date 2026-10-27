@@ -1,34 +1,43 @@
 import React, { useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { createMeadow } from "./meadow.js";
+import "@fontsource/geist-mono/latin-600.css";
+import { PondEngine } from "./pond/engine";
 import "./style.css";
 
 function App() {
   const canvas = useRef(null);
   useEffect(() => {
-    const meadow = createMeadow(canvas.current, {
-      paused: matchMedia("(prefers-reduced-motion: reduce)").matches,
-    });
+    let engine = null,
+      disposed = false;
+    const start = () => {
+      if (!disposed && canvas.current) engine = new PondEngine(canvas.current);
+    };
+    // The exact 600-weight face used by the reference is served locally.
+    document.fonts
+      .load('600 16px "Geist Mono"')
+      .catch(() => [])
+      .then(start);
     const keydown = (event) => {
-      if (event.code === "Space") {
+      if (event.code === "Space" && !event.repeat) {
         event.preventDefault();
-        meadow.togglePaused();
+        engine?.togglePaused();
       }
     };
     window.addEventListener("keydown", keydown);
     return () => {
-      meadow.destroy();
+      disposed = true;
+      engine?.destroy();
       window.removeEventListener("keydown", keydown);
     };
   }, []);
   return (
-    <main className="meadow">
+    <main className="pond">
       <canvas
         ref={canvas}
-        className="grass-canvas"
+        className="ascii-pond"
         tabIndex={0}
         role="img"
-        aria-label="A top-down, painterly grass field with soft grain, flowing sunlight, and shimmering dew. Wind blows continuously. Move your cursor or drag a finger to bend the blades. Press Space to pause or resume."
+        aria-label="An interactive ASCII pond with swimming tadpoles and floating lily pads. Move the pointer to disturb the water, tap or click to splash, and press Space to pause or resume."
       />
     </main>
   );

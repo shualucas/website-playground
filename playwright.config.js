@@ -5,7 +5,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:3000",
     launchOptions: {
       executablePath: "/usr/bin/chromium",
-      args: ["--no-sandbox", "--enable-unsafe-swiftshader"],
+      args: ["--no-sandbox"],
     },
   },
   webServer: {

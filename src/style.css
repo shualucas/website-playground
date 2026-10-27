@@ -1,5 +1,6 @@
 :root {
-  background: #244e39;
+  font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+  background: #050807;
   color-scheme: dark;
 }
 * {
@@ -12,22 +13,25 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  overscroll-behavior: none;
 }
-.meadow {
+.pond {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #244e39;
+  background: #050807;
 }
-.grass-canvas {
+.ascii-pond {
   display: block;
   width: 100%;
   height: 100%;
+  font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+  font-weight: 600;
   touch-action: none;
-  cursor: default;
   outline: none;
+  cursor: default;
 }
-.grass-canvas:focus-visible {
-  outline: 1px solid #afc799;
-  outline-offset: -1px;
+.ascii-pond:focus-visible {
+  outline: 1px solid #6ee6ff;
+  outline-offset: -2px;
 }
