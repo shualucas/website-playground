@@ -1,5 +1,6 @@
-// A low-resolution, depth-sorted grass simulation. No image or video assets.
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+// Top-down grass physics, sampled into a screen-aligned ASCII color grid.
+// All the visible marks are characters; there are no images, assets, or UI labels.
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 function seeded(seed) {
   return () => {
     seed |= 0;
@@ -9,414 +10,359 @@ function seeded(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const mix = (a, b, t) => a + (b - a) * t;
-const palette = [
-  [38, 74, 35],
-  [45, 85, 37],
-  [51, 95, 40],
-  [62, 104, 43],
-  [72, 115, 44],
-  [81, 123, 47],
-  [92, 135, 51],
-  [104, 145, 57],
-  [119, 155, 66],
-  [134, 165, 75],
-  [151, 177, 85],
-  [172, 187, 105],
-  [190, 198, 126],
-  [208, 210, 148],
+const TAU = Math.PI * 2;
+const characters = [
+  ".",
+  ",",
+  ":",
+  ";",
+  "/",
+  "\\",
+  "|",
+  "i",
+  "v",
+  "!",
+  "*",
+  "+",
+  '"',
 ];
-const breezes = { gentle: 0.5, steady: 1, gusty: 1.7 };
-export function createMeadow(canvas, options) {
+const characterIndex = Object.fromEntries(characters.map((c, i) => [c, i]));
+const palette = [
+  "#123620",
+  "#194725",
+  "#215b2a",
+  "#296f2c",
+  "#338331",
+  "#409638",
+  "#51aa3c",
+  "#65bb44",
+  "#7dcb4d",
+  "#99d75d",
+  "#b4df75",
+  "#cbe795",
+];
+export function createMeadow(canvas, options = {}) {
   const ctx = canvas.getContext("2d", { alpha: false });
-  const layer = document.createElement("canvas"),
-    paint = layer.getContext("2d", { alpha: false });
-  const sky = document.createElement("canvas"),
-    background = sky.getContext("2d");
-  let width = 1,
+  const field = document.createElement("canvas"),
+    paint = field.getContext("2d", { alpha: false, willReadFrequently: true });
+  const floor = document.createElement("canvas"),
+    ground = floor.getContext("2d", { alpha: false });
+  let cssWidth = 1,
+    cssHeight = 1,
+    width = 1,
     height = 1,
-    horizon = 1,
+    cell = 9,
+    cols = 1,
+    rows = 1,
     blades = [],
-    flowers = [],
+    glyphs = [],
     time = 0,
     frame,
     last = 0,
     lastPaint = 0,
     accumulator = 0,
-    disposed = false,
-    resizeObserver;
-  let pointer = { x: -1000, y: -1000, vx: 0, vy: 0, inside: false, last: 0 },
-    renderedFrames = 0;
-  const state = {
-    paused: options.paused,
-    breeze: options.breeze || "steady",
-    interactions: 0,
-  };
-  function terrain(x) {
-    return (
-      horizon +
-      Math.sin((x / width) * 5.8 + 0.7) * height * 0.012 +
-      Math.sin((x / width) * 12) * height * 0.003
-    );
-  }
-  function makeBackground() {
-    sky.width = width;
-    sky.height = height;
-    const skyColor = background.createLinearGradient(0, 0, 0, height * 0.46);
-    skyColor.addColorStop(0, "#b6cbbf");
-    skyColor.addColorStop(0.56, "#d2d9ba");
-    skyColor.addColorStop(1, "#cad1a0");
-    background.fillStyle = skyColor;
-    background.fillRect(0, 0, width, height);
-    const sunX = width * 0.77,
-      sunY = height * 0.12;
-    const sun = background.createRadialGradient(
-      sunX,
-      sunY,
+    disposed = false;
+  const atlas = document.createElement("canvas"),
+    tiles = atlas.getContext("2d");
+  let atlasRatio = 1,
+    output,
+    outputPixels,
+    cachedTiles = [];
+  const paletteRGB = palette.map((hex) =>
+    [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)),
+  );
+  const greenLookup = Array.from({ length: 256 }, (_, g) =>
+    paletteRGB.reduce(
+      (best, rgb, i) =>
+        Math.abs(rgb[1] - g) < Math.abs(paletteRGB[best][1] - g) ? i : best,
       0,
-      sunX,
-      sunY,
-      width * 0.55,
-    );
-    sun.addColorStop(0, "#fff5d399");
-    sun.addColorStop(0.16, "#fff3cf45");
-    sun.addColorStop(1, "#fff2cc00");
-    background.fillStyle = sun;
-    background.fillRect(0, 0, width, height * 0.55);
-    // Soft, low clouds and distant foothills blend into the atmospheric horizon.
-    background.fillStyle = "#e7e4c53b";
-    for (let i = 0; i < 8; i++) {
-      const x = (i * 0.17 - 0.1) * width,
-        y = height * (0.055 + (i % 3) * 0.035);
-      background.beginPath();
-      background.ellipse(x, y, width * 0.17, height * 0.023, 0, 0, Math.PI * 2);
-      background.fill();
-    }
-    for (let ridge = 0; ridge < 3; ridge++) {
-      background.beginPath();
-      background.moveTo(0, height * 0.45);
-      for (let x = 0; x <= width; x += 2) {
-        const y =
-          horizon -
-          height * (0.09 - ridge * 0.028) +
-          Math.sin((x / width) * (4.2 + ridge * 2) + ridge * 2) *
-            height *
-            (0.023 + ridge * 0.006) +
-          Math.sin((x / width) * 14 + ridge) * height * 0.009;
-        background.lineTo(x, y);
+    ),
+  );
+  function makeAtlas(ratio) {
+    atlasRatio = ratio;
+    atlas.width = characters.length * cell * ratio;
+    atlas.height = palette.length * 3 * cell * ratio;
+    tiles.setTransform(ratio, 0, 0, ratio, 0, 0);
+    tiles.font = `${cell - 1}px "Courier New",monospace`;
+    tiles.textAlign = "center";
+    tiles.textBaseline = "middle";
+    paletteRGB.forEach(([r, g, b], shade) => {
+      for (let variant = 0; variant < 3; variant++)
+        characters.forEach((character, index) => {
+          const x = index * cell,
+            y = (shade * 3 + variant) * cell;
+          tiles.globalAlpha = 1;
+          tiles.fillStyle = "#285e2d";
+          tiles.fillRect(x, y, cell, cell);
+          tiles.fillStyle = `rgb(${Math.round(r * 0.83)},${Math.round(g * 0.98)},${Math.round(b * 0.8)})`;
+          tiles.fillRect(x, y, cell - 1, cell - 1);
+          tiles.globalAlpha = 0.75 + variant * 0.125;
+          tiles.fillStyle = `rgb(${clamp(Math.round(r * 1.15 + 8), 0, 230)},${clamp(Math.round(g * 1.18 + 16), 0, 246)},${clamp(Math.round(b * 0.95 + 7), 0, 181)})`;
+          tiles.fillText(character, x + cell / 2, y + cell / 2 + 0.4);
+        });
+    });
+    tiles.globalAlpha = 1;
+    const image = tiles.getImageData(0, 0, atlas.width, atlas.height),
+      packed = new Uint32Array(image.data.buffer);
+    cachedTiles = [];
+    for (let row = 0; row < palette.length * 3; row++)
+      for (let col = 0; col < characters.length; col++) {
+        const tile = new Uint32Array(cell * cell);
+        for (let y = 0; y < cell; y++)
+          for (let x = 0; x < cell; x++)
+            tile[y * cell + x] =
+              packed[(row * cell + y) * atlas.width + col * cell + x];
+        cachedTiles[row * characters.length + col] = tile;
       }
-      background.lineTo(width, height * 0.5);
-      background.lineTo(0, height * 0.5);
-      background.closePath();
-      background.fillStyle = ["#a2b9a0", "#9eaf88", "#98ab72"][ridge];
-      background.fill();
-    }
-    // A faraway copse gives the field a sense of scale. It never competes with the grass.
-    const random = seeded(845);
-    for (let i = 0; i < 43; i++) {
-      const x = width * (0.6 + random() * 0.3),
-        y = terrain(x) - height * 0.006,
-        depth = random(),
-        h = height * (0.014 + depth * 0.025);
-      background.fillStyle = depth > 0.5 ? "#728b66" : "#83996d";
-      background.fillRect(x, y - h * 0.3, 1, h * 0.4);
-      background.beginPath();
-      background.ellipse(
-        x,
-        y - h * 0.7,
-        h * 0.35,
-        h * 0.55,
-        random() * 0.6,
-        0,
-        Math.PI * 2,
-      );
-      background.fill();
-    }
-    // Rolling meadow floor; individual grasses will build its texture.
-    background.beginPath();
-    background.moveTo(0, terrain(0));
-    for (let x = 0; x <= width; x += 2) background.lineTo(x, terrain(x));
-    background.lineTo(width, height);
-    background.lineTo(0, height);
-    background.closePath();
-    const field = background.createLinearGradient(0, horizon, 0, height);
-    field.addColorStop(0, "#a9b87a");
-    field.addColorStop(0.25, "#8da65a");
-    field.addColorStop(0.6, "#66843e");
-    field.addColorStop(1, "#405e31");
-    background.fillStyle = field;
-    background.fill();
-    // Low-frequency illumination makes patches feel like land, not a flat green fill.
-    const patches = seeded(5481);
-    for (let i = 0; i < 32; i++) {
-      const x = patches() * width,
-        y = horizon + patches() * (height - horizon),
-        r = width * (0.07 + patches() * 0.17);
-      const shade = background.createRadialGradient(x, y, 0, x, y, r);
-      shade.addColorStop(0, i % 2 ? "#d5cf6722" : "#264b2d18");
-      shade.addColorStop(1, "#264b2d00");
-      background.fillStyle = shade;
-      background.fillRect(x - r, y - r, r * 2, r * 2);
-    }
   }
+  let paused = Boolean(options.paused),
+    frames = 0,
+    interactions = 0;
+  const pointer = { x: -1000, y: -1000, vx: 0, vy: 0, inside: false, last: 0 };
   function populate() {
     const random = seeded(48307);
     blades = [];
-    flowers = [];
-    const count = Math.round(width * height * 0.075);
-    for (let i = 0; i < count; i++) {
-      const x = random() * (width + 50) - 25,
-        depth = Math.pow(random(), 0.66),
-        y = terrain(x) + depth * (height - terrain(x) + 34);
-      const length =
-        (1.5 + Math.pow(depth, 1.58) * 28) * (0.6 + random() * 0.7);
-      const patch =
-        Math.sin(x * 0.021 + y * 0.035) * 0.5 +
-        Math.sin(x * 0.007 - y * 0.015) * 0.5;
-      const color = clamp(Math.floor(5.8 + patch * 2 + random() * 3.5), 1, 11);
-      const fog = Math.pow(1 - depth, 3) * 0.74;
-      const colors = Array.from({ length: 5 }, (_, k) => {
-        const rgb = palette[clamp(color + k - 2, 0, palette.length - 1)];
-        return `rgb(${Math.round(mix(rgb[0], 163, fog))},${Math.round(mix(rgb[1], 179, fog))},${Math.round(mix(rgb[2], 117, fog))})`;
-      });
-      blades.push({
-        x,
-        y,
-        depth,
-        length,
-        width: 0.45 + depth * 1.3,
-        phase: random() * 6.28,
-        lean: (random() - 0.5) * 0.26,
-        colors,
-        bend: 0,
-        velocity: 0,
-        flatten: 0,
-        flattenVelocity: 0,
-        seed: random(),
-      });
-    }
+    glyphs = [];
+    // Each tuft radiates around its root. There is no horizon or depth scaling.
+    const spacing = 8.6;
+    for (let y = -15; y < height + 15; y += spacing)
+      for (let x = -15; x < width + 15; x += spacing) {
+        const rootX = x + random() * spacing,
+          rootY = y + random() * spacing;
+        const density = 3 + Math.floor(random() * 3);
+        for (let k = 0; k < density; k++) {
+          const angle = (k / density) * TAU + random() * 0.8;
+          blades.push({
+            x: rootX + random() * 2 - 1,
+            y: rootY + random() * 2 - 1,
+            angle,
+            length: 4 + random() * 8,
+            width: 0.55 + random() * 0.85,
+            phase: random() * TAU,
+            color: 4 + Math.floor(random() * 6),
+            restX: Math.cos(angle),
+            restY: Math.sin(angle),
+            bendX: 0,
+            bendY: 0,
+            velocityX: 0,
+            velocityY: 0,
+          });
+        }
+      }
     blades.sort((a, b) => a.y - b.y);
-    // Sparse seed heads and tiny wildflowers, not a uniform pattern.
-    for (let i = 0; i < 64; i++) {
-      const x = random() * width,
-        d = 0.12 + random() * 0.84,
-        y = terrain(x) + d * (height - terrain(x));
-      flowers.push({
-        x,
-        y,
-        d,
-        height: 3 + d * 15,
-        phase: random() * 6.28,
-        type: i % 9 === 0 ? "flower" : "seed",
-      });
-    }
-    flowers.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < cols * rows; i++) glyphs.push(random());
     canvas.dataset.blades = String(blades.length);
+    canvas.dataset.view = "top-down";
+    canvas.dataset.rendering = "ascii";
+  }
+  function makeGround() {
+    floor.width = width;
+    floor.height = height;
+    ground.fillStyle = "#2d7935";
+    ground.fillRect(0, 0, width, height);
+    const random = seeded(1972);
+    for (let i = 0; i < 38; i++) {
+      const x = random() * width,
+        y = random() * height,
+        r = 35 + random() * width * 0.16;
+      const patch = ground.createRadialGradient(x, y, 0, x, y, r);
+      patch.addColorStop(0, i % 3 ? "#73c43d55" : "#102f2438");
+      patch.addColorStop(1, "#183e2200");
+      ground.fillStyle = patch;
+      ground.fillRect(x - r, y - r, r * 2, r * 2);
+    }
   }
   function resize() {
     const rect = canvas.getBoundingClientRect();
-    width = Math.round(clamp(rect.width / 2.6, 260, 720));
-    height = Math.round((width * rect.height) / rect.width);
-    // Very tall screens retain a fine pixel grid without making the simulation unbounded.
-    if (height > 860) {
-      width = Math.round((width * 860) / height);
-      height = 860;
-    }
-    layer.width = width;
-    layer.height = height;
-    canvas.width = width;
-    canvas.height = height;
-    horizon = height * (rect.width < 600 ? 0.3 : 0.33);
-    makeBackground();
+    cssWidth = rect.width;
+    cssHeight = rect.height;
+    // The physical grass buffer is independent of the final character grid.
+    const scale = Math.max(3.4, cssWidth / 540, cssHeight / 540);
+    width = Math.ceil(cssWidth / scale);
+    height = Math.ceil(cssHeight / scale);
+    cell = cssWidth < 600 ? 7 : 10;
+    cols = Math.ceil(cssWidth / cell);
+    rows = Math.ceil(cssHeight / cell);
+    field.width = width;
+    field.height = height;
+    canvas.width = Math.ceil(cssWidth);
+    canvas.height = Math.ceil(cssHeight);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    output = ctx.createImageData(canvas.width, canvas.height);
+    outputPixels = new Uint32Array(output.data.buffer);
+    makeAtlas(1);
+    makeGround();
     populate();
     draw(0);
     canvas.dataset.ready = "true";
+    canvas.dataset.paused = String(paused);
   }
-  function windAt(x, y, t) {
+  function breeze(x, y) {
     const wave =
-      Math.sin(x * 0.02 + y * 0.027 - t * 1.5) * 0.48 +
-      Math.sin(x * 0.009 - y * 0.018 - t * 0.83) * 0.34;
+      Math.sin(x * 0.026 + y * 0.019 - time * 1.65) * 0.52 +
+      Math.sin(x * 0.011 - y * 0.024 - time * 0.76) * 0.32;
     const gust = Math.pow(
-      (Math.sin(x * 0.007 + y * 0.019 - t * 0.64) + 1) * 0.5,
+      (Math.sin(x * 0.009 + y * 0.012 - time * 0.64) + 1) * 0.5,
       3,
     );
-    return (0.32 + wave + gust * 0.7) * breezes[state.breeze];
+    return 0.3 + wave + gust * 0.67;
   }
   function draw(dt) {
-    paint.drawImage(sky, 0, 0);
-    const t = time;
-    const radius = width * 0.065 + 12;
-    const speed = clamp(Math.hypot(pointer.vx, pointer.vy) / 320, 0, 1.4);
-    // A soft ground shadow appears only where the visitor parts the blades.
-    if (pointer.inside && pointer.y > horizon - 15) {
-      const r = radius * 0.7;
+    paint.drawImage(floor, 0, 0);
+    const radius = clamp(width * 0.09, 26, 48);
+    const speed = clamp(Math.hypot(pointer.vx, pointer.vy) / 300, 0, 1.5);
+    if (pointer.inside) {
       const shadow = paint.createRadialGradient(
         pointer.x,
         pointer.y,
         0,
         pointer.x,
         pointer.y,
-        r,
+        radius * 0.8,
       );
-      shadow.addColorStop(0, "#203d292e");
-      shadow.addColorStop(1, "#203d2900");
+      shadow.addColorStop(0, "#0c30264a");
+      shadow.addColorStop(1, "#0c302600");
       paint.fillStyle = shadow;
-      paint.fillRect(pointer.x - r, pointer.y - r, r * 2, r * 2);
+      paint.fillRect(
+        pointer.x - radius,
+        pointer.y - radius,
+        radius * 2,
+        radius * 2,
+      );
     }
-    let flowerIndex = 0,
-      deflection = 0;
+    let deflection = 0;
+    const damping = Math.exp(-7.5 * dt);
     for (const blade of blades) {
-      const { x, y, length, depth } = blade;
-      while (flowerIndex < flowers.length && flowers[flowerIndex].y < y) {
-        drawFlower(flowers[flowerIndex++], t);
-      }
-      const wind = windAt(x, y, t),
-        sway =
-          wind * length * 0.36 +
-          Math.sin(t * 2.1 + blade.phase) * length * 0.045;
-      let target = 0,
-        flatten = 0;
-      if (pointer.inside && pointer.y > horizon - 10) {
-        // The center of a blade is used for collision so tall blades react on contact.
-        const dx = x - pointer.x,
-          dy = (y - length * 0.42 - pointer.y) * 1.5;
-        const distance = Math.hypot(dx, dy),
-          influence = clamp(
-            1 - distance / (radius * (0.6 + depth * 0.65)),
-            0,
-            1,
-          );
+      const wind = breeze(blade.x, blade.y),
+        flutter = Math.sin(time * 2.2 + blade.phase) * 0.12;
+      let forceX = 0,
+        forceY = 0;
+      if (pointer.inside) {
+        const dx = blade.x - pointer.x,
+          dy = blade.y - pointer.y,
+          distance = Math.hypot(dx, dy);
+        const influence = clamp(1 - distance / radius, 0, 1);
         if (influence > 0) {
-          const force = influence * influence;
-          target =
-            (dx / (Math.abs(dx) + 8)) * length * force * 1.15 +
-            clamp(pointer.vx / 400, -1, 1) * length * force * 0.65;
-          flatten = force * length * (0.45 + speed * 0.12);
+          const pressure = influence * influence;
+          forceX =
+            ((dx / (distance + 3)) * 1.25 +
+              clamp(pointer.vx / 500, -1, 1) * 0.55) *
+            blade.length *
+            pressure *
+            (1 + speed * 0.2);
+          forceY =
+            ((dy / (distance + 3)) * 1.25 +
+              clamp(pointer.vy / 500, -1, 1) * 0.55) *
+            blade.length *
+            pressure *
+            (1 + speed * 0.2);
         }
       }
-      if (dt > 0) {
-        // Damped springs retain a wake, then let each blade recover naturally.
-        blade.velocity += (target - blade.bend) * 48 * dt;
-        blade.velocity *= Math.exp(-7.6 * dt);
-        blade.bend += blade.velocity * dt;
-        blade.flattenVelocity += (flatten - blade.flatten) * 58 * dt;
-        blade.flattenVelocity *= Math.exp(-9 * dt);
-        blade.flatten += blade.flattenVelocity * dt;
+      if (dt) {
+        blade.velocityX += (forceX - blade.bendX) * 50 * dt;
+        blade.velocityY += (forceY - blade.bendY) * 50 * dt;
+        blade.velocityX *= damping;
+        blade.velocityY *= damping;
+        blade.bendX += blade.velocityX * dt;
+        blade.bendY += blade.velocityY * dt;
       }
-      deflection += Math.abs(blade.bend) + Math.abs(blade.flatten);
-      const bend = length * blade.lean + sway + blade.bend;
-      const tipX = x + bend,
-        tipY = y - length + Math.abs(bend) * 0.17 + blade.flatten;
-      const light = clamp(
-        Math.floor(2 + wind * 0.9 + Math.sin(x * 0.014 - y * 0.027) * 0.45),
-        0,
-        4,
+      deflection += Math.abs(blade.bendX) + Math.abs(blade.bendY);
+      const x = blade.x,
+        y = blade.y,
+        L = blade.length;
+      // Project the blade from directly overhead: both X and Y respond to wind.
+      const tx =
+        x + blade.restX * L * 0.48 + (wind * 0.48 + flutter) * L + blade.bendX;
+      const ty =
+        y +
+        blade.restY * L * 0.48 +
+        (wind * 0.24 + flutter * 0.3) * L +
+        blade.bendY;
+      const brightness = clamp(
+        Math.floor(
+          blade.color + wind * 0.85 + Math.sin(x * 0.015 - y * 0.021) * 1.15,
+        ),
+        1,
+        11,
       );
-      paint.fillStyle = blade.colors[light];
+      paint.fillStyle = palette[Math.max(0, brightness - 2)];
       paint.beginPath();
-      paint.moveTo(x - blade.width * 0.5, y);
+      paint.moveTo(x - blade.width * 0.6, y);
+      paint.quadraticCurveTo(x + (tx - x) * 0.38, y + (ty - y) * 0.22, tx, ty);
       paint.quadraticCurveTo(
-        x + bend * 0.2,
-        y - length * 0.53 + blade.flatten * 0.4,
-        tipX,
-        tipY,
-      );
-      paint.quadraticCurveTo(
-        x + bend * 0.53,
-        y - length * 0.32 + blade.flatten * 0.6,
-        x + blade.width * 0.5,
+        x + (tx - x) * 0.68,
+        y + (ty - y) * 0.53,
+        x + blade.width * 0.6,
         y,
       );
       paint.fill();
-      // Sunlit edges on a few near blades add dimension without outlining every blade.
-      if (depth > 0.48 && blade.seed > 0.76) {
-        paint.strokeStyle = blade.colors[Math.min(4, light + 1)];
-        paint.lineWidth = 0.5;
-        paint.beginPath();
-        paint.moveTo(x, y - 1);
-        paint.quadraticCurveTo(
-          x + bend * 0.3,
-          y - length * 0.55 + blade.flatten * 0.45,
-          tipX,
-          tipY,
-        );
-        paint.stroke();
-      }
-    }
-    while (flowerIndex < flowers.length) drawFlower(flowers[flowerIndex++], t);
-    // Pollen drifts with the same prevailing wind. Its scale stays deliberately small.
-    for (let i = 0; i < 16; i++) {
-      const x = ((i * 79.73 + t * (2.2 + (i % 3))) % (width + 20)) - 10,
-        y =
-          horizon +
-          ((((i * 37.81 - t * (0.8 + (i % 2))) % (height - horizon)) +
-            height -
-            horizon) %
-            (height - horizon));
-      const opacity = 0.18 + (Math.sin(t + i) * 0.5 + 0.5) * 0.25;
-      paint.fillStyle = `rgba(246,236,173,${opacity})`;
-      paint.fillRect(
-        Math.floor(x),
-        Math.floor(y),
-        i % 5 === 0 ? 1.2 : 0.7,
-        0.7,
-      );
-    }
-    // Light across the upper meadow and a shallow foreground vignette.
-    const haze = paint.createLinearGradient(
-      0,
-      horizon - height * 0.02,
-      0,
-      horizon + height * 0.15,
-    );
-    haze.addColorStop(0, "#e4e0ad19");
-    haze.addColorStop(1, "#e4e0ad00");
-    paint.fillStyle = haze;
-    paint.fillRect(0, horizon - height * 0.02, width, height * 0.18);
-    const foreground = paint.createLinearGradient(0, height * 0.78, 0, height);
-    foreground.addColorStop(0, "#12352000");
-    foreground.addColorStop(1, "#12352020");
-    paint.fillStyle = foreground;
-    paint.fillRect(0, height * 0.78, width, height * 0.22);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(layer, 0, 0);
-    canvas.dataset.deflection = deflection.toFixed(3);
-    renderedFrames++;
-    canvas.dataset.frames = String(renderedFrames);
-    canvas.dataset.time = time.toFixed(3);
-    if (pointer.inside && pointer.y > horizon)
-      canvas.dataset.interacting = "true";
-    else canvas.dataset.interacting = "false";
-  }
-  function drawFlower(f, t) {
-    const sway = windAt(f.x, f.y, t) * f.height * 0.42,
-      x = f.x + sway,
-      y = f.y - f.height;
-    paint.strokeStyle = "#819253";
-    paint.lineWidth = 0.55;
-    paint.beginPath();
-    paint.moveTo(f.x, f.y);
-    paint.quadraticCurveTo(f.x + sway * 0.2, f.y - f.height * 0.5, x, y);
-    paint.stroke();
-    if (f.type === "flower") {
-      paint.fillStyle = "#e5dfa7";
-      paint.fillRect(Math.round(x) - 1, Math.round(y), 3, 1);
-      paint.fillRect(Math.round(x), Math.round(y) - 1, 1, 3);
-      paint.fillStyle = "#bdac56";
-      paint.fillRect(Math.round(x), Math.round(y), 1, 1);
-    } else {
-      paint.strokeStyle = "#bcbb77";
+      paint.strokeStyle = palette[brightness];
+      paint.lineWidth = blade.width * 0.62;
       paint.beginPath();
-      paint.moveTo(x, y + 3);
-      paint.lineTo(x + sway * 0.07, y - 2);
+      paint.moveTo(x + (tx - x) * 0.32, y + (ty - y) * 0.32);
+      paint.quadraticCurveTo(x + (tx - x) * 0.6, y + (ty - y) * 0.48, tx, ty);
       paint.stroke();
     }
+    const data = paint.getImageData(0, 0, width, height).data;
+    ctx.fillStyle = "#285e2d";
+    ctx.fillRect(0, 0, cssWidth, cssHeight);
+    ctx.font = `${cell - 1}px "Courier New",monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let gy = 0; gy < rows; gy++)
+      for (let gx = 0; gx < cols; gx++) {
+        const px = (gx + 0.5) * cell,
+          py = (gy + 0.5) * cell;
+        const sx = clamp(Math.floor((px / cssWidth) * width), 0, width - 1),
+          sy = clamp(Math.floor((py / cssHeight) * height), 0, height - 1),
+          index = (sy * width + sx) * 4;
+        const r = data[index],
+          g = data[index + 1],
+          b = data[index + 2],
+          luma = (r * 0.24 + g * 0.65 + b * 0.11) / 255;
+        const seed = glyphs[gy * cols + gx],
+          wind = breeze(sx, sy);
+        let character;
+        if (luma < 0.24) character = seed > 0.55 ? "." : ",";
+        else if (luma < 0.33) character = seed > 0.5 ? ":" : ";";
+        else if (luma < 0.46)
+          character =
+            wind > 0.55 ? "/" : wind < -0.15 ? "\\" : seed > 0.5 ? "|" : "i";
+        else if (luma < 0.6)
+          character = seed > 0.7 ? "v" : wind > 0.2 ? "/" : "!";
+        else character = seed > 0.75 ? "*" : seed > 0.45 ? "+" : '"';
+        // Blit a cached glyph tile; no per-frame font rasterization or CSS color parsing.
+        const shade = greenLookup[g],
+          variant = Math.min(2, Math.floor(seed * 3));
+        const tile =
+            cachedTiles[
+              (shade * 3 + variant) * characters.length +
+                characterIndex[character]
+            ],
+          startX = gx * cell,
+          startY = gy * cell;
+        const drawWidth = Math.min(cell, canvas.width - startX),
+          drawHeight = Math.min(cell, canvas.height - startY);
+        for (let y = 0; y < drawHeight; y++) {
+          const dest = (startY + y) * canvas.width + startX,
+            source = y * cell;
+          for (let x = 0; x < drawWidth; x++)
+            outputPixels[dest + x] = tile[source + x];
+        }
+      }
+    ctx.putImageData(output, 0, 0);
+    ctx.globalAlpha = 1;
+    frames++;
+    canvas.dataset.frames = String(frames);
+    canvas.dataset.time = time.toFixed(3);
+    canvas.dataset.deflection = deflection.toFixed(3);
+    canvas.dataset.interacting = String(pointer.inside);
   }
   function tick(now) {
     if (disposed) return;
     const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
     last = now;
-    if (!state.paused && !document.hidden) {
+    if (!paused && !document.hidden) {
       accumulator += dt;
       if (now - lastPaint >= 1000 / 30) {
         const step = Math.min(accumulator, 0.06);
@@ -434,63 +380,54 @@ export function createMeadow(canvas, options) {
     const rect = canvas.getBoundingClientRect(),
       now = performance.now(),
       x = ((event.clientX - rect.left) / rect.width) * width,
-      y = ((event.clientY - rect.top) / rect.height) * height;
-    const elapsed = Math.max((now - pointer.last) / 1000, 0.012);
-    pointer.vx = pointer.inside
-      ? clamp((x - pointer.x) / elapsed, -1500, 1500)
-      : 0;
-    pointer.vy = pointer.inside
-      ? clamp((y - pointer.y) / elapsed, -1500, 1500)
-      : 0;
+      y = ((event.clientY - rect.top) / rect.height) * height,
+      dt = Math.max((now - pointer.last) / 1000, 0.012);
+    pointer.vx = pointer.inside ? clamp((x - pointer.x) / dt, -1500, 1500) : 0;
+    pointer.vy = pointer.inside ? clamp((y - pointer.y) / dt, -1500, 1500) : 0;
     pointer.x = x;
     pointer.y = y;
-    pointer.inside = true;
     pointer.last = now;
-    state.interactions++;
-    canvas.dataset.interactions = String(state.interactions);
-    if (state.paused) draw(0.033);
-    options.onInteract?.();
+    pointer.inside = true;
+    interactions++;
+    canvas.dataset.interactions = String(interactions);
+    if (paused) draw(0.033);
   }
   function leave() {
     pointer.inside = false;
     pointer.vx = 0;
     pointer.vy = 0;
-    if (state.paused) draw(0.033);
+    if (paused) draw(0.033);
   }
-  const down = (e) => {
-    move(e);
-    canvas.setPointerCapture?.(e.pointerId);
+  const down = (event) => {
+    move(event);
+    canvas.setPointerCapture?.(event.pointerId);
+    if (!paused) draw(0.025);
   };
-  const up = (e) => {
-    if (e.pointerType !== "mouse") leave();
-    if (canvas.hasPointerCapture?.(e.pointerId))
-      canvas.releasePointerCapture(e.pointerId);
+  const up = (event) => {
+    if (event.pointerType !== "mouse") leave();
+    if (canvas.hasPointerCapture?.(event.pointerId))
+      canvas.releasePointerCapture(event.pointerId);
   };
   canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerdown", down);
   canvas.addEventListener("pointerleave", leave);
   canvas.addEventListener("pointerup", up);
   canvas.addEventListener("pointercancel", leave);
-  resizeObserver = new ResizeObserver(resize);
-  resizeObserver.observe(canvas);
+  const observer = new ResizeObserver(resize);
+  observer.observe(canvas);
   resize();
   frame = requestAnimationFrame(tick);
   return {
-    setPaused(value) {
-      state.paused = value;
+    togglePaused() {
+      paused = !paused;
       accumulator = 0;
       last = performance.now();
-      canvas.dataset.paused = String(value);
-    },
-    setBreeze(value) {
-      if (breezes[value]) state.breeze = value;
-      canvas.dataset.breeze = state.breeze;
-      if (state.paused) draw(0);
+      canvas.dataset.paused = String(paused);
     },
     destroy() {
       disposed = true;
       cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
+      observer.disconnect();
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointerleave", leave);

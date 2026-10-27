@@ -5,113 +5,108 @@ async function ready(page) {
   await expect(canvas).toHaveAttribute("data-ready", "true");
   return canvas;
 }
-test("ambient wind changes the grass, can pause, and responds to breeze strength", async ({
+test("the entire viewport is a text-free top-down ASCII field with ambient wind", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    window.__glyphs = { count: 0, nonASCII: false };
+    const original = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      window.__glyphs.count++;
+      if (/[^\x00-\x7f]/.test(String(text))) window.__glyphs.nonASCII = true;
+      return original.call(this, text, ...args);
+    };
+  });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   const canvas = await ready(page);
-  expect(Number(await canvas.getAttribute("data-blades"))).toBeGreaterThan(
-    5000,
-  );
-  const initial = await canvas.evaluate((c) => c.toDataURL());
+  expect(await page.locator("body").innerText()).toBe("");
+  await expect(page.getByRole("button")).toHaveCount(0);
+  await expect(page.locator("main > *")).toHaveCount(1);
+  await expect(canvas).toHaveAttribute("data-view", "top-down");
+  const glyphs = await page.evaluate(() => window.__glyphs);
+  expect(glyphs.count).toBeGreaterThan(100);
+  expect(glyphs.nonASCII).toBe(false);
+  const first = await canvas.evaluate((c) => c.toDataURL());
   await expect
     .poll(() => canvas.evaluate((c) => c.toDataURL()))
-    .not.toBe(initial);
-  const pause = page.getByRole("button", { name: "Pause meadow animation" });
-  await pause.click();
-  await expect(pause).toHaveAttribute("aria-pressed", "true");
-  const held = await canvas.evaluate((c) => c.toDataURL());
-  await page.waitForTimeout(200);
-  expect(await canvas.evaluate((c) => c.toDataURL())).toBe(held);
-  await page.getByRole("button", { name: "gentle", exact: true }).click();
-  const gentle = await canvas.evaluate((c) => c.toDataURL());
-  await page.getByRole("button", { name: "gusty", exact: true }).click();
-  await expect(canvas).toHaveAttribute("data-breeze", "gusty");
-  expect(await canvas.evaluate((c) => c.toDataURL())).not.toBe(gentle);
-  await pause.click();
-  await expect
-    .poll(() => canvas.evaluate((c) => c.toDataURL()))
-    .not.toBe(gentle);
+    .not.toBe(first);
   expect(errors).toEqual([]);
 });
-test("moving the cursor bends blades without clicking, then the wake settles", async ({
+test("cursor movement parts the grass without a click and the wake recovers after leaving", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const canvas = await ready(page);
-  await page.mouse.move(500, 690);
-  await page.mouse.move(900, 700, { steps: 24 });
+  await page.mouse.move(500, 430);
+  await page.mouse.move(900, 480, { steps: 24 });
   await expect(canvas).toHaveAttribute("data-interacting", "true");
   await expect
     .poll(() => canvas.getAttribute("data-deflection").then(Number))
     .toBeGreaterThan(100);
   const bent = Number(await canvas.getAttribute("data-deflection"));
-  await page.mouse.move(1380, 43);
+  await page.mouse.move(-10, -10);
+  await expect(canvas).toHaveAttribute("data-interacting", "false");
   await expect
     .poll(() => canvas.getAttribute("data-deflection").then(Number), {
       timeout: 6000,
     })
     .toBeLessThan(bent * 0.15);
 });
-test("immersive view and keyboard shortcuts work", async ({ page }) => {
-  await ready(page);
-  await page.getByRole("button", { name: "Hide interface" }).click();
-  await expect(page.locator("main")).toHaveClass(/immersive/);
-  await page.getByRole("button", { name: "Show interface" }).click();
-  await expect(page.locator("main")).not.toHaveClass(/immersive/);
-  await page.mouse.click(400, 100);
+test("Space pauses and resumes with no visible interface", async ({ page }) => {
+  const canvas = await ready(page);
   await page.keyboard.press("Space");
-  await expect(
-    page.getByRole("button", { name: "Pause meadow animation" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("h");
-  await expect(page.locator("main")).toHaveClass(/immersive/);
-  await page.keyboard.press("h");
-  await expect(page.locator("main")).not.toHaveClass(/immersive/);
+  await expect(canvas).toHaveAttribute("data-paused", "true");
+  const still = await canvas.evaluate((c) => c.toDataURL());
+  await page.waitForTimeout(200);
+  expect(await canvas.evaluate((c) => c.toDataURL())).toBe(still);
+  await page.keyboard.press("Space");
+  await expect
+    .poll(() => canvas.evaluate((c) => c.toDataURL()))
+    .not.toBe(still);
+  expect(await page.locator("body").innerText()).toBe("");
 });
-test("reduced motion starts still and can be explicitly resumed", async ({
+test("reduced motion starts still and permits deliberate resume", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const canvas = await ready(page);
-  const pause = page.getByRole("button", { name: "Pause meadow animation" });
-  await expect(pause).toHaveAttribute("aria-pressed", "true");
-  const held = await canvas.evaluate((c) => c.toDataURL());
-  await page.waitForTimeout(160);
-  expect(await canvas.evaluate((c) => c.toDataURL())).toBe(held);
-  await pause.click();
-  await expect.poll(() => canvas.evaluate((c) => c.toDataURL())).not.toBe(held);
+  await expect(canvas).toHaveAttribute("data-paused", "true");
+  const still = await canvas.evaluate((c) => c.toDataURL());
+  await page.waitForTimeout(150);
+  expect(await canvas.evaluate((c) => c.toDataURL())).toBe(still);
+  await page.keyboard.press("Space");
+  await expect
+    .poll(() => canvas.evaluate((c) => c.toDataURL()))
+    .not.toBe(still);
 });
-test.describe("touch devices", () => {
+test.describe("touch", () => {
   test.use({
     viewport: { width: 390, height: 844 },
     hasTouch: true,
     isMobile: true,
   });
-  test("touch bends the field, controls fit and resizing preserves the simulation", async ({
+  test("touch pressure, edge coverage, and resize work without overlays", async ({
     page,
   }) => {
-    const errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
     const canvas = await ready(page);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(390);
-    await page.touchscreen.tap(210, 620);
+    const rect = await canvas.boundingBox();
+    expect(rect).toEqual({ x: 0, y: 0, width: 390, height: 844 });
+    await page.touchscreen.tap(200, 430);
+    await expect
+      .poll(() => canvas.getAttribute("data-deflection").then(Number))
+      .toBeGreaterThan(0);
     await expect
       .poll(() => canvas.getAttribute("data-interactions").then(Number))
       .toBeGreaterThan(0);
-    await expect(
-      page.getByRole("button", { name: "Pause meadow animation" }),
-    ).toBeInViewport();
-    await page.getByRole("button", { name: "gentle", exact: true }).click();
-    await expect(canvas).toHaveAttribute("data-breeze", "gentle");
+    expect(await page.locator("body").innerText()).toBe("");
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(canvas).toHaveAttribute("data-ready", "true");
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(844);
-    expect(errors).toEqual([]);
   });
 });
