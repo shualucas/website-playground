@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["src/sky/**/*.ts"]
+  "include": ["src/book/**/*.ts"]
 }

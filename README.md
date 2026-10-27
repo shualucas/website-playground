@@ -1,6 +1,8 @@
-# ASCII Sky
+# A Designer’s Field Journal
 
-A full-screen interactive sky of striped hot-air balloons and puffy clouds, drawn entirely as shaded monospace glyph tiles. The rendering style and lifecycle adapt the MIT-licensed [stackedlol/ascii-sharks](https://github.com/stackedlol/ascii-sharks) source; [Dao-Ho/portfolio](https://github.com/Dao-Ho/portfolio) informed the single-screen composition.
+A white portfolio website centered on a Three.js leather journal. On entry, the book appears, its cover opens, pages riffle quickly, and the final sheet turns more slowly before revealing the first project. The left page contains project metadata; the right page contains its preview.
+
+The current three chapters contain explicitly labeled sample content, ready for real UX case studies.
 
 ## Run
 
@@ -11,30 +13,30 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-Geist Mono 600 is bundled locally. No API keys, external runtime requests, image assets, font CDN, or WebGL are needed.
+All fonts, material textures, and illustrations are local or generated in code. No API keys or external runtime service is required.
 
 ## Interaction
 
-- Balloons drift slowly across the sky; clouds drift more slowly.
-- Click/tap a balloon's envelope, ropes, or basket to give it upward lift. Further clicks add lift; a brief burner glow provides feedback.
-- Click/tap a cloud to push its puffs apart. They separate and fade, then reform off-screen to drift back into the scene.
-- Objects wrap around the sky to keep the scene populated.
-- Arrow keys select an object, Enter activates it, and Escape clears the subtle corner markers.
-- Space pauses/resumes. Reduced-motion preferences start with a populated still frame.
-- Animation suspends off-screen and while the document is hidden.
+- Skip the opening with the visible intro button.
+- Use the previous/next arrows or Left/Right keyboard keys to turn project pages.
+- Open a case study to read its scaffold in an accessible dialog; Escape closes it.
+- Replay the opening from the footer.
+- Project selection is shareable through `?project=first-project` (or another project ID).
+- Reduced motion opens directly to the first spread and changes projects without page animations.
+- Phones show the 3D spread plus a readable project section underneath.
+- Without WebGL, both pages appear in a usable HTML reading layout.
+- Rendering stops while idle, off-screen, and while the document is hidden.
 
-The scene has no visible text or controls. Its canvas has a screen-reader description of the interactions.
+## Add your projects
 
-## Edit and source attribution
+Edit `src/book/projects.js`. Each entry controls the title, subtitle, description, role, year, team, disciplines, preview, and case-study chapters.
 
-- `src/sky/renderer.ts`: shaded ASCII cloud puffs, curved balloon stripes, ropes, and baskets.
-- `src/sky/world.ts`: cloud dispersal, balloon lift, shared hit geometry, drift, and responsive sizing.
-- `src/sky/engine.ts`: fixed timestep, pointer/keyboard interaction, lifecycle, and diagnostics.
-- `src/sky/math.ts`: upstream math helpers.
-- `src/main.jsx`: React lifecycle, keyboard handling, and local font loading.
-- `src/style.css`: full-screen composition.
+1. Replace the sample text and set `sample: false`.
+2. Put images in `public/projects/` and set `previewImage: '/projects/your-image.webp'`. Supply descriptive `imageAlt` text. An external image URL also works.
+3. Fill the `chapters` array with your story. Add a `caseStudyUrl` if your full case study lives elsewhere.
+4. Add or remove project entries; the chapter controls and page numbers update automatically.
 
-Licenses and pinned upstream revisions are recorded in `THIRD_PARTY_NOTICES.md`, `src/sky/LICENSE`, and `public/licenses/`.
+`src/book/BookScene.ts` contains the physical book, generated textures, lighting, curved-page geometry, animation, responsive camera, and cleanup. React renders selectable HTML into matching CSS3D page surfaces, keeping the typography crisp. `src/main.jsx` handles the portfolio UI, dialogs, content, and keyboard interaction. `src/style.css` contains the visual system and mobile reading layout.
 
 ## Validate and deploy
 
@@ -44,6 +46,6 @@ npm run build
 npm test
 ```
 
-Browser checks cover actual glyph drawing, local fonts, drift speeds, balloon lift, cloud dispersal/reformation, pause, reduced motion, keyboard activation, touch, and responsive sizing.
+Browser tests use `/usr/bin/chromium` with software WebGL enabled. They cover the opening sequence, actual WebGL draw calls, page navigation, keyboard interaction, dialogs, reduced motion, mobile touch/layout, and the HTML fallback.
 
-Vercel: build command `npm run build`, output `dist`. Earlier experiments remain in Git history.
+Vercel: build command `npm run build`, output `dist`. See `THIRD_PARTY_NOTICES.md` for licenses.
