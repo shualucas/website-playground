@@ -158,14 +158,14 @@ export function studioEnvironment(
     for (let x = 0; x < width; x++) {
       const lon = (x / width - 0.5) * Math.PI * 2,
         lat = (0.5 - y / height) * Math.PI;
-      const softA = panel(lon, lat, -1.65, 0.62, 0.58, 0.45),
+      const softA = panel(lon, lat, -2.3, 0.85, 0.65, 0.48),
         softB = panel(lon, lat, 0.85, 0.4, 0.32, 0.7),
         top = panel(lon, lat, 0, 1.25, 2, 0.17),
         ambient = 0.12 + 0.12 * Math.max(0, Math.sin(lat));
       const i = (y * width + x) * 4;
-      data[i] = ambient + softA * 3.6 + softB * 2.1 + top * 2.3;
-      data[i + 1] = ambient + softA * 3.3 + softB * 2.3 + top * 2.3;
-      data[i + 2] = ambient + softA * 2.9 + softB * 2.6 + top * 2.2;
+      data[i] = ambient + softA * 3.6 + softB * 0.4 + top * 0.35;
+      data[i + 1] = ambient + softA * 3.3 + softB * 0.45 + top * 0.4;
+      data[i + 2] = ambient + softA * 2.9 + softB * 0.55 + top * 0.45;
       data[i + 3] = 1;
     }
   const hdr = new THREE.DataTexture(

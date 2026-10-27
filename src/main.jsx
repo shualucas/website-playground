@@ -7,6 +7,7 @@ import "@fontsource/cormorant-garamond/latin-400.css";
 import "@fontsource/cormorant-garamond/latin-500.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { projects } from "./book/projects";
+import { AsciiPortal } from "./book/ascii";
 import "./style.css";
 function Star({ className = "" }) {
   return (
@@ -52,7 +53,15 @@ function Arrow({ direction = "right" }) {
 }
 const pad = (n) => String(n).padStart(2, "0");
 
-function Metadata({ project, index, onRead, onPrevious, canPrevious }) {
+function Metadata({
+  project,
+  index,
+  onRead,
+  onPrevious,
+  canPrevious,
+  onNext,
+  canNext,
+}) {
   return (
     <div className="metadata-content">
       <div className="page-running-head">
@@ -108,50 +117,8 @@ function Metadata({ project, index, onRead, onPrevious, canPrevious }) {
         >
           <Arrow direction="left" />
         </button>
-        <span className="page-instruction">DRAG A CORNER TO TURN THE PAGE</span>
-        <span>{pad(index * 2 + 1)}</span>
-      </div>
-    </div>
-  );
-}
-
-function PortalFallback() {
-  return (
-    <div className="portal-fallback" aria-hidden="true">
-      <div className="portal-vortex" />
-    </div>
-  );
-}
-function PreviewPage({ project, index, onRead, onNext, canNext, fallback }) {
-  return (
-    <div className="preview-content">
-      <div className="page-running-head">
-        <span>A WINDOW INTO THE WORK</span>
-        <Star />
-      </div>
-      <button
-        className="portal-hit"
-        data-portal
-        aria-label="Enter the project portal"
-        onClick={onRead}
-      >
-        {project.previewImage ? (
-          <img
-            className="project-image"
-            src={project.previewImage}
-            alt={project.imageAlt}
-          />
-        ) : fallback ? (
-          <PortalFallback />
-        ) : null}
-      </button>
-      <p className="portal-caption">
-        A doorway into the thinking behind the work.
-      </p>
-      <div className="page-folio">
-        <span>{pad(index * 2 + 2)}</span>
-        <span>
-          CHAPTER {pad(index + 1)} OF {pad(projects.length)}
+        <span className="page-instruction">
+          CHAPTER {pad(index + 1)} / {pad(projects.length)}
         </span>
         <button
           className="page-corner next"
@@ -165,11 +132,68 @@ function PreviewPage({ project, index, onRead, onNext, canNext, fallback }) {
     </div>
   );
 }
+
+function PortalFallback() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const portal = new AsciiPortal(),
+      canvas = ref.current,
+      ctx = canvas.getContext("2d"),
+      preference = matchMedia("(prefers-reduced-motion: reduce)");
+    let raf = 0,
+      previous = 0;
+    const frame = (now) => {
+      if (now - previous > 80) {
+        portal.draw(preference.matches ? 0 : now / 1000);
+        ctx.clearRect(0, 0, 768, 1056);
+        ctx.drawImage(portal.canvas, 0, 0);
+        previous = now;
+      }
+      if (!preference.matches) raf = requestAnimationFrame(frame);
+    };
+    const start = () => {
+      cancelAnimationFrame(raf);
+      previous = -100;
+      frame(performance.now());
+    };
+    start();
+    preference.addEventListener("change", start);
+    return () => {
+      cancelAnimationFrame(raf);
+      preference.removeEventListener("change", start);
+    };
+  }, []);
+  return (
+    <canvas
+      ref={ref}
+      width="768"
+      height="1056"
+      className="ascii-portal"
+      role="img"
+      aria-label="Swirling green ASCII portal"
+    />
+  );
+}
+function PreviewPage({ onRead, fallback }) {
+  return (
+    <div className="preview-content portal-only">
+      <button
+        className="portal-hit"
+        data-portal
+        aria-label="Enter the project portal"
+        onClick={onRead}
+      >
+        {fallback ? <PortalFallback /> : null}
+      </button>
+    </div>
+  );
+}
 function App() {
   const host = useRef(null),
     engine = useRef(null),
     dialog = useRef(null),
-    indexRef = useRef(0);
+    indexRef = useRef(0),
+    printSources = useRef([]);
   const [mounts, setMounts] = useState(null),
     [phase, setPhase] = useState("dropping"),
     [index, setIndex] = useState(0),
@@ -214,7 +238,33 @@ function App() {
       .then(async () => {
         if (disposed) return;
         try {
-          const { BookScene } = await import("./book/BookScene");
+          const [{ BookScene }, { toCanvas, getFontEmbedCSS }] =
+            await Promise.all([
+              import("./book/BookScene"),
+              import("html-to-image"),
+            ]);
+          await document.fonts.ready;
+          if (disposed) return;
+          let printPages;
+          try {
+            const fontEmbedCSS = await getFontEmbedCSS(printSources.current[0]);
+            printPages = await Promise.all(
+              printSources.current.map((source) =>
+                toCanvas(source, {
+                  width: 600,
+                  height: 847,
+                  pixelRatio: 1,
+                  fontEmbedCSS,
+                  style: { transform: "none", opacity: "1", clipPath: "none" },
+                }),
+              ),
+            );
+          } catch (error) {
+            console.info(
+              "Using the book’s local printed layout.",
+              error.message,
+            );
+          }
           if (disposed) return;
           const book = new BookScene(
             host.current,
@@ -224,6 +274,7 @@ function App() {
               onIndex: select,
               onSpread: (left, right) => setSpread({ left, right }),
               onOpen: openRead,
+              printPages,
             },
             indexRef.current,
           );
@@ -281,6 +332,8 @@ function App() {
       onRead={openRead}
       onPrevious={() => turn(-1)}
       canPrevious={!busy && index > 0}
+      onNext={() => turn(1)}
+      canNext={!busy && index < projects.length - 1}
     />
   );
   const right = (
@@ -296,10 +349,29 @@ function App() {
   return (
     <main className={`spellbook ${fallback ? "is-fallback" : ""}`}>
       <p className="sr-only" id="book-instructions">
-        Drag the right page to the left to turn it, or drag the left page back.
-        Arrow keys change projects. Press R to restart the opening, and Space to
-        skip it. Select the portal to read the case study.
+        Drag anywhere on the book to lift it, move it, and drop it on the table.
+        Click the page arrows or use Left and Right to turn pages. Press R to
+        restart the opening. Select the portal to read the case study.
       </p>
+      <div className="print-sources" aria-hidden="true" inert>
+        {projects.map((item, i) => (
+          <div
+            className="printed-page print-source-left"
+            key={item.id}
+            ref={(el) => (printSources.current[i] = el)}
+          >
+            <Metadata
+              project={item}
+              index={i}
+              onRead={() => {}}
+              onPrevious={() => {}}
+              canPrevious={i > 0}
+              onNext={() => {}}
+              canNext={i < projects.length - 1}
+            />
+          </div>
+        ))}
+      </div>
       <section
         ref={host}
         className="book-stage"
@@ -321,7 +393,11 @@ function App() {
       )}
       <span className="sr-only" aria-live="polite">
         {busy
-          ? "The spellbook is opening"
+          ? phase === "carrying"
+            ? "Book picked up"
+            : phase === "falling"
+              ? "Book landing"
+              : "The spellbook is opening"
           : `Chapter ${index + 1} of ${projects.length}: ${project.title.replace("\n", " ")}`}
       </span>
       <dialog

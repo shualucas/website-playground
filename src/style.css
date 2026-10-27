@@ -353,53 +353,16 @@ h1 {
   max-height: 500px;
   object-fit: contain;
 }
-.portal-fallback {
-  position: relative;
-  width: 85%;
+.ascii-portal {
+  display: block;
+  width: 100%;
   height: 100%;
-  max-height: 500px;
-  margin: 0 auto;
-  overflow: hidden;
-  border: 22px solid #454b3e;
-  border-bottom-width: 27px;
-  border-radius: 48% 48% 2% 2%;
-  background: #102919;
-  box-shadow:
-    0 10px 25px #141d1544,
-    inset 0 0 30px #9ad458;
+  object-fit: contain;
 }
-.portal-vortex {
-  position: absolute;
-  inset: -25%;
-  background: repeating-conic-gradient(
-    from 0deg,
-    #101b12 0deg,
-    #467934 25deg,
-    #a5da63 36deg,
-    #1a472c 43deg,
-    #102518 60deg
-  );
-  filter: blur(9px);
-  animation: swirl 14s linear infinite;
-  border-radius: 50%;
-}
-.portal-vortex::after {
-  content: "";
-  position: absolute;
-  inset: 25%;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse,
-    #07140c 15%,
-    #12372077 45%,
-    #87cf4c22 70%
-  );
-  box-shadow: 0 0 30px 25px #73b73c33;
-}
-.dialog-paper > .portal-fallback {
-  height: 430px;
-  margin: 35px auto 45px;
-  width: 65%;
+.dialog-paper > .ascii-portal {
+  height: 440px;
+  margin: 30px auto;
+  width: 90%;
 }
 .is-fallback .book-stage {
   display: none;
@@ -458,4 +421,39 @@ h1 {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.print-sources {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  pointer-events: none;
+}
+.print-source-left .metadata-content {
+  padding-right: 61px;
+}
+.print-overlay .metadata-content,
+.print-overlay .metadata-content * {
+  color: transparent !important;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.print-overlay .metadata-content svg {
+  visibility: hidden;
+}
+.print-overlay button:focus-visible {
+  outline: 2px solid #667b43;
+  outline-offset: 4px;
+}
+.portal-only {
+  padding: 20px 24px;
+  height: 100%;
+}
+.portal-only .portal-hit {
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  margin: 0;
+  cursor: grab;
+  border-radius: 0;
 }

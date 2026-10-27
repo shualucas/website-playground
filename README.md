@@ -1,8 +1,8 @@
 # The Spellbook
 
-A white, full-screen portfolio centered on a thick, rounded Three.js spellbook. There is no surrounding site header, footer, toolbar, or project list. Navigation and case-study links live on the pages.
+A white, full-screen portfolio centered on a textured, rounded Three.js journal. The left page holds project metadata; the right contains only a swirling ASCII portal. Navigation arrows live in the left page’s folio.
 
-On entry, the closed book drops onto the surface, rebounds, opens, and riffles from right to left. A final slower leaf lands on the first project. The left page carries its metadata; the right page holds a stone-framed, animated green portal.
+The leather binding, curved parchment gutter, compressed inner page edges, and sewn threads form one connected book. The cover has no central emblem or lettering.
 
 ## Run
 
@@ -13,41 +13,43 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-The book, pebbled leather, parchment fibers, normal/roughness maps, stonework, studio reflection environment, and swirling portal are generated locally. Fonts are bundled. No external model, image service, API key, or font CDN is required.
+Fonts and assets are local. Leather, parchment, surface detail, window reflections, and the portal are generated in code; no external model, API key, image service, or font CDN is required.
 
 ## Interaction
 
-- Drag the right page toward the left to advance. Drag the left page toward the right to return.
-- The segmented leaf bends along its width, twists with the vertical drag, and follows the pointer continuously. Release past the midpoint or flick to finish; a short drag falls back with a damped spring.
-- Mouse and touch use pointer capture, including release outside the book and cancelled gestures.
-- Page-corner buttons and Left/Right keys also change projects.
-- Click/tap the portal or the case-study link to open the reading dialog. Escape closes it.
-- **R** restarts the opening from the first chapter, including after navigating to another project. Space or Escape skips an opening/turn.
-- The camera is fitted against sampled geometry from the complete drop, raised cover, page fan, and corner drags. One fixed lens/framing is then used throughout; it only reframes on viewport resize.
-- Reduced motion bypasses the ambient opening and freezes the portal. Direct dragging is still available; button navigation changes immediately.
-- Rendering suspends off-screen and while the document is hidden. Static shadows are cached. Software WebGL uses normal-mapped lighting and cube reflections, with reduced resolution during movement; GPU rendering retains physical materials and filtered studio reflections. Shaders are warmed before animation, and the portal light remains in the light set to avoid shader recompilation during turns.
-- Without WebGL, an HTML book layout retains the pages, navigation, portal illustration, and reading dialog.
+- Drag anywhere on the opened book—including a page, the binding, or a page control—to pick up the whole book. Release to drop it onto the table. The current project and open spread stay intact.
+- A small movement threshold keeps ordinary button clicks working. Mouse and touch use pointer capture, including cancellation and release outside the original target.
+- Click the arrows on the left page, or use Left/Right keys, to turn projects. Dragging is reserved for moving the book.
+- Click/tap the ASCII portal or case-study link to open the reading dialog. Escape closes it.
+- **R** resets the book’s placement and replays the opening from the first project. Space or Escape skips an opening/turn.
+- The opening remains 5.35 seconds of animation time. It now riffles 64 leaves instead of 22. Riffled faces are blank; the final leaf reveals the first project.
+- Turning and resting pages share the exact same captured artwork, matching geometry/material settings, and render resolution. The right-page ASCII animation is part of that same page texture, so it moves with the paper.
+- The camera stays fixed through the opening, page turns, and pickup; it only reframes on viewport resize. Pickup is constrained to keep the book visible.
+- Window-like daylight, cool room fill, and contact shadows anchor the book to the table. A small dust puff appears on impact, including after dropping a moved book.
+- Reduced motion starts directly on the first spread and freezes the portal. Explicit pickup/drop remains available; page-button navigation changes immediately.
+- Rendering pauses off-screen and while the document is hidden. Software WebGL uses simpler normal-mapped lighting; GPU rendering retains physical materials and filtered reflections.
+- Without WebGL, a usable HTML spread retains the metadata, ASCII portal, navigation, and reading view.
 
 ## Add projects
 
-The three current chapters contain explicitly labeled sample content. Edit `src/book/projects.js` to replace it.
+The three chapters currently contain labeled sample content. Edit `src/book/projects.js`:
 
-1. Update title, subtitle, description, role, team, year, disciplines, and case-study chapters. Set `sample: false`.
-2. To replace the portal’s placeholder content with an image, put a file in `public/projects/`, set `previewImage: '/projects/your-image.webp'`, and write its `imageAlt`. External image URLs also work.
-3. Add a `caseStudyUrl` when the complete case study lives elsewhere. Add/remove entries as needed.
+1. Replace the title, subtitle, description, role, team, year, disciplines, and chapters. Set `sample: false`.
+2. Add `previewImage` and `imageAlt` to show project imagery in the reading dialog. Images can live in `public/projects/`.
+3. Set `caseStudyUrl` if the complete study lives elsewhere. Add or remove entries as needed.
 
-Project URLs can be shared as `?project=first-project` or another entry ID.
+Project URLs are shareable as `?project=first-project` or another entry ID. Reloading regenerates the printed pages from the same React layout and locally embedded fonts.
 
 ## Implementation
 
-- `src/book/BookScene.ts`: fixed camera, rounded binding and page blocks, drop/rebound choreography, forward riffles, raycast dragging, curved leaf geometry, two-sided printed pages, spring settling, visibility and cleanup.
-- `src/book/materials.ts`: procedural leather, parchment fibers, fine page edges, printed leaf textures, textured stone arch, runes, and the seamless portal shader.
-- `src/book/surfaces.ts`: albedo/normal/roughness detail, a generated HDR studio environment, and rounded slabs whose corner radius is independent of their thickness.
-- `src/book/effects.ts`: a short-lived ring of impact dust and a soft contact shadow. Dust starts at the table impact, disperses, fades, and resets with R; reduced motion suppresses it.
-- `src/main.jsx`: React content, CSS3D printing, independent underlying page content during turns, on-page controls, keyboard interaction, reading dialog, and HTML fallback.
-- `src/style.css`: book-page typography and reading layout. No surrounding site UI.
-
-Three.js supplies the physical geometry, lighting, depth and shadows. Crisp HTML text sits on matching CSS3D surfaces; the portion covered by a turning leaf is clipped while the leaf carries its own two-sided printed texture. The book has approximately 220 implied paper leaves, fine edge lines and uneven signatures, plus 22 animated sheets in the opening.
+- `src/book/BookScene.ts`: physical book, fixed framing, opening/turn choreography, shared printed surfaces, pickup, raycasting, contact/dust placement, lifecycle and cleanup.
+- `src/book/binding.ts`: curved leather spine, continuous parchment saddle, sewn threads, and compressed inner paper edges.
+- `src/book/motion.ts`: damped pickup, gravity, friction, and a small landing rebound.
+- `src/book/ascii.ts`: animated arched portal made from real monospace characters and shaded cells.
+- `src/book/materials.ts`: leather, parchment, page edges, and captured page artwork.
+- `src/book/surfaces.ts`: normal/roughness detail, a generated window-light environment, and rounded slabs.
+- `src/book/effects.ts`: impact dust and the tabletop contact shadow.
+- `src/main.jsx`: React content, `html-to-image` page capture, invisible accessible hit surfaces, on-page navigation, reading dialog, keyboard controls, and HTML fallback.
 
 ## Validate and deploy
 
@@ -57,6 +59,6 @@ npm run build
 npm test
 ```
 
-Browser checks use `/usr/bin/chromium` with software WebGL. They cover the book-only composition, actual mouse/touch dragging and cancellation, page-corner controls, fixed camera, projected bounds through the whole opening, R restart, forward riffles, actual dust draw calls and lifecycle, live/frozen portal pixels, reading dialog, and HTML fallback.
+Browser checks use `/usr/bin/chromium` with software WebGL. They cover ASCII drawing, captured layouts, object pickup from pages and controls, placement persistence, shared turning/resting textures, fixed framing, the denser opening, R reset, reduced motion, touch, and the HTML fallback.
 
 Vercel: build `npm run build`, output `dist`. See `THIRD_PARTY_NOTICES.md` for licenses.

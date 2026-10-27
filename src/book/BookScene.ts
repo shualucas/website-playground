@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { surfaceDetail, studioEnvironment, roundedSlab } from "./surfaces";
 import { ImpactDust, contactShadow } from "./effects";
+import { AsciiPortal } from "./ascii";
+import { BookMotion } from "./motion";
+import { createBinding, shapeInnerEdge, gutterDip } from "./binding";
 import {
   CSS3DObject,
   CSS3DRenderer,
@@ -15,7 +18,7 @@ import {
   paperTexture,
   edgeTexture,
   pageTexture,
-  makePortal,
+  blankPageCanvas,
   type Project,
 } from "./materials";
 const END = 5.35;
@@ -30,7 +33,8 @@ type Phase =
   | "flipping"
   | "settling"
   | "ready"
-  | "dragging"
+  | "carrying"
+  | "falling"
   | "turning";
 type Callbacks = {
   onPhase: (phase: Phase) => void;
@@ -38,6 +42,7 @@ type Callbacks = {
   projects: Project[];
   onSpread: (left: number, right: number) => void;
   onOpen: () => void;
+  printPages?: HTMLCanvasElement[];
 };
 type Sheet = {
   mesh: THREE.Mesh<
@@ -61,13 +66,10 @@ type Grip = {
   id: number;
   startX: number;
   startY: number;
-  worldX: number;
-  worldZ: number;
-  lastProgress: number;
-  lastTime: number;
-  speed: number;
+  clientX: number;
+  clientY: number;
+  anchor: THREE.Vector3;
   moved: boolean;
-  portal: boolean;
 };
 
 /** Fixed-camera spellbook. Pointer motion bends a real segmented leaf; release uses a damped spring. */
@@ -85,11 +87,22 @@ export class BookScene {
   private rightStack = new THREE.Group();
   private leftStack = new THREE.Group();
   private spine!: THREE.Mesh;
+  private binding!: ReturnType<typeof createBinding>;
+  private leftSurface!: Sheet;
+  private rightSurface!: Sheet;
+  private blank!: THREE.CanvasTexture;
+  private mass = new BookMotion();
+  private table = new THREE.Vector2();
+  private dropAge = 10;
+  private portal = new AsciiPortal();
+  private portalTime = 0;
+  private rightCanvas = blankPageCanvas();
+  private rightTexture = new THREE.CanvasTexture(this.rightCanvas);
+  private paperCanvas = blankPageCanvas();
   private sheets: Sheet[] = [];
   private turnSheet!: Sheet;
   private textures = new Set<THREE.Texture>();
   private pageCache = new Map<string, THREE.Texture>();
-  private portal: ReturnType<typeof makePortal>;
   private dust = new ImpactDust();
   private contact = contactShadow();
   private environment: THREE.WebGLRenderTarget | null = null;
@@ -130,7 +143,6 @@ export class BookScene {
       /swiftshader|llvmpipe/i.test(
         String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)),
       );
-    this.portal = makePortal(this.software);
     this.renderer.setPixelRatio(
       Math.min(devicePixelRatio, this.software ? 0.7 : 1.5),
     );
@@ -150,7 +162,9 @@ export class BookScene {
     this.scene.environmentIntensity = 0.72;
     this.scene.add(this.rig, this.dust.mesh, this.contact.mesh);
     this.keep(this.contact.texture);
-    this.portal.textures.forEach((t) => this.keep(t));
+    this.rightTexture.colorSpace = THREE.SRGBColorSpace;
+    this.keep(this.rightTexture);
+    this.updatePortal(0);
     this.printing.add(this.printRig);
     this.light();
     this.buildBook();
@@ -189,9 +203,9 @@ export class BookScene {
     else this.schedule();
   }
   private light() {
-    this.scene.add(new THREE.HemisphereLight("#fff9e9", "#a7a38e", 0.7));
-    const key = new THREE.DirectionalLight("#fff4de", 2.6);
-    key.position.set(-4, 10, 5);
+    this.scene.add(new THREE.HemisphereLight("#edf4ff", "#a99475", 0.75));
+    const key = new THREE.DirectionalLight("#fff2db", 2.5);
+    key.position.set(-3.8, 8, -4.5);
     key.castShadow = true;
     key.shadow.mapSize.set(
       this.software ? 512 : 1024,
@@ -209,7 +223,7 @@ export class BookScene {
     key.shadow.normalBias = 0.018;
     key.shadow.bias = -0.00015;
     this.scene.add(key);
-    const fill = new THREE.DirectionalLight("#eef6ff", 0.65);
+    const fill = new THREE.DirectionalLight("#dbeaff", 0.35);
     fill.position.set(5, 6, -4);
     this.scene.add(fill);
     const floor = new THREE.Mesh(
@@ -232,11 +246,19 @@ export class BookScene {
     return texture;
   }
   private getPage(index: number, side: "left" | "right") {
+    if (side === "right") return this.rightTexture;
     const key = `${index}:${side}`;
     if (!this.pageCache.has(key))
       this.pageCache.set(
         key,
-        this.keep(pageTexture(this.callbacks.projects[index], index, side)),
+        this.keep(
+          pageTexture(
+            this.callbacks.projects[index],
+            index,
+            side,
+            this.callbacks.printPages?.[index],
+          ),
+        ),
       );
     return this.pageCache.get(key)!;
   }
@@ -313,13 +335,6 @@ export class BookScene {
     top.castShadow = top.receiveShadow = true;
     this.lid.add(top);
     this.rig.add(this.lid);
-    this.spine = new THREE.Mesh(
-      new RoundedBoxGeometry(0.42, 0.77, H + 0.26, 4, 0.17),
-      brown,
-    );
-    this.spine.position.y = 0.26;
-    this.spine.castShadow = true;
-    this.rig.add(this.spine);
     const brass = this.surface({
       color: "#b09a72",
       metalness: 0.92,
@@ -328,37 +343,6 @@ export class BookScene {
       normalMap: paperDetail.normal,
       normalScale: new THREE.Vector2(0.055, 0.055),
     });
-    // Very shallow foil catches the studio lights instead of being painted yellow.
-    for (const radius of [0.534, 0.582]) {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(radius, 0.003, 4, 80),
-        brass,
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(W / 2, 0.119, 0);
-      this.lid.add(ring);
-    }
-    const mark = new THREE.Shape();
-    mark.moveTo(0, -0.488);
-    mark.lineTo(0.052, -0.096);
-    mark.lineTo(0, -0.01);
-    mark.lineTo(-0.052, -0.096);
-    mark.closePath();
-    const markGeometry = new THREE.ShapeGeometry(mark);
-    for (let i = 0; i < 8; i++) {
-      const foil = new THREE.Mesh(markGeometry, brass);
-      foil.rotation.set(-Math.PI / 2, 0, (i * Math.PI) / 4);
-      foil.position.set(W / 2, 0.12, 0);
-      this.lid.add(foil);
-    }
-    for (const z of [-H * 0.36, H * 0.36]) {
-      const band = new THREE.Mesh(
-        new RoundedBoxGeometry(0.46, 0.8, 0.1, 3, 0.04),
-        brass,
-      );
-      band.position.set(0, 0.26, z);
-      this.rig.add(band);
-    }
     // Raised corner fittings move with the lid, without any cover lettering.
     for (const x of [0.17, W - 0.17])
       for (const z of [-H / 2 + 0.12, H / 2 - 0.12]) {
@@ -377,6 +361,13 @@ export class BookScene {
       roughnessMap: paperDetail.roughness,
       roughness: 1,
     });
+    this.binding = createBinding(
+      brown,
+      pageMat,
+      this.surface({ color: "#b49b6c", roughness: 1 }),
+    );
+    this.spine = this.binding.spine;
+    this.rig.add(this.spine, this.binding.fold, this.binding.seams);
     const edgeMat = this.surface({
       map: edges,
       color: "#eadabd",
@@ -386,7 +377,11 @@ export class BookScene {
       const group = new THREE.Group();
       group.position.y = 0.1;
       const block = new THREE.Mesh(
-        roundedSlab(W - 0.035, H - 0.025, STACK, 0.21, 0.025),
+        shapeInnerEdge(
+          roundedSlab(W - 0.035, H - 0.025, STACK, 0.21, 0.025),
+          (sign * W) / 2,
+          STACK,
+        ),
         [pageMat, pageMat, edgeMat],
       );
       block.position.set((sign * W) / 2, STACK / 2, 0);
@@ -399,7 +394,12 @@ export class BookScene {
       });
       for (let i = 0; i < 9; i++) {
         const signature = new THREE.Mesh(
-          roundedSlab(W - 0.04, H - 0.025, 0.012, 0.21, 0.002),
+          shapeInnerEdge(
+            roundedSlab(W - 0.04, H - 0.025, 0.012, 0.21, 0.002),
+            (sign * W) / 2,
+            0.012,
+            (i + 1) / 10,
+          ),
           signatureMat,
         );
         signature.position.set(
@@ -434,15 +434,19 @@ export class BookScene {
     ribbon.position.set(0.35, 0.2, H / 2 - 0.03);
     ribbon.castShadow = true;
     this.rig.add(ribbon);
-    for (let i = 0; i < 22; i++) {
+    this.blank = this.keep(
+      new THREE.CanvasTexture(this.paperCanvas),
+    ) as THREE.CanvasTexture;
+    this.blank.colorSpace = THREE.SRGBColorSpace;
+    for (let i = 0; i < 64; i++) {
       const sheet = this.makeSheet(
-        this.getPage(i % this.callbacks.projects.length, "right"),
-        this.getPage(i % this.callbacks.projects.length, "left"),
-        36,
-        8,
+        this.blank,
+        i === 63 ? this.getPage(0, "left") : this.blank,
+        28,
+        6,
       );
-      sheet.start = 2.05 + i * 0.071;
-      sheet.duration = i === 21 ? 1.65 : 0.62;
+      sheet.start = 2.05 + i * (1.491 / 63);
+      sheet.duration = i === 63 ? 1.65 : 0.31;
       this.sheets.push(sheet);
     }
     this.turnSheet = this.makeSheet(
@@ -451,11 +455,36 @@ export class BookScene {
       48,
       16,
     );
-    this.rig.add(this.portal.group);
-    this.portal.light.position.add(this.portal.group.position);
-    this.rig.add(this.portal.light);
-    this.portal.group.visible = false;
+    this.leftSurface = this.makeSheet(
+      this.getPage(this.index, "left"),
+      this.getPage(this.index, "left"),
+      48,
+      16,
+    );
+    this.rightSurface = this.makeSheet(
+      this.rightTexture,
+      this.rightTexture,
+      48,
+      16,
+    );
+    // The resting verso faces upward too, so shadow bias uses the paper's visible normal.
+    const leftGeometry = this.leftSurface.mesh.geometry,
+      index = leftGeometry.index!,
+      uv = leftGeometry.attributes.uv;
+    for (let i = 0; i < index.count; i += 3) {
+      const b = index.getX(i + 1);
+      index.setX(i + 1, index.getX(i + 2));
+      index.setX(i + 2, b);
+    }
+    index.needsUpdate = true;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i));
+    uv.needsUpdate = true;
+    this.leftSurface.mesh.castShadow =
+      this.rightSurface.mesh.castShadow = false;
+
+    this.refreshSurfaces();
   }
+
   private makeSheet(
     front: THREE.Texture,
     back: THREE.Texture,
@@ -485,7 +514,8 @@ export class BookScene {
     };
     material.customProgramCacheKey = () => "two-sided-printed-page";
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
     mesh.visible = false;
     this.rig.add(mesh);
     return { mesh, back: backUniform, start: 0, duration: 1 };
@@ -527,7 +557,7 @@ export class BookScene {
         pos.setXYZ(
           i,
           x,
-          y,
+          y + gutterDip(x),
           (v - 0.5) * (H - 0.055) + Math.sin(u * Math.PI) * arc * twist * 0.06,
         );
       }
@@ -539,10 +569,10 @@ export class BookScene {
   }
   private buildPrinting() {
     for (const [i, element] of [this.leftPage, this.rightPage].entries()) {
-      element.className = `printed-page ${i === 0 ? "page-verso" : "page-recto"}`;
+      element.className = `printed-page print-overlay ${i === 0 ? "page-verso" : "page-recto"}`;
       const obj = new CSS3DObject(element);
       obj.rotation.x = -Math.PI / 2;
-      obj.scale.setScalar((W - 0.09) / 600);
+      obj.scale.setScalar((W - 0.055) / 600);
       obj.position.set(((i === 0 ? -1 : 1) * W) / 2, SURFACE + 0.028, 0);
       this.printRig.add(obj);
     }
@@ -562,15 +592,15 @@ export class BookScene {
     this.printRig.quaternion.copy(this.rig.quaternion);
   }
   private setOpen() {
-    this.rig.position.set(0, 0, 0);
+    this.rig.position.set(this.table.x, 0, this.table.y);
     this.rig.rotation.set(0, 0, 0);
     this.lid.rotation.z = Math.PI;
     this.lid.position.y = -0.035;
     this.rightStack.scale.y = 1;
     this.leftStack.scale.y = 1;
     this.leftStack.visible = true;
-    this.spine.scale.y = 1;
-    this.spine.position.y = 0.26;
+    this.binding.update(SURFACE, SURFACE, 1);
+    this.refreshSurfaces();
     this.syncRig();
   }
   private setPhase(phase: Phase) {
@@ -617,8 +647,11 @@ export class BookScene {
     this.rightStack.scale.y = 2 - transfer;
     this.leftStack.visible = transfer > 0.001;
     this.leftStack.scale.y = Math.max(0.001, transfer);
-    this.spine.scale.y = 1.65 - 0.65 * cover;
-    this.spine.position.y = 0.26 + 0.3 * (1 - cover);
+    this.binding.update(
+      0.12 + STACK * transfer,
+      0.12 + STACK * (2 - transfer),
+      cover,
+    );
     for (const sheet of this.sheets) {
       const p = (t - sheet.start) / sheet.duration;
       sheet.mesh.visible = p > 0 && p < 1;
@@ -635,8 +668,10 @@ export class BookScene {
           ) + 0.018,
         );
     }
+    this.leftSurface.mesh.visible = t > 5.05;
+    this.rightSurface.mesh.visible = true;
+    this.updatePortal(this.portalTime, t > 4.35);
     this.syncRig();
-    this.portal.group.visible = false;
   }
   skip = () => {
     this.elapsed = END;
@@ -644,12 +679,15 @@ export class BookScene {
     this.leftPage.style.clipPath = "none";
     this.rightPage.style.clipPath = "none";
     this.turn = null;
-    this.grip = null;
+    this.releaseCapture();
+    if (this.mass.state !== "rest") {
+      this.table.set(this.mass.position.x, this.mass.position.z);
+      this.mass.reset(this.table.x, this.table.y);
+    }
     this.turnSheet.mesh.visible = false;
     for (const sheet of this.sheets) sheet.mesh.visible = false;
     this.setOpen();
     this.setPrint(true, true);
-    this.portal.group.visible = true;
     this.dust.update(-1);
     this.setPhase("ready");
     this.renderer.shadowMap.needsUpdate = true;
@@ -662,12 +700,16 @@ export class BookScene {
     this.callbacks.onIndex(0);
     this.turn = null;
     this.turnSheet.mesh.visible = false;
+    this.table.set(0, 0);
+    this.mass.reset();
     this.elapsed = 0;
+    this.dust.mesh.position.set(0, 0, 0);
+    this.dust.mesh.scale.x = 1;
     this.dust.update(-1);
-    this.portal.uniform.uTime.value = 0;
+    this.portalTime = 0;
+    this.updatePortal(0);
     this.last = 0;
     this.setPrint(false, false);
-    this.portal.group.visible = false;
     if (this.motion.matches) {
       this.skip();
       return;
@@ -698,6 +740,10 @@ export class BookScene {
       twist: 0,
       released: !manual,
     };
+    if (direction < 0) {
+      this.leftSurface.back.value = this.getPage(destination, "left");
+      this.leftSurface.mesh.material.map = this.getPage(destination, "left");
+    }
     this.callbacks.onSpread(
       direction > 0 ? this.index : destination,
       direction > 0 ? destination : this.index,
@@ -705,7 +751,7 @@ export class BookScene {
     this.leftPage.style.clipPath = "none";
     this.rightPage.style.clipPath = "none";
     this.last = 0;
-    this.setPhase(manual ? "dragging" : "turning");
+    this.setPhase("turning");
     this.schedule();
     return true;
   }
@@ -720,6 +766,7 @@ export class BookScene {
         return false;
       this.index = next;
       this.callbacks.onIndex(next);
+      this.refreshSurfaces();
       this.report();
       this.render();
       return true;
@@ -745,19 +792,9 @@ export class BookScene {
       (turn.velocity * cos -
         ((half * turn.velocity + stiffness * offset) / omega) * sin);
     const p = clamp(turn.progress, 0, 1);
-    this.bend(this.turnSheet, p, turn.direction, turn.twist);
-    this.portal.group.visible = turn.direction > 0 ? p > 0.25 : p < 0.5;
-    // Clip only the paper area covered by the curved leaf; the rest stays readable.
-    const position = this.turnSheet.mesh.geometry.attributes.position;
-    let minX = 0,
-      maxX = 0;
-    for (let i = 0; i < position.count; i++) {
-      minX = Math.min(minX, position.getX(i));
-      maxX = Math.max(maxX, position.getX(i));
-    }
+    this.bend(this.turnSheet, p, turn.direction, turn.twist, SURFACE + 0.021);
+    // Real depth occlusion now handles both resting and turning printed faces.
     this.setPrint(true, true);
-    this.leftPage.style.clipPath = `inset(0 ${clamp(-minX / W, 0, 1) * 100}% 0 0)`;
-    this.rightPage.style.clipPath = `inset(0 0 0 ${clamp(maxX / W, 0, 1) * 100}%)`;
     if (
       turn.released &&
       Math.abs(turn.target - turn.progress) < 0.0018 &&
@@ -771,9 +808,9 @@ export class BookScene {
       this.callbacks.onSpread(this.index, this.index);
       this.leftPage.style.clipPath = "none";
       this.rightPage.style.clipPath = "none";
+      this.refreshSurfaces();
       this.turn = null;
       this.turnSheet.mesh.visible = false;
-      this.portal.group.visible = true;
       this.setPrint(true, true);
       this.setPhase("ready");
     }
@@ -789,129 +826,129 @@ export class BookScene {
     );
     return this.ray.ray.intersectPlane(this.plane, this.hit);
   }
+  private bookHit(e: PointerEvent) {
+    this.point(e);
+    const objects: THREE.Object3D[] = [];
+    this.rig.traverseVisible((obj) => {
+      if (obj instanceof THREE.Mesh) objects.push(obj);
+    });
+    return this.ray.intersectObjects(objects, false)[0] ?? null;
+  }
   private onDown = (e: PointerEvent) => {
     this.suppressClick = false;
     if (e.button !== 0 || this.phase !== "ready") return;
-    const el = e.target as Element;
-    if (el.closest("button,a") && !el.closest("[data-portal]")) return;
-    const point = this.point(e);
-    if (
-      !point ||
-      Math.abs(point.x) < 0.17 ||
-      Math.abs(point.x) > W + 0.12 ||
-      Math.abs(point.z) > H / 2 + 0.1
-    )
-      return;
-    const direction = point.x > 0 ? 1 : -1;
-    if (!this.beginTurn(direction, true)) return;
+    const hit = this.bookHit(e);
+    if (!hit) return;
     this.grip = {
       id: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
-      worldX: point.x,
-      worldZ: point.z,
-      lastProgress: 0,
-      lastTime: performance.now(),
-      speed: 0,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      anchor: this.rig.worldToLocal(hit.point.clone()),
       moved: false,
-      portal: !!el.closest("[data-portal]"),
     };
-    this.host.setPointerCapture(e.pointerId);
-    this.host.style.cursor = "grabbing";
   };
-  private progressForEdge(freeEdge: number) {
-    let lo = 0,
-      hi = 1;
-    for (let i = 0; i < 12; i++) {
-      const p = (lo + hi) / 2,
-        theta = Math.PI * p,
-        arc = Math.sin(theta);
-      let x = 0.012;
-      for (let j = 0; j < 48; j++)
-        x +=
-          (Math.cos(
-            clamp(theta + arc * ((j + 0.5) / 48 - 0.5) * 4.1, 0, Math.PI),
-          ) *
-            (W - 0.055)) /
-          48;
-      if (x > freeEdge) lo = p;
-      else hi = p;
+  private carryTarget() {
+    const grip = this.grip;
+    if (!grip) return;
+    const rotated = grip.anchor.clone().applyQuaternion(this.rig.quaternion);
+    this.plane.constant = -(rotated.y + this.mass.position.y);
+    const pointer = {
+        clientX: grip.clientX,
+        clientY: grip.clientY,
+      } as PointerEvent,
+      point = this.point(pointer);
+    if (!point) return;
+    const desired = new THREE.Vector3(
+      point.x - rotated.x,
+      0.72,
+      point.z - rotated.z,
+    );
+    this.constrainBook(desired);
+    this.mass.target.copy(desired);
+  }
+  private constrainBook(target: THREE.Vector3) {
+    const previous = this.rig.position.clone(),
+      test = (scale: number) => {
+        this.rig.position.set(target.x * scale, target.y, target.z * scale);
+        const b = this.visibleBounds();
+        return (
+          Math.max(
+            Math.abs(b.left),
+            Math.abs(b.right),
+            Math.abs(b.top),
+            Math.abs(b.bottom),
+          ) < 0.96
+        );
+      };
+    if (!test(1)) {
+      let lo = 0,
+        hi = 1;
+      for (let i = 0; i < 10; i++) {
+        const mid = (lo + hi) / 2;
+        if (test(mid)) lo = mid;
+        else hi = mid;
+      }
+      target.x *= lo;
+      target.z *= lo;
     }
-    return (lo + hi) / 2;
+    this.rig.position.copy(previous);
+    this.rig.updateMatrixWorld(true);
   }
   private onMove = (e: PointerEvent) => {
-    const grip = this.grip,
-      turn = this.turn;
-    if (!grip || !turn) {
-      if (this.phase === "ready") {
-        const point = this.point(e);
-        const can =
-          point &&
-          Math.abs(point.x) > 0.17 &&
-          Math.abs(point.x) < W &&
-          Math.abs(point.z) < H / 2 &&
-          (point.x > 0
-            ? this.index < this.callbacks.projects.length - 1
-            : this.index > 0);
-        this.host.style.cursor = can ? "grab" : "default";
-      }
+    const grip = this.grip;
+    if (!grip) {
+      if (this.phase === "ready")
+        this.host.style.cursor = this.bookHit(e) ? "grab" : "default";
       return;
     }
     if (grip.id !== e.pointerId) return;
-    const point = this.point(e);
-    if (!point) return;
-    if (Math.hypot(e.clientX - grip.startX, e.clientY - grip.startY) > 5)
+    grip.clientX = e.clientX;
+    grip.clientY = e.clientY;
+    if (
+      !grip.moved &&
+      Math.hypot(e.clientX - grip.startX, e.clientY - grip.startY) > 5
+    ) {
       grip.moved = true;
-    const freeEdge = W + turn.direction * (point.x - grip.worldX),
-      progress = this.progressForEdge(freeEdge),
-      now = performance.now();
-    const elapsed = (now - grip.lastTime) / 1000;
-    if (elapsed > 0.008)
-      grip.speed = clamp((progress - grip.lastProgress) / elapsed, -3, 3);
-    grip.lastProgress = progress;
-    grip.lastTime = now;
-    turn.target = progress;
-    turn.twist = clamp((point.z - grip.worldZ) * 0.8, -0.65, 0.65);
-    if (grip.moved) e.preventDefault();
-    this.schedule();
+      this.mass.grab(this.rig.position);
+      this.host.setPointerCapture(e.pointerId);
+      this.host.style.cursor = "grabbing";
+      this.setPhase("carrying");
+      this.last = 0;
+      this.schedule();
+    }
+    if (grip.moved) {
+      e.preventDefault();
+      this.carryTarget();
+    }
   };
   private onUp = (e: PointerEvent) => {
-    if (this.grip?.id !== e.pointerId || !this.turn) return;
-    const grip = this.grip,
-      turn = this.turn;
-    const speed = performance.now() - grip.lastTime < 130 ? grip.speed : 0;
-    this.suppressClick = grip.moved;
-    turn.target =
-      grip.moved && (turn.target > 0.46 || (speed > 0.75 && turn.target > 0.13))
-        ? 1
-        : 0;
-    turn.released = true;
-    turn.velocity += clamp(speed, -1.8, 1.8) * 0.4;
+    if (this.grip?.id !== e.pointerId) return;
+    const moved = this.grip.moved;
+    this.suppressClick = moved;
     this.releaseCapture();
-    this.setPhase("turning");
-    if (this.motion.matches) {
-      if (turn.target === 1) {
-        this.index = turn.destination;
-        this.callbacks.onIndex(this.index);
-      }
-      this.skip();
-    } else this.schedule();
-    if (!grip.moved && grip.portal) this.callbacks.onOpen();
+    if (moved) {
+      this.mass.release();
+      this.setPhase("falling");
+      this.schedule();
+    }
   };
   private onCancel = (e: PointerEvent) => {
-    if (this.grip?.id !== e.pointerId || !this.turn) return;
-    this.turn.target = 0;
-    this.turn.released = true;
+    if (this.grip?.id !== e.pointerId) return;
     this.releaseCapture();
-    this.setPhase("turning");
-    this.schedule();
+    this.mass.release();
+    if (this.mass.state !== "rest") {
+      this.setPhase("falling");
+      this.schedule();
+    }
   };
-  private onLostCapture = () => {
-    if (this.grip && this.turn) {
+  private onLostCapture = (event: PointerEvent) => {
+    if (event.target !== this.host) return;
+    if (this.grip?.moved) {
       this.grip = null;
-      this.turn.target = 0;
-      this.turn.released = true;
-      this.setPhase("turning");
+      this.mass.release();
+      this.setPhase("falling");
       this.schedule();
     }
   };
@@ -921,6 +958,63 @@ export class BookScene {
     if (id !== undefined && this.host.hasPointerCapture(id))
       this.host.releasePointerCapture(id);
     this.host.style.cursor = "default";
+    this.plane.constant = -SURFACE;
+  }
+  private stepBook(dt: number) {
+    if (this.grip?.moved) this.carryTarget();
+    const impact = this.mass.step(dt);
+    this.rig.position.copy(this.mass.position);
+    this.rig.rotation.x = THREE.MathUtils.damp(
+      this.rig.rotation.x,
+      this.mass.state === "held"
+        ? clamp(this.mass.velocity.z * 0.018, -0.05, 0.05)
+        : 0,
+      16,
+      dt,
+    );
+    this.rig.rotation.z = THREE.MathUtils.damp(
+      this.rig.rotation.z,
+      this.mass.state === "held"
+        ? clamp(-this.mass.velocity.x * 0.018, -0.05, 0.05)
+        : 0,
+      16,
+      dt,
+    );
+    if (impact) {
+      this.dropAge = 0;
+      this.dust.mesh.position.set(
+        this.mass.position.x,
+        0,
+        this.mass.position.z,
+      );
+      this.dust.mesh.scale.x = 1.9;
+    }
+    this.dropAge += dt;
+    this.dust.update(this.dropAge, this.motion.matches);
+    this.syncRig();
+    if (this.mass.state === "rest") {
+      this.table.set(this.mass.position.x, this.mass.position.z);
+      this.rig.rotation.set(0, 0, 0);
+      this.syncRig();
+      this.setPhase("ready");
+    }
+  }
+  private updatePortal(time: number, show = true) {
+    const changed = this.portal.draw(time);
+    if (!changed && this.rightCanvas.dataset.show === String(show)) return;
+    this.rightCanvas.dataset.show = String(show);
+    const ctx = this.rightCanvas.getContext("2d")!;
+    ctx.clearRect(0, 0, 900, 1260);
+    ctx.drawImage(this.paperCanvas, 0, 0);
+    if (show) ctx.drawImage(this.portal.canvas, 36, 38, 828, 1178);
+    this.rightTexture.needsUpdate = true;
+  }
+  private refreshSurfaces() {
+    const left = this.getPage(this.index, "left");
+    this.leftSurface.mesh.material.map = left;
+    this.leftSurface.back.value = left;
+    this.bend(this.leftSurface, 1);
+    this.bend(this.rightSurface, 0);
   }
   private onClick = (e: MouseEvent) => {
     if (this.suppressClick) {
@@ -956,7 +1050,6 @@ export class BookScene {
     }
     this.setOpen();
     for (const sheet of this.sheets) sheet.mesh.visible = false;
-    this.portal.group.visible = true;
     for (const direction of [-1, 1])
       for (let step = 0; step <= 24; step++)
         for (const twist of [-0.65, 0.65]) {
@@ -964,6 +1057,9 @@ export class BookScene {
           this.corners((p) => this.envelope.push(p.clone()));
         }
     this.turnSheet.mesh.visible = false;
+    this.rig.position.y = 0.8;
+    this.corners((p) => this.envelope.push(p.clone()));
+    this.rig.position.y = 0;
     // Leave room for the impact dust around the closed book.
     for (const x of [-2.6, 2.6])
       for (const z of [-3.1, 3.1])
@@ -1048,32 +1144,36 @@ export class BookScene {
       this.elapsed += Math.min(dt, 0.25);
       this.updateIntro();
       this.renderer.shadowMap.needsUpdate = true;
+    } else if (this.mass.state !== "rest") {
+      this.stepBook(dt);
+      this.renderer.shadowMap.needsUpdate = true;
     } else if (this.turn) {
       this.stepTurn(dt);
       this.renderer.shadowMap.needsUpdate = true;
+    } else if (this.dropAge < 2) {
+      this.dropAge += dt;
+      this.dust.update(this.dropAge, this.motion.matches);
     }
-    if (!this.motion.matches)
-      this.portal.uniform.uTime.value += Math.min(dt, 0.12);
+    if (!this.motion.matches) this.portalTime += Math.min(dt, 0.12);
+    this.updatePortal(this.portalTime, this.elapsed >= 4.35);
     this.render();
     this.schedule();
   };
   private render() {
-    const density = this.software
-      ? this.elapsed < END || this.turn
-        ? 0.5
-        : 0.7
-      : Math.min(devicePixelRatio, 1.5);
+    // Keep print resolution identical through a page turn and its resting pose.
+    const density = this.software ? 0.85 : Math.min(devicePixelRatio, 1.5);
     if (this.renderer.getPixelRatio() !== density) {
       this.renderer.setPixelRatio(density);
       this.dust.resize(this.host.clientHeight * density, this.camera.fov);
     }
-    this.portal.light.intensity = this.portal.group.visible ? 0.85 : 0;
     this.contact.mesh.material.opacity = THREE.MathUtils.clamp(
       1 - this.rig.position.y * 0.3,
       0.15,
       1,
     );
     const open = clamp(this.lid.rotation.z / Math.PI, 0, 1);
+    this.contact.mesh.position.x = this.rig.position.x + ((1 - open) * W) / 2;
+    this.contact.mesh.position.z = this.rig.position.z;
     this.contact.mesh.scale.set(
       (0.52 + 0.48 * open) * (1 + this.rig.position.y * 0.06),
       1 + this.rig.position.y * 0.06,
@@ -1085,7 +1185,9 @@ export class BookScene {
   }
   private projected(x: number, z: number) {
     const rect = this.host.getBoundingClientRect(),
-      p = new THREE.Vector3(x, SURFACE + 0.05, z).project(this.camera);
+      p = this.rig
+        .localToWorld(new THREE.Vector3(x, SURFACE + 0.05, z))
+        .project(this.camera);
     return {
       x: rect.left + ((p.x + 1) * rect.width) / 2,
       y: rect.top + ((1 - p.y) * rect.height) / 2,
@@ -1095,6 +1197,10 @@ export class BookScene {
     const data = this.host.dataset;
     data.phase = this.phase;
     data.project = String(this.index);
+    data.leftArtwork = this.leftSurface.mesh.material.map?.uuid ?? "";
+    data.turnBackArtwork = this.turnSheet.back.value.uuid;
+    data.rightArtwork = this.rightTexture.uuid;
+    data.capturedPages = String(this.callbacks.printPages?.length ?? 0);
     data.zoom = String(this.camera.zoom);
     data.camera = JSON.stringify(this.camera.position.toArray());
     data.pageCount = "220";
@@ -1109,7 +1215,11 @@ export class BookScene {
     data.dragging = String(!!this.grip);
     data.rightGrab = JSON.stringify(this.projected(W * 0.92, H * 0.29));
     data.leftGrab = JSON.stringify(this.projected(-W * 0.92, H * 0.29));
-    data.portalTime = this.portal.uniform.uTime.value.toFixed(3);
+    data.portalTime = this.portalTime.toFixed(3);
+    data.bookPosition = JSON.stringify(this.rig.position.toArray());
+    data.riffleCount = String(this.sheets.length);
+    data.duration = String(END);
+    data.bindingConnected = "true";
     data.introLeaves = JSON.stringify(
       this.sheets.flatMap((sheet, id) =>
         sheet.mesh.visible
@@ -1149,7 +1259,13 @@ export class BookScene {
   }
   private schedule() {
     if (this.raf || this.disposed || !this.visible || document.hidden) return;
-    if (this.motion.matches && !this.turn && this.elapsed >= END) return;
+    if (
+      this.motion.matches &&
+      !this.turn &&
+      this.mass.state === "rest" &&
+      this.elapsed >= END
+    )
+      return;
     this.raf = requestAnimationFrame(this.frame);
   }
   private onMotion = () => {

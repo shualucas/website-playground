@@ -1,7 +1,4 @@
 import * as THREE from "three";
-import { surfaceDetail } from "./surfaces";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export const PAGE_WIDTH = 3.35,
   PAGE_HEIGHT = 4.7,
@@ -100,29 +97,6 @@ export function leatherTexture(detail?: THREE.DataTexture) {
   ctx.roundRect(28, 28, 844, 1204, 57);
   ctx.stroke();
   ctx.setLineDash([]);
-  // Only ornament on the cover: no lettering.
-  ctx.save();
-  ctx.translate(450, 630);
-  ctx.strokeStyle = "#b18c4f";
-  for (const r of [134, 146]) {
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  for (let i = 0; i < 8; i++) {
-    ctx.save();
-    ctx.rotate((i * Math.PI) / 4);
-    ctx.beginPath();
-    ctx.moveTo(0, -122);
-    ctx.lineTo(13, -24);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(-13, -24);
-    ctx.closePath();
-    ctx.fillStyle = i % 2 ? "#73532e" : "#bc985a";
-    ctx.fill();
-    ctx.restore();
-  }
-  ctx.restore();
   for (const [x, y] of [
     [95, 95],
     [805, 95],
@@ -198,9 +172,14 @@ export function pageTexture(
   project: Project,
   index: number,
   side: "left" | "right",
+  captured?: HTMLCanvasElement,
 ) {
   const { element, ctx } = canvas();
   ctx.drawImage(paperTextureCanvas(), 0, 0);
+  if (captured) {
+    ctx.drawImage(captured, 0, 0, 900, 1260);
+    return texture(element);
+  }
   ctx.fillStyle = "#706144";
   ctx.font = `500 17px ${fonts.sans}`;
   ctx.fillText(
@@ -239,11 +218,6 @@ export function pageTexture(
     wrapped(ctx, project.disciplines.join(" · "), 76, y + 163, 720, 32);
     ctx.font = `500 23px ${fonts.sans}`;
     ctx.fillText("Open the case study", 76, 1035);
-  } else {
-    drawPortalPrint(ctx);
-    ctx.font = `italic 25px ${fonts.serif}`;
-    ctx.fillStyle = "#6d634b";
-    ctx.fillText("A doorway into the thinking behind the work.", 86, 1120);
   }
   line(ctx, 1160);
   ctx.font = `400 16px ${fonts.sans}`;
@@ -302,157 +276,8 @@ function paperTextureCanvas() {
   }
   return paperCanvas;
 }
-function drawPortalPrint(ctx: CanvasRenderingContext2D) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(204, 1030);
-  ctx.lineTo(204, 461);
-  ctx.arc(450, 461, 246, Math.PI, 0);
-  ctx.lineTo(696, 1030);
-  ctx.closePath();
-  ctx.clip();
-  ctx.fillStyle = "#102717";
-  ctx.fillRect(190, 200, 520, 840);
-  const g = ctx.createRadialGradient(450, 620, 20, 450, 620, 430);
-  g.addColorStop(0, "#07180c");
-  g.addColorStop(0.37, "#144122");
-  g.addColorStop(0.62, "#8dd94c");
-  g.addColorStop(0.73, "#1c6a2d");
-  g.addColorStop(1, "#0b1b11");
-  ctx.fillStyle = g;
-  ctx.fillRect(190, 200, 520, 840);
-  ctx.translate(450, 620);
-  ctx.scale(1, 1.55);
-  for (let i = 0; i < 22; i++) {
-    ctx.beginPath();
-    for (let j = 0; j < 180; j++) {
-      const a = j * 0.07 + i * 0.28,
-        r = 12 + j * 1.35;
-      const x = Math.cos(a) * r,
-        y = Math.sin(a) * r;
-      if (j === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = i % 3 ? "#9ae45b42" : "#defe8b90";
-    ctx.lineWidth = i % 3 ? 1 : 2;
-    ctx.stroke();
-  }
-  ctx.restore();
-  ctx.strokeStyle = "#464a3b";
-  ctx.lineWidth = 52;
-  ctx.beginPath();
-  ctx.moveTo(178, 1040);
-  ctx.lineTo(178, 460);
-  ctx.arc(450, 460, 272, Math.PI, 0);
-  ctx.lineTo(722, 1040);
-  ctx.stroke();
-  ctx.strokeStyle = "#81935f";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-export const portalFragment = `
-precision highp float;
-varying vec2 vUv;uniform float uTime;
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float n=0.,a=.5;for(int i=0;i<4;i++){n+=a*noise(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return n;}
-void main(){vec2 physical=(vUv-.5)*vec2(2.43,3.38);float arch=max(abs(physical.x)-.86,-physical.y-1.55);if(physical.y>.40)arch=max(arch,length(vec2(physical.x,physical.y-.40))-.86);if(arch>.008)discard;
-vec2 p=(vUv-.5)*2.;vec2 q=p*vec2(1.1,.72);float r=length(q),a=atan(q.y,q.x),t=uTime*.34;
-float flow=fbm(vec2(cos(a+r*3.-t),sin(a+r*3.-t))*2.6+vec2(r*6.-t,r*3.));float ribbons=sin(a*5.+r*17.-t*4.+flow*8.);float wisps=pow(max(0.,ribbons),5.);
-float ring=exp(-pow((r-.60-flow*.14)*5.3,2.));float core=smoothstep(.04,.60,r);float haze=fbm(p*5.+vec2(t,-t*.4));
-vec3 color=vec3(.018,.035,.027)+vec3(.055,.20,.067)*haze+ring*vec3(.18,.52,.05)*(0.6+wisps*.8);
-color+=vec3(.65,.95,.26)*wisps*ring*.8;color*=.28+.72*core;
-float edge=exp(-abs(arch)*80.);color+=edge*vec3(.19,.49,.055);gl_FragColor=vec4(color,1.);
-}`;
-export function makePortal(simple = false) {
-  const group = new THREE.Group();
-  group.position.set(PAGE_WIDTH / 2, SURFACE + 0.045, -0.22);
-  const uniform = { uTime: { value: 0 } };
-  const material = new THREE.ShaderMaterial({
-    uniforms: uniform,
-    vertexShader:
-      "varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
-    fragmentShader: portalFragment,
-    side: THREE.DoubleSide,
-  });
-  const aperture = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.43, 3.38),
-    material,
-  );
-  aperture.rotation.x = -Math.PI / 2;
-  group.add(aperture);
-  const stones: THREE.BufferGeometry[] = [];
-  for (const sign of [-1, 1])
-    for (let i = 0; i < 6; i++) {
-      const block = new RoundedBoxGeometry(0.32, 0.22, 0.32, 2, 0.035);
-      block.translate(sign * 1.02, 0.09, 1.46 - i * 0.32);
-      stones.push(block);
-    }
-  for (let i = 0; i < 11; i++) {
-    const a = (i * Math.PI) / 10;
-    const block = new RoundedBoxGeometry(0.3, 0.25, 0.34, 2, 0.035);
-    block.rotateY(-a);
-    block.translate(Math.cos(a) * 1.02, 0.1, -0.4 - Math.sin(a) * 1.02);
-    stones.push(block);
-  }
-  for (const sign of [-1, 1]) {
-    const base = new RoundedBoxGeometry(0.58, 0.26, 0.27, 2, 0.035);
-    base.translate(sign * 1.02, 0.1, 1.64);
-    stones.push(base);
-    const crown = new THREE.ConeGeometry(0.21, 0.62, 4);
-    crown.rotateX(-Math.PI / 2);
-    crown.translate(sign * 1.02, 0.12, -0.73);
-    stones.push(crown.toNonIndexed());
-  }
-  const threshold = new RoundedBoxGeometry(2.43, 0.19, 0.23, 2, 0.03);
-  threshold.translate(0, 0.08, 1.64);
-  stones.push(threshold);
-  // All stone blocks are merged into one draw call.
-  const normalized = stones.map((g) => (g.index ? g.toNonIndexed() : g));
-  const geometry = mergeGeometries(normalized, false)!;
-  for (const g of new Set([...stones, ...normalized])) g.dispose();
-  const detail = surfaceDetail("stone");
-  const stoneMaterial = simple
-    ? new THREE.MeshPhongMaterial({
-        color: "#4b5147",
-        map: detail.albedo,
-        normalMap: detail.normal,
-        normalScale: new THREE.Vector2(0.6, 0.6),
-        shininess: 2,
-        specular: new THREE.Color("#181b15"),
-      })
-    : new THREE.MeshStandardMaterial({
-        color: "#4b5147",
-        map: detail.albedo,
-        normalMap: detail.normal,
-        normalScale: new THREE.Vector2(0.7, 0.7),
-        roughnessMap: detail.roughness,
-        roughness: 0.96,
-      });
-  const stone = new THREE.Mesh(geometry, stoneMaterial);
-  stone.castShadow = stone.receiveShadow = true;
-  group.add(stone);
-  const runeMaterial = new THREE.MeshBasicMaterial({ color: "#b2df72" });
-  for (const sign of [-1, 1])
-    for (let i = 0; i < 4; i++) {
-      const glyph = new THREE.Mesh(
-        new THREE.TorusGeometry(0.047, 0.009, 3, 4),
-        runeMaterial,
-      );
-      glyph.rotation.x = -Math.PI / 2;
-      glyph.rotation.z = i * 0.4;
-      glyph.position.set(sign * 1.025, 0.225, 0.96 - i * 0.39);
-      group.add(glyph);
-    }
-  const light = new THREE.PointLight("#8ede44", 0.85, 2.6, 2);
-  light.position.set(0, 0.55, 0.05);
-  group.add(light);
-  return {
-    group,
-    uniform,
-    material,
-    light,
-    textures: [detail.normal, detail.roughness, detail.albedo],
-  };
+export function blankPageCanvas() {
+  const result = canvas();
+  result.ctx.drawImage(paperTextureCanvas(), 0, 0);
+  return result.element;
 }
