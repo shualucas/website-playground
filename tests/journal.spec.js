@@ -124,11 +124,15 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   await openBook(page);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const before = await state(page);
+  const started = Date.now();
   await page.getByRole("button", { name: "Next project" }).click();
   await expect(stage(page)).toHaveAttribute("data-phase", "turning");
+  await page.waitForTimeout(600);
+  expect(Number((await state(page)).turnProgress)).toBeLessThan(0.99);
   const targetArtwork = (await state(page)).turnBackArtwork;
   await ready(page);
   const after = await state(page);
+  expect(Date.now() - started).toBeGreaterThan(1500);
   expect(after.leftArtwork).toBe(targetArtwork);
   expect(after.rightArtwork).toBe(before.rightArtwork);
   expect(after.camera).toBe(before.camera);
@@ -141,7 +145,7 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   expect((await state(page)).project).toBe("0");
 });
 
-test("opening uses more blank leaves in the same duration and R restores the book", async ({
+test("opening slows its blank leaves and R restores the book", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -159,7 +163,9 @@ test("opening uses more blank leaves in the same duration and R restores the boo
   const camera = (await state(page)).camera;
   await page.keyboard.press("r");
   await expect(stage(page)).toHaveAttribute("data-phase", "dropping");
-  await ready(page);
+  await expect(stage(page)).toHaveAttribute("data-phase", "ready", {
+    timeout: 45000,
+  });
   const samples = await page.evaluate(() => window.opening);
   expect(samples.some((s) => Number(s.dust) > 0)).toBe(true);
   expect(samples.some((s) => s.phase === "flipping")).toBe(true);
@@ -171,7 +177,7 @@ test("opening uses more blank leaves in the same duration and R restores the boo
       expect(Math.abs(coordinate)).toBeLessThan(0.98);
   const final = await state(page);
   expect(Number(final.riffleCount)).toBe(64);
-  expect(Number(final.duration)).toBe(5.35);
+  expect(Number(final.duration)).toBe(7.4);
   expect(final.project).toBe("0");
   expect(JSON.parse(final.bookPosition)).toEqual([0, 0, 0]);
 });

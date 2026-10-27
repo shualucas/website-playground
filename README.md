@@ -22,7 +22,7 @@ Fonts and assets are local. Leather, parchment, surface detail, window reflectio
 - Click the arrows on the left page, or use Left/Right keys, to turn projects. Dragging is reserved for moving the book.
 - Click/tap the ASCII portal or case-study link to open the reading dialog. Escape closes it.
 - **R** resets the book’s placement and replays the opening from the first project. Space or Escape skips an opening/turn.
-- The opening remains 5.35 seconds of animation time. It now riffles 64 leaves instead of 22. Riffled faces are blank; the final leaf reveals the first project.
+- The opening runs for 7.4 seconds of animation time, keeping its 64 blank leaves but spacing their turns more calmly. Individual project turns take roughly two seconds, with a slower outer-edge follow-through. Riffled faces are blank; the final leaf reveals the first project.
 - Turning and resting pages share the exact same captured artwork, matching geometry/material settings, and render resolution. The right-page ASCII animation is part of that same page texture, so it moves with the paper.
 - The camera stays fixed through the opening, page turns, and pickup; it only reframes on viewport resize. Pickup is constrained to keep the book visible.
 - Window-like daylight, cool room fill, and contact shadows anchor the book to the table. A small dust puff appears on impact, including after dropping a moved book.
@@ -44,6 +44,7 @@ Project URLs are shareable as `?project=first-project` or another entry ID. Relo
 
 - `src/book/BookScene.ts`: physical book, fixed framing, opening/turn choreography, shared printed surfaces, pickup, raycasting, contact/dust placement, lifecycle and cleanup.
 - `src/book/binding.ts`: curved leather spine, continuous parchment saddle, sewn threads, and compressed inner paper edges.
+- `src/book/page-turn.ts`: reference-informed 30-section articulation, separately shaped inner/outer curves and corner fold, and slower frame-rate-independent damping.
 - `src/book/motion.ts`: damped pickup, gravity, friction, and a small landing rebound.
 - `src/book/ascii.ts`: animated arched portal made from real monospace characters and shaded cells.
 - `src/book/materials.ts`: leather, parchment, page edges, and captured page artwork.

@@ -2,6 +2,16 @@ import * as THREE from "three";
 import { surfaceDetail, studioEnvironment, roundedSlab } from "./surfaces";
 import { ImpactDust, contactShadow } from "./effects";
 import { AsciiPortal } from "./ascii";
+import {
+  advancePageTurn,
+  pageJoints,
+  PAGE_JOINTS,
+  OPENING,
+  LAST_LEAF_START,
+  PORTAL_REVEAL,
+  PRINT_REVEAL,
+  TRANSFER_END,
+} from "./page-turn";
 import { BookMotion } from "./motion";
 import { createBinding, shapeInnerEdge, gutterDip } from "./binding";
 import {
@@ -21,7 +31,7 @@ import {
   blankPageCanvas,
   type Project,
 } from "./materials";
-const END = 5.35;
+const END = OPENING.end;
 const ease = (x: number) => {
   const p = THREE.MathUtils.clamp(x, 0, 1);
   return p * p * p * (p * (p * 6 - 15) + 10);
@@ -438,15 +448,16 @@ export class BookScene {
       new THREE.CanvasTexture(this.paperCanvas),
     ) as THREE.CanvasTexture;
     this.blank.colorSpace = THREE.SRGBColorSpace;
-    for (let i = 0; i < 64; i++) {
+    for (let i = 0; i < OPENING.count; i++) {
       const sheet = this.makeSheet(
         this.blank,
-        i === 63 ? this.getPage(0, "left") : this.blank,
+        i === OPENING.count - 1 ? this.getPage(0, "left") : this.blank,
         28,
         6,
       );
-      sheet.start = 2.05 + i * (1.491 / 63);
-      sheet.duration = i === 63 ? 1.65 : 0.31;
+      sheet.start = OPENING.riffleStart + i * OPENING.step;
+      sheet.duration =
+        i === OPENING.count - 1 ? OPENING.lastDuration : OPENING.leafDuration;
       this.sheets.push(sheet);
     }
     this.turnSheet = this.makeSheet(
@@ -528,7 +539,6 @@ export class BookScene {
     baseY = SURFACE + 0.018,
   ) {
     const p = clamp(progress, 0, 1),
-      theta = Math.PI * (direction > 0 ? p : 1 - p),
       arc = Math.sin(Math.PI * p);
     const geometry = sheet.mesh.geometry,
       pos = geometry.attributes.position;
@@ -536,19 +546,21 @@ export class BookScene {
       rows = geometry.parameters.heightSegments,
       dx = (W - 0.055) / cols;
     for (let row = 0; row <= rows; row++) {
-      const v = row / rows;
+      const v = row / rows,
+        joints = pageJoints(p, direction, v, twist);
       let x = 0.012,
         y = baseY;
       for (let col = 0; col <= cols; col++) {
         const u = col / cols;
         if (col > 0) {
           const s = (col - 0.5) / cols;
-          const angle = clamp(
-            theta +
-              arc * (s - 0.5) * 4.1 +
-              twist * (v - 0.5) * Math.pow(s, 1.6) * arc,
-            0,
-            Math.PI,
+          const joint = s * PAGE_JOINTS,
+            index = Math.min(PAGE_JOINTS - 1, Math.floor(joint)),
+            weight = joint - index;
+          const angle = THREE.MathUtils.lerp(
+            joints[index],
+            joints[index + 1],
+            weight,
           );
           x += Math.cos(angle) * dx;
           y += Math.sin(angle) * dx;
@@ -618,7 +630,7 @@ export class BookScene {
         ? "dropping"
         : t < 2.05
           ? "opening"
-          : t < 3.7
+          : t < LAST_LEAF_START
             ? "flipping"
             : "settling",
     );
@@ -626,7 +638,9 @@ export class BookScene {
   }
   private poseIntro(t: number) {
     const cover = ease((t - 1.02) / 1.48),
-      transfer = ease((t - 2.05) / 2.65);
+      transfer = ease(
+        (t - OPENING.riffleStart) / (TRANSFER_END - OPENING.riffleStart),
+      );
     const impact = t - 0.59;
     const height =
       t < 0.59
@@ -668,9 +682,9 @@ export class BookScene {
           ) + 0.018,
         );
     }
-    this.leftSurface.mesh.visible = t > 5.05;
+    this.leftSurface.mesh.visible = t > PRINT_REVEAL;
     this.rightSurface.mesh.visible = true;
-    this.updatePortal(this.portalTime, t > 4.35);
+    this.updatePortal(this.portalTime, t > PORTAL_REVEAL);
     this.syncRig();
   }
   skip = () => {
@@ -776,21 +790,9 @@ export class BookScene {
   private stepTurn(dt: number) {
     const turn = this.turn;
     if (!turn) return;
-    const stiffness = turn.released ? 158 : 520,
-      damping = turn.released ? 23 : 43,
-      half = damping / 2,
-      omega = Math.sqrt(stiffness - half * half),
-      time = Math.min(Math.max(dt, 0), 1),
-      offset = turn.progress - turn.target,
-      coefficient = (turn.velocity + half * offset) / omega,
-      decay = Math.exp(-half * time),
-      cos = Math.cos(omega * time),
-      sin = Math.sin(omega * time);
-    turn.progress = turn.target + decay * (offset * cos + coefficient * sin);
-    turn.velocity =
-      decay *
-      (turn.velocity * cos -
-        ((half * turn.velocity + stiffness * offset) / omega) * sin);
+    const next = advancePageTurn(turn.progress, turn.velocity, turn.target, dt);
+    turn.progress = next.progress;
+    turn.velocity = next.velocity;
     const p = clamp(turn.progress, 0, 1);
     this.bend(this.turnSheet, p, turn.direction, turn.twist, SURFACE + 0.021);
     // Real depth occlusion now handles both resting and turning printed faces.
@@ -1155,7 +1157,7 @@ export class BookScene {
       this.dust.update(this.dropAge, this.motion.matches);
     }
     if (!this.motion.matches) this.portalTime += Math.min(dt, 0.12);
-    this.updatePortal(this.portalTime, this.elapsed >= 4.35);
+    this.updatePortal(this.portalTime, this.elapsed >= PORTAL_REVEAL);
     this.render();
     this.schedule();
   };
