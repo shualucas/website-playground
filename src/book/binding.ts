@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { PAGE_HEIGHT as H, SURFACE } from "./materials";
 type Surface = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
-export const gutterDip = (x: number) => -0.12 * Math.exp(-((x / 0.15) ** 2));
+export const gutterDip = (x: number) => -0.075 * Math.exp(-((x / 0.15) ** 2));
 export function createBinding(
   leather: Surface,
   paper: Surface,
@@ -21,6 +21,7 @@ export function createBinding(
     curveSegments: 18,
     steps: 1,
   });
+  backGeometry.scale(1, SURFACE / 0.73, 1);
   backGeometry.translate(0, 0, -(H + 0.16) / 2);
   const spine = new THREE.Mesh(backGeometry, leather);
   spine.castShadow = spine.receiveShadow = true;
@@ -32,9 +33,9 @@ export function createBinding(
   const threadBases: Float32Array[] = [];
   for (const z of [-1.85, -0.93, 0, 0.93, 1.85]) {
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.14, 0.704, z),
-      new THREE.Vector3(0, 0.635, z + 0.018),
-      new THREE.Vector3(0.14, 0.704, z),
+      new THREE.Vector3(-0.14, SURFACE - 0.026, z),
+      new THREE.Vector3(0, SURFACE - 0.095, z + 0.018),
+      new THREE.Vector3(0.14, SURFACE - 0.026, z),
     ]);
     const tube = new THREE.TubeGeometry(curve, 18, 0.005, 5, false);
     threadBases.push(new Float32Array(tube.attributes.position.array));

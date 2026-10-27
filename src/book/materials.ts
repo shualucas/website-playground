@@ -2,8 +2,8 @@ import * as THREE from "three";
 
 export const PAGE_WIDTH = 3.35,
   PAGE_HEIGHT = 4.7,
-  STACK = 0.61,
-  SURFACE = 0.73;
+  STACK = 0.32,
+  SURFACE = 0.44;
 export interface Project {
   title: string;
   subtitle: string;
@@ -55,83 +55,51 @@ function grain(
     );
   }
 }
-export function leatherTexture(detail?: THREE.DataTexture) {
+/** Unlettered charcoal bookcloth, with fine woven threads and a restrained edge seam. */
+export function clothTexture() {
   const { element, ctx } = canvas();
-  ctx.fillStyle = "#38271e";
+  ctx.fillStyle = "#24232d";
   ctx.fillRect(0, 0, 900, 1260);
-  grain(ctx, 900, 1260, true);
-  if (detail) {
-    const source = document.createElement("canvas");
-    source.width = source.height = 512;
-    source
-      .getContext("2d")!
-      .putImageData(
-        new ImageData(
-          new Uint8ClampedArray(detail.image.data as Uint8Array),
-          512,
-          512,
-        ),
-        0,
-        0,
-      );
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-    ctx.scale(900 / (512 * 2.3), 1260 / (512 * 3.2));
-    ctx.fillStyle = ctx.createPattern(source, "repeat")!;
-    ctx.fillRect(0, 0, 512 * 2.3, 512 * 3.2);
-    ctx.restore();
+  for (let y = 0; y < 1260; y += 3) {
+    ctx.strokeStyle = y % 6 ? "#ffffff0b" : "#00000020";
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(900, y);
+    ctx.stroke();
   }
-
-  ctx.strokeStyle = "#98774a";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.roundRect(49, 49, 802, 1162, 46);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(62, 62, 776, 1136, 35);
-  ctx.stroke();
-  ctx.setLineDash([3, 7]);
-  ctx.strokeStyle = "#6e5036";
-  ctx.beginPath();
-  ctx.roundRect(28, 28, 844, 1204, 57);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  for (const [x, y] of [
-    [95, 95],
-    [805, 95],
-    [95, 1165],
-    [805, 1165],
-  ]) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.PI / 4);
-    ctx.strokeStyle = "#af8a50";
-    ctx.strokeRect(-20, -20, 40, 40);
-    ctx.strokeRect(-12, -12, 24, 24);
-    ctx.restore();
+  for (let x = 0; x < 900; x += 3) {
+    ctx.strokeStyle = x % 6 ? "#ffffff08" : "#00000018";
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 1260);
+    ctx.stroke();
   }
+  ctx.strokeStyle = "#ffffff10";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(20, 20, 860, 1220, 18);
+  ctx.stroke();
   return texture(element);
 }
 export function paperTexture() {
   const { element, ctx } = canvas();
   ctx.drawImage(paperTextureCanvas(), 0, 0);
   const g = ctx.createLinearGradient(0, 0, 900, 0);
-  g.addColorStop(0, "#6e542536");
-  g.addColorStop(0.08, "#eadfc100");
-  g.addColorStop(0.9, "#eadfc100");
-  g.addColorStop(1, "#93723a20");
+  g.addColorStop(0, "#4e4b581c");
+  g.addColorStop(0.08, "#f5f3ed00");
+  g.addColorStop(0.9, "#f5f3ed00");
+  g.addColorStop(1, "#b4b1bd0d");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 900, 1260);
   return texture(element);
 }
 export function edgeTexture() {
   const { element, ctx } = canvas(512, 1024);
-  ctx.fillStyle = "#d5c39e";
+  ctx.fillStyle = "#e8e7e3";
   ctx.fillRect(0, 0, 512, 1024);
   for (let i = 0; i < 110; i++) {
     const y = (i * 1024) / 110;
-    ctx.fillStyle = i % 4 ? "#89704e66" : "#fff2d78c";
+    ctx.fillStyle = i % 4 ? "#85839040" : "#ffffff9c";
     ctx.fillRect(0, y, 512, i % 4 ? 1 : 2);
   }
   grain(ctx, 512, 1024);
@@ -234,7 +202,7 @@ let paperCanvas: HTMLCanvasElement | undefined;
 function paperTextureCanvas() {
   if (!paperCanvas) {
     const { element, ctx } = canvas();
-    ctx.fillStyle = "#eee2c5";
+    ctx.fillStyle = "#f6f5f0";
     ctx.fillRect(0, 0, 900, 1260);
     grain(ctx, 900, 1260);
     let seed = 17;
@@ -247,7 +215,7 @@ function paperTextureCanvas() {
         y = random() * 1260,
         angle = random() * Math.PI * 2,
         length = 2 + random() * 15;
-      ctx.strokeStyle = i % 3 ? "rgba(107,86,49,.10)" : "rgba(255,250,230,.34)";
+      ctx.strokeStyle = i % 3 ? "rgba(98,95,105,.035)" : "rgba(255,255,255,.3)";
       ctx.lineWidth = 0.4 + random() * 0.7;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -268,7 +236,7 @@ function paperTextureCanvas() {
     }
     c.putImageData(pixels, 0, 0);
     ctx.save();
-    ctx.globalAlpha = 0.15;
+    ctx.globalAlpha = 0.025;
     ctx.filter = "blur(13px)";
     ctx.drawImage(clouds, 0, 0, 900, 1260);
     ctx.restore();

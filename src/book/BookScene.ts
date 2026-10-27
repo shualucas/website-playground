@@ -18,13 +18,12 @@ import {
   CSS3DObject,
   CSS3DRenderer,
 } from "three/addons/renderers/CSS3DRenderer.js";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import {
   PAGE_WIDTH as W,
   PAGE_HEIGHT as H,
   STACK,
   SURFACE,
-  leatherTexture,
+  clothTexture,
   paperTexture,
   edgeTexture,
   pageTexture,
@@ -45,13 +44,15 @@ type Phase =
   | "ready"
   | "carrying"
   | "falling"
-  | "turning";
+  | "turning"
+  | "closing";
 type Callbacks = {
   onPhase: (phase: Phase) => void;
   onIndex: (index: number) => void;
   projects: Project[];
   onSpread: (left: number, right: number) => void;
   onOpen: () => void;
+  onView?: (page: number) => void;
   printPages?: HTMLCanvasElement[];
 };
 type Sheet = {
@@ -82,7 +83,7 @@ type Grip = {
   moved: boolean;
 };
 
-/** Fixed-camera spellbook. Pointer motion bends a real segmented leaf; release uses a damped spring. */
+/** Fixed-camera studio book with shared printed surfaces, articulated leaves, and whole-book pickup. */
 export class BookScene {
   leftPage = document.createElement("div");
   rightPage = document.createElement("div");
@@ -125,6 +126,11 @@ export class BookScene {
   private index = 0;
   private turn: Turn | null = null;
   private grip: Grip | null = null;
+  private openAmount = 1;
+  private coverBack = false;
+  private coverMotion: { from: number; to: number; elapsed: number } | null =
+    null;
+  private selectedPage: number | null = null;
   private software = false;
   private disposed = false;
   private visible = true;
@@ -172,6 +178,7 @@ export class BookScene {
     this.scene.environmentIntensity = 0.72;
     this.scene.add(this.rig, this.dust.mesh, this.contact.mesh);
     this.keep(this.contact.texture);
+    this.contact.mesh.position.y = -1.45;
     this.rightTexture.colorSpace = THREE.SRGBColorSpace;
     this.keep(this.rightTexture);
     this.updatePortal(0);
@@ -213,9 +220,9 @@ export class BookScene {
     else this.schedule();
   }
   private light() {
-    this.scene.add(new THREE.HemisphereLight("#edf4ff", "#a99475", 0.75));
-    const key = new THREE.DirectionalLight("#fff2db", 2.5);
-    key.position.set(-3.8, 8, -4.5);
+    this.scene.add(new THREE.HemisphereLight("#f1eeff", "#4b435f", 1.1));
+    const key = new THREE.DirectionalLight("#fffaff", 2.7);
+    key.position.set(-3, 8, 4);
     key.castShadow = true;
     key.shadow.mapSize.set(
       this.software ? 512 : 1024,
@@ -241,7 +248,7 @@ export class BookScene {
       new THREE.ShadowMaterial({ opacity: 0.16 }),
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.18;
+    floor.position.y = -1.5;
     floor.receiveShadow = true;
     this.scene.add(floor);
   }
@@ -294,93 +301,74 @@ export class BookScene {
     });
   }
   private buildBook() {
-    const leatherDetail = surfaceDetail("leather"),
+    const clothDetail = surfaceDetail("cloth"),
       paperDetail = surfaceDetail("paper");
-    for (const detail of [leatherDetail, paperDetail])
+    for (const detail of [clothDetail, paperDetail])
       for (const map of Object.values(detail)) this.keep(map);
-    const leather = this.keep(leatherTexture(leatherDetail.albedo)),
+    const cloth = this.keep(clothTexture()),
       paper = this.keep(paperTexture()),
       edges = this.keep(edgeTexture());
-    const brown = this.surface({
-      color: "#4c3223",
-      map: leatherDetail.albedo,
-      normalMap: leatherDetail.normal,
-      normalScale: new THREE.Vector2(0.65, 0.65),
-      roughnessMap: leatherDetail.roughness,
+    const bindingCover = this.surface({
+      color: "#292731",
+      map: clothDetail.albedo,
+      normalMap: clothDetail.normal,
+      normalScale: new THREE.Vector2(0.2, 0.2),
+      roughnessMap: clothDetail.roughness,
       roughness: 0.86,
       sheen: this.software ? 0 : 0.12,
-      sheenColor: new THREE.Color("#997450"),
+      sheenColor: new THREE.Color("#77718c"),
     });
     const cover = this.surface({
-      map: leather,
-      normalMap: leatherDetail.normal,
-      normalScale: new THREE.Vector2(0.72, 0.72),
-      roughnessMap: leatherDetail.roughness,
+      map: cloth,
+      normalMap: clothDetail.normal,
+      normalScale: new THREE.Vector2(0.24, 0.24),
+      roughnessMap: clothDetail.roughness,
       roughness: 0.79,
       clearcoat: this.software ? 0 : 0.08,
       clearcoatRoughness: 0.65,
       sheen: this.software ? 0 : 0.16,
-      sheenColor: new THREE.Color("#997450"),
+      sheenColor: new THREE.Color("#77718c"),
     });
     const liner = this.surface({
-      color: "#604a32",
-      map: leatherDetail.albedo,
-      normalMap: leatherDetail.normal,
+      color: "#302d3a",
+      map: clothDetail.albedo,
+      normalMap: clothDetail.normal,
       normalScale: new THREE.Vector2(0.35, 0.35),
       roughness: 0.93,
     });
-    const materials = [cover, liner, brown];
+    const materials = [cover, liner, bindingCover];
     const bottom = new THREE.Mesh(
-      roundedSlab(W + 0.25, H + 0.3, 0.23, 0.28, 0.045),
-      [liner, cover, brown],
+      roundedSlab(W + 0.14, H + 0.16, 0.14, 0.09, 0.025),
+      [liner, cover, bindingCover],
     );
     bottom.position.set(W / 2, -0.035, 0);
     bottom.castShadow = bottom.receiveShadow = true;
     this.rig.add(bottom);
     const top = new THREE.Mesh(
-      roundedSlab(W + 0.25, H + 0.3, 0.23, 0.28, 0.045),
+      roundedSlab(W + 0.14, H + 0.16, 0.14, 0.09, 0.025),
       materials,
     );
     top.position.x = W / 2;
     top.castShadow = top.receiveShadow = true;
     this.lid.add(top);
     this.rig.add(this.lid);
-    const brass = this.surface({
-      color: "#b09a72",
-      metalness: 0.92,
-      roughness: 0.29,
-      envMapIntensity: 1.6,
-      normalMap: paperDetail.normal,
-      normalScale: new THREE.Vector2(0.055, 0.055),
-    });
-    // Raised corner fittings move with the lid, without any cover lettering.
-    for (const x of [0.17, W - 0.17])
-      for (const z of [-H / 2 + 0.12, H / 2 - 0.12]) {
-        const fitting = new THREE.Mesh(
-          new RoundedBoxGeometry(0.27, 0.06, 0.3, 3, 0.025),
-          brass,
-        );
-        fitting.position.set(x, 0.13, z);
-        fitting.castShadow = true;
-        this.lid.add(fitting);
-      }
     const pageMat = this.surface({
       map: paper,
       normalMap: paperDetail.normal,
-      normalScale: new THREE.Vector2(0.24, 0.24),
+      normalScale: new THREE.Vector2(0.09, 0.09),
       roughnessMap: paperDetail.roughness,
-      roughness: 1,
+      roughness: 0.6,
     });
     this.binding = createBinding(
-      brown,
+      bindingCover,
       pageMat,
-      this.surface({ color: "#b49b6c", roughness: 1 }),
+      this.surface({ color: "#aaa5b6", roughness: 1 }),
     );
     this.spine = this.binding.spine;
     this.rig.add(this.spine, this.binding.fold, this.binding.seams);
     const edgeMat = this.surface({
       map: edges,
-      color: "#eadabd",
+      color: "#f5f4ef",
       roughness: 1,
     });
     const stack = (sign: number) => {
@@ -388,7 +376,7 @@ export class BookScene {
       group.position.y = 0.1;
       const block = new THREE.Mesh(
         shapeInnerEdge(
-          roundedSlab(W - 0.035, H - 0.025, STACK, 0.21, 0.025),
+          roundedSlab(W - 0.035, H - 0.025, STACK, 0.065, 0.018),
           (sign * W) / 2,
           STACK,
         ),
@@ -399,13 +387,13 @@ export class BookScene {
       group.add(block);
       // Additional thin, uneven signatures make the fore-edge read as hundreds of leaves.
       const signatureMat = this.surface({
-        color: "#d8c5a0",
+        color: "#d6d4db",
         roughness: 1,
       });
       for (let i = 0; i < 9; i++) {
         const signature = new THREE.Mesh(
           shapeInnerEdge(
-            roundedSlab(W - 0.04, H - 0.025, 0.012, 0.21, 0.002),
+            roundedSlab(W - 0.04, H - 0.025, 0.012, 0.065, 0.002),
             (sign * W) / 2,
             0.012,
             (i + 1) / 10,
@@ -425,25 +413,6 @@ export class BookScene {
     this.rightStack = stack(1);
     this.leftStack = stack(-1);
     this.rig.add(this.rightStack, this.leftStack);
-    const ribbonShape = new THREE.Shape();
-    ribbonShape.moveTo(-0.09, 0);
-    ribbonShape.lineTo(0.09, 0);
-    ribbonShape.lineTo(0.09, 0.63);
-    ribbonShape.lineTo(0, 0.53);
-    ribbonShape.lineTo(-0.09, 0.63);
-    ribbonShape.closePath();
-    const ribbon = new THREE.Mesh(
-      new THREE.ShapeGeometry(ribbonShape),
-      this.surface({
-        color: "#556b3b",
-        side: THREE.DoubleSide,
-        roughness: 0.8,
-      }),
-    );
-    ribbon.rotation.x = Math.PI / 2;
-    ribbon.position.set(0.35, 0.2, H / 2 - 0.03);
-    ribbon.castShadow = true;
-    this.rig.add(ribbon);
     this.blank = this.keep(
       new THREE.CanvasTexture(this.paperCanvas),
     ) as THREE.CanvasTexture;
@@ -510,7 +479,9 @@ export class BookScene {
     );
     const material = this.surface({
       map: front,
-      roughness: 0.97,
+      roughness: 0.38,
+      clearcoat: this.software ? 0 : 0.15,
+      clearcoatRoughness: 0.35,
       side: THREE.DoubleSide,
     });
     const backUniform = { value: back };
@@ -569,7 +540,7 @@ export class BookScene {
         pos.setXYZ(
           i,
           x,
-          y + gutterDip(x),
+          y + gutterDip(x) + 0.11 * Math.sin(u * Math.PI) * (1 - arc),
           (v - 0.5) * (H - 0.055) + Math.sin(u * Math.PI) * arc * twist * 0.06,
         );
       }
@@ -604,6 +575,7 @@ export class BookScene {
     this.printRig.quaternion.copy(this.rig.quaternion);
   }
   private setOpen() {
+    this.openAmount = 1;
     this.rig.position.set(this.table.x, 0, this.table.y);
     this.rig.rotation.set(0, 0, 0);
     this.lid.rotation.z = Math.PI;
@@ -657,7 +629,7 @@ export class BookScene {
         ? 0.07 * Math.exp(-(t - 2.5) * 5) * Math.abs(Math.sin((t - 2.5) * 12))
         : 0;
     this.lid.rotation.z = Math.PI * cover - coverBounce;
-    this.lid.position.y = 1.43 * (1 - cover) - 0.035 * cover;
+    this.lid.position.y = (STACK * 2 + 0.21) * (1 - cover) - 0.035 * cover;
     this.rightStack.scale.y = 2 - transfer;
     this.leftStack.visible = transfer > 0.001;
     this.leftStack.scale.y = Math.max(0.001, transfer);
@@ -693,6 +665,8 @@ export class BookScene {
     this.leftPage.style.clipPath = "none";
     this.rightPage.style.clipPath = "none";
     this.turn = null;
+    this.coverMotion = null;
+    this.selectedPage = null;
     this.releaseCapture();
     if (this.mass.state !== "rest") {
       this.table.set(this.mass.position.x, this.mass.position.z);
@@ -703,6 +677,7 @@ export class BookScene {
     this.setOpen();
     this.setPrint(true, true);
     this.dust.update(-1);
+    this.callbacks.onView?.(this.index);
     this.setPhase("ready");
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
@@ -711,6 +686,10 @@ export class BookScene {
   replay = () => {
     this.releaseCapture();
     this.index = 0;
+    this.selectedPage = null;
+    this.coverMotion = null;
+    this.openAmount = 1;
+    this.callbacks.onView?.(0);
     this.callbacks.onIndex(0);
     this.turn = null;
     this.turnSheet.mesh.visible = false;
@@ -733,7 +712,7 @@ export class BookScene {
     this.schedule();
   };
   private beginTurn(direction: number, manual = false) {
-    if (this.phase !== "ready") return false;
+    if (this.phase !== "ready" || this.openAmount < 1) return false;
     const destination = this.index + direction;
     if (destination < 0 || destination >= this.callbacks.projects.length)
       return false;
@@ -769,7 +748,109 @@ export class BookScene {
     this.schedule();
     return true;
   }
+  /** A single target keeps rapid navigation changes ordered without losing a page. */
+  goTo(page: number) {
+    if (this.grip || this.mass.state !== "rest") return;
+    const target = clamp(page, -1, this.callbacks.projects.length);
+    if (this.elapsed < END) this.skip();
+    this.selectedPage = target;
+    this.advanceSelection();
+    if (this.motion.matches) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.render();
+    }
+    this.schedule();
+  }
+  private advanceSelection() {
+    const target = this.selectedPage;
+    if (
+      target === null ||
+      this.turn ||
+      this.coverMotion ||
+      this.phase !== "ready"
+    )
+      return;
+    const closed = target === -1 || target === this.callbacks.projects.length;
+    if (this.openAmount === 0) {
+      if (closed && this.coverBack === (target !== -1)) {
+        this.selectedPage = null;
+        return;
+      }
+      this.startCover(1);
+      return;
+    }
+    const destination =
+      target === -1 ? 0 : Math.min(target, this.callbacks.projects.length - 1);
+    if (this.index !== destination) {
+      if (this.motion.matches) {
+        this.index = destination;
+        this.callbacks.onIndex(destination);
+        this.callbacks.onSpread(destination, destination);
+        this.refreshSurfaces();
+      } else {
+        this.beginTurn(Math.sign(destination - this.index));
+        return;
+      }
+    }
+    if (closed) {
+      this.coverBack = target !== -1;
+      this.startCover(0);
+    } else {
+      this.selectedPage = null;
+      this.callbacks.onView?.(this.index);
+    }
+  }
+  private startCover(to: number) {
+    this.coverMotion = { from: this.openAmount, to, elapsed: 0 };
+    this.setPhase(to ? "opening" : "closing");
+    if (this.motion.matches) this.stepCover(2);
+  }
+  private poseCover(amount: number) {
+    this.openAmount = amount;
+    this.rig.position.set(
+      this.table.x - (W / 2) * (1 - amount),
+      0,
+      this.table.y,
+    );
+    this.lid.rotation.z = Math.PI * amount;
+    this.lid.position.y = (STACK * 2 + 0.21) * (1 - amount) - 0.035 * amount;
+    this.rightStack.scale.y = 2 - amount;
+    this.leftStack.scale.y = Math.max(0.001, amount);
+    this.leftStack.visible = amount > 0.001;
+    this.binding.update(
+      0.12 + STACK * amount,
+      0.12 + STACK * (2 - amount),
+      amount,
+    );
+    this.leftSurface.mesh.visible = this.rightSurface.mesh.visible =
+      amount > 0.999;
+    this.setPrint(amount > 0.999, amount > 0.999);
+    this.syncRig();
+  }
+  private stepCover(dt: number) {
+    const motion = this.coverMotion;
+    if (!motion) return;
+    motion.elapsed += dt;
+    const p = Math.min(1, motion.elapsed / 1.65);
+    this.poseCover(THREE.MathUtils.lerp(motion.from, motion.to, ease(p)));
+    if (p === 1) {
+      this.coverMotion = null;
+      this.setPhase("ready");
+      this.callbacks.onView?.(
+        motion.to
+          ? this.index
+          : this.coverBack
+            ? this.callbacks.projects.length
+            : -1,
+      );
+      this.advanceSelection();
+    }
+  }
   turnPage(direction: number) {
+    if (this.openAmount < 1) {
+      this.goTo(this.coverBack ? this.callbacks.projects.length - 1 : 0);
+      return true;
+    }
     if (this.motion.matches) {
       const next = this.index + direction;
       if (
@@ -838,7 +919,7 @@ export class BookScene {
   }
   private onDown = (e: PointerEvent) => {
     this.suppressClick = false;
-    if (e.button !== 0 || this.phase !== "ready") return;
+    if (e.button !== 0 || this.phase !== "ready" || this.openAmount < 1) return;
     const hit = this.bookHit(e);
     if (!hit) return;
     this.grip = {
@@ -1070,10 +1151,11 @@ export class BookScene {
   private fitCamera() {
     const rect = this.host.getBoundingClientRect(),
       aim = new THREE.Vector3(0, 0.52, 0),
-      direction = new THREE.Vector3(0, 0.972, 0.235).normalize();
+      direction = new THREE.Vector3(0.22, 0.75, 0.69).normalize();
     const measure = (distance: number) => {
       this.camera.clearViewOffset();
       this.camera.position.copy(direction).multiplyScalar(distance).add(aim);
+      this.camera.up.set(0.04, 1, 0);
       this.camera.lookAt(aim);
       this.camera.updateProjectionMatrix();
       this.camera.updateMatrixWorld(true);
@@ -1093,7 +1175,7 @@ export class BookScene {
     for (let trial = 0; trial < 18; trial++) {
       const distance = (low + high) / 2,
         b = measure(distance);
-      if (b.maxX <= 0.91 && b.maxY - b.minY <= 1.8) high = distance;
+      if (b.maxX <= 0.87 && b.maxY - b.minY <= 1.7) high = distance;
       else low = distance;
     }
     const bounds = measure(high),
@@ -1146,6 +1228,9 @@ export class BookScene {
       this.elapsed += Math.min(dt, 0.25);
       this.updateIntro();
       this.renderer.shadowMap.needsUpdate = true;
+    } else if (this.coverMotion) {
+      this.stepCover(dt);
+      this.renderer.shadowMap.needsUpdate = true;
     } else if (this.mass.state !== "rest") {
       this.stepBook(dt);
       this.renderer.shadowMap.needsUpdate = true;
@@ -1156,6 +1241,7 @@ export class BookScene {
       this.dropAge += dt;
       this.dust.update(this.dropAge, this.motion.matches);
     }
+    if (this.phase === "ready") this.advanceSelection();
     if (!this.motion.matches) this.portalTime += Math.min(dt, 0.12);
     this.updatePortal(this.portalTime, this.elapsed >= PORTAL_REVEAL);
     this.render();
@@ -1199,6 +1285,9 @@ export class BookScene {
     const data = this.host.dataset;
     data.phase = this.phase;
     data.project = String(this.index);
+    data.view =
+      this.openAmount === 0 ? (this.coverBack ? "back" : "cover") : "spread";
+    data.openAmount = this.openAmount.toFixed(4);
     data.leftArtwork = this.leftSurface.mesh.material.map?.uuid ?? "";
     data.turnBackArtwork = this.turnSheet.back.value.uuid;
     data.rightArtwork = this.rightTexture.uuid;
@@ -1264,6 +1353,8 @@ export class BookScene {
     if (
       this.motion.matches &&
       !this.turn &&
+      !this.coverMotion &&
+      this.selectedPage === null &&
       this.mass.state === "rest" &&
       this.elapsed >= END
     )

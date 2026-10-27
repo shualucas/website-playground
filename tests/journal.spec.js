@@ -47,9 +47,10 @@ test("the book has one connected spread and only an ASCII portal on the right", 
   await expect(page.locator(".book-printing .page-verso h1")).toHaveText(
     "Your first great adventure.",
   );
+  await expect(page.locator(".site-header,.site-footer")).toHaveCount(0);
   await expect(
-    page.locator(".site-header,.site-footer,.book-navigation"),
-  ).toHaveCount(0);
+    page.getByRole("navigation", { name: "Book pages" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Enter the project portal" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
@@ -263,4 +264,40 @@ test("the HTML fallback remains book-only and uses an ASCII portal", async ({
   await expect(page.locator(".fallback-book .page-verso h1")).toHaveText(
     "Finding the way forward.",
   );
+});
+
+test("reference-style page pills open both covers and queue project jumps", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await openBook(page);
+  const nav = page.getByRole("navigation", { name: "Book pages" });
+  const camera = (await state(page)).camera;
+  await expect(
+    nav.getByRole("button", { name: "Page 1", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("button", { name: "Cover", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-view", "cover");
+  await expect(
+    nav.getByRole("button", { name: "Cover", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("button", { name: "Page 3", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-view", "spread");
+  await expect(stage(page)).toHaveAttribute("data-project", "2");
+  await nav.getByRole("button", { name: "Back cover", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-view", "back");
+  await nav.getByRole("button", { name: "Page 1", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-project", "0");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await nav.getByRole("button", { name: "Page 3", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-phase", "turning");
+  await nav.getByRole("button", { name: "Page 1", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-phase", "ready", {
+    timeout: 45000,
+  });
+  await expect(stage(page)).toHaveAttribute("data-project", "0");
+  expect((await state(page)).camera).toBe(camera);
+  await expect(
+    nav.getByRole("button", { name: "Page 1", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 });

@@ -44,7 +44,7 @@ function surfaceMap(
   map.needsUpdate = true;
   return map;
 }
-export function surfaceDetail(kind: "leather" | "paper" | "stone") {
+export function surfaceDetail(kind: "leather" | "cloth" | "paper" | "stone") {
   const height = new Float32Array(SIZE * SIZE),
     normal = new Uint8Array(SIZE * SIZE * 4),
     roughness = new Uint8Array(SIZE * SIZE * 4),
@@ -79,7 +79,13 @@ export function surfaceDetail(kind: "leather" | "paper" | "stone") {
           pebble * 0.78 +
           hash(x, y, 11) * 0.08 +
           noise(u * 2, v * 0.4, 14) * 0.14;
-      } else if (kind === "paper")
+      } else if (kind === "cloth")
+        value =
+          0.5 +
+          0.14 * Math.sin((x * Math.PI) / 2) +
+          0.14 * Math.sin((y * Math.PI) / 2) +
+          hash(x, y, 32) * 0.12;
+      else if (kind === "paper")
         value =
           noise(u, v, 20) * 0.42 +
           hash(x, y, 7) * 0.26 +

@@ -1,8 +1,8 @@
 # The Spellbook
 
-A white, full-screen portfolio centered on a textured, rounded Three.js journal. The left page holds project metadata; the right contains only a swirling ASCII portal. Navigation arrows live in the left page’s folio.
+A full-screen portfolio with an angled Three.js book against a purple-to-charcoal studio gradient. Oversized scrolling type sits behind the book, with Cover, Page 1–3, and Back Cover pills below. The left page holds project metadata; the right contains only a swirling ASCII portal.
 
-The leather binding, curved parchment gutter, compressed inner page edges, and sewn threads form one connected book. The cover has no central emblem or lettering.
+Charcoal woven bookcloth, lightly textured white paper, a continuous sewn gutter, and layered page edges form one connected book. The slimmer covers have no emblem, lettering, or brass fittings. The composition and finish follow the Animated Book Slider reference; all textures remain generated locally.
 
 ## Run
 
@@ -13,19 +13,20 @@ npm ci
 npm run dev -- --port 3000
 ```
 
-Fonts and assets are local. Leather, parchment, surface detail, window reflections, and the portal are generated in code; no external model, API key, image service, or font CDN is required.
+Fonts and assets are local. Bookcloth, paper, surface detail, window reflections, and the portal are generated in code; no external model, API key, image service, or font CDN is required.
 
 ## Interaction
 
-- Drag anywhere on the opened book—including a page, the binding, or a page control—to pick up the whole book. Release to drop it onto the table. The current project and open spread stay intact.
+- Drag anywhere on the opened book—including a page, the binding, or a page control—to pick up the whole book. Release to drop it onto the studio plane. The current project and open spread stay intact.
 - A small movement threshold keeps ordinary button clicks working. Mouse and touch use pointer capture, including cancellation and release outside the original target.
+- Use the bottom page pills to select a cover or project. Distant projects turn through intermediate pages, and a new selection safely replaces the queued destination. The cover opens/closes in 1.65 seconds; reduced motion changes views immediately.
 - Click the arrows on the left page, or use Left/Right keys, to turn projects. Dragging is reserved for moving the book.
 - Click/tap the ASCII portal or case-study link to open the reading dialog. Escape closes it.
 - **R** resets the book’s placement and replays the opening from the first project. Space or Escape skips an opening/turn.
 - The opening runs for 7.4 seconds of animation time, keeping its 64 blank leaves but spacing their turns more calmly. Individual project turns take roughly two seconds, with a slower outer-edge follow-through. Riffled faces are blank; the final leaf reveals the first project.
 - Turning and resting pages share the exact same captured artwork, matching geometry/material settings, and render resolution. The right-page ASCII animation is part of that same page texture, so it moves with the paper.
 - The camera stays fixed through the opening, page turns, and pickup; it only reframes on viewport resize. Pickup is constrained to keep the book visible.
-- Window-like daylight, cool room fill, and contact shadows anchor the book to the table. A small dust puff appears on impact, including after dropping a moved book.
+- Studio daylight, cool room fill, and contact shadows anchor the book to the table. A small dust puff appears on impact, including after dropping a moved book.
 - Reduced motion starts directly on the first spread and freezes the portal. Explicit pickup/drop remains available; page-button navigation changes immediately.
 - Rendering pauses off-screen and while the document is hidden. Software WebGL uses simpler normal-mapped lighting; GPU rendering retains physical materials and filtered reflections.
 - Without WebGL, a usable HTML spread retains the metadata, ASCII portal, navigation, and reading view.

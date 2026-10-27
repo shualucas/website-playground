@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
+import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/cormorant-garamond/latin-400.css";
 import "@fontsource/cormorant-garamond/latin-500.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
@@ -198,12 +199,14 @@ function App() {
     [phase, setPhase] = useState("dropping"),
     [index, setIndex] = useState(0),
     [fallback, setFallback] = useState(false),
-    [spread, setSpread] = useState({ left: 0, right: 0 });
+    [spread, setSpread] = useState({ left: 0, right: 0 }),
+    [selectedPage, setSelectedPage] = useState(0);
   const project = projects[index],
     busy = phase !== "ready";
   const select = (next) => {
     indexRef.current = next;
     setIndex(next);
+    setSelectedPage(next);
     setSpread({ left: next, right: next });
     const url = new URL(location.href);
     url.searchParams.set("project", projects[next].id);
@@ -219,6 +222,13 @@ function App() {
       if (next >= 0 && next < projects.length) select(next);
     } else engine.current?.turnPage(direction);
   };
+  const navigate = (page) => {
+    if (phase === "carrying" || phase === "falling") return;
+    if (fallback) {
+      if (page >= 0 && page < projects.length) select(page);
+      setSelectedPage(page);
+    } else engine.current?.goTo(page);
+  };
   useEffect(() => {
     let disposed = false;
     const initial = projects.findIndex(
@@ -227,6 +237,7 @@ function App() {
     if (initial >= 0) {
       indexRef.current = initial;
       setIndex(initial);
+      setSelectedPage(initial);
       setSpread({ left: initial, right: initial });
     }
     Promise.all([
@@ -271,6 +282,7 @@ function App() {
             {
               projects,
               onPhase: setPhase,
+              onView: setSelectedPage,
               onIndex: select,
               onSpread: (left, right) => setSpread({ left, right }),
               onOpen: openRead,
@@ -306,6 +318,7 @@ function App() {
         dialog.current?.close();
         engine.current?.replay();
         if (fallback) select(0);
+        setSelectedPage(0);
         return;
       }
       if (dialog.current?.open) return;
@@ -348,10 +361,35 @@ function App() {
   );
   return (
     <main className={`spellbook ${fallback ? "is-fallback" : ""}`}>
+      <div className="scene-marquee" aria-hidden="true">
+        <div className="marquee-track">
+          {[0, 1].map((copy) => (
+            <div className="marquee-copy" key={copy}>
+              <span>Josh Lucas</span>
+              <span className="marquee-outline">Selected work</span>
+              <span className="marquee-light">Product designer</span>
+              <span className="marquee-outline">Play. Create.</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <button
+        className="scene-brand"
+        onClick={() => navigate(-1)}
+        aria-label="Go to book cover"
+      >
+        <span className="brand-monogram">JL.</span>
+        <span className="brand-name">
+          JOSH LUCAS
+          <br />
+          SELECTED WORK
+        </span>
+      </button>
       <p className="sr-only" id="book-instructions">
         Drag anywhere on the book to lift it, move it, and drop it on the table.
-        Click the page arrows or use Left and Right to turn pages. Press R to
-        restart the opening. Select the portal to read the case study.
+        Use the page navigation below, the page arrows, or Left and Right to
+        turn pages. Press R to restart the opening. Select the portal to read
+        the case study.
       </p>
       <div className="print-sources" aria-hidden="true" inert>
         {projects.map((item, i) => (
@@ -385,20 +423,62 @@ function App() {
           {createPortal(right, mounts.right)}
         </>
       )}
-      {fallback && (
+      {fallback && selectedPage >= 0 && selectedPage < projects.length && (
         <div className="fallback-book">
           <div className="printed-page page-verso">{left}</div>
           <div className="printed-page page-recto">{right}</div>
         </div>
       )}
+      {fallback &&
+        (selectedPage === -1 || selectedPage === projects.length) && (
+          <div
+            className="fallback-cover"
+            role="img"
+            aria-label={
+              selectedPage === -1
+                ? "Charcoal cloth front cover"
+                : "Charcoal cloth back cover"
+            }
+          />
+        )}
+      <nav className="book-navigation" aria-label="Book pages">
+        <div className="book-navigation-scroll">
+          {[-1, ...projects.map((_, i) => i), projects.length].map((page) => (
+            <button
+              key={page}
+              aria-current={selectedPage === page ? "page" : undefined}
+              onClick={() => navigate(page)}
+              disabled={
+                (!mounts && !fallback) ||
+                phase === "carrying" ||
+                phase === "falling"
+              }
+            >
+              {page === -1
+                ? "Cover"
+                : page === projects.length
+                  ? "Back cover"
+                  : `Page ${page + 1}`}
+            </button>
+          ))}
+        </div>
+      </nav>
       <span className="sr-only" aria-live="polite">
         {busy
           ? phase === "carrying"
             ? "Book picked up"
             : phase === "falling"
               ? "Book landing"
-              : "The spellbook is opening"
-          : `Chapter ${index + 1} of ${projects.length}: ${project.title.replace("\n", " ")}`}
+              : phase === "closing"
+                ? "The book is closing"
+                : phase === "turning"
+                  ? "Turning the page"
+                  : "The book is opening"
+          : selectedPage === -1
+            ? "Front cover"
+            : selectedPage === projects.length
+              ? "Back cover"
+              : `Chapter ${index + 1} of ${projects.length}: ${project.title.replace("\n", " ")}`}
       </span>
       <dialog
         ref={dialog}
