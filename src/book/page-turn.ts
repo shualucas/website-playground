@@ -7,12 +7,12 @@
 export const PAGE_JOINTS = 30;
 export const TURN_RATE = 4;
 export const OPENING = {
-  end: 7.4,
-  riffleStart: 2.05,
-  step: 0.0475,
-  count: 64,
+  end: 3.4,
+  riffleStart: 1.15,
+  step: 0.11,
+  count: 8,
   leafDuration: 0.62,
-  lastDuration: 2.2,
+  lastDuration: 1.25,
 };
 export const LAST_LEAF_START =
   OPENING.riffleStart + (OPENING.count - 1) * OPENING.step;

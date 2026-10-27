@@ -2,8 +2,8 @@ import * as THREE from "three";
 
 export const PAGE_WIDTH = 3.35,
   PAGE_HEIGHT = 4.7,
-  STACK = 0.32,
-  SURFACE = 0.44;
+  STACK = 0.035,
+  SURFACE = 0.06;
 export interface Project {
   title: string;
   subtitle: string;
@@ -55,30 +55,109 @@ function grain(
     );
   }
 }
-/** Unlettered charcoal bookcloth, with fine woven threads and a restrained edge seam. */
-export function clothTexture() {
-  const { element, ctx } = canvas();
-  ctx.fillStyle = "#24232d";
-  ctx.fillRect(0, 0, 900, 1260);
-  for (let y = 0; y < 1260; y += 3) {
-    ctx.strokeStyle = y % 6 ? "#ffffff0b" : "#00000020";
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(900, y);
-    ctx.stroke();
+export const RISO = { blue: "#2357a5", pink: "#f0518c", paper: "#f1eddc" };
+let printGrain: HTMLCanvasElement | undefined;
+/** A static ink-and-fiber veil is shared by every printed surface. */
+export function applyRisoPrint(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+) {
+  if (!printGrain) {
+    const { element, ctx: grainContext } = canvas(450, 630);
+    let seed = 307;
+    for (let i = 0; i < 24000; i++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      const x = (seed / 4294967296) * 450;
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      const y = (seed / 4294967296) * 630;
+      grainContext.fillStyle = i % 3 ? "#ffffff64" : "#534e3c35";
+      grainContext.fillRect(x, y, i % 4 ? 0.65 : 1.3, 0.7);
+    }
+    printGrain = element;
   }
-  for (let x = 0; x < 900; x += 3) {
-    ctx.strokeStyle = x % 6 ? "#ffffff08" : "#00000018";
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, 1260);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = "#ffffff10";
-  ctx.lineWidth = 2;
+  ctx.save();
+  ctx.drawImage(printGrain, 0, 0, width, height);
+  ctx.restore();
+}
+function halftoneDisc(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+) {
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.roundRect(20, 20, 860, 1220, 18);
-  ctx.stroke();
+  for (let yy = -radius; yy <= radius; yy += 11)
+    for (let xx = -radius; xx <= radius; xx += 11) {
+      if (xx * xx + yy * yy > radius * radius) continue;
+      const r = 1.7 + (2.6 * (1 + Math.sin((xx + yy) / 120))) / 2;
+      ctx.moveTo(x + xx + r, y + yy);
+      ctx.arc(x + xx, y + yy, r, 0, Math.PI * 2);
+    }
+  ctx.fill();
+}
+/** Original two-ink cover art; slight registration offsets are intentional. */
+export function risoCoverTexture(back = false) {
+  const { element, ctx } = canvas();
+  ctx.drawImage(paperTextureCanvas(), 0, 0);
+  ctx.fillStyle = RISO.blue;
+  ctx.font = `700 22px ${fonts.sans}`;
+  ctx.fillText("JOSH LUCAS", 64, 76);
+  ctx.textAlign = "right";
+  ctx.fillText(back ? "COLOPHON / 016" : "SELECTED WORK / 001", 836, 76);
+  ctx.textAlign = "left";
+  ctx.save();
+  ctx.globalCompositeOperation = "multiply";
+  if (back) {
+    halftoneDisc(ctx, 445, 520, 320, RISO.blue);
+    halftoneDisc(ctx, 550, 640, 295, RISO.pink);
+    ctx.fillStyle = RISO.blue;
+    ctx.font = `700 88px ${fonts.sans}`;
+    ctx.fillText("MADE WITH", 64, 1030);
+    ctx.fillText("CURIOSITY.", 64, 1115);
+  } else {
+    ctx.fillStyle = RISO.pink;
+    ctx.font = `700 180px ${fonts.sans}`;
+    ctx.fillText("FIELD", 61, 291);
+    ctx.fillText("NOTES", 61, 453);
+    ctx.fillStyle = RISO.blue;
+    ctx.fillText("FIELD", 66, 288);
+    ctx.fillText("NOTES", 66, 450);
+    halftoneDisc(ctx, 465, 824, 318, RISO.pink);
+    ctx.save();
+    ctx.translate(440, 804);
+    ctx.rotate(-0.42);
+    ctx.fillStyle = RISO.blue;
+    ctx.fillRect(-390, -105, 780, 210);
+    ctx.restore();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = RISO.paper;
+    ctx.font = `700 120px ${fonts.sans}`;
+    ctx.fillText("01—03", 190, 855);
+  }
+  ctx.restore();
+  ctx.fillStyle = RISO.blue;
+  ctx.font = `500 18px ${fonts.sans}`;
+  ctx.fillText("PRODUCT DESIGN · SAN FRANCISCO", 64, 1201);
+  ctx.textAlign = "right";
+  ctx.fillText("TWO INKS. MANY IDEAS.", 836, 1201);
+  // Two small registration crosses make the printing process visible.
+  ctx.strokeStyle = RISO.pink;
+  ctx.lineWidth = 2;
+  for (const [x, y] of [
+    [38, 1165],
+    [864, 1165],
+  ]) {
+    ctx.beginPath();
+    ctx.moveTo(x - 9, y);
+    ctx.lineTo(x + 9, y);
+    ctx.moveTo(x, y - 9);
+    ctx.lineTo(x, y + 9);
+    ctx.stroke();
+  }
+  applyRisoPrint(ctx, 900, 1260);
   return texture(element);
 }
 export function paperTexture() {
@@ -95,10 +174,10 @@ export function paperTexture() {
 }
 export function edgeTexture() {
   const { element, ctx } = canvas(512, 1024);
-  ctx.fillStyle = "#e8e7e3";
+  ctx.fillStyle = "#e9e2ca";
   ctx.fillRect(0, 0, 512, 1024);
-  for (let i = 0; i < 110; i++) {
-    const y = (i * 1024) / 110;
+  for (let i = 0; i < 8; i++) {
+    const y = (i * 1024) / 8;
     ctx.fillStyle = i % 4 ? "#85839040" : "#ffffff9c";
     ctx.fillRect(0, y, 512, i % 4 ? 1 : 2);
   }
@@ -146,6 +225,7 @@ export function pageTexture(
   ctx.drawImage(paperTextureCanvas(), 0, 0);
   if (captured) {
     ctx.drawImage(captured, 0, 0, 900, 1260);
+    applyRisoPrint(ctx, 900, 1260);
     return texture(element);
   }
   ctx.fillStyle = "#706144";
@@ -196,13 +276,14 @@ export function pageTexture(
     800,
     1204,
   );
+  applyRisoPrint(ctx, 900, 1260);
   return texture(element);
 }
 let paperCanvas: HTMLCanvasElement | undefined;
 function paperTextureCanvas() {
   if (!paperCanvas) {
     const { element, ctx } = canvas();
-    ctx.fillStyle = "#f6f5f0";
+    ctx.fillStyle = "#f1eddc";
     ctx.fillRect(0, 0, 900, 1260);
     grain(ctx, 900, 1260);
     let seed = 17;

@@ -65,13 +65,23 @@ function Metadata({
 }) {
   return (
     <div className="metadata-content">
+      <button
+        className="metadata-turn-page"
+        data-turn-page="left"
+        aria-label="Turn to previous spread"
+        onClick={onPrevious}
+        disabled={!canPrevious}
+      />
       <div className="page-running-head">
-        <span>THE FIELD JOURNAL</span>
-        <Star />
+        <span>FIELD NOTES / RISO EDITION</span>
+        <span className="ink-swatches" aria-hidden="true">
+          <i />
+          <i />
+        </span>
       </div>
       <div className="chapter-label">
         <span className="chapter-rule" />
-        CHAPTER {pad(index + 1)}
+        PROJECT {pad(index + 1)}
         <span className="sample-label">
           {project.sample ? "SAMPLE CONTENT" : "CASE STUDY"}
         </span>
@@ -119,7 +129,7 @@ function Metadata({
           <Arrow direction="left" />
         </button>
         <span className="page-instruction">
-          CHAPTER {pad(index + 1)} / {pad(projects.length)}
+          PROJECT {pad(index + 1)} / {pad(projects.length)}
         </span>
         <button
           className="page-corner next"
@@ -171,18 +181,18 @@ function PortalFallback() {
       height="1056"
       className="ascii-portal"
       role="img"
-      aria-label="Swirling green ASCII portal"
+      aria-label="Pink and blue RISO-inspired ASCII print"
     />
   );
 }
-function PreviewPage({ onRead, fallback }) {
+function PreviewPage({ onNext, fallback }) {
   return (
     <div className="preview-content portal-only">
       <button
         className="portal-hit"
-        data-portal
-        aria-label="Enter the project portal"
-        onClick={onRead}
+        data-turn-page="right"
+        aria-label="Turn to next spread"
+        onClick={onNext}
       >
         {fallback ? <PortalFallback /> : null}
       </button>
@@ -196,7 +206,7 @@ function App() {
     indexRef = useRef(0),
     printSources = useRef([]);
   const [mounts, setMounts] = useState(null),
-    [phase, setPhase] = useState("dropping"),
+    [phase, setPhase] = useState("arriving"),
     [index, setIndex] = useState(0),
     [fallback, setFallback] = useState(false),
     [spread, setSpread] = useState({ left: 0, right: 0 }),
@@ -215,19 +225,21 @@ function App() {
   const openRead = () => {
     if (!dialog.current.open) dialog.current.showModal();
   };
+  const navigate = (page) => {
+    if (phase === "rotating") return;
+    const next = Math.max(-1, Math.min(projects.length, page));
+    if (fallback) {
+      if (next >= 0 && next < projects.length) select(next);
+      setSelectedPage(next);
+    } else engine.current?.goTo(next);
+  };
   const turn = (direction) => {
     if (busy) return;
-    if (fallback) {
-      const next = indexRef.current + direction;
-      if (next >= 0 && next < projects.length) select(next);
-    } else engine.current?.turnPage(direction);
-  };
-  const navigate = (page) => {
-    if (phase === "carrying" || phase === "falling") return;
-    if (fallback) {
-      if (page >= 0 && page < projects.length) select(page);
-      setSelectedPage(page);
-    } else engine.current?.goTo(page);
+    const current =
+      selectedPage === -1 || selectedPage === projects.length
+        ? selectedPage
+        : indexRef.current;
+    navigate(current + direction);
   };
   useEffect(() => {
     let disposed = false;
@@ -343,10 +355,10 @@ function App() {
       project={projects[spread.left]}
       index={spread.left}
       onRead={openRead}
-      onPrevious={() => turn(-1)}
-      canPrevious={!busy && index > 0}
-      onNext={() => turn(1)}
-      canNext={!busy && index < projects.length - 1}
+      onPrevious={() => navigate(index - 1)}
+      canPrevious={!busy}
+      onNext={() => navigate(index + 1)}
+      canNext={!busy}
     />
   );
   const right = (
@@ -354,8 +366,8 @@ function App() {
       project={projects[spread.right]}
       index={spread.right}
       onRead={openRead}
-      onNext={() => turn(1)}
-      canNext={!busy && index < projects.length - 1}
+      onNext={() => navigate(index + 1)}
+      canNext={!busy}
       fallback={fallback}
     />
   );
@@ -365,10 +377,10 @@ function App() {
         <div className="marquee-track">
           {[0, 1].map((copy) => (
             <div className="marquee-copy" key={copy}>
-              <span>Josh Lucas</span>
+              <span>Field notes</span>
               <span className="marquee-outline">Selected work</span>
               <span className="marquee-light">Product designer</span>
-              <span className="marquee-outline">Play. Create.</span>
+              <span className="marquee-outline">Ink. Paper. Play.</span>
             </div>
           ))}
         </div>
@@ -376,20 +388,21 @@ function App() {
       <button
         className="scene-brand"
         onClick={() => navigate(-1)}
-        aria-label="Go to book cover"
+        aria-label="Go to zine cover"
       >
         <span className="brand-monogram">JL.</span>
         <span className="brand-name">
           JOSH LUCAS
           <br />
-          SELECTED WORK
+          RISO EDITION
         </span>
       </button>
       <p className="sr-only" id="book-instructions">
-        Drag anywhere on the book to lift it, move it, and drop it on the table.
-        Use the page navigation below, the page arrows, or Left and Right to
-        turn pages. Press R to restart the opening. Select the portal to read
-        the case study.
+        Drag the zine to rotate it in place. Click the right page to go forward
+        or the left page to go back. Use the bottom navigation or Left and Right
+        keys as alternatives. Press R to reset the rotation and replay the
+        opening. Choose Read the case study on the left page to read the full
+        project.
       </p>
       <div className="print-sources" aria-hidden="true" inert>
         {projects.map((item, i) => (
@@ -413,7 +426,7 @@ function App() {
       <section
         ref={host}
         className="book-stage"
-        aria-label="Interactive spellbook portfolio"
+        aria-label="Interactive RISO zine portfolio"
         aria-describedby="book-instructions"
         tabIndex={0}
       />
@@ -436,23 +449,19 @@ function App() {
             role="img"
             aria-label={
               selectedPage === -1
-                ? "Charcoal cloth front cover"
-                : "Charcoal cloth back cover"
+                ? "RISO-printed front cover"
+                : "RISO-printed back cover"
             }
           />
         )}
-      <nav className="book-navigation" aria-label="Book pages">
+      <nav className="book-navigation" aria-label="Zine pages">
         <div className="book-navigation-scroll">
           {[-1, ...projects.map((_, i) => i), projects.length].map((page) => (
             <button
               key={page}
               aria-current={selectedPage === page ? "page" : undefined}
               onClick={() => navigate(page)}
-              disabled={
-                (!mounts && !fallback) ||
-                phase === "carrying" ||
-                phase === "falling"
-              }
+              disabled={(!mounts && !fallback) || phase === "rotating"}
             >
               {page === -1
                 ? "Cover"
@@ -465,20 +474,18 @@ function App() {
       </nav>
       <span className="sr-only" aria-live="polite">
         {busy
-          ? phase === "carrying"
-            ? "Book picked up"
-            : phase === "falling"
-              ? "Book landing"
-              : phase === "closing"
-                ? "The book is closing"
-                : phase === "turning"
-                  ? "Turning the page"
-                  : "The book is opening"
+          ? phase === "rotating"
+            ? "Rotating the zine"
+            : phase === "closing"
+              ? "The zine is closing"
+              : phase === "turning"
+                ? "Turning the page"
+                : "The zine is opening"
           : selectedPage === -1
             ? "Front cover"
             : selectedPage === projects.length
               ? "Back cover"
-              : `Chapter ${index + 1} of ${projects.length}: ${project.title.replace("\n", " ")}`}
+              : `Project ${index + 1} of ${projects.length}: ${project.title.replace("\n", " ")}`}
       </span>
       <dialog
         ref={dialog}
@@ -509,7 +516,7 @@ function App() {
           </button>
           <Star className="dialog-star" />
           <p className="eyebrow">
-            CHAPTER {pad(index + 1)}
+            PROJECT {pad(index + 1)}
             {project.sample ? " / SAMPLE CASE STUDY" : ""}
           </p>
           <h2>{project.title.replace("\n", " ")}</h2>

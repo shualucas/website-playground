@@ -19,7 +19,7 @@ async function grabPoint(page, side = "right") {
   );
 }
 
-test("the book has one connected spread and only an ASCII portal on the right", async ({
+test("the RISO zine has thin stock, shared printed pages, and an explicit reading link", async ({
   page,
 }) => {
   const errors = [],
@@ -42,6 +42,9 @@ test("the book has one connected spread and only an ASCII portal on the right", 
   });
   await openBook(page);
   expect(Number((await state(page)).capturedPages)).toBe(3);
+  expect((await state(page)).format).toBe("riso-zine");
+  expect(Number((await state(page)).bindingThickness)).toBeLessThan(0.12);
+  expect((await state(page)).pageCount).toBe("16");
   expect(await page.evaluate(() => window.glyphs)).toBeGreaterThan(1000);
   expect(await page.locator(".book-printing .page-recto").innerText()).toBe("");
   await expect(page.locator(".book-printing .page-verso h1")).toHaveText(
@@ -49,73 +52,87 @@ test("the book has one connected spread and only an ASCII portal on the right", 
   );
   await expect(page.locator(".site-header,.site-footer")).toHaveCount(0);
   await expect(
-    page.getByRole("navigation", { name: "Book pages" }),
+    page.getByRole("navigation", { name: "Zine pages" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Enter the project portal" }).click();
+  await page.getByRole("button", { name: "Read the case study" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
 });
 
-test("dragging either page picks up the entire book and drops it at its new position", async ({
+test("dragging either leaf rotates a fixed center without moving or turning the zine", async ({
   page,
 }) => {
   test.setTimeout(90000);
   await openBook(page);
-  const initial = await state(page),
-    first = await grabPoint(page);
-  await page.mouse.move(first.x, first.y);
-  await page.mouse.down();
-  await page.mouse.move(first.x + 65, first.y - 40, { steps: 5 });
-  await expect(stage(page)).toHaveAttribute("data-phase", "carrying");
-  await expect
-    .poll(async () => Number((await state(page)).rigY))
-    .toBeGreaterThan(0.5);
-  const held = await state(page);
-  expect(held.project).toBe("0");
-  expect(held.turnProgress).toBe("0.0000");
-  expect(held.camera).toBe(initial.camera);
-  expect(Math.abs(JSON.parse(held.bookPosition)[0])).toBeGreaterThan(0.1);
-  await page.mouse.up();
-  await ready(page);
-  const dropped = JSON.parse((await state(page)).bookPosition);
-  expect(dropped[1]).toBe(0);
-  expect(Math.hypot(dropped[0], dropped[2])).toBeGreaterThan(0.1);
-  const left = await grabPoint(page, "left");
-  await page.mouse.move(left.x, left.y);
-  await page.mouse.down();
-  await page.mouse.move(left.x - 40, left.y - 25, { steps: 4 });
-  await expect(stage(page)).toHaveAttribute("data-phase", "carrying");
-  await page.mouse.up();
-  await ready(page);
-  expect((await state(page)).project).toBe("0");
-  const beforeTurn = JSON.parse((await state(page)).bookPosition);
+  const before = await state(page);
+  for (const side of ["right", "left"]) {
+    const point = await grabPoint(page, side);
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down();
+    await page.mouse.move(point.x + 65, point.y - 35, { steps: 8 });
+    await expect(stage(page)).toHaveAttribute("data-phase", "rotating");
+    const held = await state(page);
+    expect(held.rotation).not.toBe(before.rotation);
+    expect(held.anchorPosition).toBe(before.anchorPosition);
+    expect(held.bookPosition).toBe(before.bookPosition);
+    expect(held.camera).toBe(before.camera);
+    await page.mouse.up();
+    await ready(page);
+    await expect(stage(page)).toHaveAttribute("data-project", "0");
+  }
+  const rotated = (await state(page)).rotation;
   await page.getByRole("button", { name: "Next project" }).click();
   await expect(stage(page)).toHaveAttribute("data-project", "1");
-  expect(JSON.parse((await state(page)).bookPosition)).toEqual(beforeTurn);
+  expect((await state(page)).rotation).toBe(rotated);
+  await page.keyboard.press("r");
+  await ready(page);
+  expect(JSON.parse((await state(page)).rotation)).toEqual([0, 0]);
+  expect((await state(page)).project).toBe("0");
 });
 
-test("dragging a page control moves the book, while clicking it still turns a page", async ({
+test("page hover glows and page clicks navigate, while dragging a control suppresses its click", async ({
   page,
 }) => {
   test.setTimeout(90000);
   await openBook(page);
+  let point = JSON.parse((await state(page)).rightHit);
+  await page.mouse.move(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-hovered-page", "right");
+  expect(Number((await state(page)).rightGlow)).toBeGreaterThan(0.15);
+  await page.mouse.click(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-project", "1");
+  point = JSON.parse((await state(page)).leftHit);
+  await page.mouse.move(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-hovered-page", "left");
+  expect(Number((await state(page)).leftGlow)).toBeGreaterThan(0.15);
+  await page.mouse.click(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-project", "0");
   const button = page.getByRole("button", { name: "Next project" }),
     box = await button.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(
-    box.x + box.width / 2 + 45,
-    box.y + box.height / 2 - 30,
-    { steps: 4 },
+    box.x + box.width / 2 + 65,
+    box.y + box.height / 2 - 35,
+    { steps: 8 },
   );
-  await expect(stage(page)).toHaveAttribute("data-phase", "carrying");
+  await expect(stage(page)).toHaveAttribute("data-phase", "rotating");
   await page.mouse.up();
   await ready(page);
-  expect((await state(page)).project).toBe("0");
-  await button.click();
-  await expect(stage(page)).toHaveAttribute("data-project", "1");
+  await expect(stage(page)).toHaveAttribute("data-project", "0");
+  await page.mouse.move(4, 4);
+  await expect(stage(page)).toHaveAttribute("data-hovered-page", "none");
+  expect(Number((await state(page)).rightGlow)).toBe(0);
+  expect(Number((await state(page)).leftGlow)).toBe(0);
+  await page.getByRole("button", { name: "Turn to previous spread" }).focus();
+  await expect(stage(page)).toHaveAttribute("data-hovered-page", "left");
+  await page.keyboard.press("Enter");
+  await expect(stage(page)).toHaveAttribute("data-view", "cover");
+  point = JSON.parse((await state(page)).coverHit);
+  await page.mouse.click(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-view", "spread");
 });
 
 test("turning and resting faces share the exact printed artwork and fixed framing", async ({
@@ -146,7 +163,7 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   expect((await state(page)).project).toBe("0");
 });
 
-test("opening slows its blank leaves and R restores the book", async ({
+test("the lightweight zine opening stays in frame and R resets its first spread", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -163,12 +180,11 @@ test("opening slows its blank leaves and R restores the book", async ({
   });
   const camera = (await state(page)).camera;
   await page.keyboard.press("r");
-  await expect(stage(page)).toHaveAttribute("data-phase", "dropping");
+  await expect(stage(page)).toHaveAttribute("data-phase", "arriving");
   await expect(stage(page)).toHaveAttribute("data-phase", "ready", {
     timeout: 45000,
   });
   const samples = await page.evaluate(() => window.opening);
-  expect(samples.some((s) => Number(s.dust) > 0)).toBe(true);
   expect(samples.some((s) => s.phase === "flipping")).toBe(true);
   expect(samples.every((s) => s.camera === camera && s.zoom === "1")).toBe(
     true,
@@ -177,19 +193,19 @@ test("opening slows its blank leaves and R restores the book", async ({
     for (const coordinate of Object.values(JSON.parse(sample.bookBounds)))
       expect(Math.abs(coordinate)).toBeLessThan(0.98);
   const final = await state(page);
-  expect(Number(final.riffleCount)).toBe(64);
-  expect(Number(final.duration)).toBe(7.4);
+  expect(Number(final.riffleCount)).toBe(8);
+  expect(Number(final.duration)).toBe(3.4);
   expect(final.project).toBe("0");
   expect(JSON.parse(final.bookPosition)).toEqual([0, 0, 0]);
 });
 
-test("the ASCII portal animates and respects reduced motion", async ({
+test("the two-ink ASCII print animates and respects reduced motion", async ({
   page,
 }) => {
   test.setTimeout(90000);
   await openBook(page);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  const hit = page.getByRole("button", { name: "Enter the project portal" }),
+  const hit = page.getByRole("button", { name: "Turn to next spread" }),
     image = await hit.screenshot(),
     time = Number((await state(page)).portalTime);
   await expect
@@ -203,7 +219,7 @@ test("the ASCII portal animates and respects reduced motion", async ({
   expect(await hit.screenshot()).toEqual(still);
 });
 
-test("touch picks up the book, and navigation remains available on mobile", async ({
+test("touch rotates in place and tapping a leaf turns pages on mobile", async ({
   browser,
 }) => {
   test.setTimeout(90000);
@@ -217,6 +233,7 @@ test("touch picks up the book, and navigation remains available on mobile", asyn
     page = await context.newPage();
   await page.goto("/");
   await ready(page);
+  const before = await state(page);
   const point = await grabPoint(page),
     client = await context.newCDPSession(page);
   await client.send("Input.dispatchTouchEvent", {
@@ -228,24 +245,27 @@ test("touch picks up the book, and navigation remains available on mobile", asyn
       type: "touchMove",
       touchPoints: [{ x: point.x + (30 * i) / 6, y: point.y - (30 * i) / 6 }],
     });
-  await expect(stage(page)).toHaveAttribute("data-phase", "carrying");
+  await expect(stage(page)).toHaveAttribute("data-phase", "rotating");
   await client.send("Input.dispatchTouchEvent", {
     type: "touchEnd",
     touchPoints: [],
   });
   await ready(page);
   expect((await state(page)).project).toBe("0");
-  await page.getByRole("button", { name: "Next project" }).tap();
+  expect((await state(page)).anchorPosition).toBe(before.anchorPosition);
+  expect((await state(page)).bookPosition).toBe(before.bookPosition);
+  expect((await state(page)).rotation).not.toBe(before.rotation);
+  await page.getByRole("button", { name: "Turn to next spread" }).tap();
   await expect(stage(page)).toHaveAttribute("data-project", "1");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  await page.getByRole("button", { name: "Enter the project portal" }).tap();
+  await page.getByRole("button", { name: "Read the case study" }).tap();
   await expect(page.getByRole("dialog")).toBeVisible();
   await context.close();
 });
 
-test("the HTML fallback remains book-only and uses an ASCII portal", async ({
+test("the HTML fallback retains print artwork, leaf clicks, and reading access", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -260,7 +280,7 @@ test("the HTML fallback remains book-only and uses an ASCII portal", async ({
   await expect(page.locator(".fallback-book")).toBeVisible();
   await expect(page.locator(".fallback-book .ascii-portal")).toBeVisible();
   expect(await page.locator(".fallback-book .page-recto").innerText()).toBe("");
-  await page.getByRole("button", { name: "Next project" }).click();
+  await page.getByRole("button", { name: "Turn to next spread" }).click();
   await expect(page.locator(".fallback-book .page-verso h1")).toHaveText(
     "Finding the way forward.",
   );
@@ -271,7 +291,7 @@ test("reference-style page pills open both covers and queue project jumps", asyn
 }) => {
   test.setTimeout(90000);
   await openBook(page);
-  const nav = page.getByRole("navigation", { name: "Book pages" });
+  const nav = page.getByRole("navigation", { name: "Zine pages" });
   const camera = (await state(page)).camera;
   await expect(
     nav.getByRole("button", { name: "Page 1", exact: true }),

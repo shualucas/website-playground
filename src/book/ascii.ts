@@ -34,10 +34,10 @@ export class AsciiPortal {
         const seed = Math.sin(col * 12.9898 + row * 78.233) * 43758.5453,
           hash = seed - Math.floor(seed);
         if (stone) {
-          ctx.fillStyle = "rgba(48,60,35,.22)";
+          ctx.fillStyle = "rgba(35,87,165,.13)";
           ctx.fillRect(col * cw + 1, row * ch + 1, cw - 2, ch - 2);
           const level = 0.46 + 0.24 * hash;
-          ctx.fillStyle = `rgba(${Math.round(53 + level * 50)},${Math.round(58 + level * 52)},${Math.round(40 + level * 33)},.94)`;
+          ctx.fillStyle = `rgba(35,87,165,${level})`;
           ctx.fillText(
             "#%H+=:[]"[Math.floor(hash * 8)],
             (col + 0.5) * cw,
@@ -46,7 +46,7 @@ export class AsciiPortal {
           continue;
         }
         if (edge > -0.04 || y < -0.91) continue;
-        ctx.fillStyle = "rgba(8,35,18,.68)";
+        ctx.fillStyle = "rgba(35,87,165,.18)";
         ctx.fillRect(col * cw + 1, row * ch + 1, cw - 2, ch - 2);
         const r = Math.hypot(x * 1.04, (y + 0.03) * 0.74),
           a = Math.atan2(y * 0.74, x),
@@ -61,7 +61,7 @@ export class AsciiPortal {
         );
         if (intensity < 0.055) {
           if (hash > 0.38) continue;
-          ctx.fillStyle = "rgba(40,69,41,.23)";
+          ctx.fillStyle = "rgba(35,87,165,.25)";
           ctx.fillText(".", (col + 0.5) * cw, (row + 0.5) * ch);
           continue;
         }
@@ -70,7 +70,10 @@ export class AsciiPortal {
             ramp[
               Math.min(ramp.length - 1, Math.floor(intensity * ramp.length))
             ];
-        ctx.fillStyle = `rgba(${Math.round(35 + intensity * 102)},${Math.round(89 + intensity * 139)},${Math.round(31 + intensity * 37)},${Math.min(1, 0.8 + intensity * 0.2)})`;
+        ctx.fillStyle =
+          flow > 0.12
+            ? `rgba(240,81,140,${Math.min(1, 0.4 + intensity * 0.5)})`
+            : `rgba(35,87,165,${Math.min(1, 0.45 + intensity * 0.5)})`;
         ctx.fillText(glyph, (col + 0.5) * cw, (row + 0.5) * ch);
       }
     return true;

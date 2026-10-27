@@ -1,79 +1,50 @@
 import * as THREE from "three";
 import { PAGE_HEIGHT as H, SURFACE } from "./materials";
 type Surface = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
-export const gutterDip = (x: number) => -0.075 * Math.exp(-((x / 0.15) ** 2));
-export function createBinding(
-  leather: Surface,
-  paper: Surface,
-  thread: Surface,
-) {
-  const shape = new THREE.Shape();
-  shape.moveTo(-0.25, 0.53);
-  shape.bezierCurveTo(-0.38, 0.28, -0.32, -0.16, 0, -0.16);
-  shape.bezierCurveTo(0.32, -0.16, 0.38, 0.28, 0.25, 0.53);
-  shape.bezierCurveTo(0.16, 0.61, -0.16, 0.61, -0.25, 0.53);
-  const backGeometry = new THREE.ExtrudeGeometry(shape, {
-    depth: H + 0.16,
-    bevelEnabled: true,
-    bevelSegments: 4,
-    bevelSize: 0.025,
-    bevelThickness: 0.025,
-    curveSegments: 18,
-    steps: 1,
-  });
-  backGeometry.scale(1, SURFACE / 0.73, 1);
-  backGeometry.translate(0, 0, -(H + 0.16) / 2);
-  const spine = new THREE.Mesh(backGeometry, leather);
-  spine.castShadow = spine.receiveShadow = true;
-  const geometry = new THREE.PlaneGeometry(0.74, H - 0.025, 32, 8);
+export const gutterDip = (x: number) => -0.018 * Math.exp(-((x / 0.11) ** 2));
+/** A folded cardstock saddle and two metal staples, without a hard book spine. */
+export function createBinding(cover: Surface, paper: Surface, metal: Surface) {
+  const spineGeometry = new THREE.PlaneGeometry(0.06, H + 0.025, 8, 1);
+  spineGeometry.rotateX(-Math.PI / 2);
+  const spine = new THREE.Mesh(spineGeometry, cover);
+  const geometry = new THREE.PlaneGeometry(0.24, H - 0.025, 24, 4);
   geometry.rotateX(-Math.PI / 2);
   const fold = new THREE.Mesh(geometry, paper);
   fold.receiveShadow = true;
   const seams = new THREE.Group();
-  const threadBases: Float32Array[] = [];
-  for (const z of [-1.85, -0.93, 0, 0.93, 1.85]) {
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.14, SURFACE - 0.026, z),
-      new THREE.Vector3(0, SURFACE - 0.095, z + 0.018),
-      new THREE.Vector3(0.14, SURFACE - 0.026, z),
+  for (const z of [-1.12, 1.12]) {
+    const wire = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, z - 0.105),
+      new THREE.Vector3(0.012, 0.008, z - 0.075),
+      new THREE.Vector3(0.012, 0.008, z + 0.075),
+      new THREE.Vector3(0, 0, z + 0.105),
     ]);
-    const tube = new THREE.TubeGeometry(curve, 18, 0.005, 5, false);
-    threadBases.push(new Float32Array(tube.attributes.position.array));
-    seams.add(new THREE.Mesh(tube, thread));
+    seams.add(
+      new THREE.Mesh(new THREE.TubeGeometry(wire, 16, 0.0035, 5, false), metal),
+    );
   }
   function update(left: number, right: number, open: number) {
-    const scale = 1 + 0.95 * (1 - open);
-    spine.scale.y = scale;
-    spine.position.y = 0.16 * (scale - 1);
-    spine.scale.x = 1 + 0.08 * (1 - open);
     const height = (x: number) =>
       THREE.MathUtils.lerp(
         left,
         right,
-        THREE.MathUtils.clamp(x / 0.74 + 0.5, 0, 1),
+        THREE.MathUtils.clamp(x / 0.24 + 0.5, 0, 1),
       ) +
-      0.018 +
+      0.008 +
       gutterDip(x);
-    const p = geometry.attributes.position;
-    for (let i = 0; i < p.count; i++) p.setY(i, height(p.getX(i)) - 0.008);
-    p.needsUpdate = true;
+    const positions = geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++)
+      positions.setY(i, height(positions.getX(i)) - 0.003);
+    positions.needsUpdate = true;
     geometry.computeVertexNormals();
     geometry.computeBoundingBox();
-    seams.children.forEach((mesh, index) => {
-      const geo = (mesh as THREE.Mesh).geometry,
-        positions = geo.attributes.position,
-        base = threadBases[index];
-      for (let i = 0; i < positions.count; i++) {
-        const x = base[i * 3];
-        positions.setY(
-          i,
-          base[i * 3 + 1] + height(x) - (SURFACE + 0.018 + gutterDip(x)),
-        );
-      }
-      positions.needsUpdate = true;
-      geo.computeVertexNormals();
-      geo.computeBoundingBox();
-    });
+    const p = spineGeometry.attributes.position;
+    for (let i = 0; i < p.count; i++)
+      p.setY(i, -0.005 + 0.012 * Math.cos(((p.getX(i) / 0.03) * Math.PI) / 2));
+    p.needsUpdate = true;
+    spineGeometry.computeVertexNormals();
+    spineGeometry.computeBoundingBox();
+    seams.position.y = height(0) + 0.003;
     fold.visible = seams.visible = open > 0.96;
   }
   update(SURFACE, SURFACE, 1);
