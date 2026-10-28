@@ -661,3 +661,182 @@ svg {
     width: 100%;
   }
 }
+
+/* Page palettes invert with the scene; original preview media retains its colors. */
+:root {
+  --page-paper: #fafaf8;
+  --page-ink: #111;
+  --page-muted: #555;
+}
+:root[data-color-mode="dark"] {
+  --page-paper: #202124;
+  --page-ink: #f2f2ef;
+  --page-muted: #bbb;
+}
+.printed-page,
+.metadata-content,
+.reading-dialog {
+  color: var(--page-ink);
+  color-scheme: inherit;
+}
+.dialog-paper,
+.fallback-book,
+.fallback-book .printed-page,
+.fallback-cover {
+  background: var(--page-paper);
+}
+.dialog-paper,
+.scaffold-note {
+  color: var(--page-ink);
+}
+.print-sources {
+  --page-paper: #fafaf8;
+  --page-ink: #111;
+  --page-muted: #555;
+  color-scheme: light;
+}
+.print-source-left {
+  color: #111;
+}
+.book-navigation button,
+.book-navigation button:hover,
+.book-navigation button[aria-current="page"] {
+  background: transparent;
+  color: var(--ui-muted);
+  border-radius: 0;
+  text-underline-offset: 7px;
+}
+.book-navigation button:hover {
+  color: var(--ui-text);
+}
+.book-navigation button[aria-current="page"] {
+  color: var(--ui-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  font-weight: 700;
+}
+.phone-hit {
+  position: absolute;
+  left: 21%;
+  top: 11%;
+  width: 58%;
+  height: 78%;
+  padding: 0;
+}
+.print-overlay .phone-hit {
+  pointer-events: auto;
+}
+.phone-placeholder {
+  position: relative;
+  width: min(260px, 100%);
+  aspect-ratio: 1.87 / 3.55;
+  border: 3px solid var(--project-color);
+  border-radius: 22px;
+  overflow: hidden;
+  background: #151519;
+  color: white;
+  box-shadow: 0 -8px 35px
+    color-mix(in srgb, var(--project-color) 30%, transparent);
+  margin: 30px auto;
+}
+.phone-placeholder video,
+.phone-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.phone-placeholder > div {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  background: linear-gradient(150deg, var(--project-color), #19191d);
+}
+.phone-placeholder strong {
+  font-size: 28px;
+}
+.phone-placeholder span {
+  font-size: 14px;
+}
+.phone-placeholder small {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.fallback-book .phone-placeholder {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.loading-card {
+  position: relative;
+  width: 250px;
+  aspect-ratio: 0.7;
+  background: var(--page-paper);
+  border: 1px solid color-mix(in srgb, var(--ui-text) 25%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 8px 30px #0000000a;
+  color: var(--ui-text);
+  overflow: hidden;
+}
+.loading-card canvas {
+  position: absolute;
+  inset: 12% 4%;
+  width: 92%;
+  height: 76%;
+}
+.card-corner {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  font:
+    19px/1.15 "DM Sans",
+    sans-serif;
+  z-index: 1;
+}
+.card-corner b {
+  font-weight: 500;
+}
+.card-corner > span {
+  font-size: 14px;
+}
+.card-corner-bottom {
+  top: auto;
+  left: auto;
+  right: 18px;
+  bottom: 16px;
+  transform: rotate(180deg);
+}
+.loader-content > span {
+  letter-spacing: 1px;
+  font-size: 11px;
+}
+@media (max-width: 760px) {
+  .loading-card {
+    width: 210px;
+  }
+  .book-navigation button {
+    padding-inline: 12px;
+  }
+}
+.metadata-content h1,
+.project-subtitle,
+.project-description,
+.project-facts dd,
+.read-project,
+.page-folio,
+.page-corner {
+  color: var(--page-ink);
+}
+.page-running-head,
+.chapter-label,
+.project-facts dt,
+.about-note > span {
+  color: var(--page-muted);
+}

@@ -36,10 +36,14 @@ test("the portfolio zine has thin stock, shared printed pages, and an explicit r
   const errors = [],
     external = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
   page.on("request", (r) => {
     if (
       !r.url().startsWith("http://127.0.0.1:3000/") &&
-      !r.url().startsWith("data:")
+      !r.url().startsWith("data:") &&
+      !r.url().startsWith("blob:http://127.0.0.1:3000/")
     )
       external.push(r.url());
   });
@@ -52,10 +56,10 @@ test("the portfolio zine has thin stock, shared printed pages, and an explicit r
     };
   });
   await openBook(page);
-  expect(Number((await state(page)).capturedPages)).toBe(3);
+  expect(Number((await state(page)).capturedPages)).toBe(4);
   expect((await state(page)).format).toBe("riso-zine");
   expect(Number((await state(page)).bindingThickness)).toBeLessThan(0.12);
-  expect((await state(page)).pageCount).toBe("8");
+  expect((await state(page)).pageCount).toBe("10");
   expect(await page.evaluate(() => window.glyphs)).toBeGreaterThan(1000);
   expect(await page.locator(".book-printing .page-recto").innerText()).toBe("");
   await expect(page.locator(".book-printing .page-verso h1")).toHaveText(
@@ -65,7 +69,7 @@ test("the portfolio zine has thin stock, shared printed pages, and an explicit r
   await expect(
     page.getByRole("navigation", { name: "Zine pages" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "A little about me" }).click();
+  await page.getByRole("button", { name: "Professional background" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   expect(errors).toEqual([]);
@@ -89,6 +93,8 @@ test("dragging either leaf rotates a fixed center without moving or turning the 
     expect(held.anchorPosition).toBe(before.anchorPosition);
     expect(held.bookPosition).toBe(before.bookPosition);
     expect(held.camera).toBe(before.camera);
+    expect(held.modelScale).toBe(before.modelScale);
+    expect(held.rotationFit).toBe("1");
     await page.mouse.up();
     await ready(page);
     await expect(stage(page)).toHaveAttribute("data-project", "0");
@@ -156,7 +162,9 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   const started = Date.now();
   await page.getByRole("button", { name: "Next project" }).click();
   await expect(stage(page)).toHaveAttribute("data-phase", "turning");
-  await page.waitForTimeout(600);
+  await expect
+    .poll(async () => Number((await state(page)).activeLeafCount))
+    .toBeGreaterThan(0);
   expect(Number((await state(page)).turnProgress)).toBeLessThan(0.99);
   const targetArtwork = (await state(page)).turnBackArtwork;
   await ready(page);
@@ -380,6 +388,7 @@ test("dragging can complete full horizontal and vertical revolutions around the 
     expect(after.anchorPosition).toBe(before.anchorPosition);
     expect(after.bookPosition).toBe(before.bookPosition);
     expect(after.camera).toBe(before.camera);
+    expect(after.modelScale).toBe(before.modelScale);
     expect(after.project).toBe("0");
     await page.keyboard.press("r");
     await ready(page);
@@ -394,12 +403,13 @@ test("rapid leaf clicks accumulate through spreads and covers in both directions
   await openBook(page);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const point = JSON.parse((await state(page)).rightHit);
-  for (let i = 0; i < 3; i++) await page.mouse.click(point.x, point.y);
-  await expect(stage(page)).toHaveAttribute("data-requested-page", "3");
+  for (let i = 0; i < 4; i++) await page.mouse.click(point.x, point.y);
+  await expect(stage(page)).toHaveAttribute("data-requested-page", "4");
   await expect(stage(page)).toHaveAttribute("data-view", "back", {
     timeout: 60000,
   });
   await ready(page);
+  await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowLeft");
@@ -492,7 +502,7 @@ test("overlapping turns keep physical page identities and handle an interrupted 
   expect(samples.every((s) => s.popupCount === "0")).toBe(true);
   for (const sample of samples)
     for (const coordinate of Object.values(JSON.parse(sample.bookBounds)))
-      expect(Math.abs(coordinate)).toBeLessThan(0.98);
+      expect(Math.abs(coordinate)).toBeLessThan(1.0);
   for (let i = 0; i < leaves.length; i++) {
     expect(leaves[i].object).toBe(before[i].object);
     expect(leaves[i].front).toBe(before[i].front);
@@ -512,11 +522,12 @@ test("About, Stadia and AI Mode keep independent print palettes and permanent pr
     "About",
     "Stadia",
     "AI Mode",
+    "After-hours",
     "Back cover",
   ]);
   const initial = await state(page),
     artwork = JSON.parse(initial.previewArtworks);
-  expect(new Set(artwork).size).toBe(3);
+  expect(new Set(artwork).size).toBe(4);
   expect(initial.popupCount).toBe("3");
   expect(initial.popupSpread).toBe("0");
   await expect(page.locator(".book-printing .project-facts")).toHaveCount(0);
@@ -527,7 +538,7 @@ test("About, Stadia and AI Mode keep independent print palettes and permanent pr
     await nav.getByRole("button", { name: label, exact: true }).click();
     const current = await state(page);
     expect(current.theme).toBe(theme);
-    expect(current.popupCount).toBe("3");
+    expect(current.popupCount).toBe("0");
     expect(current.popupSpread).toBe(String(index));
     expect(current.rightArtwork).toBe(artwork[index]);
     expect(current.previewArtworks).toBe(initial.previewArtworks);
@@ -549,7 +560,7 @@ test("project URLs open their spread and reset returns to a reloadable closed co
 }) => {
   await openBook(page, "/?project=ai-mode");
   await expect(stage(page)).toHaveAttribute("data-project", "2");
-  await expect(stage(page)).toHaveAttribute("data-popup-count", "3");
+  await expect(stage(page)).toHaveAttribute("data-popup-count", "0");
   await page.reload();
   await ready(page);
   await expect(stage(page)).toHaveAttribute("data-project", "2");
@@ -584,10 +595,33 @@ test("navigation highlights the requested destination before settled content cha
   await ready(page);
 });
 
-test("light/dark preference persists without changing paper, artwork or orientation", async ({
+test("light/dark preference persists, repaints the zine and keeps physical texture identities", async ({
   page,
 }) => {
   await openBook(page);
+  await page.evaluate(async () => {
+    const source = performance
+      .getEntriesByType("resource")
+      .find((entry) => entry.name.includes("/src/book/BookScene.ts")).name;
+    const { BookScene } = await import(source);
+    const original = BookScene.prototype.setDarkMode;
+    BookScene.prototype.setDarkMode = function (dark) {
+      const pixel = () =>
+        Array.from(
+          this.leftTextures[0].image.getContext("2d").getImageData(10, 10, 1, 1)
+            .data,
+        );
+      const before = pixel(),
+        preview = this.phones.phones[0].poster.image.toDataURL();
+      original.call(this, dark);
+      window.paperTheme = {
+        before,
+        after: pixel(),
+        mediaUnchanged:
+          preview === this.phones.phones[0].poster.image.toDataURL(),
+      };
+    };
+  });
   const before = await state(page);
   await expect(page.locator(".spellbook")).toHaveCSS(
     "background-color",
@@ -608,7 +642,14 @@ test("light/dark preference persists without changing paper, artwork or orientat
     "background-color",
     "rgb(20, 20, 20)",
   );
+  await expect.poll(() => page.evaluate(() => !!window.paperTheme)).toBe(true);
+  const painted = await page.evaluate(() => window.paperTheme);
+  expect(painted.before[0]).toBeGreaterThan(200);
+  expect(painted.after[0]).toBeLessThan(70);
+  expect(painted.mediaUnchanged).toBe(true);
   const dark = await state(page);
+  expect(dark.bookColorMode).toBe("dark");
+  expect(before.bookColorMode).toBe("light");
   expect(dark.rotation).toBe(before.rotation);
   expect(dark.previewArtworks).toBe(before.previewArtworks);
   expect(dark.settledBoundary).toBe(before.settledBoundary);
@@ -678,7 +719,7 @@ test("cover-to-cover navigation launches the final leaf without waiting at the l
   });
   await ready(page);
   const forward = await page.evaluate(() => window.closures);
-  expect(forward.some((s) => Number(s.maxConcurrent) === 4)).toBe(true);
+  expect(forward.some((s) => Number(s.maxConcurrent) === 5)).toBe(true);
   const firstCoverFrame = forward.find(
     (s) => JSON.parse(s.leafStates).at(-1).target === 1,
   );

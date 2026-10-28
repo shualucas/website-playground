@@ -1,0 +1,266 @@
+import * as THREE from "three";
+import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+export type GoogleAsset = {
+  parts: THREE.BufferGeometry[];
+  texture: THREE.CanvasTexture;
+};
+
+/** Preserve the published 2025 gradient G's vector silhouette and rasterized gradients. */
+export async function loadGoogleAsset(): Promise<GoogleAsset> {
+  const svg = await fetch("/models/google-g.svg").then((r) => {
+    if (!r.ok) throw new Error("Logo unavailable");
+    return r.text();
+  });
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  const image = new Image();
+  image.src = url;
+  try {
+    await image.decode();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(image, 0, 0, 512, 512);
+  // Extend boundary colors into empty texels so bevels cannot sample a black fringe.
+  const pixels = ctx.getImageData(0, 0, 512, 512),
+    data = pixels.data;
+  const visited = new Uint8Array(512 * 512),
+    queue = new Int32Array(512 * 512);
+  let head = 0,
+    tail = 0;
+  for (let i = 0; i < visited.length; i++)
+    if (data[i * 4 + 3] > 128) {
+      visited[i] = 1;
+      queue[tail++] = i;
+      data[i * 4 + 3] = 255;
+    }
+  while (head < tail) {
+    const i = queue[head++],
+      x = i % 512;
+    for (const next of [
+      x > 0 ? i - 1 : -1,
+      x < 511 ? i + 1 : -1,
+      i - 512,
+      i + 512,
+    ]) {
+      if (next < 0 || next >= visited.length || visited[next]) continue;
+      visited[next] = 1;
+      queue[tail++] = next;
+      data[next * 4] = data[i * 4];
+      data[next * 4 + 1] = data[i * 4 + 1];
+      data[next * 4 + 2] = data[i * 4 + 2];
+      data[next * 4 + 3] = 255;
+    }
+  }
+  ctx.putImageData(pixels, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  // The source paints gradients through a clipping silhouette. Extrude that outline
+  // once, rather than extruding overlapping color/filter patches into separate solids.
+  const svgDocument = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const outline = svgDocument.querySelector("clipPath path")!;
+  const transform = svgDocument
+    .querySelector("svg > g")!
+    .getAttribute("transform");
+  const silhouette = `<svg xmlns="http://www.w3.org/2000/svg"><g transform="${transform}"><path fill="#ffffff" d="${outline.getAttribute("d")}"/></g></svg>`;
+  const parsed = new SVGLoader().parse(silhouette);
+  const parts = parsed.paths.flatMap((path) =>
+    SVGLoader.createShapes(path).map((shape) => {
+      const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: 22,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        bevelThickness: 3,
+        bevelSize: 2,
+        curveSegments: 20,
+        steps: 1,
+      });
+      geometry.scale(1.1 / 268.152, -1.1 / 273.883, 1.1 / 268.152);
+      geometry.translate(-0.55, 1.25, -0.04);
+      // Reflecting the SVG's Y axis also reverses triangle winding.
+      for (const attribute of Object.values(geometry.attributes)) {
+        const a = attribute as THREE.BufferAttribute;
+        for (let i = 0; i < a.count; i += 3)
+          for (let k = 0; k < a.itemSize; k++) {
+            const j = (i + 1) * a.itemSize + k,
+              l = (i + 2) * a.itemSize + k,
+              v = a.array[j];
+            a.array[j] = a.array[l];
+            a.array[l] = v;
+          }
+      }
+      const p = geometry.attributes.position,
+        uv = geometry.attributes.uv;
+      for (let i = 0; i < p.count; i++)
+        uv.setXY(i, (p.getX(i) + 0.55) / 1.1, (p.getY(i) - 0.15) / 1.1);
+      geometry.computeVertexNormals();
+      return geometry;
+    }),
+  );
+  return { parts, texture };
+}
+
+export function careerMiniatures(
+  asset: GoogleAsset,
+  material: (p: THREE.MeshPhysicalMaterialParameters) => THREE.Material,
+  register: (m: THREE.Mesh) => void,
+) {
+  const add = (
+    g: THREE.Group,
+    geometry: THREE.BufferGeometry,
+    color: string,
+    x = 0,
+    y = 0,
+    z = 0,
+  ) => {
+    const mesh = new THREE.Mesh(geometry, material({ color, roughness: 0.35 }));
+    mesh.position.set(x, y, z);
+    mesh.castShadow = mesh.receiveShadow = true;
+    geometry.computeBoundingBox();
+    register(mesh);
+    g.add(mesh);
+    return mesh;
+  };
+  const box = (
+    g: THREE.Group,
+    w: number,
+    h: number,
+    d: number,
+    c: string,
+    x: number,
+    y: number,
+    z: number,
+  ) =>
+    add(
+      g,
+      new RoundedBoxGeometry(w, h, d, 2, Math.min(0.025, w / 3, h / 3, d / 3)),
+      c,
+      x,
+      y,
+      z,
+    );
+  const google = new THREE.Group();
+  google.name = "Google gradient G";
+  for (const part of asset.parts) {
+    const m = add(google, part, "#ffffff");
+    (m.material as THREE.MeshStandardMaterial).map = asset.texture;
+  }
+  const sword = new THREE.Group();
+  sword.name = "Frostmourne";
+  const blade = new THREE.Shape();
+  blade.moveTo(0, 0.54);
+  blade.lineTo(-0.15, 0.72);
+  blade.lineTo(-0.08, 0.9);
+  blade.lineTo(-0.12, 1.28);
+  blade.lineTo(0, 1.8);
+  blade.lineTo(0.12, 1.28);
+  blade.lineTo(0.08, 0.9);
+  blade.lineTo(0.15, 0.72);
+  blade.closePath();
+  add(
+    sword,
+    new THREE.ExtrudeGeometry(blade, {
+      depth: 0.08,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelThickness: 0.012,
+      bevelSize: 0.012,
+      steps: 1,
+    }),
+    "#87cadf",
+    0,
+    0,
+    -0.04,
+  );
+  box(sword, 0.035, 1, 0.025, "#d9ffff", 0, 1.1, 0.061);
+  for (let i = 0; i < 4; i++) {
+    const rune = box(
+      sword,
+      0.075,
+      0.018,
+      0.018,
+      "#56c9ef",
+      0,
+      0.88 + i * 0.13,
+      0.074,
+    );
+    rune.rotation.z = i % 2 ? 0.6 : -0.6;
+  }
+  const guard = new THREE.Shape();
+  guard.moveTo(-0.42, 0.73);
+  guard.lineTo(-0.3, 0.49);
+  guard.lineTo(-0.12, 0.51);
+  guard.lineTo(0, 0.61);
+  guard.lineTo(0.12, 0.51);
+  guard.lineTo(0.3, 0.49);
+  guard.lineTo(0.42, 0.73);
+  guard.lineTo(0.23, 0.64);
+  guard.lineTo(0.08, 0.7);
+  guard.lineTo(-0.08, 0.7);
+  guard.lineTo(-0.23, 0.64);
+  guard.closePath();
+  add(
+    sword,
+    new THREE.ExtrudeGeometry(guard, {
+      depth: 0.12,
+      bevelEnabled: true,
+      bevelSize: 0.025,
+      bevelThickness: 0.02,
+      bevelSegments: 2,
+      steps: 1,
+    }),
+    "#586d84",
+    0,
+    0,
+    -0.05,
+  );
+  box(sword, 0.095, 0.4, 0.1, "#40516b", 0, 0.31, 0);
+  const skull = add(
+    sword,
+    new THREE.SphereGeometry(0.105, 16, 12),
+    "#c3d9e5",
+    0,
+    0.63,
+    0.09,
+  );
+  skull.scale.set(0.8, 1, 0.65);
+  for (const x of [-0.036, 0.036])
+    box(sword, 0.027, 0.024, 0.015, "#19465e", x, 0.65, 0.157);
+  add(sword, new THREE.IcosahedronGeometry(0.085, 1), "#73c3e6", 0, 0.07, 0);
+  const bridge = new THREE.Group();
+  bridge.name = "Golden Gate Bridge";
+  box(bridge, 1.65, 0.09, 0.32, "#e5754b", 0, 0.4, 0);
+  for (const x of [-0.46, 0.46]) {
+    for (const z of [-0.12, 0.12])
+      box(bridge, 0.065, 1.3, 0.065, "#dc683e", x, 0.66, z);
+    for (const y of [0.68, 1, 1.28])
+      box(bridge, 0.09, 0.04, 0.3, "#ec9169", x, y, 0);
+  }
+  for (const z of [-0.15, 0.15]) {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.81, 0.43, z),
+      new THREE.Vector3(-0.46, 1.34, z),
+      new THREE.Vector3(0, 0.7, z),
+      new THREE.Vector3(0.46, 1.34, z),
+      new THREE.Vector3(0.81, 0.43, z),
+    ]);
+    add(bridge, new THREE.TubeGeometry(curve, 48, 0.016, 6, false), "#e8875f");
+    for (let i = 1; i < 16; i++) {
+      const p = curve.getPoint(i / 16);
+      if (p.y < 0.45) continue;
+      add(
+        bridge,
+        new THREE.CylinderGeometry(0.006, 0.006, p.y - 0.43, 5),
+        "#e98a63",
+        p.x,
+        (p.y + 0.43) / 2,
+        z,
+      );
+    }
+  }
+  return { google, sword, bridge };
+}

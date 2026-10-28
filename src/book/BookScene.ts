@@ -4,12 +4,14 @@ import {
   CSS3DRenderer,
 } from "three/addons/renderers/CSS3DRenderer.js";
 import { studioEnvironment, surfaceDetail } from "./surfaces";
-import { contactShadow, softenShadowEdges } from "./effects";
+import { softenShadowEdges } from "./effects";
+import { PhonePreviews } from "./phones";
+import type { GoogleAsset } from "./career";
 import { createBinding } from "./binding";
 import { AsciiPortal } from "./ascii";
 import { PagePopups } from "./popups";
 import { projectTheme } from "./themes";
-import { measureTurnEnvelope, fitTurnEnvelope, FRAME_MARGIN } from "./framing";
+import { measureTurnEnvelope, fitTurnEnvelope } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
 import {
   createLeafGeometry,
@@ -55,6 +57,7 @@ type Callbacks = {
   onRequest: (page: number) => void;
   onView?: (page: number) => void;
   printPages?: HTMLCanvasElement[];
+  google: GoogleAsset;
 };
 type Grip = {
   id: number;
@@ -85,11 +88,7 @@ export class BookScene {
   private keyLight!: THREE.DirectionalLight;
   private floorMaterial!: THREE.ShadowMaterial;
   private rotationFit = 1;
-  private fitOrientation = new THREE.Quaternion(0, 0, 0, 0);
-  private cameraDistance = 0;
   private cameraFocus = new THREE.Vector3(0, 0.65, 0);
-  private inverseCamera = new THREE.Quaternion();
-  private focusInView = new THREE.Vector3();
   private orbit = new THREE.Group();
   private printOrbit = new THREE.Group();
   private rig = new THREE.Group();
@@ -116,7 +115,12 @@ export class BookScene {
   private rightTextures: THREE.CanvasTexture[] = [];
   private textures = new Set<THREE.Texture>();
   private environment: THREE.WebGLRenderTarget;
-  private contact = contactShadow();
+  private dark = false;
+  private phones!: PhonePreviews;
+  private leftTextures: THREE.CanvasTexture[] = [];
+  private coverTextures: THREE.CanvasTexture[] = [];
+  private edgeMaterial!: PaperMaterial;
+  private saddleMaterial!: PaperMaterial;
   private groundY = (-SCENE_RADIUS - 0.2) * SHADOW_DISTANCE;
   private phase: Phase = "arriving";
   private index = 0;
@@ -172,7 +176,7 @@ export class BookScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.04;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.VSMShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.domElement.className = "book-webgl";
     this.renderer.domElement.setAttribute("aria-hidden", "true");
@@ -185,10 +189,9 @@ export class BookScene {
     this.printFloatRoot.add(this.printOrbit);
     this.orbit.add(this.rig);
     this.printOrbit.add(this.printRig);
-    this.scene.add(this.floatRoot, this.contact.mesh);
+    this.scene.add(this.floatRoot);
     this.printing.add(this.printFloatRoot);
-    this.contact.mesh.position.y = this.groundY + 0.015;
-    this.keep(this.contact.texture);
+
     for (const project of callbacks.projects) {
       const canvas = blankPageCanvas(),
         texture = new THREE.CanvasTexture(canvas);
@@ -214,6 +217,7 @@ export class BookScene {
     this.resizeObserver.observe(host);
     this.intersection = new IntersectionObserver(([entry]) => {
       this.visible = entry.isIntersecting;
+      if (!this.visible) this.phones.pause();
       this.last = 0;
       this.schedule();
     });
@@ -238,22 +242,23 @@ export class BookScene {
   private light() {
     this.scene.add(new THREE.HemisphereLight("#ffffff", "#63635f", 1.05));
     const key = (this.keyLight = new THREE.DirectionalLight("#fffefa", 2.5));
-    key.position.set(-2, 15, -1);
+    key.position.set(-1.5, 15, -2);
     key.castShadow = true;
     key.shadow.mapSize.set(
       this.software ? 1024 : 2048,
       this.software ? 1024 : 2048,
     );
     Object.assign(key.shadow.camera, {
-      left: -22,
-      right: 22,
-      top: 22,
-      bottom: -22,
+      left: -8,
+      right: 8,
+      top: 8,
+      bottom: -8,
       near: 1,
       far: 80,
     });
-    key.shadow.radius = 4;
-    key.shadow.normalBias = 0.009;
+    key.shadow.radius = this.software ? 22 : 44;
+    key.shadow.blurSamples = 12;
+    key.shadow.normalBias = 0.015;
     key.shadow.bias = -0.0001;
     this.scene.add(key);
     const fill = new THREE.DirectionalLight("#ffffff", 0.18);
@@ -262,7 +267,7 @@ export class BookScene {
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(120, 120),
       (this.floorMaterial = new THREE.ShadowMaterial({
-        opacity: 0.22,
+        opacity: 0.18,
         depthWrite: false,
       })),
     );
@@ -284,6 +289,8 @@ export class BookScene {
     const material = new THREE.MeshPhongMaterial();
     const values = {
       color: params.color,
+      transparent: params.transparent,
+      opacity: params.opacity,
       map: params.map,
       emissive: params.emissive,
       emissiveIntensity: params.emissiveIntensity,
@@ -306,13 +313,16 @@ export class BookScene {
       detail = surfaceDetail("paper"),
       paper = this.keep(paperTexture());
     Object.values(detail).forEach((map) => this.keep(map));
-    const edge = this.surface({ color: "#e6e6e2", roughness: 1 }),
-      saddle = this.surface({
+    const edge = (this.edgeMaterial = this.surface({
+        color: "#e6e6e2",
+        roughness: 1,
+      })),
+      saddle = (this.saddleMaterial = this.surface({
         map: paper,
         roughness: 1,
         normalMap: detail.normal,
         normalScale: new THREE.Vector2(0.1, 0.1),
-      });
+      }));
     const makeFace = (map: THREE.Texture) =>
       this.surface({
         map,
@@ -327,6 +337,9 @@ export class BookScene {
         pageTexture(project, i, "left", this.callbacks.printPages?.[i]),
       ),
     );
+    this.coverTextures = [front, back];
+    this.leftTextures = inside;
+    this.keep(this.callbacks.google.texture);
     const paperGeometry = createLeafGeometry(),
       coverGeometry = createLeafGeometry(0.012),
       count = inside.length + 1;
@@ -349,7 +362,10 @@ export class BookScene {
       this.leaves,
       (params) => this.surface(params),
       paper,
+      this.callbacks.google,
+      this.software,
     );
+    this.phones = new PhonePreviews(this.callbacks.projects, this.leaves);
     this.binding = createBinding(
       saddle,
       saddle,
@@ -399,8 +415,56 @@ export class BookScene {
     });
   }
   setDarkMode(dark: boolean) {
+    this.dark = dark;
     this.host.dataset.colorMode = dark ? "dark" : "light";
-    this.floorMaterial.opacity = dark ? 0.45 : 0.22;
+    const replace = (
+      target: THREE.CanvasTexture,
+      source: THREE.CanvasTexture,
+    ) => {
+      const canvas = target.image as HTMLCanvasElement;
+      canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+      canvas
+        .getContext("2d")!
+        .drawImage(source.image, 0, 0, canvas.width, canvas.height);
+      target.needsUpdate = true;
+      source.dispose();
+    };
+    this.coverTextures.forEach((texture, i) =>
+      replace(texture, coverTexture(i === 1, dark)),
+    );
+    this.leftTextures.forEach((texture, i) =>
+      replace(
+        texture,
+        pageTexture(
+          this.callbacks.projects[i],
+          i,
+          "left",
+          this.callbacks.printPages?.[i],
+          dark,
+        ),
+      ),
+    );
+    this.paperCanvas = blankPageCanvas(dark);
+    this.portals.forEach((portal, i) => {
+      const project = this.callbacks.projects[i];
+      const colors = projectTheme(project.theme).colors;
+      portal.setColors(
+        dark
+          ? colors.map(
+              (c) =>
+                "#" +
+                new THREE.Color(c)
+                  .lerp(new THREE.Color("#ffffff"), 0.26)
+                  .getHexString(),
+            )
+          : colors,
+      );
+    });
+    this.edgeMaterial.color.set(dark ? "#333438" : "#e6e6e2");
+    this.saddleMaterial.color.set(dark ? "#333438" : "#ffffff");
+    this.popups.setDark(dark);
+    this.floorMaterial.opacity = dark ? 0.4 : 0.18;
+    this.updateArtwork(this.portalTime, true);
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
   }
@@ -465,37 +529,9 @@ export class BookScene {
       ? 1 - Math.exp(-7 * this.elapsed) * Math.cos(10 * this.elapsed)
       : 1;
     this.presentationScale = this.intro ? 0.8 + 0.2 * arrival : 1;
-    if (this.cameraDistance && !this.fitOrientation.equals(this.orientation)) {
-      this.fitOrientation.copy(this.orientation);
-      const vertical =
-          Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
-          FRAME_MARGIN,
-        horizontal = vertical * this.camera.aspect,
-        c = this.focusInView;
-      let fit = 1;
-      for (const point of this.viewEnvelope) {
-        const p = this.scratch
-          .copy(point)
-          .applyQuaternion(this.orientation)
-          .applyQuaternion(this.inverseCamera);
-        for (const sign of [-1, 1]) {
-          const x = (sign * p.x) / horizontal + p.z,
-            y = (sign * p.y) / vertical + p.z;
-          if (x > 0)
-            fit = Math.min(
-              fit,
-              (this.cameraDistance + c.z + (sign * c.x) / horizontal) / x,
-            );
-          if (y > 0)
-            fit = Math.min(
-              fit,
-              (this.cameraDistance + c.z + (sign * c.y) / vertical) / y,
-            );
-        }
-      }
-      this.rotationFit = fit;
-    }
-    this.orbit.scale.setScalar(this.presentationScale * this.rotationFit);
+    // Drag changes orientation only. Framing is computed once per viewport resize.
+    this.rotationFit = 1;
+    this.orbit.scale.setScalar(this.presentationScale);
     this.printOrbit.scale.copy(this.orbit.scale);
     this.floatRoot.position.y =
       Math.sin(t) * 0.1 * strength - (1 - arrival) * 0.3;
@@ -558,6 +594,7 @@ export class BookScene {
     }
     this.setHover(null);
     this.updatePhase();
+    this.updatePhones();
     this.setPrinting(
       !this.scheduler.moving &&
         this.scheduler.committed > 0 &&
@@ -590,6 +627,7 @@ export class BookScene {
     this.updateRig();
     this.commit();
     this.updatePhase();
+    this.updatePhones();
     this.setPrinting(
       this.scheduler.committed > 0 &&
         this.scheduler.committed < this.leaves.length,
@@ -659,7 +697,11 @@ export class BookScene {
     this.leaves.forEach((leaf) => leaf.updateWorld());
     return (
       this.ray.intersectObjects(
-        [...this.leaves.map((leaf) => leaf.mesh), ...this.popups.hitMeshes],
+        [
+          ...this.leaves.map((leaf) => leaf.mesh),
+          ...this.popups.hitMeshes,
+          ...this.phones.hitMeshes,
+        ],
         false,
       )[0] ?? null
     );
@@ -811,6 +853,15 @@ export class BookScene {
     if (!hit) return;
     const id = Number(hit.object.userData.leaf);
     if (
+      hit.object.userData.phone &&
+      !this.scheduler.moving &&
+      boundary > 0 &&
+      boundary < this.leaves.length
+    ) {
+      this.callbacks.onOpen();
+      return;
+    }
+    if (
       !this.scheduler.moving &&
       !this.intro &&
       boundary > 0 &&
@@ -866,24 +917,30 @@ export class BookScene {
     this.camera.up.set(0.035, 1, 0);
     this.camera.position.copy(direction);
     this.camera.lookAt(0, 0, 0);
-    const { distance, focus } = fitTurnEnvelope(
+    const { distance: fittedDistance, focus } = fitTurnEnvelope(
       this.viewEnvelope,
       this.camera.quaternion,
       this.camera.fov,
       this.camera.aspect,
     );
+    const distance = fittedDistance * 1.06;
+    // Shift the static composition up without changing focal length or drag scale.
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(
+      this.camera.quaternion,
+    );
+    focus.addScaledVector(
+      up,
+      -distance *
+        Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
+        0.08,
+    );
     this.cameraFocus.copy(focus);
-    const inverse = this.camera.quaternion.clone().invert();
     this.displayScale = legacyDistance / distance;
     this.camera.position.copy(focus).addScaledVector(direction, distance);
     this.camera.lookAt(focus);
     this.camera.far = Math.max(100, distance + 80);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
-    this.cameraDistance = distance;
-    this.inverseCamera.copy(inverse);
-    this.focusInView.copy(focus).applyQuaternion(inverse);
-    this.fitOrientation.set(0, 0, 0, 0);
     this.updateRig();
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
@@ -921,6 +978,7 @@ export class BookScene {
         ? -1
         : this.scheduler.committed - 1,
       this.motion.matches,
+      this.rotationImpulse,
     );
     const changed =
       this.popups.folded || !this.scheduler.moving
@@ -948,6 +1006,7 @@ export class BookScene {
     }
     this.commit();
     this.updatePhase();
+    this.updatePhones();
     this.setPrinting(
       !this.intro &&
         !this.scheduler.moving &&
@@ -957,9 +1016,23 @@ export class BookScene {
     this.updateHighlight(dt);
     if (!this.motion.matches) this.portalTime += dt;
     this.updateArtwork(this.portalTime);
+    this.updatePhones(dt);
     this.render();
     this.schedule();
   };
+  private updatePhones(dt = 0) {
+    this.phones.step(
+      dt,
+      !this.intro &&
+        !this.scheduler.moving &&
+        this.scheduler.committed > 0 &&
+        this.scheduler.committed < this.leaves.length
+        ? this.scheduler.committed - 1
+        : -1,
+      this.motion.matches,
+      this.visible,
+    );
+  }
   private render() {
     this.renderer.render(this.scene, this.camera);
     this.css.render(this.printing, this.camera);
@@ -1105,7 +1178,11 @@ export class BookScene {
     data.framingVertices = String(this.viewEnvelope.length);
     data.lightPosition = JSON.stringify(this.keyLight.position.toArray());
     data.printResolution = "1200x1694";
-    data.portalCoverage = "full-page";
+    data.portalCoverage = "border";
+    data.phoneCount = String(this.phones.count);
+    data.popupNames = JSON.stringify(this.popups.names());
+    data.modelScale = String(this.orbit.scale.x);
+    data.bookColorMode = this.dark ? "dark" : "light";
     data.displayScale = String(this.displayScale);
     data.rotationFit = String(this.rotationFit);
     data.arrivalScale = this.presentationScale.toFixed(4);
@@ -1151,6 +1228,7 @@ export class BookScene {
     }
   };
   private onVisibility = () => {
+    this.phones.pause();
     cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.last = 0;
@@ -1184,6 +1262,8 @@ export class BookScene {
         ).forEach((m) => materials.add(m));
       }
     });
+    this.phones.dispose();
+    this.popups.dispose();
     this.leaves.forEach((leaf) => leaf.dispose());
     geometries.forEach((g) => g.dispose());
     materials.forEach((m) => m.dispose());

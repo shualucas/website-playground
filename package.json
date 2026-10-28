@@ -19,6 +19,7 @@
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@fontsource/dm-sans": "^5.3.0",
+    "gifuct-js": "^2.1.2",
     "html-to-image": "^1.11.13",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

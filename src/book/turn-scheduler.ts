@@ -37,7 +37,7 @@ export class TurnScheduler {
       const forward = this.requested > this.launched,
         leaf = this.leaves[forward ? this.launched : this.launched - 1];
       // Retarget a moving leaf immediately; it does not consume another active slot.
-      if (this.active < Math.min(4, this.leaves.length) || !leaf.settled) {
+      if (this.active < Math.min(5, this.leaves.length) || !leaf.settled) {
         leaf.turnTo(forward);
         this.launched += forward ? 1 : -1;
         const distance = Math.abs(this.requested - this.launched);
@@ -53,6 +53,8 @@ export class TurnScheduler {
         : 1;
     for (const leaf of this.leaves)
       changed = leaf.step(dt, flex, catchUp) || changed;
+    for (let i = this.leaves.length - 2; i >= 0; i--)
+      this.leaves[i].keepAheadOf(this.leaves[i + 1]);
     this.maxConcurrent = Math.max(this.maxConcurrent, this.active);
     if (!this.moving) this.committed = this.requested;
     return changed;

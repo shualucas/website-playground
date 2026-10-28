@@ -6,6 +6,11 @@ export const THEMES = {
     colors: ["#171717", "#606060"],
     gradient: "linear-gradient(110deg, #161616, #606060)",
   },
+  "after-hours": {
+    ink: "#393139",
+    accent: "#9c74d1",
+    colors: ["#7957a2", "#ed785b"],
+  },
   stadia: {
     ink: "#a93021",
     accent: "#bc2378",

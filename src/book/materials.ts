@@ -6,7 +6,7 @@ export const PAGE_WIDTH = 3.35,
   SURFACE = 0.06;
 export interface Project {
   id: string;
-  kind: "about" | "project";
+  kind: "about" | "project" | "after-hours";
   label: string;
   theme: string;
   title: string;
@@ -18,6 +18,9 @@ export interface Project {
   disciplines: string[];
   note: string;
   previewImage?: string;
+  previewVideo?: string;
+  previewGif?: string;
+  previewPoster?: string;
 }
 const fonts = {
   sans: '"DM Sans",sans-serif',
@@ -83,14 +86,15 @@ export function applyRisoPrint(
   ctx.restore();
 }
 /** An original monochrome editorial cover: sculptural contour artwork and small type. */
-export function coverTexture(back = false) {
+export function coverTexture(back = false, dark = false) {
+  const inverse = back !== dark;
   const { element, ctx } = canvas();
-  ctx.fillStyle = back ? "#191919" : "#fafaf8";
+  ctx.fillStyle = inverse ? "#191919" : "#fafaf8";
   ctx.fillRect(0, 0, 900, 1260);
   ctx.save();
   ctx.translate(back ? 560 : 450, back ? 540 : 610);
   ctx.rotate(-0.27);
-  ctx.strokeStyle = back ? "#e7e7e2" : "#202020";
+  ctx.strokeStyle = inverse ? "#e7e7e2" : "#202020";
   ctx.lineWidth = 1.9;
   for (let ring = 0; ring < 60; ring++) {
     ctx.beginPath();
@@ -108,7 +112,7 @@ export function coverTexture(back = false) {
     ctx.stroke();
   }
   ctx.restore();
-  ctx.fillStyle = back ? "#fafaf8" : "#161616";
+  ctx.fillStyle = inverse ? "#fafaf8" : "#161616";
   ctx.font = `500 24px ${fonts.sans}`;
   ctx.fillText("JOSH LUCAS", 70, 94);
   ctx.textAlign = "right";
@@ -122,12 +126,14 @@ export function coverTexture(back = false) {
   );
   ctx.font = `400 18px ${fonts.sans}`;
   ctx.fillText(
-    back ? "SAN FRANCISCO, CALIFORNIA" : "ABOUT  /  STADIA  /  AI MODE",
+    back
+      ? "SAN FRANCISCO, CALIFORNIA"
+      : "ABOUT  /  SELECTED WORK  /  AFTER-HOURS",
     70,
     1175,
   );
   ctx.textAlign = "right";
-  ctx.fillText("01—03", 830, 1175);
+  ctx.fillText("01—04", 830, 1175);
   applyRisoPrint(ctx, 900, 1260);
   return texture(element);
 }
@@ -191,19 +197,25 @@ export function pageTexture(
   index: number,
   side: "left" | "right",
   captured?: HTMLCanvasElement,
+  dark = false,
 ) {
   const { element, ctx } = canvas(1200, 1694);
-  ctx.drawImage(paperTextureCanvas(), 0, 0, 1200, 1694);
+  if (dark) {
+    ctx.fillStyle = "#202124";
+    ctx.fillRect(0, 0, 1200, 1694);
+  } else ctx.drawImage(paperTextureCanvas(), 0, 0, 1200, 1694);
   if (captured) {
+    ctx.filter = dark ? "invert(1)" : "none";
     ctx.drawImage(captured, 0, 0, 1200, 1694);
+    ctx.filter = "none";
     return texture(element);
   }
   ctx.scale(1200 / 900, 1694 / 1260);
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
   ctx.font = `500 17px ${fonts.sans}`;
   ctx.fillText("JOSH LUCAS / SELECTED WORK", 76, 81);
   line(ctx, 112);
-  ctx.fillStyle = "#333333";
+  ctx.fillStyle = dark ? "#cfcfc9" : "#333333";
   ctx.font = `500 16px ${fonts.sans}`;
   ctx.fillText(
     project.kind === "about"
@@ -212,37 +224,37 @@ export function pageTexture(
     76,
     184,
   );
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
   ctx.font = `700 89px ${fonts.sans}`;
   let y = 282;
   for (const part of project.title.split("\n")) {
     ctx.fillText(part, 76, y);
     y += 89;
   }
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
   ctx.font = `500 31px ${fonts.sans}`;
   y = wrapped(ctx, project.subtitle, 76, y + 24, 710, 43);
   ctx.font = `400 25px ${fonts.sans}`;
   y = wrapped(ctx, project.description, 76, y + 30, 710, 40);
   line(ctx, y + 14);
-  ctx.fillStyle = "#333333";
+  ctx.fillStyle = dark ? "#cfcfc9" : "#333333";
   ctx.font = `500 16px ${fonts.sans}`;
   if (project.kind === "about") {
     ctx.fillText("BASED IN", 76, y + 63);
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
     ctx.font = `500 25px ${fonts.sans}`;
     ctx.fillText("San Francisco, California", 76, y + 102);
   } else {
     ctx.fillText("ROLE & TEAM", 76, y + 63);
     ctx.fillText("YEAR", 650, y + 63);
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
     ctx.font = `400 23px ${fonts.sans}`;
     wrapped(ctx, `${project.role} · ${project.team}`, 76, y + 104, 520, 30);
     ctx.fillText(project.year, 650, y + 104);
     ctx.font = `400 20px ${fonts.sans}`;
     wrapped(ctx, project.disciplines.join(" · "), 76, y + 160, 720, 32);
   }
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
   ctx.font = `500 23px ${fonts.sans}`;
   ctx.fillText(
     project.kind === "about" ? "A little about me →" : "Read the case study →",
@@ -303,8 +315,11 @@ function paperTextureCanvas() {
   }
   return paperCanvas;
 }
-export function blankPageCanvas() {
+export function blankPageCanvas(dark = false) {
   const result = canvas();
-  result.ctx.drawImage(paperTextureCanvas(), 0, 0);
+  if (dark) {
+    result.ctx.fillStyle = "#202124";
+    result.ctx.fillRect(0, 0, 900, 1260);
+  } else result.ctx.drawImage(paperTextureCanvas(), 0, 0);
   return result.element;
 }

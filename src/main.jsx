@@ -8,6 +8,7 @@ import { projects } from "./book/projects";
 import { AsciiPortal } from "./book/ascii";
 import { projectTheme } from "./book/themes";
 import "./style.css";
+import { CardLoader } from "./CardLoader";
 function Arrow({ direction = "right" }) {
   return (
     <svg
@@ -54,7 +55,11 @@ function Metadata({
       </div>
       <div className="chapter-label">
         <span className="chapter-rule" />
-        {project.kind === "about" ? "ABOUT" : `PROJECT ${pad(index)}`}
+        {project.kind === "about"
+          ? "ABOUT"
+          : project.kind === "after-hours"
+            ? "AFTER-HOURS"
+            : `PROJECT ${pad(index)}`}
         <span className="sample-label">
           {project.sample ? "SAMPLE CONTENT" : "CASE STUDY"}
         </span>
@@ -73,11 +78,19 @@ function Metadata({
       </h1>
       <p className="project-subtitle">{project.subtitle}</p>
       <p className="project-description">{project.description}</p>
-      {project.kind === "about" ? (
+      {project.kind !== "project" ? (
         <div className="about-note">
-          <span>BASED IN</span>
-          <strong>San Francisco, California</strong>
-          <p>A fuller introduction is on its way.</p>
+          <span>{project.kind === "about" ? "BASED IN" : "OFF THE CLOCK"}</span>
+          <strong>
+            {project.kind === "about"
+              ? "San Francisco, California"
+              : "Film · Tennis · Games"}
+          </strong>
+          <p>
+            {project.kind === "about"
+              ? "Professional background — coming soon."
+              : "A space for play and experiments."}
+          </p>
         </div>
       ) : (
         <dl className="project-facts">
@@ -98,7 +111,11 @@ function Metadata({
         </dl>
       )}
       <button className="read-project" onClick={onRead}>
-        {project.kind === "about" ? "A little about me" : "Read the case study"}{" "}
+        {project.kind === "about"
+          ? "Professional background"
+          : project.kind === "after-hours"
+            ? "Explore after-hours"
+            : "Read the case study"}{" "}
         <Arrow />
       </button>
       <div className="page-folio">
@@ -167,7 +184,38 @@ function PortalFallback({ project = projects[0] }) {
     />
   );
 }
-function PreviewPage({ project, onNext, fallback }) {
+function PhoneFallback({ project, controls = false }) {
+  return (
+    <div
+      className="phone-placeholder"
+      style={{ "--project-color": projectTheme(project.theme).accent }}
+    >
+      {project.previewVideo ? (
+        <video
+          src={project.previewVideo}
+          poster={project.previewPoster || undefined}
+          controls={controls}
+          muted
+          playsInline
+          loop
+          preload="metadata"
+        />
+      ) : project.previewGif || project.previewPoster ? (
+        <img
+          src={project.previewGif || project.previewPoster}
+          alt={project.imageAlt}
+        />
+      ) : (
+        <div>
+          <strong>{project.label}</strong>
+          <span>Preview coming soon</span>
+          <small>MP4 / GIF</small>
+        </div>
+      )}
+    </div>
+  );
+}
+function PreviewPage({ project, onNext, onRead, fallback }) {
   return (
     <div className="preview-content portal-only">
       <button
@@ -178,6 +226,15 @@ function PreviewPage({ project, onNext, fallback }) {
       >
         {fallback ? <PortalFallback project={project} /> : null}
       </button>
+      {project.kind === "project" && (
+        <button
+          className="phone-hit"
+          aria-label={`Open ${project.label} preview`}
+          onClick={onRead}
+        >
+          {fallback ? <PhoneFallback project={project} /> : null}
+        </button>
+      )}
     </div>
   );
 }
@@ -186,7 +243,8 @@ function App() {
     engine = useRef(null),
     dialog = useRef(null),
     indexRef = useRef(0),
-    printSources = useRef([]);
+    printSources = useRef([]),
+    loaderGate = useRef({ done: false, resolve: null });
   const [mounts, setMounts] = useState(null),
     [phase, setPhase] = useState("arriving"),
     [index, setIndex] = useState(0),
@@ -203,7 +261,12 @@ function App() {
         return "light";
       }
     }),
-    [presentation, setPresentation] = useState("loading");
+    [presentation, setPresentation] = useState("loading"),
+    [loadProgress, setLoadProgress] = useState(0.1);
+  const finishLoader = () => {
+    loaderGate.current.done = true;
+    loaderGate.current.resolve?.();
+  };
   const project = projects[index],
     busy = phase !== "ready";
   const select = (next) => {
@@ -284,26 +347,39 @@ function App() {
       .then(async () => {
         if (disposed) return;
         try {
-          const [{ BookScene }, { toCanvas, getFontEmbedCSS }] =
-            await Promise.all([
-              import("./book/BookScene"),
-              import("html-to-image"),
-            ]);
+          setLoadProgress(0.2);
+          const [
+            { BookScene },
+            { toCanvas, getFontEmbedCSS },
+            { loadGoogleAsset },
+          ] = await Promise.all([
+            import("./book/BookScene"),
+            import("html-to-image"),
+            import("./book/career"),
+          ]);
           await document.fonts.ready;
           if (disposed) return;
+          setLoadProgress(0.35);
+          await new Promise(requestAnimationFrame);
+          const google = await loadGoogleAsset();
+          let completed = 0;
           let printPages;
           try {
             const fontEmbedCSS = await getFontEmbedCSS(printSources.current[0]);
             printPages = await Promise.all(
-              printSources.current.map((source) =>
-                toCanvas(source, {
+              printSources.current.map(async (source) => {
+                const captured = await toCanvas(source, {
                   width: 600,
                   height: 847,
                   pixelRatio: 2,
                   fontEmbedCSS,
                   style: { transform: "none", opacity: "1", clipPath: "none" },
-                }),
-              ),
+                });
+                completed += 1;
+                if (!disposed)
+                  setLoadProgress(0.35 + (0.4 * completed) / projects.length);
+                return captured;
+              }),
             );
           } catch (error) {
             console.info(
@@ -312,6 +388,8 @@ function App() {
             );
           }
           if (disposed) return;
+          setLoadProgress(0.85);
+          await new Promise(requestAnimationFrame);
           const book = new BookScene(
             host.current,
             {
@@ -324,11 +402,17 @@ function App() {
               onSpread: (left, right) => setSpread({ left, right }),
               onOpen: openRead,
               printPages,
+              google,
             },
             initial >= 0 ? initial : -1,
           );
           engine.current = book;
           setMounts({ left: book.leftPage, right: book.rightPage });
+          setLoadProgress(1);
+          await new Promise((resolve) => {
+            if (loaderGate.current.done) resolve();
+            else loaderGate.current.resolve = resolve;
+          });
           await new Promise((resolve) =>
             setTimeout(resolve, Math.max(0, revealAt - performance.now())),
           );
@@ -339,6 +423,13 @@ function App() {
           });
         } catch (error) {
           console.info("Showing the book reading layout.", error.message);
+          engine.current?.dispose();
+          engine.current = null;
+          setLoadProgress(1);
+          await new Promise((resolve) => {
+            if (loaderGate.current.done) resolve();
+            else loaderGate.current.resolve = resolve;
+          });
           await new Promise((resolve) =>
             setTimeout(resolve, Math.max(0, revealAt - performance.now())),
           );
@@ -420,36 +511,12 @@ function App() {
         aria-label="Preparing your zine"
         aria-hidden={presentation !== "loading"}
       >
-        <div className="loader-content">
-          <svg
-            className="loader-book"
-            viewBox="0 0 80 60"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="m16 10 40-4 9 40-40 7z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="m23 8 9 42M31 18l19-2M33 24l19-2"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <circle
-              cx="49"
-              cy="34"
-              r="7"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-          </svg>
-          <span>Preparing your edition</span>
-          <div className="loader-track">
-            <i />
-          </div>
-        </div>
+        <CardLoader
+          progress={loadProgress}
+          dark={colorMode === "dark"}
+          onComplete={finishLoader}
+          active={presentation === "loading"}
+        />
       </div>
       <div className="scene-tools" role="group" aria-label="Scene controls">
         <button
@@ -609,7 +676,9 @@ function App() {
         aria-label={
           project.kind === "about"
             ? "About Josh Lucas"
-            : `${project.label} case study`
+            : project.kind === "after-hours"
+              ? "After-hours"
+              : `${project.label} case study`
         }
         onClick={(e) => {
           if (e.target === e.currentTarget) dialog.current.close();
@@ -636,12 +705,18 @@ function App() {
             </svg>
           </button>
           <p className="eyebrow">
-            {project.kind === "about" ? "ABOUT" : `PROJECT ${pad(index)}`}
+            {project.kind === "about"
+              ? "ABOUT"
+              : project.kind === "after-hours"
+                ? "AFTER-HOURS"
+                : `PROJECT ${pad(index)}`}
             {project.sample ? " / PLACEHOLDER" : ""}
           </p>
           <h2>{project.title.replace("\n", " ")}</h2>
           <p className="dialog-intro">{project.subtitle}</p>
-          {project.previewImage ? (
+          {project.kind === "project" ? (
+            <PhoneFallback project={project} controls />
+          ) : project.previewImage ? (
             <img
               className="project-image"
               src={project.previewImage}
@@ -667,8 +742,10 @@ function App() {
           <p className="scaffold-note">
             {project.sample
               ? project.kind === "about"
-                ? "Placeholder biography — ready for your story."
-                : "Placeholder case study — ready for your story, images, and verified results."
+                ? "Professional biography — ready for your story."
+                : project.kind === "after-hours"
+                  ? "Personal projects and experiments — coming soon."
+                  : "Placeholder case study — ready for your story, images, and verified results."
               : project.note}
           </p>
         </article>

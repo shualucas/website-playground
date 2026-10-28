@@ -1,4 +1,4 @@
-/** A full-bleed vortex of actual printed monospace glyphs. */
+/** A moving border of actual printed monospace glyphs, with a clear content window. */
 export class AsciiPortal {
   readonly canvas = document.createElement("canvas");
   private ctx: CanvasRenderingContext2D;
@@ -8,6 +8,10 @@ export class AsciiPortal {
     this.canvas.height = 1056;
     this.ctx = this.canvas.getContext("2d")!;
     this.draw(0);
+  }
+  setColors(colors: readonly string[]) {
+    this.colors = colors;
+    this.last = -1;
   }
   draw(time: number) {
     const frame = Math.floor(time * 12);
@@ -21,6 +25,7 @@ export class AsciiPortal {
     ctx.textBaseline = "middle";
     for (let row = 0; row < 66; row++)
       for (let col = 0; col < 48; col++) {
+        if (row > 6 && row < 59 && col > 5 && col < 42) continue;
         const x = (col + 0.5 - 24) / 24,
           y = (row + 0.5 - 33) / 33;
         const r = Math.hypot(x, y * 1.04),

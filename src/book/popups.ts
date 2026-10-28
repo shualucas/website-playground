@@ -1,19 +1,21 @@
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { PAGE_WIDTH as W, PAGE_HEIGHT as H, type Project } from "./materials";
 import { SkinnedLeaf, LEAF_SEGMENTS, type PaperMaterial } from "./leaf";
-import { projectTheme } from "./themes";
 import { aboutMiniatures } from "./miniatures";
+import { careerMiniatures, type GoogleAsset } from "./career";
+import { JellyCage } from "./jelly";
 
 type Item = {
   anchor: THREE.Group;
   fold: THREE.Group;
   amount: number;
   delay: number;
+  jelly: JellyCage;
+  name: string;
 };
 type Spread = { items: Item[]; time: number };
 
-/** Independent paper-like dioramas. Anchors inherit the printed leaf's actual bones. */
+/** Only career/About and After-hours own miniatures. Project prefabs remain archived. */
 export class PagePopups {
   readonly spreads: Spread[] = [];
   readonly meshes: THREE.Mesh[] = [];
@@ -23,225 +25,75 @@ export class PagePopups {
   constructor(
     projects: Project[],
     leaves: SkinnedLeaf[],
-    surface: (params: THREE.MeshPhysicalMaterialParameters) => PaperMaterial,
-    paper: THREE.Texture,
+    surface: (p: THREE.MeshPhysicalMaterialParameters) => PaperMaterial,
+    _paper: THREE.Texture,
+    google: GoogleAsset,
+    software: boolean,
   ) {
     projects.forEach((project, index) => {
-      const palette = projectTheme(project.theme),
-        leaf = leaves[index + 1],
-        materials = new Map<string, PaperMaterial>();
-      const material = (color: string) => {
-        if (!materials.has(color))
-          materials.set(color, surface({ color, map: paper, roughness: 0.72 }));
-        return materials.get(color)!;
-      };
-      const shape = (
-        width: number,
-        height: number,
-        depth: number,
-        color = "#f7f7f4",
-        radius = 0.035,
-      ) => {
-        const mesh = new THREE.Mesh(
-          new RoundedBoxGeometry(
-            width,
-            height,
-            depth * 1.7,
-            2,
-            Math.min(radius, width / 3, height / 3, depth / 3),
-          ),
-          material(color),
-        );
-        mesh.geometry.computeBoundingBox();
-        mesh.castShadow = mesh.receiveShadow = true;
+      const leaf = leaves[index + 1],
+        spread: Spread = { items: [], time: 0 };
+      const register = (mesh: THREE.Mesh) => {
         mesh.userData.leaf = leaf.id;
         mesh.userData.popup = true;
         this.meshes.push(mesh);
-        return mesh;
       };
-      const add = (
-        group: THREE.Group,
-        mesh: THREE.Object3D,
-        x: number,
-        y: number,
-        z: number,
-      ) => {
-        mesh.position.set(x, y, z * 1.7);
-        group.add(mesh);
-        return mesh;
-      };
-      const colors = palette.colors,
-        spread: Spread = { items: [], time: 0 };
       const item = (
         u: number,
         v: number,
-        build: (g: THREE.Group) => void,
+        model: THREE.Group,
+        color: string,
         yaw = 0,
       ) => {
         const anchor = new THREE.Group(),
           fold = new THREE.Group(),
           content = new THREE.Group();
-        const boneIndex = Math.min(
-          LEAF_SEGMENTS - 1,
-          Math.floor(u * LEAF_SEGMENTS),
-        );
+        const bone = Math.min(LEAF_SEGMENTS - 1, Math.floor(u * LEAF_SEGMENTS));
         anchor.position.set(
-          u * W - (boneIndex * W) / LEAF_SEGMENTS,
-          0.018,
+          u * W - (bone * W) / LEAF_SEGMENTS,
+          0.024,
           (v - 0.5) * H,
         );
-        leaf.bones[boneIndex].add(anchor);
+        leaf.bones[bone].add(anchor);
         anchor.add(fold);
         fold.add(content);
         content.rotation.y = yaw;
-        build(content);
+        content.add(model);
+        const jelly = new JellyCage(content, surface, color, software);
         anchor.visible = false;
         spread.items.push({
           anchor,
           fold,
+          jelly,
           amount: 0,
           delay: spread.items.length * 0.11,
+          name: model.name,
         });
-      };
-      const lines = (
-        g: THREE.Group,
-        x: number,
-        y: number,
-        z: number,
-        width: number,
-        color: string,
-        count = 3,
-      ) => {
-        for (let i = 0; i < count; i++)
-          add(
-            g,
-            shape(width * (1 - i * 0.12), 0.018, 0.006, color, 0.002),
-            x - i * width * 0.06,
-            y - i * 0.075,
-            z,
-          );
       };
       if (project.kind === "about") {
-        const models = aboutMiniatures(surface, (mesh) => {
-          mesh.userData.leaf = leaf.id;
-          mesh.userData.popup = true;
-          this.meshes.push(mesh);
-        });
-        item(0.35, 0.37, (g) => g.add(models.camera), -0.16);
-        item(
-          0.79,
-          0.4,
-          (g) => {
-            models.racket.rotation.z = -0.12;
-            g.add(models.racket);
-          },
-          0.12,
-        );
-        item(
-          0.49,
-          0.77,
-          (g) => {
-            models.controller.rotation.x = -0.14;
-            g.add(models.controller);
-          },
-          0.14,
-        );
-      } else if (project.theme === "stadia") {
-        item(
-          0.56,
-          0.43,
-          (g) => {
-            add(g, shape(1.58, 0.97, 0.065), 0, 0.92, 0);
-            add(g, shape(1.39, 0.76, 0.015, colors[1]), 0, 0.94, 0.043);
-            add(g, shape(1.28, 0.13, 0.01, colors[0]), 0, 0.72, 0.055);
-            add(g, shape(0.12, 0.4, 0.12, colors[0]), 0, 0.26, 0);
-            add(g, shape(0.7, 0.05, 0.4), 0, 0.035, 0.02);
-            lines(g, -0.18, 1.08, 0.057, 0.75, "#f7f7f4", 2);
-          },
-          -0.14,
-        );
-        item(
-          0.48,
-          0.78,
-          (g) => {
-            const pad = shape(1.2, 0.53, 0.25, "#f7f7f4", 0.13);
-            add(g, pad, 0, 0.38, 0);
-            for (const x of [-0.39, 0.39]) {
-              const grip = shape(0.31, 0.47, 0.24, "#f7f7f4", 0.09);
-              grip.rotation.z = x < 0 ? -0.25 : 0.25;
-              add(g, grip, x, 0.18, 0);
-            }
-            add(g, shape(0.25, 0.07, 0.04, colors[0]), -0.31, 0.4, 0.15);
-            add(g, shape(0.07, 0.25, 0.04, colors[0]), -0.31, 0.4, 0.15);
-            for (const [x, y] of [
-              [0.27, 0.39],
-              [0.39, 0.48],
-              [0.39, 0.3],
-            ])
-              add(g, shape(0.07, 0.07, 0.035, colors[1]), x, y, 0.15);
-          },
-          0.2,
-        );
-        item(0.79, 0.23, (g) => {
-          add(g, shape(0.64, 0.25, 0.1, colors[0], 0.08), 0, 0.65, 0);
-          add(g, shape(0.3, 0.3, 0.1, colors[0], 0.09), -0.08, 0.79, 0);
-          add(g, shape(0.26, 0.24, 0.1, colors[0], 0.08), 0.12, 0.74, 0);
-          add(g, shape(0.025, 0.54, 0.025), 0, 0.28, 0);
-        });
-      } else {
-        item(
-          0.52,
-          0.42,
-          (g) => {
-            add(g, shape(1.65, 0.39, 0.08), 0, 1.14, 0);
-            for (let i = 0; i < 4; i++)
-              add(
-                g,
-                shape(0.07, 0.07, 0.012, colors[i]),
-                -0.65 + i * 0.1,
-                1.14,
-                0.05,
-              );
-            lines(g, 0.22, 1.15, 0.05, 0.67, palette.ink, 1);
-            add(g, shape(1.32, 0.79, 0.055), 0.04, 0.54, -0.07);
-            lines(g, 0, 0.75, -0.035, 0.96, palette.ink, 4);
-            for (let i = 0; i < 4; i++)
-              add(
-                g,
-                shape(0.21, 0.025, 0.012, colors[i]),
-                -0.33 + i * 0.23,
-                0.24,
-                -0.032,
-              );
-          },
-          -0.14,
-        );
-        item(
-          0.65,
-          0.76,
-          (g) => {
-            add(g, shape(0.87, 0.68, 0.055), 0, 0.39, 0);
-            add(g, shape(0.66, 0.22, 0.012, colors[0]), 0, 0.54, 0.034);
-            lines(g, -0.03, 0.32, 0.034, 0.55, palette.ink, 2);
-          },
-          -0.25,
-        );
-        item(0.25, 0.76, (g) => {
-          for (let i = 0; i < 4; i++) {
-            const petal = shape(0.28, 0.46, 0.08, colors[i], 0.08);
-            petal.rotation.z = (i * Math.PI) / 2;
-            add(
-              g,
-              petal,
-              Math.sin((i * Math.PI) / 2) * 0.16,
-              0.45 + Math.cos((i * Math.PI) / 2) * 0.16,
-              i * 0.006,
-            );
-          }
-        });
+        const models = careerMiniatures(google, surface, register);
+        item(0.34, 0.37, models.google, "#779aef", -0.12);
+        item(0.78, 0.39, models.sword, "#58c9e8", 0.15);
+        item(0.51, 0.78, models.bridge, "#e88961", -0.1);
+      } else if (project.kind === "after-hours") {
+        const models = aboutMiniatures(surface, register);
+        item(0.35, 0.37, models.camera, "#d3ae72", -0.16);
+        models.racket.rotation.z = -0.12;
+        item(0.79, 0.4, models.racket, "#e88364", 0.12);
+        models.controller.rotation.x = -0.14;
+        item(0.49, 0.77, models.controller, "#ad86dc", 0.14);
       }
       this.spreads.push(spread);
     });
+  }
+  setDark(dark: boolean) {
+    this.spreads.forEach((s) => s.items.forEach((i) => i.jelly.setDark(dark)));
+  }
+  names() {
+    return this.spreads.map((s) => s.items.map((i) => i.name));
+  }
+  dispose() {
+    this.spreads.forEach((s) => s.items.forEach((i) => i.jelly.dispose()));
   }
   restEnvelope(rig: THREE.Group) {
     rig.updateWorldMatrix(true, true);
@@ -284,7 +136,7 @@ export class PagePopups {
       return true;
     });
   }
-  step(dt: number, target: number, reduced: boolean) {
+  step(dt: number, target: number, reduced: boolean, impulse = 0) {
     this.active = target;
     let changed = false;
     this.spreads.forEach((spread, index) => {
@@ -296,6 +148,9 @@ export class PagePopups {
           item.amount = Math.max(0, item.amount - dt / 0.18);
         else if (spread.time > item.delay + 0.08)
           item.amount = Math.min(1, item.amount + dt / 0.55);
+        if (before === 0 && item.amount > 0) item.jelly.excite();
+        if (item.amount > 0 && impulse) item.jelly.excite(impulse * 2);
+        item.jelly.step(dt, reduced || item.amount === 0);
         const p = item.amount,
           q = p - 1,
           bounce = 1 + 2.6 * q * q * q + 1.6 * q * q;

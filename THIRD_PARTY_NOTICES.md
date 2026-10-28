@@ -25,3 +25,13 @@ The slider's `Experience.jsx` wraps the book in Drei `Float` (`speed={2}`, `floa
 ## Current editorial edition
 
 The neutral editorial cover, film camera, racket (including its strings and coral grip wrap), GameCube-style controller and revised loading/theme controls are original procedural work. The controller is a stylized reference to the Nintendo GameCube controller; no Nintendo logo, model or texture is included. Three.js also provides RoundedBoxGeometry, ExtrudeGeometry, BufferGeometryUtils and ConvexHull under its existing MIT notice. The convex-hull fit samples off-scene copies of local leaves; no physics or animation package is added.
+
+## Career, jelly, preview and loader edition
+
+- The standalone Google gradient G vector is bundled from [SVGL](https://github.com/pheralb/svgl/blob/main/static/library/google.svg), downloaded 2026-10-28. SVGL's MIT notice is included at `public/licenses/svgl-MIT.txt`. The Google mark belongs to Google and is used here to identify the portfolio owner's stated work history. Its existing vector silhouette and rasterized gradient are used for the extruded miniature.
+- **gifuct-js**, copyright Matt Way, decodes local GIF previews. MIT notice: `public/licenses/gifuct-js-MIT.txt`. Its transitive `js-binary-schema-parser` MIT notice is included at `public/licenses/js-binary-schema-parser-MIT.txt`.
+- The user-supplied **Melon Jelly Knife** HTML was inspected as a technical reference. Its tetrahedral XPBD, embedded surfaces and WebGPU thickness/refraction passes informed the material and deformation choices. No uploaded source, simulation, cutting, assets or WGSL implementation is distributed. This zine uses independently written Three.js physical transmission/attenuation, a bounded volume-preserving scale/shear/twist cage, and deformed surface normals/shadow geometry; it does not implement a tetrahedral soft body.
+- The user-supplied loading-screen video informed the stationary card, mirrored rank/suit and evolving grain pattern. The local monochrome analytic particle field, preparation-stage progress and card UI are independently implemented. No video frames or original animation assets are shipped.
+- Book of Leaks' inverted-hull outline technique informed the colored miniature silhouettes. The local shells share each mesh's deformation frame; its renderer, page implementation and source assets are not copied.
+
+Frostmourne and the Golden Gate Bridge are original procedural interpretations. Frostmourne refers to Blizzard Entertainment's Warcraft artwork; no extracted Blizzard model or texture is included. Earlier project props remain in `src/book/miniatures/library/` and are not included in the active scene. Project video/GIF slots start empty, with clearly labeled local posters.

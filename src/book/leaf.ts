@@ -4,7 +4,8 @@ import { PAGE_WIDTH as WIDTH, PAGE_HEIGHT as HEIGHT } from "./materials";
 export type PaperMaterial =
   THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
 export const LEAF_SEGMENTS = 30;
-export const LEAF_GAP = 0.009;
+// Covers are 0.012 thick; spacing includes clearance even along a bent normal.
+export const LEAF_GAP = 0.016;
 export const LEAF_RADIUS = Math.hypot(WIDTH, HEIGHT / 2) + 0.3;
 
 /** Shared bind-pose geometry. Only bone matrices change after construction. */
@@ -143,12 +144,12 @@ export class SkinnedLeaf {
   step(delta: number, flex: number, speed = 1) {
     if (this.settled && Math.abs(flex - this.lastFlex) < 0.00005) return false;
     const dt = Math.min(Math.max(delta, 0), 0.25) * speed;
-    damp(this.hinge, 0, this.target, this.cover ? 7.2 : 5.8, dt);
+    damp(this.hinge, 0, this.target, 5.8, dt);
     this.shape(dt, flex, false);
     if (
-      Math.abs(this.target - this.progress) < 0.0008 &&
-      Math.abs(this.velocity) < 0.012 &&
-      this.poseError < 0.0015
+      Math.abs(this.target - this.progress) < 0.0003 &&
+      Math.abs(this.velocity) < 0.006 &&
+      this.poseError < 0.0002
     ) {
       this.hinge[0] = this.target;
       this.hinge[1] = 0;
@@ -160,26 +161,23 @@ export class SkinnedLeaf {
   private tangent(u: number, p: number, flex: number) {
     const moving = Math.sin(p * Math.PI),
       side = 1 - 2 * p,
-      paper = this.cover ? 0.65 : 1;
+      paper = 1;
     return (
-      side * (0.15 + flex * 0.28) * Math.cos(Math.PI * u) * (1 - moving) +
-      moving *
-        paper *
-        this.direction *
-        (0.64 * Math.sin(Math.PI * u) - 0.42 * u - 0.12)
+      side * (0.06 + flex * 0.16) * Math.cos(Math.PI * u) * (1 - moving) +
+      moving * paper * (0.42 * Math.sin(Math.PI * u) - 0.28 * u - 0.08)
     );
   }
   private shape(dt: number, flex: number, immediate: boolean) {
     const p = this.progress,
       moving = Math.sin(p * Math.PI),
-      paper = this.cover ? 0.6 : 1;
+      paper = 1;
     let previousBend = 0,
       previousFold = 0;
     this.poseError = 0;
     for (let i = 0; i <= LEAF_SEGMENTS; i++) {
       const u = i / LEAF_SEGMENTS,
         tangent = this.tangent(u, p, flex),
-        fold = moving * paper * this.direction * 0.11 * u * u,
+        fold = moving * paper * 0.065 * u * u,
         bendTarget = tangent - previousBend,
         foldTarget = fold - previousFold,
         offset = i * 2;
@@ -207,12 +205,24 @@ export class SkinnedLeaf {
   }
   private sync() {
     this.group.rotation.z = this.hingeAngle;
+    // A nested stack travels along its rotating normal. A vertical-only lerp
+    // collapses every hinge onto the same point at 90 degrees during reversals.
+    const middle = (this.count - 1) / 2,
+      offset = (middle - this.id) * LEAF_GAP;
+    this.group.position.x = -offset * Math.sin(this.hingeAngle);
     this.group.position.y =
-      0.025 +
-      LEAF_GAP *
-        THREE.MathUtils.lerp(this.count - 1 - this.id, this.id, this.progress);
+      0.025 + middle * LEAF_GAP + offset * Math.cos(this.hingeAngle);
     this.group.updateMatrixWorld(true);
     this.mesh.skeleton.update();
+  }
+  /** A physical stack cannot let a later leaf pass an earlier leaf. */
+  keepAheadOf(next: SkinnedLeaf) {
+    if (this.progress + 1e-8 < next.progress) {
+      this.hinge[0] = next.progress;
+      this.hinge[1] = next.velocity;
+      this.settled = false;
+      this.sync();
+    }
   }
   updateWorld() {
     this.group.updateMatrixWorld(true);
