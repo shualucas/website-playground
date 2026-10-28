@@ -5,7 +5,7 @@ https://sketchfab.com/3d-models/game-cartridge-gameboy-aa19e18342014d01a026770d3
 
 ## Labels
 
-The four SVG files under `labels/` are original editable artwork. Change them directly or replace their paths in `src/cartridge/config.ts`. Artwork is mapped to a roughly 1.11:1 paper label. Export SVGs with explicit width/height and embedded assets; for exact typography across devices, outline text. PNG/JPG also work. Refresh the site to reload replaced assets.
+The five active `*-tonal.svg` files under `labels/` are blank tonal panels for Blizzard, Gmail, Stadia, Search, and Early work. Earlier printed label artwork is retained but unused. Change them directly or replace their paths in `src/cartridge/config.ts`. Artwork is mapped to a roughly 1.11:1 paper label. Export SVGs with explicit width/height and embedded assets; for exact typography across devices, outline text. PNG/JPG also work. Refresh the site to reload replaced assets.
 
 ## Optional authored model
 

@@ -5,15 +5,15 @@ import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { cartridges } from "./config";
-import { projects } from "../book/projects";
+import { careerProjects } from "./projects";
 import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
-import { FilmGallery } from "../FilmGallery";
 import "./style.css";
 import "./reader.css";
 
 const selectedRoute = () => {
-  const id = new URL(location.href).searchParams.get("project");
+  const requested = new URL(location.href).searchParams.get("project");
+  const id = requested === "ai-mode" ? "search" : requested;
   return cartridges.some((c) => c.id === id) ? id : null;
 };
 const readRoute = () => new URL(location.href).searchParams.get("view") === "case-study" ? selectedRoute() : null;
@@ -27,35 +27,24 @@ function ProjectMedia({ project, controls }) {
   if (project.previewGif || project.previewPoster || project.previewImage) return <img src={project.previewGif || project.previewPoster || project.previewImage} alt={project.imageAlt} />;
   return <div className="collection-media-placeholder">Project preview</div>;
 }
-function PersonalReader({ project, onBack, onPhotos }) {
-  const title = useRef(null), label = project.kind === "about" ? "About" : "After-hours";
-  useEffect(() => { title.current?.focus(); const previous = document.title; document.title = label; return () => { document.title = previous; }; }, [label]);
-  return <section className="case-study personal-reader" aria-label={`${label} collection`}>
-    <header className="case-study-nav"><button className="back-to-zine" onClick={onBack}><Icon type="back" /> Back to collection</button></header>
-    <article className="case-study-content">
-      <h1 ref={title} tabIndex={-1}>{label}</h1>
-      {project.kind === "about" ? <><p className="personal-role">{project.subtitle}</p><p className="personal-bio">{project.description}</p><div className="career-strip"><span>Google</span><span>Blizzard Entertainment</span><span>San Francisco, CA</span></div></> : <><p className="personal-bio">Film photography, tennis, and games.</p><button className="photos-entry" onClick={onPhotos}><strong>Film photographs</strong><span>View photographs <Icon type="arrow" /></span></button></>}
-    </article>
-  </section>;
-}
 function App() {
-  const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), galleryRef = useRef(false);
+  const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null);
   const [selected, setSelected] = useState(selectedRoute), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
-  const [reading, setReading] = useState(readRoute), [gallery, setGallery] = useState(false);
+  const [reading, setReading] = useState(readRoute);
   const previousReading = useRef(reading), restoreFocus = useRef(null), buttons = useRef({});
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("cartridge-color-mode") === "dark"; } catch { return false; } });
   const selectRef = useRef(null);
-  readingRef.current = reading; galleryRef.current = gallery;
-  const active = cartridges.find((c) => c.id === selected), project = projects.find((p) => p.id === reading);
+  readingRef.current = reading;
+  const active = cartridges.find((c) => c.id === selected), project = careerProjects.find((p) => p.id === reading);
   const select = (id) => {
-    if (readingRef.current || galleryRef.current) return;
+    if (readingRef.current) return;
     setSelected(id); setHovered(null);
     const url = new URL(location.href); if (id) url.searchParams.set("project", id); else url.searchParams.delete("project");
     url.searchParams.delete("view"); history.replaceState(null, "", url);
   };
   selectRef.current = select;
   const open = (id) => {
-    if (readingRef.current || galleryRef.current) return;
+    if (readingRef.current) return;
     restoreFocus.current = document.activeElement;
     setSelected(id); setHovered(null);
     const url = new URL(location.href); url.searchParams.set("project", id); url.searchParams.set("view", "case-study");
@@ -90,17 +79,17 @@ function App() {
   useEffect(() => { engine.current?.setSelected(selected); }, [selected]);
   useEffect(() => { engine.current?.setHovered(hovered); }, [hovered]);
   useEffect(() => {
-    engine.current?.setPaused(Boolean(reading || gallery));
+    engine.current?.setPaused(Boolean(reading));
     if (previousReading.current && !reading) requestAnimationFrame(() => {
       const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current : buttons.current[selected];
       target?.focus({ preventScroll: true });
     });
     previousReading.current = reading;
-  }, [reading, gallery]);
+  }, [reading]);
   useEffect(() => {
-    const pop = () => { setReading(readRoute()); setSelected(selectedRoute()); setGallery(false); };
+    const pop = () => { setReading(readRoute()); setSelected(selectedRoute()); };
     const keyboard = (event) => {
-      if (galleryRef.current || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "Escape") {
         if (readingRef.current) close();
         else selectRef.current(null);
@@ -111,29 +100,23 @@ function App() {
     window.addEventListener("popstate", pop); window.addEventListener("keydown", keyboard);
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
-  const photos = () => { restoreFocus.current = document.activeElement; setGallery(true); };
   return <>
     <main className="collection" data-status={status} data-selected={selected || ""} inert={reading ? true : undefined}>
-      <header className="collection-header"><button className="text-link" onClick={() => open("about")}>About</button><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
+      <header className="collection-header"><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
-        <div className="collection-intro"><h1>Senior Product Designer at <strong>Google.</strong> Previously, <strong>Blizzard Entertainment.</strong> Currently located in San Francisco, CA.</h1></div>
+        <div className="collection-intro"><h1>I'm josh, a designer from a small rural town in Georgia, currently based in the big urban city of San Francisco, building helpful things at Google.</h1><p className="random-fact">A random thing about me: I attribute my world of warcraft addiction as a kid to me now designing software as a career.</p></div>
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
           <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false">
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}
-            {active && <div className="cartridge-caption"><span>{active.name}</span><div className="caption-actions"><button className="text-link cartridge-enter" onClick={() => open(active.id)}>{active.id === "about" ? "View about" : active.id === "after-hours" ? "View after-hours" : "View case study"} <Icon type="arrow" /></button><div className="caption-tools"><button className="tool-button" aria-label="Reset cartridge rotation" onClick={() => engine.current?.reset()}><Icon type="reset" /></button><button className="tool-button" aria-label="Close cartridge" onClick={() => select(null)}><Icon type="close" /></button></div></div></div>}
+            {active && status === "ready" && <button className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
           </div>
           {status === "loading" && <div className="collection-loading" role="status">Loading</div>}
-          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`} style={{ "--shell": item.shell }}><img src={item.label} alt={`${item.name} cartridge label`} /></button>)}</div>}
+          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
-      <div className="collection-content">
-        <section aria-labelledby="selected-work"><h2 id="selected-work">Selected work</h2><nav aria-label="Selected work">{cartridges.filter((c) => c.id === "stadia" || c.id === "ai-mode").map((item) => <button key={item.id} className="content-row" onClick={() => open(item.id)}><span>{item.name}</span><span>Google</span><Icon type="arrow" /></button>)}</nav></section>
-        <section aria-labelledby="after-hours"><h2 id="after-hours"><button className="text-link" onClick={() => open("after-hours")}>After-hours</button></h2><button className="content-row" onClick={photos}><span>Film photography</span><Icon type="arrow" /></button><div className="content-row static-row">Tennis</div><div className="content-row static-row">Games</div></section>
-      </div>
       <footer className="collection-footer"><a href="/zine/">Zine edition <Icon type="arrow" /></a><a href="/versions/portfolio-zine-v1-source.zip" download>Download zine source <Icon type="download" /></a></footer>
     </main>
-    {project && (project.kind === "project" ? <CaseStudy project={{ ...project, subtitle: "" }} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" /> : <PersonalReader project={project} onBack={close} onPhotos={photos} />)}
-    {gallery && <FilmGallery emptyCopy="No photographs added yet." onClose={() => { setGallery(false); requestAnimationFrame(() => restoreFocus.current?.isConnected && restoreFocus.current.focus({ preventScroll: true })); }} />}
+    {project && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
   </>;
 }
 createRoot(document.getElementById("root")).render(<App />);

@@ -16,8 +16,11 @@ type Item = {
 };
 const PITCH = -78 * Math.PI / 180;
 const AXIS = new THREE.Vector3(0, -Math.sin(PITCH), Math.cos(PITCH));
-const ROLLS = [.008, -.012, .013, -.006];
-const YAWS = [-.019, .025, -.014, .018];
+const ROLLS = [.008, -.012, .013, -.006, .01];
+const YAWS = [-.019, .025, -.014, .018, -.015];
+const ELEVATION = 32 * Math.PI / 180;
+const VIEW_UP = new THREE.Vector3(0, Math.cos(ELEVATION), -Math.sin(ELEVATION));
+const VIEW_FORWARD = new THREE.Vector3(0, Math.sin(ELEVATION), Math.cos(ELEVATION));
 
 /** Compact spine stack on desktop, edge-on rack on touch layouts; one owned clock. */
 export class CartridgeScene {
@@ -56,18 +59,18 @@ export class CartridgeScene {
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.VSMShadowMap;
     this.renderer.setClearColor(this.backdrop, 1);
     this.renderer.domElement.setAttribute("aria-hidden", "true"); host.appendChild(this.renderer.domElement);
-    this.camera.position.set(0, 0, 31); this.camera.lookAt(0, 0, 0);
+    this.camera.position.copy(VIEW_FORWARD).multiplyScalar(31); this.camera.lookAt(0, 0, 0);
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     const room = new RoomEnvironment(); this.environment = this.pmrem.fromScene(room, .045); room.dispose();
     this.scene.environment = this.environment.texture; this.scene.environmentIntensity = .6;
     this.scene.add(new THREE.HemisphereLight("#ffffff", "#d6cbbd", .55));
-    const key = new THREE.DirectionalLight("#fffdf7", 1.8); key.position.set(-1.5, 3, 15); key.castShadow = true;
+    const key = new THREE.DirectionalLight("#fffdf7", 1.8); key.position.set(-1.5, 0, 0).addScaledVector(VIEW_UP, 3).addScaledVector(VIEW_FORWARD, 15); key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = -6; key.shadow.camera.right = 6;
     key.shadow.camera.top = 6; key.shadow.camera.bottom = -6; key.shadow.camera.far = 40;
     key.shadow.normalBias = .018; key.shadow.bias = -.00015; key.shadow.radius = 7; key.shadow.blurSamples = 8;
     this.scene.add(key);
     this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.ShadowMaterial({ opacity: .12 }));
-    this.shadow.position.z = -2.3; this.shadow.receiveShadow = true; this.scene.add(this.shadow);
+    this.shadow.rotation.x = -ELEVATION; this.shadow.position.copy(VIEW_FORWARD).multiplyScalar(-2.3); this.shadow.receiveShadow = true; this.scene.add(this.shadow);
     this.grain = this.makeGrain(); this.cleanup.add(this.grain);
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(host); this.resize();
     host.addEventListener("pointerdown", this.down); host.addEventListener("pointermove", this.move);
@@ -131,17 +134,22 @@ export class CartridgeScene {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       if (this.mobile) {
-        let x = (i - (this.items.length - 1) / 2) * .66;
-        if (active >= 0) x = i === active ? 0 : Math.sign(i - active) * (1.85 + Math.max(0, Math.abs(i - active) - 1) * .58);
-        item.target.set(x, active === i ? .1 : -.25, active === i ? 1 : 0);
-        item.targetAngle.set(-.06, active === i ? 0 : 80 * Math.PI / 180, ROLLS[i]);
+        let x = (i - (this.items.length - 1) / 2) * .46;
+        if (active >= 0) x = i === active ? 0 : Math.sign(i - active) * (1.08 + Math.max(0, Math.abs(i - active) - 1) * .055);
+        const y = active === i ? .18 : -.02, depth = active === i ? .8 : -.4;
+        item.target.copy(VIEW_UP).multiplyScalar(y).addScaledVector(VIEW_FORWARD, depth); item.target.x = x;
+        item.targetAngle.set(-ELEVATION, active === i ? 0 : 80 * Math.PI / 180, ROLLS[i]);
       } else {
         const coordinate = cursor - heights[i] / 2; cursor -= heights[i];
         item.target.copy(AXIS).multiplyScalar(coordinate); item.targetAngle.set(PITCH, YAWS[i], ROLLS[i]);
         if (active >= 0) {
-          item.target.z = i === active ? 1 : -.45;
-          item.target.y = i === active ? .25 : (i < active ? 1 : -1) * ((i < active ? 2.75 : 2.9) + (Math.abs(i - active) - 1) * .58);
-          if (i === active) item.targetAngle.set(0, 0, 0);
+          const before = active, after = this.items.length - active - 1;
+          const upper = before ? 1.93 + before * .4 : 1.4;
+          const lower = after ? 2.65 + after * .4 : 1.83;
+          const center = (lower - upper) / 2;
+          const y = i === active ? center : i < active ? center + 1.88 + (active - i - 1) * .4 : center - 2.6 - (i - active - 1) * .4;
+          item.target.copy(VIEW_UP).multiplyScalar(y).addScaledVector(VIEW_FORWARD, i === active ? .8 : -.7);
+          item.targetAngle.set(i === active ? -ELEVATION : -ELEVATION + PITCH, YAWS[i], ROLLS[i]);
         }
       }
       if (i === active) { item.targetAngle.x += item.spin.x; item.targetAngle.y += item.spin.y; }
@@ -163,8 +171,12 @@ export class CartridgeScene {
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight; if (!width || !height) return;
     this.mobile = innerWidth < 880; this.camera.aspect = width / height;
-    const span = Math.max(this.mobile ? 6.9 : 9.3, (this.mobile ? 6.4 : 5.5) / this.camera.aspect);
-    this.camera.position.z = span / (2 * Math.tan(7 * Math.PI / 180));
+    // Twice the previous optical magnification; extra stage height reserves room for five slots.
+    const span = this.mobile ? 6.6 / this.camera.aspect : Math.max(9.3 * height / 600, 7.3 / this.camera.aspect);
+    this.camera.zoom = 2;
+    this.camera.position.copy(VIEW_FORWARD).multiplyScalar(span / (2 * Math.tan(7 * Math.PI / 180)));
+    this.camera.lookAt(0, 0, 0);
+    this.host.dataset.view = "top-down"; this.host.dataset.magnification = "2";
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height); this.layout(); this.start();
   }
   private pick(event: PointerEvent) {
@@ -249,12 +261,12 @@ export class CartridgeScene {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       // In the closed desktop stack only the near edge is exposed; its center may be occluded by the shell above.
-      this.projected.set(0, !this.mobile && item.id !== this.selected ? -item.half.y + .16 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
+      this.projected.set(0, !this.mobile && item.id !== this.selected ? -item.half.y + .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
       const point = { x: (this.projected.x + 1) * this.host.clientWidth / 2, y: (1 - this.projected.y) * this.host.clientHeight / 2 };
       this.host.dataset[`hit${i}`] = JSON.stringify(point);
       this.host.style.setProperty(`--hit-${i}-x`, `${point.x}px`); this.host.style.setProperty(`--hit-${i}-y`, `${point.y}px`);
       if (item.id === this.selected) {
-        this.projected.copy(item.root.position); this.projected.y -= item.half.y + .24; this.projected.project(this.camera);
+        this.projected.copy(item.root.position).addScaledVector(VIEW_UP, -item.half.y - .22).project(this.camera);
         this.host.style.setProperty("--caption-x", `${(this.projected.x + 1) * this.host.clientWidth / 2}px`);
         this.host.style.setProperty("--caption-y", `${(1 - this.projected.y) * this.host.clientHeight / 2}px`);
       }

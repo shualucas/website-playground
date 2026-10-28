@@ -1,8 +1,10 @@
 # Josh Lucas — Portfolio editions
 
-The default site is a compact **Game Boy-style cartridge stack**, informed by the public source of mamuso.dev. A short professional introduction sits beside the stack on desktop; below it are Selected work and After-hours. Mobile uses a horizontal edge-on rack. The page has no invented slogans, name monogram, shell name stamps, or name-based label branding. Only the supplied professional information and useful navigation remain.
+The default site is a **five-cartridge career collection**: Blizzard Entertainment (2017), Gmail (2019), Stadia (2020–2022), Search (2022–now), and Early work. Early work holds high-school/college projects; its dates are intentionally blank until supplied. Each team has a colored shell and a blank tonal placeholder panel. Earlier printed label designs remain as unused assets for future reference.
 
-Click a cartridge to turn its face forward; neighbors make space and a separate View action opens its content. Drag the selected cartridge to inspect all sides. Reset or R restores its orientation; click the selected cartridge again, Close, or Escape to fold it back. Selection and responsive changes preserve position-spring velocities, camera framing stays stable during rotation, and rendering stops when motion settles or the scene is hidden. HTML buttons provide keyboard selection. Theme switching, deep links, browser Back/Forward, photography gallery, and a WebGL-free illustrated fallback remain available.
+The camera now looks down from 32° above the collection with 2× optical magnification. Extra desktop stage height accommodates the larger five-item stack without changing zoom on drag or selection. Mobile keeps a compact rack. The introduction and World of Warcraft anecdote use the exact supplied copy. The About link and lower Selected work/After-hours sections have been removed. Captions show only the team and supplied year(s), and clicking the caption opens its reader. Click a cartridge to inspect it, drag the selected one, use R to reset its orientation, and Escape or a second cartridge click to close selection. Rendering stops when motion settles or the scene is hidden.
+
+Career content lives in `src/cartridge/projects.js`, separately from the preserved zine spreads. Existing Stadia and AI Mode media/scaffolding are reused for the Stadia and Search readers; the old `ai-mode` URL resolves to Search. Blizzard, Gmail, and Early work have explicit content scaffolding, without invented project results. Theme switching, keyboard access, deep links, browser Back/Forward, and the WebGL-free fallback are retained. The zine remains unchanged; no photo-zine/sketchbook redesign has been implemented.
 
 The shells and labels are original assets from the previous cartridge iteration. **The exact linked Sketchfab model is not included:** this environment's connection gateway returned HTTP 403 before retrieving the page; that does not establish a Sketchfab account or model restriction. An optional GLB import path remains ready in `src/cartridge/config.ts`. See `public/cartridges/README.md`.
 
@@ -18,8 +20,8 @@ The shells and labels are original assets from the previous cartridge iteration.
 ## Cartridge content and artwork
 
 - `src/cartridge/config.ts` — cartridge names, shell colors, label image URLs, optional external GLB configuration.
-- `public/cartridges/labels/*.svg` — original custom artwork for all four labels. Replace with SVG, PNG, or JPG to redesign them.
-- `src/book/projects.js` — existing biography, case-study text, and project media, shared between editions. Unverified project details remain explicit placeholders.
+- `public/cartridges/labels/*-tonal.svg` — five blank, tonal placeholder panels. Earlier printed labels are retained but unused. Replace configured URLs with SVG, PNG, or JPG as needed.
+- `src/cartridge/projects.js` — career readers, supplied dates, and scaffolding. `src/book/projects.js` retains the zine content and supplies existing Stadia/AI Mode media. Unverified project details remain explicit placeholders.
 - `src/content/film-photos.js` and `public/photos/` — After-hours photograph collection.
 - `src/cartridge/CartridgeScene.ts` — renderer, lighting, framing, input, animation, lifecycle.
 - `src/cartridge/model.ts` — original shell geometry and optional GLB adapter.

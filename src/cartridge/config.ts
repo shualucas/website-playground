@@ -1,16 +1,14 @@
-/** Replaceable artwork and shell colors. Labels are original, editable SVGs. */
+/** Career chronology and team-colored, unprinted placeholder panels. */
 export const cartridges = [
-  { id: "about", number: "01", name: "About", category: "ABOUT ME", label: "/cartridges/labels/about.svg", shell: "#a7aaa4", accent: "#555c51" },
-  { id: "stadia", number: "02", name: "Stadia", category: "GOOGLE · SELECTED WORK", label: "/cartridges/labels/stadia.svg", shell: "#c7a9a8", accent: "#cf325f" },
-  { id: "ai-mode", number: "03", name: "AI Mode", category: "GOOGLE · SELECTED WORK", label: "/cartridges/labels/ai-mode.svg", shell: "#a5b3b7", accent: "#3d6ac7" },
-  { id: "after-hours", number: "04", name: "After-hours", category: "PERSONAL COLLECTION", label: "/cartridges/labels/after-hours.svg", shell: "#b6a6bd", accent: "#79569c" },
+  { id: "blizzard", number: "01", name: "Blizzard Entertainment", years: "2017", label: "/cartridges/labels/blizzard-tonal.svg", shell: "#1769ad", accent: "#1769ad" },
+  { id: "gmail", number: "02", name: "Gmail", years: "2019", label: "/cartridges/labels/gmail-tonal.svg", shell: "#be4943", accent: "#be4943" },
+  { id: "stadia", number: "03", name: "Stadia", years: "2020 – 2022", label: "/cartridges/labels/stadia-tonal.svg", shell: "#da4c73", accent: "#da4c73" },
+  { id: "search", number: "04", name: "Search", years: "2022 – now", label: "/cartridges/labels/search-tonal.svg", shell: "#477bcc", accent: "#477bcc" },
+  { id: "early-work", number: "05", name: "Early work", years: "", label: "/cartridges/labels/early-work-tonal.svg", shell: "#8b6caa", accent: "#8b6caa" },
 ] as const;
 export type CartridgeId = typeof cartridges[number]["id"];
 
-/** Optional licensed GLB. Local procedural shell is the default, not the Sketchfab asset.
- * Add the file under public/cartridges/models, set url, and identify its label mesh.
- * Rotation puts the front toward +Z, top toward +Y; model is normalized to 2.4 units wide.
- */
+/** Optional licensed GLB. Front toward +Z, top toward +Y; normalized to 2.4 units wide. */
 export const cartridgeModel: { url: string; labelMesh: string; rotation: [number, number, number] } = {
   url: "", labelMesh: "Label", rotation: [0, 0, 0],
 };
