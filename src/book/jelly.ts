@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 const deformation = `
+uniform float jellyActive;
 uniform mat4 jellyToCage;
 uniform mat4 jellyFromCage;
 uniform vec2 jellyStretch;
@@ -8,6 +9,7 @@ uniform vec2 jellyBend;
 uniform float jellyTwist;
 uniform float jellyHeight;
 vec3 jellyPoint(vec3 p) {
+  if(jellyActive < .5) return p;
   vec3 q = (jellyToCage * vec4(p, 1.0)).xyz;
   q.x *= jellyStretch.x;
   q.z *= jellyStretch.y;
@@ -19,6 +21,7 @@ vec3 jellyPoint(vec3 p) {
   return (jellyFromCage * vec4(q, 1.0)).xyz;
 }
 vec3 jellyNormal(vec3 p, vec3 n) {
+  if(jellyActive < .5) return n;
   vec3 c = jellyPoint(p);
   mat3 J = mat3((jellyPoint(p + vec3(.001,0.,0.)) - c) * 1000.,
                 (jellyPoint(p + vec3(0.,.001,0.)) - c) * 1000.,
@@ -29,6 +32,7 @@ vec3 jellyNormal(vec3 p, vec3 n) {
 
 /** A bounded, volume-preserving scale/shear/twist cage. No free-body interaction. */
 export class JellyCage {
+  readonly active = { value: 0 };
   readonly stretch = { value: new THREE.Vector2(1, 1) };
   readonly bend = { value: new THREE.Vector2() };
   readonly twist = { value: 0 };
@@ -45,8 +49,18 @@ export class JellyCage {
     this.outlineColor = new THREE.Color(color);
     root.updateWorldMatrix(true, true);
     const inverse = root.matrixWorld.clone().invert();
-    const bounds = new THREE.Box3().setFromObject(root);
-    const height = Math.max(0.4, bounds.max.y - bounds.min.y);
+    const localBounds = new THREE.Box3();
+    root.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.computeBoundingBox();
+        localBounds.union(
+          object.geometry
+            .boundingBox!.clone()
+            .applyMatrix4(inverse.clone().multiply(object.matrixWorld)),
+        );
+      }
+    });
+    const height = Math.max(0.4, localBounds.max.y - localBounds.min.y);
     const originals: THREE.Mesh[] = [];
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) originals.push(o);
@@ -54,12 +68,12 @@ export class JellyCage {
     originals.forEach((mesh) => {
       mesh.geometry.computeBoundingBox();
       const size = mesh.geometry.boundingBox!.getSize(new THREE.Vector3());
-      const volume = Math.min(size.x, size.y, size.z) > 0.045;
       const original = mesh.material as THREE.MeshStandardMaterial;
       const tint = original.color?.clone() ?? new THREE.Color("#ffffff");
       const to = inverse.clone().multiply(mesh.matrixWorld),
         from = to.clone().invert();
       const uniforms = {
+        jellyActive: this.active,
         jellyToCage: { value: to },
         jellyFromCage: { value: from },
         jellyStretch: this.stretch,
@@ -68,20 +82,19 @@ export class JellyCage {
         jellyHeight: { value: height },
       };
       const material = surface({
-        color: tint.clone().lerp(new THREE.Color("#ffffff"), 0.28),
+        color: tint.clone(),
         map: original.map ?? null,
-        roughness: 0.12,
+        roughness: 0.24,
         metalness: 0,
-        transmission: volume ? 0.95 : 0,
-        thickness: 0.55,
-        ior: 1.42,
-        attenuationColor: tint.clone().lerp(new THREE.Color("#ffffff"), 0.6),
-        attenuationDistance: 2,
-        clearcoat: 0.85,
-        clearcoatRoughness: 0.12,
-        transparent: software,
-        opacity: software ? 0.88 : 1,
+        transmission: 0,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.22,
+        transparent: false,
+        opacity: 1,
       });
+      if (original.map) {
+        material.toneMapped = false;
+      }
       material.onBeforeCompile = (shader) => {
         Object.assign(shader.uniforms, uniforms);
         shader.vertexShader =
@@ -127,7 +140,7 @@ export class JellyCage {
         },
         vertexShader:
           deformation +
-          `void main(){vec3 p=jellyPoint(position);vec3 n=jellyNormal(position,normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(p+n*.012,1.);}`,
+          `void main(){vec3 p=jellyPoint(position);vec3 n=jellyNormal(position,normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(p+n*.018,1.);}`,
         fragmentShader: `uniform vec3 outlineColor;void main(){gl_FragColor=vec4(outlineColor,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`,
         side: THREE.BackSide,
         depthWrite: false,
@@ -143,6 +156,7 @@ export class JellyCage {
     });
   }
   excite(amount = 1) {
+    this.active.value = 1;
     this.state[1] += 0.13 * amount;
     this.state[3] -= 0.09 * amount;
     this.state[5] += 0.25 * amount;
@@ -165,6 +179,12 @@ export class JellyCage {
           i < 4 ? 0.035 : 0.055,
         );
       }
+    this.active.value = this.state.some(
+      (v, i) => Math.abs(v) > (i % 2 ? 0.0001 : 0.00001),
+    )
+      ? 1
+      : 0;
+    if (!this.active.value) this.state.fill(0);
     this.stretch.value.set(1 + this.state[0], 1 + this.state[2]);
     this.bend.value.set(this.state[4], this.state[6]);
     this.twist.value = this.state[8];

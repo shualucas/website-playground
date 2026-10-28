@@ -74,7 +74,7 @@ svg {
 }
 .book-stage {
   position: absolute;
-  inset: 48px 20px 90px;
+  inset: 0 20px;
   z-index: 2;
   touch-action: none;
   outline: none;
@@ -698,23 +698,6 @@ svg {
 .print-source-left {
   color: #111;
 }
-.book-navigation button,
-.book-navigation button:hover,
-.book-navigation button[aria-current="page"] {
-  background: transparent;
-  color: var(--ui-muted);
-  border-radius: 0;
-  text-underline-offset: 7px;
-}
-.book-navigation button:hover {
-  color: var(--ui-text);
-}
-.book-navigation button[aria-current="page"] {
-  color: var(--ui-text);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  font-weight: 700;
-}
 .phone-hit {
   position: absolute;
   left: 21%;
@@ -731,9 +714,9 @@ svg {
   width: min(260px, 100%);
   aspect-ratio: 1.87 / 3.55;
   border: 3px solid var(--project-color);
-  border-radius: 22px;
+  border-radius: 20px;
   overflow: hidden;
-  background: #151519;
+  background: #000;
   color: white;
   box-shadow: 0 -8px 35px
     color-mix(in srgb, var(--project-color) 30%, transparent);
@@ -753,7 +736,7 @@ svg {
   justify-content: center;
   flex-direction: column;
   gap: 12px;
-  background: linear-gradient(150deg, var(--project-color), #19191d);
+  background: #000;
 }
 .phone-placeholder strong {
   font-size: 28px;
@@ -772,7 +755,7 @@ svg {
 }
 .loading-card {
   position: relative;
-  width: 250px;
+  width: 174px;
   aspect-ratio: 0.7;
   background: var(--page-paper);
   border: 1px solid color-mix(in srgb, var(--ui-text) 25%, transparent);
@@ -781,22 +764,25 @@ svg {
   color: var(--ui-text);
   overflow: hidden;
 }
-.loading-card canvas {
+.card-mark {
   position: absolute;
-  inset: 12% 4%;
-  width: 92%;
-  height: 76%;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font:
+    64px/1 "DM Sans",
+    sans-serif;
 }
 .card-corner {
   position: absolute;
-  top: 16px;
-  left: 18px;
+  top: 12px;
+  left: 13px;
   display: flex;
   align-items: center;
   flex-direction: column;
   gap: 2px;
   font:
-    19px/1.15 "DM Sans",
+    16px/1.15 "DM Sans",
     sans-serif;
   z-index: 1;
 }
@@ -809,8 +795,8 @@ svg {
 .card-corner-bottom {
   top: auto;
   left: auto;
-  right: 18px;
-  bottom: 16px;
+  right: 13px;
+  bottom: 12px;
   transform: rotate(180deg);
 }
 .loader-content > span {
@@ -819,7 +805,7 @@ svg {
 }
 @media (max-width: 760px) {
   .loading-card {
-    width: 210px;
+    width: 146px;
   }
   .book-navigation button {
     padding-inline: 12px;

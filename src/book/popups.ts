@@ -59,6 +59,7 @@ export class PagePopups {
         fold.add(content);
         content.rotation.y = yaw;
         content.add(model);
+        model.scale.multiplyScalar(2 / 3);
         const jelly = new JellyCage(content, surface, color, software);
         anchor.visible = false;
         spread.items.push({
@@ -73,13 +74,13 @@ export class PagePopups {
       if (project.kind === "about") {
         const models = careerMiniatures(google, surface, register);
         item(0.34, 0.37, models.google, "#779aef", -0.12);
-        item(0.78, 0.39, models.sword, "#58c9e8", 0.15);
+        item(0.78, 0.39, models.blizzard, "#149aff", 0.15);
         item(0.51, 0.78, models.bridge, "#e88961", -0.1);
       } else if (project.kind === "after-hours") {
         const models = aboutMiniatures(surface, register);
-        item(0.35, 0.37, models.camera, "#d3ae72", -0.16);
+        item(0.35, 0.37, models.camera, "#808080", -0.16);
         models.racket.rotation.z = -0.12;
-        item(0.79, 0.4, models.racket, "#e88364", 0.12);
+        item(0.79, 0.4, models.racket, "#b6ec35", 0.12);
         models.controller.rotation.x = -0.14;
         item(0.49, 0.77, models.controller, "#ad86dc", 0.14);
       }

@@ -104,78 +104,129 @@ export function aboutMiniatures(
   };
 
   const camera = new THREE.Group();
-  camera.name = "35mm film camera";
-  box(camera, 1.24, 0.68, 0.42, "#272727", 0, 0.42, 0, "rubber", 0.07);
-  box(camera, 1.26, 0.12, 0.43, "#b9b9b7", 0, 0.79, 0, "metal");
-  box(camera, 1.22, 0.07, 0.43, "#b9b9b7", 0, 0.09, 0, "metal");
-  box(camera, 0.29, 0.56, 0.08, "#131313", -0.43, 0.42, 0.23, "rubber", 0.04);
-  for (let i = 0; i < 7; i++)
+  camera.name = "black point-and-shoot film camera with wrist strap";
+  box(camera, 1.3, 0.73, 0.4, "#090b0e", 0, 0.41, 0, "plastic", 0.105);
+  box(
+    camera,
+    0.27,
+    0.63,
+    0.052,
+    "#16191d",
+    -0.48,
+    0.41,
+    0.215,
+    "rubber",
+    0.065,
+  );
+  box(camera, 0.42, 0.17, 0.03, "#dedfe0", -0.3, 0.66, 0.222, "plastic", 0.024);
+  for (let i = 0; i < 8; i++)
     box(
       camera,
-      0.018,
-      0.46,
       0.012,
-      "#383838",
-      -0.54 + i * 0.038,
-      0.42,
-      0.278,
-      "rubber",
-      0.003,
+      0.12,
+      0.007,
+      "#909396",
+      -0.47 + i * 0.047,
+      0.66,
+      0.242,
+      "plastic",
+      0.002,
     );
-  box(camera, 0.29, 0.18, 0.26, "#b9b9b7", -0.04, 0.92, -0.015, "metal");
-  box(camera, 0.19, 0.1, 0.04, "#242424", -0.04, 0.93, 0.132, "glass");
-  disc(camera, 0.29, 0.11, "#c4c4c2", 0.1, 0.45, 0.25, "metal");
-  disc(camera, 0.265, 0.29, "#191919", 0.1, 0.45, 0.37, "rubber");
-  for (let i = 0; i < 4; i++)
-    mesh(
-      camera,
-      new THREE.TorusGeometry(0.264, 0.013, 6, 40),
-      "#4a4a4a",
-      0.1,
-      0.45,
-      0.29 + i * 0.06,
-      "metal",
-    );
-  disc(camera, 0.23, 0.035, "#858585", 0.1, 0.45, 0.53, "metal");
-  disc(camera, 0.196, 0.018, "#101310", 0.1, 0.45, 0.553, "glass");
-  disc(camera, 0.13, 0.008, "#292b28", 0.1, 0.45, 0.565, "glass");
-  disc(camera, 0.068, 0.008, "#080908", 0.1, 0.45, 0.572, "glass");
-  const reflection = disc(
+  box(
     camera,
-    0.048,
-    0.004,
-    "#bcbfb8",
-    0.04,
-    0.51,
-    0.579,
-    "glass",
+    0.23,
+    0.14,
+    0.035,
+    "#252b31",
+    0.33,
+    0.65,
+    0.225,
+    "plastic",
+    0.028,
   );
-  reflection.scale.y = 0.4;
-  for (const x of [-0.43, 0.42])
-    mesh(
-      camera,
-      new THREE.CylinderGeometry(0.11, 0.11, 0.09, 24),
-      "#424242",
-      x,
-      0.9,
-      -0.02,
-      "metal",
-    );
+  box(camera, 0.16, 0.085, 0.012, "#14353e", 0.33, 0.65, 0.25, "glass", 0.018);
+  disc(camera, 0.235, 0.045, "#25292e", 0.07, 0.36, 0.222, "plastic");
+  disc(camera, 0.196, 0.032, "#080b10", 0.07, 0.36, 0.258, "plastic");
   mesh(
     camera,
-    new THREE.CylinderGeometry(0.055, 0.055, 0.035, 20),
-    "#d8d8d6",
-    0.42,
-    0.96,
-    0.02,
+    new THREE.TorusGeometry(0.181, 0.012, 8, 40),
+    "#4b535a",
+    0.07,
+    0.36,
+    0.278,
     "metal",
   );
-  box(camera, 0.15, 0.055, 0.025, "#e6e6e2", 0.44, 0.63, 0.224);
+  disc(camera, 0.155, 0.012, "#103332", 0.07, 0.36, 0.284, "glass");
+  disc(camera, 0.11, 0.008, "#071118", 0.07, 0.36, 0.294, "glass");
+  const highlight = disc(
+    camera,
+    0.035,
+    0.003,
+    "#688a8e",
+    0.02,
+    0.41,
+    0.301,
+    "glass",
+  );
+  highlight.scale.y = 0.4;
+  mesh(
+    camera,
+    new THREE.CylinderGeometry(0.067, 0.067, 0.03, 24),
+    "#313940",
+    0.36,
+    0.79,
+    0,
+    "plastic",
+  );
+  disc(camera, 0.015, 0.012, "#df4237", 0.49, 0.49, 0.221, "plastic", 12);
+  box(
+    camera,
+    0.13,
+    0.03,
+    0.02,
+    "#3c4349",
+    -0.41,
+    0.15,
+    0.222,
+    "plastic",
+    0.008,
+  );
+  mesh(
+    camera,
+    new THREE.TorusGeometry(0.045, 0.012, 6, 18),
+    "#3a4045",
+    0.668,
+    0.55,
+    0.01,
+    "metal",
+  );
+  const strapCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.68, 0.55, 0.02),
+    new THREE.Vector3(0.91, 0.77, 0.04),
+    new THREE.Vector3(1.12, 0.61, 0.06),
+    new THREE.Vector3(1.08, 0.26, 0.09),
+    new THREE.Vector3(0.88, 0.18, 0.1),
+    new THREE.Vector3(0.82, 0.41, 0.04),
+    new THREE.Vector3(0.68, 0.55, 0.02),
+  ]);
+  mesh(
+    camera,
+    new THREE.TubeGeometry(strapCurve, 56, 0.022, 8, false),
+    "#181d23",
+    0,
+    0,
+    0,
+    "rubber",
+  );
 
   const racket = new THREE.Group();
-  racket.name = "tennis racket with coral grip tape";
+  racket.name = "EZONE-inspired blue tennis racket with lime grip tape";
   const hoop = new THREE.Shape();
-  hoop.absellipse(0, 1.12, 0.43, 0.59, 0, Math.PI * 2, false, 0);
+  hoop.moveTo(0, 1.71);
+  hoop.bezierCurveTo(0.28, 1.71, 0.43, 1.57, 0.43, 1.2);
+  hoop.bezierCurveTo(0.43, 0.87, 0.26, 0.55, 0, 0.53);
+  hoop.bezierCurveTo(-0.26, 0.55, -0.43, 0.87, -0.43, 1.2);
+  hoop.bezierCurveTo(-0.43, 1.57, -0.28, 1.71, 0, 1.71);
   const hole = new THREE.Path();
   hole.absellipse(0, 1.12, 0.365, 0.515, 0, Math.PI * 2, true, 0);
   hoop.holes.push(hole);
@@ -190,7 +241,7 @@ export function aboutMiniatures(
       curveSegments: 40,
       steps: 1,
     }),
-    "#282828",
+    "#064c9d",
     0,
     0,
     -0.035,
@@ -198,7 +249,7 @@ export function aboutMiniatures(
   );
   const rim = new THREE.TorusGeometry(1, 0.012, 6, 64);
   rim.scale(0.405, 0.56, 1);
-  mesh(racket, rim, "#deded9", 0, 1.12, 0.049, "metal");
+  mesh(racket, rim, "#36a6ef", 0, 1.12, 0.049, "metal");
   const strings: THREE.BufferGeometry[] = [];
   for (let i = -6; i <= 6; i++) {
     const x = i * 0.052,
@@ -244,7 +295,7 @@ export function aboutMiniatures(
   mesh(
     racket,
     new THREE.CylinderGeometry(0.052, 0.061, 0.38, 8),
-    "#252525",
+    "#8bad22",
     0,
     0.2,
     0,
@@ -270,7 +321,7 @@ export function aboutMiniatures(
       5,
       false,
     ),
-    "#ed785b",
+    "#b9f12c",
     0,
     0,
     0,
@@ -308,7 +359,7 @@ export function aboutMiniatures(
       curveSegments: 20,
       steps: 1,
     }),
-    "#7351a7",
+    "#632daf",
     0,
     0.12,
     -0.11,

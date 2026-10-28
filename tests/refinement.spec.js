@@ -221,3 +221,148 @@ test("a video finishing its load after reduced motion is enabled stays paused", 
   ).toBe(true);
   await page.evaluate(() => window.pendingPreview.dispose());
 });
+
+test("rotation preserves miniatures and phone glow, pills stay opaque, and queued navigation waits for release", async ({
+  page,
+}) => {
+  test.setTimeout(150000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    window.paperSounds = 0;
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (...args) {
+      window.paperSounds++;
+      return start.apply(this, args);
+    };
+  });
+  await page.goto("/");
+  await expect(page.locator(".spellbook")).toHaveAttribute(
+    "data-presentation",
+    "ready",
+    { timeout: 45000 },
+  );
+  const stage = page.locator(".book-stage"),
+    nav = page.getByRole("navigation", { name: "Zine pages" });
+  await page.evaluate(async () => {
+    const source = performance
+      .getEntriesByType("resource")
+      .find((e) => e.name.includes("/src/book/BookScene.ts")).name;
+    const { BookScene } = await import(source);
+    const go = BookScene.prototype.goTo;
+    BookScene.prototype.goTo = function (...args) {
+      window.activeBook = this;
+      return go.apply(this, args);
+    };
+  });
+  await nav.getByRole("button", { name: "About", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.paperSounds)).toBe(1);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const grab = JSON.parse(await stage.getAttribute("data-right-grab")),
+    camera = await stage.getAttribute("data-camera");
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 65, grab.y - 40, { steps: 5 });
+  await expect(stage).toHaveAttribute("data-phase", "rotating");
+  await page.waitForTimeout(450);
+  await expect(stage).toHaveAttribute("data-popup-count", "3");
+  const about = nav.getByRole("button", { name: "About", exact: true });
+  await expect(about).toBeEnabled();
+  await expect(about).toHaveCSS("opacity", "1");
+  await expect(about).toHaveCSS("border-radius", "999px");
+  await page.keyboard.press("ArrowRight");
+  await expect(stage).toHaveAttribute("data-requested-page", "1");
+  await expect(stage).toHaveAttribute("data-project", "0");
+  await expect(stage).toHaveAttribute("data-popup-count", "3");
+  expect(await page.evaluate(() => window.paperSounds)).toBe(1);
+  await page.mouse.up();
+  await expect(stage).toHaveAttribute("data-project", "1", { timeout: 30000 });
+  await expect(stage).toHaveAttribute("data-phase", "ready", {
+    timeout: 45000,
+  });
+  await expect.poll(() => page.evaluate(() => window.paperSounds)).toBe(2);
+  expect(await stage.getAttribute("data-camera")).toBe(camera);
+  await expect(stage).toHaveAttribute("data-zoom", "1.2");
+  await page.keyboard.press("r");
+  await expect(stage).toHaveAttribute("data-phase", "ready", {
+    timeout: 45000,
+  });
+  await nav.getByRole("button", { name: "Stadia", exact: true }).click();
+  await expect(stage).toHaveAttribute("data-project", "1", { timeout: 30000 });
+  const p = JSON.parse(await stage.getAttribute("data-right-grab"));
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await page.mouse.move(p.x - 55, p.y + 35, { steps: 5 });
+  await page.waitForTimeout(350);
+  expect(
+    await page.evaluate(() => window.activeBook.phones.phones[0].glow.opacity),
+  ).toBeGreaterThan(0.3);
+  expect(
+    await page.evaluate(() =>
+      window.activeBook.phones.phones[0].meshes
+        .slice(2)
+        .every((m) => m.visible),
+    ),
+  ).toBe(true);
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Mute page sounds" }).click();
+  const count = await page.evaluate(() => window.paperSounds);
+  await nav.getByRole("button", { name: "AI Mode", exact: true }).click();
+  await expect(stage).toHaveAttribute("data-project", "2", { timeout: 30000 });
+  expect(await page.evaluate(() => window.paperSounds)).toBe(count);
+});
+
+test("dense jelly keeps saturated colors and full opacity; empty phone screens are black", async ({
+  page,
+}) => {
+  await page.goto("/tests/fixtures/blank.html");
+  const result = await page.evaluate(async () => {
+    const THREE = await import("/node_modules/.vite/deps/three.js");
+    const { JellyCage } = await import("/src/book/jelly.ts");
+    const { PhonePreviews } = await import("/src/book/phones.ts");
+    const { createLeafGeometry, SkinnedLeaf } =
+      await import("/src/book/leaf.ts");
+    const root = new THREE.Group(),
+      color = "#632daf",
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.3),
+        new THREE.MeshPhysicalMaterial({ color }),
+      );
+    root.add(mesh);
+    const jelly = new JellyCage(
+        root,
+        (p) => new THREE.MeshPhysicalMaterial(p),
+        "#aa77ee",
+        false,
+      ),
+      material = mesh.material;
+    const geometry = createLeafGeometry(),
+      paper = new THREE.MeshPhongMaterial({ map: new THREE.Texture() }),
+      leaves = [0, 1].map(
+        (i) => new SkinnedLeaf(i, true, 2, geometry, Array(6).fill(paper)),
+      );
+    const phones = new PhonePreviews(
+      [{ kind: "project", label: "Test", theme: "stadia" }],
+      leaves,
+    );
+    const canvas = phones.phones[0].poster.image;
+    const values = {
+      transmission: material.transmission,
+      opacity: material.opacity,
+      transparent: material.transparent,
+      color: material.color.getHexString(),
+      pixel: Array.from(
+        canvas.getContext("2d").getImageData(270, 512, 1, 1).data,
+      ),
+    };
+    phones.dispose();
+    jelly.dispose();
+    return values;
+  });
+  expect(result).toEqual({
+    transmission: 0,
+    opacity: 1,
+    transparent: false,
+    color: "632daf",
+    pixel: [0, 0, 0, 255],
+  });
+});

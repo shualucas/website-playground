@@ -149,7 +149,7 @@ export class PhonePreviews {
         material.onBeforeCompile = (shader) => {
           shader.fragmentShader = shader.fragmentShader.replace(
             "#include <clipping_planes_fragment>",
-            `#include <clipping_planes_fragment>\nvec2 roundedPhone=abs(vMapUv-.5)*vec2(${width},${height})-vec2(${width / 2 - 0.1},${height / 2 - 0.1});\nif(length(max(roundedPhone,vec2(0.)))+min(max(roundedPhone.x,roundedPhone.y),0.)-.1>0.)discard;`,
+            `#include <clipping_planes_fragment>\nvec2 roundedPhone=abs(vMapUv-.5)*vec2(${width},${height})-vec2(${width / 2 - 0.16},${height / 2 - 0.16});\nif(length(max(roundedPhone,vec2(0.)))+min(max(roundedPhone.x,roundedPhone.y),0.)-.16>0.)discard;`,
           );
         };
         material.customProgramCacheKey = () => `rounded-phone-${width}`;
@@ -193,33 +193,8 @@ export class PhonePreviews {
     c.width = 540;
     c.height = 1024;
     const x = c.getContext("2d")!;
-    const colors = projectTheme(project.theme).colors;
-    x.fillStyle = "#111114";
+    x.fillStyle = "#000000";
     x.fillRect(0, 0, 540, 1024);
-    const g = x.createLinearGradient(0, 0, 540, 1024);
-    colors.forEach((color, i) =>
-      g.addColorStop(i / (colors.length - 1), color),
-    );
-    x.globalAlpha = 0.8;
-    x.fillStyle = g;
-    x.fillRect(16, 16, 508, 992);
-    x.globalAlpha = 1;
-    x.fillStyle = "#ffffff";
-    x.textAlign = "center";
-    x.font = '500 48px "DM Sans",sans-serif';
-    x.fillText(project.label, 270, 475);
-    x.font = '400 22px "DM Sans",sans-serif';
-    x.fillText("Preview coming soon", 270, 525);
-    x.font = '400 16px "DM Sans",sans-serif';
-    x.fillText("MP4 / GIF", 270, 560);
-    x.fillStyle = "#111114";
-    x.beginPath();
-    x.roundRect(203, 25, 134, 28, 14);
-    x.fill();
-    x.fillStyle = "#ffffff90";
-    x.beginPath();
-    x.roundRect(207, 982, 126, 5, 3);
-    x.fill();
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;

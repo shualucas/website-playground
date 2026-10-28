@@ -9,6 +9,7 @@ import { AsciiPortal } from "./book/ascii";
 import { projectTheme } from "./book/themes";
 import "./style.css";
 import { CardLoader } from "./CardLoader";
+import { PageTurnSound } from "./book/page-sound";
 function Arrow({ direction = "right" }) {
   return (
     <svg
@@ -206,10 +207,8 @@ function PhoneFallback({ project, controls = false }) {
           alt={project.imageAlt}
         />
       ) : (
-        <div>
-          <strong>{project.label}</strong>
-          <span>Preview coming soon</span>
-          <small>MP4 / GIF</small>
+        <div aria-label={`${project.label} empty phone preview`}>
+          <span className="sr-only">Project preview coming soon</span>
         </div>
       )}
     </div>
@@ -241,10 +240,20 @@ function PreviewPage({ project, onNext, onRead, fallback }) {
 function App() {
   const host = useRef(null),
     engine = useRef(null),
+    sound = useRef(null),
     dialog = useRef(null),
     indexRef = useRef(0),
     printSources = useRef([]),
+    navigation = useRef(null),
     loaderGate = useRef({ done: false, resolve: null });
+  if (!sound.current) sound.current = new PageTurnSound();
+  const [soundMuted, setSoundMuted] = useState(() => {
+    try {
+      return localStorage.getItem("zine-sound-muted") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [mounts, setMounts] = useState(null),
     [phase, setPhase] = useState("arriving"),
     [index, setIndex] = useState(0),
@@ -290,16 +299,19 @@ function App() {
     if (!dialog.current.open) dialog.current.showModal();
   };
   const navigate = (page) => {
-    if (phase === "rotating") return;
     const next = Math.max(-1, Math.min(projects.length, page));
     setRequestedPage(next);
     if (fallback) {
+      if (next !== requestedPage)
+        void sound.current.turn(
+          next > requestedPage,
+          next === -1 || next === projects.length,
+        );
       if (next >= 0 && next < projects.length) select(next);
       showView(next);
     } else engine.current?.goTo(next);
   };
   const turn = (direction) => {
-    if (phase === "rotating") return;
     if (!fallback) {
       engine.current?.stepPage(direction);
       return;
@@ -314,6 +326,38 @@ function App() {
     if (fallback) showView(-1);
   };
   useEffect(() => {
+    const scroller = navigation.current,
+      button = scroller?.querySelector('[aria-current="page"]');
+    if (button)
+      scroller.scrollTo({
+        left:
+          button.offsetLeft -
+          scroller.offsetLeft -
+          (scroller.clientWidth - button.offsetWidth) / 2,
+        behavior: "auto",
+      });
+  }, [requestedPage]);
+  useEffect(() => {
+    sound.current.setMuted(soundMuted);
+    try {
+      localStorage.setItem("zine-sound-muted", String(soundMuted));
+    } catch {}
+  }, [soundMuted]);
+  useEffect(() => {
+    const audio = sound.current;
+    audio.preload();
+    const unlock = (event) => {
+      if (event.isTrusted) void audio.unlock();
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      audio.dispose();
+    };
+  }, []);
+  useEffect(() => {
     document.documentElement.dataset.colorMode = colorMode;
     document
       .querySelector('meta[name="theme-color"]')
@@ -327,7 +371,7 @@ function App() {
   }, [colorMode, mounts]);
   useEffect(() => {
     let disposed = false;
-    const revealAt = 1500; // performance.now() is relative to the navigation time origin.
+    const revealAt = 2000; // performance.now() is relative to the navigation time origin.
     const initial = projects.findIndex(
       (p) => p.id === new URLSearchParams(location.search).get("project"),
     );
@@ -397,6 +441,9 @@ function App() {
               onPhase: setPhase,
               onView: showView,
               onRequest: setRequestedPage,
+              onTurn: (forward, cover) => {
+                void sound.current.turn(forward, cover);
+              },
               onPresented: () => setPresentation("ready"),
               onIndex: select,
               onSpread: (left, right) => setSpread({ left, right }),
@@ -483,9 +530,9 @@ function App() {
       index={spread.left}
       onRead={openRead}
       onPrevious={() => turn(-1)}
-      canPrevious={phase !== "rotating"}
+      canPrevious={true}
       onNext={() => turn(1)}
-      canNext={phase !== "rotating"}
+      canNext={true}
     />
   );
   const right = (
@@ -494,7 +541,7 @@ function App() {
       index={spread.right}
       onRead={openRead}
       onNext={() => turn(1)}
-      canNext={phase !== "rotating"}
+      canNext={true}
       fallback={fallback}
     />
   );
@@ -547,6 +594,36 @@ function App() {
               <>
                 <circle cx="12" cy="12" r="4" />
                 <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5" />
+              </>
+            )}
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => setSoundMuted(!soundMuted)}
+          aria-label={soundMuted ? "Unmute page sounds" : "Mute page sounds"}
+          aria-pressed={soundMuted}
+          title={soundMuted ? "Unmute page sounds" : "Mute page sounds"}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M11 4 6 8H3v8h3l5 4Z" />
+            {soundMuted ? (
+              <path d="m16 9 5 6m0-6-5 6" />
+            ) : (
+              <>
+                <path d="M15 8a6 6 0 0 1 0 8" />
+                <path d="M18 5a10 10 0 0 1 0 14" />
               </>
             )}
           </svg>
@@ -632,17 +709,13 @@ function App() {
           />
         )}
       <nav className="book-navigation" aria-label="Zine pages">
-        <div className="book-navigation-scroll">
+        <div className="book-navigation-scroll" ref={navigation}>
           {[-1, ...projects.map((_, i) => i), projects.length].map((page) => (
             <button
               key={page}
               aria-current={requestedPage === page ? "page" : undefined}
               onClick={() => navigate(page)}
-              disabled={
-                presentation !== "ready" ||
-                (!mounts && !fallback) ||
-                phase === "rotating"
-              }
+              disabled={presentation !== "ready" || (!mounts && !fallback)}
             >
               {page === -1
                 ? "Cover"

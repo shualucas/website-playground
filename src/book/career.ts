@@ -4,14 +4,20 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 export type GoogleAsset = {
   parts: THREE.BufferGeometry[];
   texture: THREE.CanvasTexture;
+  blizzard: THREE.BufferGeometry[];
 };
 
 /** Preserve the published 2025 gradient G's vector silhouette and rasterized gradients. */
 export async function loadGoogleAsset(): Promise<GoogleAsset> {
-  const svg = await fetch("/models/google-g.svg").then((r) => {
-    if (!r.ok) throw new Error("Logo unavailable");
-    return r.text();
-  });
+  const [svg, blizzardSvg] = await Promise.all(
+    ["/models/google-g.svg", "/models/blizzard-entertainment.svg"].map(
+      async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Logo unavailable");
+        return response.text();
+      },
+    ),
+  );
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   const image = new Image();
   image.src = url;
@@ -101,7 +107,40 @@ export async function loadGoogleAsset(): Promise<GoogleAsset> {
       return geometry;
     }),
   );
-  return { parts, texture };
+  const blizzard = new SVGLoader().parse(blizzardSvg).paths.flatMap((path) =>
+    SVGLoader.createShapes(path).map((shape) => {
+      const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: 18,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        bevelThickness: 1.4,
+        bevelSize: 1.1,
+        curveSegments: 12,
+        steps: 1,
+      });
+      const scale = 1.5 / 340.926;
+      geometry.scale(scale, -scale, scale);
+      geometry.translate(-0.75, 0.98, -0.04);
+      reverseWinding(geometry);
+      geometry.computeVertexNormals();
+      return geometry;
+    }),
+  );
+  return { parts, texture, blizzard };
+}
+
+function reverseWinding(geometry: THREE.BufferGeometry) {
+  for (const attribute of Object.values(geometry.attributes)) {
+    const a = attribute as THREE.BufferAttribute;
+    for (let i = 0; i < a.count; i += 3)
+      for (let k = 0; k < a.itemSize; k++) {
+        const j = (i + 1) * a.itemSize + k,
+          l = (i + 2) * a.itemSize + k,
+          v = a.array[j];
+        a.array[j] = a.array[l];
+        a.array[l] = v;
+      }
+  }
 }
 
 export function careerMiniatures(
@@ -149,96 +188,17 @@ export function careerMiniatures(
     const m = add(google, part, "#ffffff");
     (m.material as THREE.MeshStandardMaterial).map = asset.texture;
   }
-  const sword = new THREE.Group();
-  sword.name = "Frostmourne";
-  const blade = new THREE.Shape();
-  blade.moveTo(0, 0.54);
-  blade.lineTo(-0.15, 0.72);
-  blade.lineTo(-0.08, 0.9);
-  blade.lineTo(-0.12, 1.28);
-  blade.lineTo(0, 1.8);
-  blade.lineTo(0.12, 1.28);
-  blade.lineTo(0.08, 0.9);
-  blade.lineTo(0.15, 0.72);
-  blade.closePath();
-  add(
-    sword,
-    new THREE.ExtrudeGeometry(blade, {
-      depth: 0.08,
-      bevelEnabled: true,
-      bevelSegments: 2,
-      bevelThickness: 0.012,
-      bevelSize: 0.012,
-      steps: 1,
-    }),
-    "#87cadf",
-    0,
-    0,
-    -0.04,
-  );
-  box(sword, 0.035, 1, 0.025, "#d9ffff", 0, 1.1, 0.061);
-  for (let i = 0; i < 4; i++) {
-    const rune = box(
-      sword,
-      0.075,
-      0.018,
-      0.018,
-      "#56c9ef",
-      0,
-      0.88 + i * 0.13,
-      0.074,
-    );
-    rune.rotation.z = i % 2 ? 0.6 : -0.6;
-  }
-  const guard = new THREE.Shape();
-  guard.moveTo(-0.42, 0.73);
-  guard.lineTo(-0.3, 0.49);
-  guard.lineTo(-0.12, 0.51);
-  guard.lineTo(0, 0.61);
-  guard.lineTo(0.12, 0.51);
-  guard.lineTo(0.3, 0.49);
-  guard.lineTo(0.42, 0.73);
-  guard.lineTo(0.23, 0.64);
-  guard.lineTo(0.08, 0.7);
-  guard.lineTo(-0.08, 0.7);
-  guard.lineTo(-0.23, 0.64);
-  guard.closePath();
-  add(
-    sword,
-    new THREE.ExtrudeGeometry(guard, {
-      depth: 0.12,
-      bevelEnabled: true,
-      bevelSize: 0.025,
-      bevelThickness: 0.02,
-      bevelSegments: 2,
-      steps: 1,
-    }),
-    "#586d84",
-    0,
-    0,
-    -0.05,
-  );
-  box(sword, 0.095, 0.4, 0.1, "#40516b", 0, 0.31, 0);
-  const skull = add(
-    sword,
-    new THREE.SphereGeometry(0.105, 16, 12),
-    "#c3d9e5",
-    0,
-    0.63,
-    0.09,
-  );
-  skull.scale.set(0.8, 1, 0.65);
-  for (const x of [-0.036, 0.036])
-    box(sword, 0.027, 0.024, 0.015, "#19465e", x, 0.65, 0.157);
-  add(sword, new THREE.IcosahedronGeometry(0.085, 1), "#73c3e6", 0, 0.07, 0);
+  const blizzard = new THREE.Group();
+  blizzard.name = "Blizzard Entertainment logo";
+  asset.blizzard.forEach((part) => add(blizzard, part, "#087cdb"));
   const bridge = new THREE.Group();
   bridge.name = "Golden Gate Bridge";
-  box(bridge, 1.65, 0.09, 0.32, "#e5754b", 0, 0.4, 0);
+  box(bridge, 1.65, 0.09, 0.32, "#e95723", 0, 0.4, 0);
   for (const x of [-0.46, 0.46]) {
     for (const z of [-0.12, 0.12])
-      box(bridge, 0.065, 1.3, 0.065, "#dc683e", x, 0.66, z);
+      box(bridge, 0.065, 1.3, 0.065, "#e7481b", x, 0.66, z);
     for (const y of [0.68, 1, 1.28])
-      box(bridge, 0.09, 0.04, 0.3, "#ec9169", x, y, 0);
+      box(bridge, 0.09, 0.04, 0.3, "#f5703d", x, y, 0);
   }
   for (const z of [-0.15, 0.15]) {
     const curve = new THREE.CatmullRomCurve3([
@@ -248,19 +208,19 @@ export function careerMiniatures(
       new THREE.Vector3(0.46, 1.34, z),
       new THREE.Vector3(0.81, 0.43, z),
     ]);
-    add(bridge, new THREE.TubeGeometry(curve, 48, 0.016, 6, false), "#e8875f");
+    add(bridge, new THREE.TubeGeometry(curve, 48, 0.016, 6, false), "#f26532");
     for (let i = 1; i < 16; i++) {
       const p = curve.getPoint(i / 16);
       if (p.y < 0.45) continue;
       add(
         bridge,
         new THREE.CylinderGeometry(0.006, 0.006, p.y - 0.43, 5),
-        "#e98a63",
+        "#f56c34",
         p.x,
         (p.y + 0.43) / 2,
         z,
       );
     }
   }
-  return { google, sword, bridge };
+  return { google, blizzard, bridge };
 }

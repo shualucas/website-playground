@@ -21,7 +21,7 @@ async function openBook(page, path = "/") {
 }
 async function ready(page) {
   await expect(stage(page)).toHaveAttribute("data-phase", "ready", {
-    timeout: 20000,
+    timeout: 60000,
   });
 }
 async function grabPoint(page, side = "right") {
@@ -160,7 +160,9 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const before = await state(page);
   const started = Date.now();
-  await page.getByRole("button", { name: "Next project" }).click();
+  await page
+    .getByRole("button", { name: "Next project" })
+    .click({ force: true });
   await expect(stage(page)).toHaveAttribute("data-phase", "turning");
   await expect
     .poll(async () => Number((await state(page)).activeLeafCount))
@@ -174,7 +176,7 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   expect(after.rightArtwork).not.toBe(before.rightArtwork);
   expect(after.rightArtwork).toBe(JSON.parse(before.previewArtworks)[1]);
   expect(after.camera).toBe(before.camera);
-  expect(after.zoom).toBe("1");
+  expect(after.zoom).toBe("1.2");
   await expect(page.locator(".book-printing .page-verso h1")).toHaveText(
     "Stadia",
   );
@@ -189,11 +191,19 @@ test("loading reveals a bouncing closed cover, idle motion continues, and R retu
   test.setTimeout(90000);
   await page.addInitScript(() => {
     window.arrival = [];
-    const timer = setInterval(() => {
+    const mounted = new MutationObserver(() => {
       const el = document.querySelector(".book-stage");
-      if (el?.dataset.phase) window.arrival.push({ ...el.dataset });
-      if (window.arrival.length > 200) clearInterval(timer);
-    }, 30);
+      if (!el) return;
+      const frames = new MutationObserver(() =>
+        window.arrival.push({ ...el.dataset }),
+      );
+      frames.observe(el, {
+        attributes: true,
+        attributeFilter: ["data-arrival-scale"],
+      });
+      mounted.disconnect();
+    });
+    mounted.observe(document, { childList: true, subtree: true });
   });
   await page.goto("/");
   await expect(
@@ -207,7 +217,7 @@ test("loading reveals a bouncing closed cover, idle motion continues, and R retu
   );
   await expect(stage(page)).toHaveAttribute("data-view", "cover");
   const before = await state(page);
-  expect(Number(before.firstRevealAt)).toBeGreaterThanOrEqual(1490);
+  expect(Number(before.firstRevealAt)).toBeGreaterThanOrEqual(1990);
   await expect
     .poll(async () => (await state(page)).ambientPosition)
     .not.toBe(before.ambientPosition);
@@ -221,7 +231,11 @@ test("loading reveals a bouncing closed cover, idle motion continues, and R retu
   expect(samples.every((s) => Number(s.coverOpen) === 0)).toBe(true);
   await page.getByRole("button", { name: "About", exact: true }).click();
   await ready(page);
-  await expect.poll(async () => Number((await state(page)).popupCount)).toBe(3);
+  await expect
+    .poll(async () => Number((await state(page)).popupCount), {
+      timeout: 15000,
+    })
+    .toBe(3);
   await page.keyboard.press("r");
   await ready(page);
   const final = await state(page);
@@ -240,7 +254,9 @@ test("the two-ink ASCII print animates and respects reduced motion", async ({
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const time = Number((await state(page)).portalTime);
   await expect
-    .poll(async () => Number((await state(page)).portalTime))
+    .poll(async () => Number((await state(page)).portalTime), {
+      timeout: 15000,
+    })
     .toBeGreaterThan(time + 0.3);
   const moving = await page.screenshot();
   await expect

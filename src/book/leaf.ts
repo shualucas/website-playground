@@ -117,6 +117,13 @@ export class SkinnedLeaf {
   get progress() {
     return this.hinge[0];
   }
+  /** Flex can move bones without changing the physical page boundary. */
+  get turning() {
+    return (
+      Math.abs(this.target - this.progress) > 1e-7 ||
+      Math.abs(this.hinge[1]) > 1e-7
+    );
+  }
   get velocity() {
     return this.hinge[1];
   }
@@ -164,7 +171,7 @@ export class SkinnedLeaf {
       paper = 1;
     return (
       side * (0.06 + flex * 0.16) * Math.cos(Math.PI * u) * (1 - moving) +
-      moving * paper * (0.42 * Math.sin(Math.PI * u) - 0.28 * u - 0.08)
+      moving * paper * (0.56 * Math.sin(Math.PI * u) - 0.36 * u - 0.1)
     );
   }
   private shape(dt: number, flex: number, immediate: boolean) {
@@ -177,7 +184,7 @@ export class SkinnedLeaf {
     for (let i = 0; i <= LEAF_SEGMENTS; i++) {
       const u = i / LEAF_SEGMENTS,
         tangent = this.tangent(u, p, flex),
-        fold = moving * paper * 0.065 * u * u,
+        fold = moving * paper * 0.085 * u * u,
         bendTarget = tangent - previousBend,
         foldTarget = fold - previousFold,
         offset = i * 2;

@@ -55,6 +55,7 @@ type Callbacks = {
   onOpen: () => void;
   onPresented: () => void;
   onRequest: (page: number) => void;
+  onTurn?: (forward: boolean, cover: boolean) => void;
   onView?: (page: number) => void;
   printPages?: HTMLCanvasElement[];
   google: GoogleAsset;
@@ -132,6 +133,8 @@ export class BookScene {
   private last = 0;
   private grip: Grip | null = null;
   private suppressClick = false;
+  private pendingPage: number | null = null;
+  private desktopScale = 1;
   private hovered: number | null = null;
   private software = false;
   private visible = true;
@@ -209,7 +212,9 @@ export class BookScene {
       this.popups.restEnvelope(this.rig),
     );
     this.buildPrinting();
-    this.scheduler = new TurnScheduler(this.leaves);
+    this.scheduler = new TurnScheduler(this.leaves, (forward, cover) =>
+      this.callbacks.onTurn?.(forward, cover),
+    );
     this.scheduler.snap(0);
     this.updateRig();
     this.renderer.compile(this.scene, this.camera);
@@ -245,8 +250,8 @@ export class BookScene {
     key.position.set(-1.5, 15, -2);
     key.castShadow = true;
     key.shadow.mapSize.set(
-      this.software ? 1024 : 2048,
-      this.software ? 1024 : 2048,
+      this.software ? 512 : 2048,
+      this.software ? 512 : 2048,
     );
     Object.assign(key.shadow.camera, {
       left: -8,
@@ -256,8 +261,8 @@ export class BookScene {
       near: 1,
       far: 80,
     });
-    key.shadow.radius = this.software ? 22 : 44;
-    key.shadow.blurSamples = 12;
+    key.shadow.radius = this.software ? 11 : 44;
+    key.shadow.blurSamples = this.software ? 8 : 12;
     key.shadow.normalBias = 0.015;
     key.shadow.bias = -0.0001;
     this.scene.add(key);
@@ -577,13 +582,18 @@ export class BookScene {
     this.report();
   }
   goTo(page: number) {
-    if (this.grip?.moved) return;
+    if (this.grip?.moved) {
+      this.pendingPage = clamp(page, -1, this.callbacks.projects.length);
+      this.callbacks.onRequest(this.pendingPage);
+      this.report();
+      return;
+    }
     this.intro = false;
     this.elapsed = INTRO_DURATION;
     this.scheduler.request(clamp(page + 1, 0, this.leaves.length));
     this.callbacks.onRequest(this.scheduler.requested - 1);
     if (this.motion.matches) {
-      this.scheduler.snap(this.scheduler.requested);
+      this.scheduler.snap(this.scheduler.requested, true);
       this.popups.step(
         0,
         page >= 0 && page < this.callbacks.projects.length ? page : -1,
@@ -609,13 +619,13 @@ export class BookScene {
     this.schedule();
   }
   stepPage(direction: number) {
-    this.goTo(this.scheduler.requested - 1 + direction);
+    this.goTo((this.pendingPage ?? this.scheduler.requested - 1) + direction);
   }
   skip = () => {
     if (this.intro) this.finishArrival();
     this.intro = false;
     this.elapsed = INTRO_DURATION;
-    this.scheduler.snap(this.scheduler.requested);
+    this.scheduler.snap(this.scheduler.requested, true);
     this.popups.step(
       0,
       this.scheduler.committed > 0 &&
@@ -637,6 +647,7 @@ export class BookScene {
     this.schedule();
   };
   replay = () => {
+    this.pendingPage = null;
     this.releaseCapture();
     this.orientation.identity();
     this.orientationTarget.identity();
@@ -795,6 +806,11 @@ export class BookScene {
     if (this.grip?.id !== event.pointerId) return;
     this.suppressClick = this.grip.moved;
     this.releaseCapture();
+    if (this.pendingPage !== null) {
+      const page = this.pendingPage;
+      this.pendingPage = null;
+      this.goTo(page);
+    }
     this.updatePhase();
     this.setHover(null);
     this.report();
@@ -804,6 +820,11 @@ export class BookScene {
     if (this.grip?.id !== event.pointerId) return;
     this.suppressClick = this.grip.moved;
     this.releaseCapture();
+    if (this.pendingPage !== null) {
+      const page = this.pendingPage;
+      this.pendingPage = null;
+      this.goTo(page);
+    }
     this.updatePhase();
     this.setHover(null);
     this.report();
@@ -854,6 +875,7 @@ export class BookScene {
     const id = Number(hit.object.userData.leaf);
     if (
       hit.object.userData.phone &&
+      id === boundary &&
       !this.scheduler.moving &&
       boundary > 0 &&
       boundary < this.leaves.length
@@ -907,7 +929,14 @@ export class BookScene {
     if (rect.width < 1 || rect.height < 1) return;
     this.renderer.setSize(rect.width, rect.height);
     this.css.setSize(rect.width, rect.height);
-    this.camera.aspect = rect.width / rect.height;
+    const desktop = matchMedia("(min-width: 761px)").matches;
+    // Retain the original composition/scale, while drawing into the former UI margins.
+    // This gives raised pages clearance without zooming the book during a turn.
+    const top = desktop ? 48 : 0,
+      bottom = desktop ? 90 : 0,
+      viewHeight = Math.max(1, rect.height - top - bottom);
+    this.camera.clearViewOffset();
+    this.camera.aspect = rect.width / viewHeight;
     const half = Math.atan(
         Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
           Math.min(1, this.camera.aspect),
@@ -924,6 +953,8 @@ export class BookScene {
       this.camera.aspect,
     );
     const distance = fittedDistance * 1.06;
+    this.desktopScale = desktop ? 1.2 : 1;
+    this.camera.zoom = this.desktopScale;
     // Shift the static composition up without changing focal length or drag scale.
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(
       this.camera.quaternion,
@@ -932,13 +963,22 @@ export class BookScene {
       up,
       -distance *
         Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
-        0.08,
+        (desktop ? 0.02 : 0.08),
     );
     this.cameraFocus.copy(focus);
     this.displayScale = legacyDistance / distance;
     this.camera.position.copy(focus).addScaledVector(direction, distance);
     this.camera.lookAt(focus);
     this.camera.far = Math.max(100, distance + 80);
+    if (desktop)
+      this.camera.setViewOffset(
+        rect.width,
+        viewHeight,
+        0,
+        -top,
+        rect.width,
+        rect.height,
+      );
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
     this.updateRig();
@@ -1103,7 +1143,9 @@ export class BookScene {
     data.project = String(this.index);
     data.format = "riso-zine";
     data.view = closed ? (boundary === 0 ? "cover" : "back") : "spread";
-    data.requestedPage = String(this.scheduler.requested - 1);
+    data.requestedPage = String(
+      this.pendingPage ?? this.scheduler.requested - 1,
+    );
     data.settledBoundary = String(boundary);
     data.leftArtwork = this.leaves[this.index].faces[1].uuid;
     data.rightArtwork = this.rightTextures[this.index].uuid;
@@ -1184,6 +1226,7 @@ export class BookScene {
     data.modelScale = String(this.orbit.scale.x);
     data.bookColorMode = this.dark ? "dark" : "light";
     data.displayScale = String(this.displayScale);
+    data.desktopMagnification = String(this.desktopScale);
     data.rotationFit = String(this.rotationFit);
     data.arrivalScale = this.presentationScale.toFixed(4);
     data.ambientPosition = JSON.stringify(this.floatRoot.position.toArray());

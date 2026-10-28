@@ -1,6 +1,6 @@
 # Selected Things — Portfolio Zine
 
-An interactive, saddle-stitched portfolio on a white or charcoal canvas. The closed editorial cover arrives after a numbered, monochrome card loader. Open it into **About → Stadia → AI Mode → After-hours**. About contains professional-career placeholders and a gradient Google G, Frostmourne and Golden Gate Bridge. After-hours contains the film camera, coral-grip racket and purple GameCube-style controller. Project spreads contain phone-shaped media windows instead of miniatures, with project-colored rising rims and animated ASCII borders.
+An interactive, saddle-stitched portfolio on a white or charcoal canvas. The closed editorial cover arrives after a numbered, monochrome card loader. Open it into **About → Stadia → AI Mode → After-hours**. About contains professional-career placeholders and a gradient Google G, the Blizzard Entertainment logo and Golden Gate Bridge. After-hours contains the black point-and-shoot film camera with wrist strap, EZONE-inspired blue racket with lime tape and purple GameCube-style controller. Project spreads contain phone-shaped media windows instead of miniatures, with project-colored rising rims and animated ASCII borders.
 
 ## Run
 
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Drag the zine to rotate it in place through all axes. The camera and model scale remain fixed throughout a drag, even if the zine clips the viewport. Click page edges or use the navigation/arrow keys to turn. Requests accumulate during animation; selected navigation reflects intent immediately. Click a phone or the left-page reading link for the full reading view. R or the restart icon returns to the closed cover without reloading assets. The theme button changes the scene, paper, ink, covers and ASCII; preview media keeps its original colors.
+Drag the zine to rotate it in place through all axes. Miniatures, ASCII and spell glows stay visible throughout rotation; navigation stays opaque and queues requests until release. Desktop uses a fixed 1.2× optical magnification. The camera and model scale remain fixed throughout a drag, even if the zine clips the viewport. Click page edges or use the navigation/arrow keys to turn. Requests accumulate during animation; selected navigation reflects intent immediately. Click a phone or the left-page reading link for the full reading view. R or the restart icon returns to the closed cover without reloading assets. The sound button mutes/unmutes local paper foley, which starts on real leaf turns after the first user gesture. The theme button changes the scene, paper, ink, covers and ASCII; preview media keeps its original colors.
 
 Reduced motion removes ambient movement, jiggle, animated previews and arrival/page transitions. Keyboard controls, accessible reading overlays and a WebGL-free HTML reading fallback are retained. Portrait screens retain the whole resting spread; reading view provides larger text.
 
@@ -25,7 +25,7 @@ previewGif: "",                             // fallback when no MP4 is supplied
 previewPoster: "/projects/stadia-poster.jpg",// optional static image / reduced motion
 ```
 
-Blank fields show a labeled, locally generated poster. MP4/GIF playback runs only for the visible, settled project; it pauses when pages turn, the scene leaves the viewport, the tab is hidden, or reduced motion is enabled. GIFs use disposal-aware frame compositing. In the reading view, MP4 has playback controls. Keep clips compact and portrait-shaped (approximately 540×1024); media is mapped into a 1.87:3.55 window. Prefer MP4 over large GIFs for download/memory efficiency. `previewImage` remains available for non-project reading imagery. `caseStudyUrl` can link to a full study elsewhere.
+Blank fields show a solid black phone screen with a rounded 20px-style corner and a project-gradient rim. MP4/GIF playback runs only for the visible, settled project; it pauses when pages turn, the scene leaves the viewport, the tab is hidden, or reduced motion is enabled. GIFs use disposal-aware frame compositing. In the reading view, MP4 has playback controls. Keep clips compact and portrait-shaped (approximately 540×1024); media is mapped into a 1.87:3.55 window. Prefer MP4 over large GIFs for download/memory efficiency. `previewImage` remains available for non-project reading imagery. `caseStudyUrl` can link to a full study elsewhere.
 
 Project links are shareable: `?project=stadia`, `?project=ai-mode`, `?project=about`, or `?project=after-hours`. The home URL stays closed.
 
@@ -36,15 +36,15 @@ Native Three.js owns one scene animation loop; React owns content, navigation an
 - `BookScene.ts` owns lifecycle, a fixed camera/pivot, lighting, theme repainting, picking, and accessible print overlays.
 - `leaf.ts` uses two shared 30-segment bind-pose geometries and a persistent 31-bone skeleton per leaf. Five physical leaves carry ten permanent face textures. GPU skinning updates geometry, normals and shadows together. Shared hinge timing, ordered leaves, thickness clearance and offsets along the rotating page normal prevent covers overtaking adjacent pages.
 - `turn-scheduler.ts` separates requested, launched and committed boundaries, with staggered overlapping turns and interruptible requests.
-- `framing.ts` measures a turn envelope once and fits the camera on viewport resize; dragging never adjusts scale or zoom.
+- `framing.ts` measures a turn envelope once and fits the camera on viewport resize; dragging never adjusts scale or zoom. Desktop rendering extends into the former top/bottom stage margins with a fixed view offset, preserving the larger composition and raised-page clearance.
 - `materials.ts` captures the same React metadata layout at 1200×1694 and repaints existing canvas textures for each mode, preserving face identities. `ascii.ts` confines the moving glyph field to a border.
 - `phones.ts` binds preview surfaces to the same right-leaf skeleton; media and paper remain continuous during a turn. It owns local video/GIF playback and a page-local upward glow without full-screen bloom.
 - `popups.ts` creates only career and After-hours miniatures, anchors them to leaf bones, and retracts them before turning. `career.ts` and `miniatures.ts` own their procedural geometry. Removed project props are preserved in `src/book/miniatures/library/` with restoration notes.
-- `jelly.ts` applies a bounded, volume-preserving scale/shear/twist cage to surfaces, normals, colored silhouette shells and shadow depth. Physical materials use transmission, attenuation and studio reflections; software WebGL uses a simpler translucent Phong finish. This is controlled jiggle, **not** the reference's tetrahedral XPBD, arbitrary stretching, cutting or remeshing.
-- `CardLoader.jsx` renders a stationary rounded card, mirrored rank/suit and an evolving monochrome nodal grain field. Ranks 1–10 follow completed font, import, print-capture, logo and renderer preparation stages. Ten appears only after preparation completes. The initial reveal waits at least 1.5 seconds; slow devices can take longer.
+- `jelly.ts` applies a bounded, volume-preserving scale/shear/twist cage to surfaces, normals, colored silhouette shells and shadow depth. Physical materials use an opaque glossy gummy finish with saturated colors and studio reflections; software WebGL uses an opaque Phong finish. Transmission is zero and opacity is one. All miniatures are two-thirds of their previous size. This is controlled jiggle, **not** the reference's tetrahedral XPBD, arbitrary stretching, cutting or remeshing.
+- `CardLoader.jsx` renders a stationary rounded card, mirrored rank/suit and a simple centered diamond. Ranks 1–10 follow completed font, import, print-capture, logo and renderer preparation stages. Ten appears only after preparation completes. The initial reveal waits at least 2 seconds; slow devices can take longer.
 - `surfaces.ts`, `effects.ts` and `binding.ts` provide the local studio environment, paper detail, shadow-edge fade and folded/stapled saddle. A single overhead key casts a soft filtered shadow; no duplicate painted ground shadow is used.
 
-All runtime fonts and logo assets are local. The full jelly transmission path is more expensive than the compatibility renderer. This environment's software GPU validates correctness but cannot establish real mobile-GPU performance. Higher-fidelity authored GLB miniatures with smooth closed volumes would be the next improvement over the procedural stylized geometry. See `THIRD_PARTY_NOTICES.md` for credits and licenses.
+All runtime fonts and logo assets are local. The physical glossy material path is more expensive than the compatibility renderer. Resting miniatures bypass cage deformation in the shader; the software path uses a smaller, proportionally blurred shadow map. This environment's software GPU validates correctness but cannot establish real mobile-GPU performance. Higher-fidelity authored GLB miniatures with smooth closed volumes would be the next improvement over the procedural stylized geometry. See `THIRD_PARTY_NOTICES.md` for credits and licenses.
 
 ## Validate and deploy
 
