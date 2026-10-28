@@ -26,8 +26,8 @@ export function makeCartridge(color: string, label: THREE.Texture, grain: THREE.
   outline.lineTo(-1.2, -1.31); outline.quadraticCurveTo(-1.2, -1.36, -1.15, -1.36);
   const half = new THREE.ExtrudeGeometry(outline, { depth: .115, bevelEnabled: true, bevelSize: .025, bevelThickness: .025, bevelSegments: 3, curveSegments: 5 });
   mesh(half, shell, 0, 0, .032).name = "Front shell";
-  mesh(half.clone(), shell, 0, 0, -.119).name = "Back shell";
-  mesh(rounded(2.38, 2.66, .018, .008), seam, 0, -.01, .016).name = "Shell seam";
+  mesh(half.clone(), shell, 0, 0, -.145).name = "Back shell";
+  mesh(new THREE.ExtrudeGeometry(outline, { depth: .009, bevelEnabled: true, bevelSize: .012, bevelThickness: .001, bevelSegments: 2, curveSegments: 5 }), seam, 0, 0, -.004).name = "Shell seam";
   mesh(rounded(2.13, 1.92, .025), frame, 0, -.25, .181).name = "Recessed label surround";
   // Plane UVs stay rectangular, with actual rounded paper geometry and no extrusion UV seams.
   const labelShape = new THREE.Shape();
@@ -47,10 +47,10 @@ export function makeCartridge(color: string, label: THREE.Texture, grain: THREE.
   mesh(rounded(1.77, .085, .04, .012), dark, 0, -1.33, .152).name = "Connector recess";
   const gold = new THREE.MeshStandardMaterial({ color: "#baa367", metalness: .7, roughness: .48 });
   for (let i = 0; i < 18; i++) mesh(new THREE.BoxGeometry(.045, .055, .008), gold, -.76 + i * .089, -1.33, .177);
-  mesh(rounded(1.88, 1.7, .012, .06), frame, 0, -.1, -.15).name = "Back plate";
-  const screw = mesh(new THREE.CylinderGeometry(.065, .065, .016, 16), dark, 0, .94, -.16); screw.rotation.x = Math.PI / 2;
-  mesh(new THREE.BoxGeometry(.07, .012, .005), frame, 0, .94, -.172);
-  for (let i = 0; i < 3; i++) mesh(rounded(.65 - i * .1, .018, .01, .006), seam, 0, -.65 - i * .09, -.161);
+  mesh(rounded(1.88, 1.7, .012, .06), frame, 0, -.1, -.18).name = "Back plate";
+  const screw = mesh(new THREE.CylinderGeometry(.065, .065, .016, 16), dark, 0, .94, -.189); screw.rotation.x = Math.PI / 2;
+  mesh(new THREE.BoxGeometry(.07, .012, .005), frame, 0, .94, -.201);
+  for (let i = 0; i < 3; i++) mesh(rounded(.65 - i * .1, .018, .01, .006), seam, 0, -.65 - i * .09, -.191);
   return group;
 }
 

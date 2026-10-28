@@ -27,6 +27,12 @@ test("career collection uses exact bio, five tonal cartridges, top-down view and
   await expect(page.locator(".cartridge-keyboard")).toHaveCount(5);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "top-down");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-elevation", "70");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-contact");
+  for (let i = 0; i < 5; i++) {
+    expect(Number(await page.locator(".cartridge-stage").getAttribute(`data-front-up${i}`))).toBeGreaterThan(.98);
+    await expect(page.locator(".cartridge-stage")).toHaveAttribute(`data-top-near${i}`, "true");
+  }
   for (const id of ["blizzard", "gmail", "stadia", "search", "early-work"]) {
     const label = await request.get(`/cartridges/labels/${id}-tonal.svg`); expect(label.ok()).toBe(true);
     expect(await label.text()).not.toMatch(/<text|Josh|Lucas|logo/i);
@@ -72,12 +78,19 @@ test("canvas selection, drag rotation, caption entry and browser history work wi
 
 test("mobile keeps enlarged cartridges and captions in view, with persistent theme", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await load(page);
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-composition", "rack");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-composition", "stack-mobile");
   for (const name of ["Blizzard Entertainment", "Search", "Early work"]) {
     await choose(page, name); await expect(page.locator(".cartridge-caption")).toBeInViewport();
     const bounds = await page.locator(".cartridge-caption").boundingBox(); expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true");
+  const framed = await page.locator(".cartridge-stage").evaluate((el) => {
+    const bounds = JSON.parse(el.dataset.frameBounds);
+    return bounds.left >= 0 && bounds.top >= 0 && bounds.right <= el.clientWidth && bounds.bottom <= el.clientHeight;
+  });
+  expect(framed).toBe(true);
   await page.getByRole("button", { name: "Switch to dark mode" }).click(); await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
 });
@@ -107,4 +120,59 @@ test("zine snapshot is downloadable and preserved edition remains runnable", asy
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/zine/?project=about");
   await expect(page.locator(".spellbook")).toHaveAttribute("data-presentation", "ready", { timeout: 90000 });
   await expect(page.locator(".book-stage")).toHaveAttribute("data-phase", "ready", { timeout: 90000 });
+});
+
+
+test("bold name toggles in both directions with keyboard access and the anecdote matches bio type size", async ({ page }) => {
+  await page.goto("/");
+  const toggle = page.getByRole("button", { name: /show full name/i });
+  await expect(toggle).toHaveText("josh");
+  expect(await toggle.evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBeGreaterThanOrEqual(600);
+  await toggle.click();
+  await expect(page.getByRole("button", { name: /show short name/i })).toHaveText("joshua lucas");
+  await expect(page.getByRole("button", { name: /show short name/i })).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveText("josh");
+  expect(await page.locator(".collection-intro").evaluate((el) => {
+    const bio = getComputedStyle(el.querySelector("h1")), fact = getComputedStyle(el.querySelector(".random-fact"));
+    return { size: bio.fontSize === fact.fontSize, lineHeight: bio.lineHeight === fact.lineHeight };
+  })).toEqual({ size: true, lineHeight: true });
+});
+
+test("shell halves and their inset seam have separate surfaces", async ({ page }) => {
+  await page.goto("/tests/fixtures/blank.html");
+  const result = await page.evaluate(async () => {
+    const THREE = await import("/node_modules/.vite/deps/three.js");
+    const { makeCartridge } = await import("/src/cartridge/model.ts");
+    const group = makeCartridge("#555555", new THREE.Texture(), new THREE.Texture());
+    const bounds = (name) => { const b = new THREE.Box3().setFromObject(group.getObjectByName(name)); return { min: b.min.z, max: b.max.z }; };
+    return { front: bounds("Front shell"), back: bounds("Back shell"), seam: bounds("Shell seam"), label: bounds("Label"), surround: bounds("Recessed label surround") };
+  });
+  expect(result.front.min).toBeGreaterThan(result.back.max);
+  expect(result.seam.min).toBeGreaterThanOrEqual(result.back.max - 1e-6);
+  expect(result.seam.max).toBeLessThan(result.front.min);
+  expect(result.label.min).toBeGreaterThan(result.surround.max + .001);
+});
+
+test("top-side-up poses remain separated through interrupted selection and inspection", async ({ page }) => {
+  test.setTimeout(120000);
+  await load(page);
+  await page.evaluate(() => {
+    window.intersectionsSeen = [];
+    const stage = document.querySelector(".cartridge-stage");
+    new MutationObserver(() => { if (Number(stage.dataset.intersections) > 0) window.intersectionsSeen.push(stage.dataset.intersections); }).observe(stage, { attributes: true, attributeFilter: ["data-intersections"] });
+  });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  for (const name of ["Gmail", "Early work", "Blizzard Entertainment", "Stadia"]) {
+    const control = page.getByRole("button", { name: `View ${name} cartridge`, exact: true }); await control.focus(); await control.press("Enter");
+  }
+  const stage = page.locator(".cartridge-stage");
+  await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
+  await expect(stage).toHaveAttribute("data-intersections", "0");
+  for (let i = 0; i < 5; i++) expect(Number(await stage.getAttribute(`data-front-up${i}`))).toBeGreaterThan(.98);
+  const p = await point(page, 2);
+  await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 220, p.y + 45, { steps: 8 }); await page.mouse.up();
+  await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
+  await expect(stage).toHaveAttribute("data-intersections", "0");
+  expect(await page.evaluate(() => window.intersectionsSeen)).toEqual([]);
 });

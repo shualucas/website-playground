@@ -31,7 +31,7 @@ svg { display:block; flex-shrink:0; }
 .cartridge-caption { min-height:44px; padding:4px 8px; justify-content:center; gap:3px; }
 .cartridge-years { display:block; font-size:13px; line-height:1.4; color:var(--ui-muted); }
 .cartridge-caption:hover > span:first-child { text-decoration:underline; text-underline-offset:3px; }
-.random-fact { margin:28px 0 0; font-size:16px; line-height:1.5; color:var(--ui-muted); }
+.random-fact { margin:28px 0 0; font-size:24px; line-height:1.3; letter-spacing:-.015em; color:var(--ui-muted); }
 .collection-loading { position:absolute; inset:0; display:grid; place-items:center; font-size:13px; color:var(--ui-muted); background:var(--scene-bg); pointer-events:none; }
 .collection-footer { display:flex; justify-content:space-between; align-items:center; gap:20px; padding-top:24px; color:var(--ui-muted); font-size:13px; }
 .collection-footer a { min-height:44px; display:inline-flex; align-items:center; gap:7px; }
@@ -47,14 +47,17 @@ svg { display:block; flex-shrink:0; }
  .collection-hero { display:block; min-height:0; }
  .collection-intro { max-width:520px; padding:0; }
  .collection-intro h1 { font-size:24px; line-height:1.3; }
- .collection-display { width:100%; height:430px; margin-top:24px; }
+ .collection-display { width:100%; height:760px; margin-top:24px; }
  .cartridge-stage { position:relative; top:0; height:100%; }
  .collection-footer { padding-top:28px; }
  .cartridge-caption { font-size:13px; }
 }
 @media(min-width:640px) and (max-width:879px) { .collection { padding-left:60px; padding-right:60px; } .collection-display { max-width:560px; margin-left:auto; margin-right:auto; } }
-@media(max-width:560px) { .collection-display { height:430px; } .collection-footer { align-items:flex-start; flex-wrap:wrap; gap:6px 24px; font-size:12px; } }
+@media(max-width:560px) { .collection-display { height:760px; } .collection-footer { align-items:flex-start; flex-wrap:wrap; gap:6px 24px; font-size:12px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; animation-iteration-count:1 !important; } }
 
 .collection[data-status="fallback"] .collection-display { min-height:840px; }
 @media(max-width:560px) { .collection[data-status="fallback"] .collection-display { min-height:800px; } }
+
+.name-toggle { display:inline; padding:0; font:inherit; font-weight:700; color:var(--ui-text); border-radius:2px; vertical-align:baseline; }
+.name-toggle:hover { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:4px; }

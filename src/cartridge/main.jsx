@@ -31,6 +31,7 @@ function App() {
   const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null);
   const [selected, setSelected] = useState(selectedRoute), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
   const [reading, setReading] = useState(readRoute);
+  const [fullName, setFullName] = useState(false);
   const previousReading = useRef(reading), restoreFocus = useRef(null), buttons = useRef({});
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("cartridge-color-mode") === "dark"; } catch { return false; } });
   const selectRef = useRef(null);
@@ -104,7 +105,7 @@ function App() {
     <main className="collection" data-status={status} data-selected={selected || ""} inert={reading ? true : undefined}>
       <header className="collection-header"><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
-        <div className="collection-intro"><h1>I'm josh, a designer from a small rural town in Georgia, currently based in the big urban city of San Francisco, building helpful things at Google.</h1><p className="random-fact">A random thing about me: I attribute my world of warcraft addiction as a kid to me now designing software as a career.</p></div>
+        <div className="collection-intro"><h1>I'm <button className="name-toggle" aria-label={fullName ? "joshua lucas, show short name" : "josh, show full name"} aria-expanded={fullName} onClick={() => setFullName((value) => !value)}>{fullName ? "joshua lucas" : "josh"}</button>, a designer from a small rural town in Georgia, currently based in the big urban city of San Francisco, building helpful things at Google.</h1><p className="random-fact">A random thing about me: I attribute my world of warcraft addiction as a kid to me now designing software as a career.</p></div>
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
           <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false">
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { cartridgeModel, cartridges, type CartridgeId } from "./config";
 import { loadExternalShell, makeCartridge } from "./model";
+import { makeBounds, updateBounds, Separation, type RigidBounds } from "./separation";
 
 type Callbacks = {
   onHover: (id: CartridgeId | null) => void;
@@ -11,16 +12,16 @@ type Callbacks = {
 };
 type Item = {
   id: CartridgeId; root: THREE.Group; handling: THREE.Group; hitbox: THREE.Mesh;
-  half: THREE.Vector3; spin: THREE.Vector2; angle: THREE.Euler;
+  half: THREE.Vector3; center: THREE.Vector3; bounds: RigidBounds; contact: THREE.Mesh; spin: THREE.Vector2; angle: THREE.Euler;
   target: THREE.Vector3; targetAngle: THREE.Vector3; velocity: THREE.Vector3;
 };
-const PITCH = -78 * Math.PI / 180;
-const AXIS = new THREE.Vector3(0, -Math.sin(PITCH), Math.cos(PITCH));
+const PITCH = -Math.PI / 2;
+const AXIS = new THREE.Vector3(0, 1, 0);
 const ROLLS = [.008, -.012, .013, -.006, .01];
 const YAWS = [-.019, .025, -.014, .018, -.015];
-const ELEVATION = 32 * Math.PI / 180;
-const VIEW_UP = new THREE.Vector3(0, Math.cos(ELEVATION), -Math.sin(ELEVATION));
-const VIEW_FORWARD = new THREE.Vector3(0, Math.sin(ELEVATION), Math.cos(ELEVATION));
+const ELEVATION = 70 * Math.PI / 180;
+const VIEW_UP = new THREE.Vector3(0, -Math.cos(ELEVATION), -Math.sin(ELEVATION));
+const VIEW_FORWARD = new THREE.Vector3(0, Math.sin(ELEVATION), -Math.cos(ELEVATION));
 
 /** Compact spine stack on desktop, edge-on rack on touch layouts; one owned clock. */
 export class CartridgeScene {
@@ -35,6 +36,8 @@ export class CartridgeScene {
   private ray = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private projected = new THREE.Vector3();
+  private topPoint = new THREE.Vector3();
+  private bottomPoint = new THREE.Vector3();
   private selected: CartridgeId | null = null;
   private hovered: CartridgeId | null = null;
   private drag: { id: number; item: Item; x: number; y: number; startX: number; startY: number; moved: boolean; canRotate: boolean } | null = null;
@@ -46,7 +49,11 @@ export class CartridgeScene {
   private entering = true;
   private mobile = false;
   private grain: THREE.CanvasTexture;
-  private shadow: THREE.Mesh;
+  private shadowTexture: THREE.CanvasTexture;
+  private shadowGeometry = new THREE.PlaneGeometry(1, 1);
+  private separation = new Separation();
+  private correction = new THREE.Vector3();
+  private dark = false;
   private cleanup = new Set<THREE.Texture>();
   private extentRotation = new THREE.Matrix4();
   private backdrop = new THREE.Color("#f0f0f0");
@@ -56,21 +63,17 @@ export class CartridgeScene {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .95;
-    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.VSMShadowMap;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.setClearColor(this.backdrop, 1);
     this.renderer.domElement.setAttribute("aria-hidden", "true"); host.appendChild(this.renderer.domElement);
-    this.camera.position.copy(VIEW_FORWARD).multiplyScalar(31); this.camera.lookAt(0, 0, 0);
+    this.camera.up.copy(VIEW_UP); this.camera.position.copy(VIEW_FORWARD).multiplyScalar(31); this.camera.lookAt(0, 0, 0);
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     const room = new RoomEnvironment(); this.environment = this.pmrem.fromScene(room, .045); room.dispose();
     this.scene.environment = this.environment.texture; this.scene.environmentIntensity = .6;
     this.scene.add(new THREE.HemisphereLight("#ffffff", "#d6cbbd", .55));
-    const key = new THREE.DirectionalLight("#fffdf7", 1.8); key.position.set(-1.5, 0, 0).addScaledVector(VIEW_UP, 3).addScaledVector(VIEW_FORWARD, 15); key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = -6; key.shadow.camera.right = 6;
-    key.shadow.camera.top = 6; key.shadow.camera.bottom = -6; key.shadow.camera.far = 40;
-    key.shadow.normalBias = .018; key.shadow.bias = -.00015; key.shadow.radius = 7; key.shadow.blurSamples = 8;
-    this.scene.add(key);
-    this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.ShadowMaterial({ opacity: .12 }));
-    this.shadow.rotation.x = -ELEVATION; this.shadow.position.copy(VIEW_FORWARD).multiplyScalar(-2.3); this.shadow.receiveShadow = true; this.scene.add(this.shadow);
+    const key = new THREE.DirectionalLight("#fffdf7", 1.8); key.position.set(-3, 12, 5); this.scene.add(key);
+    // Small, blurred per-object contacts stay close; no distant rectangular cast shadow.
+    this.shadowTexture = this.makeContactTexture(); this.cleanup.add(this.shadowTexture);
     this.grain = this.makeGrain(); this.cleanup.add(this.grain);
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(host); this.resize();
     host.addEventListener("pointerdown", this.down); host.addEventListener("pointermove", this.move);
@@ -91,6 +94,49 @@ export class CartridgeScene {
     ctx.putImageData(data, 0, 0);
     const texture = new THREE.CanvasTexture(canvas); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(5, 5); return texture;
   }
+  private makeContactTexture() {
+    const canvas = document.createElement("canvas"); canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext("2d")!;
+    ctx.filter = "blur(18px)"; ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.roundRect(44, 36, 168, 184, 34); ctx.fill();
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
+  }
+  private refreshBounds(item: Item) {
+    item.root.updateWorldMatrix(true, false); item.handling.updateWorldMatrix(false, false);
+    updateBounds(item.bounds, item.center, item.half, item.handling.matrixWorld);
+  }
+  private keepSeparated() {
+    let corrected = false;
+    for (const item of this.items) this.refreshBounds(item);
+    // Five bodies need only a small bounded solver; this is separation, not a full physics simulation.
+    for (let pass = 0; pass < 12; pass++) {
+      let changed = false;
+      for (let i = 0; i < this.items.length; i++) for (let j = i + 1; j < this.items.length; j++) {
+        const a = this.items[i], b = this.items[j];
+        this.separation.correction(a.bounds, b.bounds, this.correction);
+        if (this.correction.lengthSq() < 1e-10) continue;
+        const weightA = a.id === this.selected ? 0 : b.id === this.selected ? 1 : .5;
+        a.root.position.addScaledVector(this.correction, -weightA);
+        b.root.position.addScaledVector(this.correction, 1 - weightA);
+        if (weightA) a.velocity.set(0, 0, 0);
+        if (weightA !== 1) b.velocity.set(0, 0, 0);
+        this.refreshBounds(a); this.refreshBounds(b); changed = corrected = true;
+      }
+      if (!changed) break;
+    }
+    let intersections = 0;
+    for (let i = 0; i < this.items.length; i++) for (let j = i + 1; j < this.items.length; j++) {
+      if (this.separation.correction(this.items[i].bounds, this.items[j].bounds, this.correction).lengthSq() > 1e-8) intersections++;
+    }
+    this.host.dataset.intersections = String(intersections);
+    return corrected;
+  }
+  private updateContact(item: Item) {
+    const box = item.bounds;
+    const radius = (axis: "x" | "y" | "z") => Math.abs(box.axes[0][axis]) * box.half.x + Math.abs(box.axes[1][axis]) * box.half.y + Math.abs(box.axes[2][axis]) * box.half.z;
+    item.contact.position.set(box.center.x, box.center.y - radius("y") - .055, box.center.z);
+    item.contact.scale.set(radius("x") * 2 + .65, radius("z") * 2 + .65, 1);
+  }
   private async prepare() {
     try {
       const loader = new THREE.TextureLoader();
@@ -103,16 +149,19 @@ export class CartridgeScene {
       for (let i = 0; i < cartridges.length; i++) {
         const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell) ?? makeCartridge(config.shell, maps[i], this.grain);
         if (this.disposed) { this.disposeObject(model); return; }
-        const half = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).multiplyScalar(.5);
+        const modelBounds = new THREE.Box3().setFromObject(model);
+        const half = modelBounds.getSize(new THREE.Vector3()).multiplyScalar(.5), center = modelBounds.getCenter(new THREE.Vector3());
         const root = new THREE.Group(), handling = new THREE.Group(); handling.add(model); root.add(handling);
         const hitbox = new THREE.Mesh(new THREE.BoxGeometry(half.x * 2, half.y * 2, half.z * 2), new THREE.MeshBasicMaterial({ visible: false }));
-        hitbox.userData.cartridgeId = config.id; root.add(hitbox); this.scene.add(root);
-        this.items.push({ id: config.id, root, handling, hitbox, half, spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3() });
+        hitbox.position.copy(center); hitbox.userData.cartridgeId = config.id; root.add(hitbox); this.scene.add(root);
+        const contact = new THREE.Mesh(this.shadowGeometry, new THREE.MeshBasicMaterial({ map: this.shadowTexture, transparent: true, opacity: this.dark ? .065 : .045, depthWrite: false, toneMapped: false }));
+        contact.name = "soft contact shadow"; contact.rotation.x = -Math.PI / 2; contact.renderOrder = -1; this.scene.add(contact);
+        this.items.push({ id: config.id, root, handling, hitbox, half, center, bounds: makeBounds(), contact, spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3() });
       }
       this.layout();
       for (const item of this.items) {
         item.root.position.copy(item.target); item.root.rotation.set(item.targetAngle.x, item.targetAngle.y, item.targetAngle.z);
-        if (!this.motion.matches) item.root.position.y += 2;
+        if (!this.motion.matches) item.root.position.y += .65;
       }
       this.host.dataset.model = cartridgeModel.url ? "external-glb" : "original-procedural";
       await this.renderer.compileAsync(this.scene, this.camera);
@@ -129,32 +178,25 @@ export class CartridgeScene {
   private layout() {
     this.host.dataset.settled = "false";
     const active = this.items.findIndex((item) => item.id === this.selected);
-    const heights = this.items.map((item, i) => this.stackExtent(item, i) + .065);
-    const total = heights.reduce((sum, h) => sum + h, 0); let cursor = total / 2;
+    const passive = this.items.filter((item) => item.id !== this.selected);
+    const heights = passive.map((item) => this.stackExtent(item, this.items.indexOf(item)) + .065);
+    let cursor = heights.reduce((sum, h) => sum + h, 0) / 2;
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-      if (this.mobile) {
-        let x = (i - (this.items.length - 1) / 2) * .46;
-        if (active >= 0) x = i === active ? 0 : Math.sign(i - active) * (1.08 + Math.max(0, Math.abs(i - active) - 1) * .055);
-        const y = active === i ? .18 : -.02, depth = active === i ? .8 : -.4;
-        item.target.copy(VIEW_UP).multiplyScalar(y).addScaledVector(VIEW_FORWARD, depth); item.target.x = x;
-        item.targetAngle.set(-ELEVATION, active === i ? 0 : 80 * Math.PI / 180, ROLLS[i]);
+      if (i === active) {
+        // Above every passive shell even during full 360-degree inspection.
+        const worldY = 3.3, screenY = 1.8;
+        const depth = (worldY - VIEW_UP.y * screenY) / VIEW_FORWARD.y;
+        item.target.copy(VIEW_UP).multiplyScalar(screenY).addScaledVector(VIEW_FORWARD, depth);
       } else {
-        const coordinate = cursor - heights[i] / 2; cursor -= heights[i];
-        item.target.copy(AXIS).multiplyScalar(coordinate); item.targetAngle.set(PITCH, YAWS[i], ROLLS[i]);
-        if (active >= 0) {
-          const before = active, after = this.items.length - active - 1;
-          const upper = before ? 1.93 + before * .4 : 1.4;
-          const lower = after ? 2.65 + after * .4 : 1.83;
-          const center = (lower - upper) / 2;
-          const y = i === active ? center : i < active ? center + 1.88 + (active - i - 1) * .4 : center - 2.6 - (i - active - 1) * .4;
-          item.target.copy(VIEW_UP).multiplyScalar(y).addScaledVector(VIEW_FORWARD, i === active ? .8 : -.7);
-          item.targetAngle.set(i === active ? -ELEVATION : -ELEVATION + PITCH, YAWS[i], ROLLS[i]);
-        }
+        const slot = passive.indexOf(item), layerY = cursor - heights[slot] / 2; cursor -= heights[slot];
+        item.target.set(0, layerY, active >= 0 ? 1.85 / Math.sin(ELEVATION) : 0);
       }
+      // Both the selected cartridge and its neighbors stay top-side up.
+      item.targetAngle.set(PITCH, YAWS[i], ROLLS[i]);
       if (i === active) { item.targetAngle.x += item.spin.x; item.targetAngle.y += item.spin.y; }
     }
-    this.host.dataset.composition = this.mobile ? "rack" : "stack";
+    this.host.dataset.composition = this.mobile ? "stack-mobile" : "stack";
     this.host.dataset.selected = this.selected ?? "";
   }
   setSelected(id: CartridgeId | null) {
@@ -165,18 +207,18 @@ export class CartridgeScene {
   setPaused(value: boolean) { this.paused = value; if (value) this.stop(); else this.start(); }
   setTheme(dark: boolean) {
     this.backdrop.set(dark ? "#1b1c1b" : "#f0f0f0"); this.renderer.setClearColor(this.backdrop, 1);
-    (this.shadow.material as THREE.ShadowMaterial).opacity = dark ? .28 : .12; this.start();
+    this.dark = dark; for (const item of this.items) (item.contact.material as THREE.MeshBasicMaterial).opacity = dark ? .065 : .045; this.start();
   }
   reset() { for (const item of this.items) item.spin.set(0, 0); this.layout(); this.start(); }
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight; if (!width || !height) return;
     this.mobile = innerWidth < 880; this.camera.aspect = width / height;
     // Twice the previous optical magnification; extra stage height reserves room for five slots.
-    const span = this.mobile ? 6.6 / this.camera.aspect : Math.max(9.3 * height / 600, 7.3 / this.camera.aspect);
+    const span = this.mobile ? Math.max(14.4, 6.6 / this.camera.aspect) : Math.max(9.3 * height / 600, 7.3 / this.camera.aspect);
     this.camera.zoom = 2;
     this.camera.position.copy(VIEW_FORWARD).multiplyScalar(span / (2 * Math.tan(7 * Math.PI / 180)));
     this.camera.lookAt(0, 0, 0);
-    this.host.dataset.view = "top-down"; this.host.dataset.magnification = "2";
+    this.host.dataset.view = "top-down"; this.host.dataset.elevation = "70"; this.host.dataset.magnification = "2"; this.host.dataset.shadow = "soft-contact";
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height); this.layout(); this.start();
   }
   private pick(event: PointerEvent) {
@@ -237,7 +279,7 @@ export class CartridgeScene {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i], { root, handling, target, targetAngle, velocity } = item;
       const progress = reduced ? 1 : THREE.MathUtils.clamp((now - this.readyAt - i * 110) / 850, 0, 1);
-      const entrance = 2 * (1 - progress) ** 3;
+      const entrance = .65 * (1 - progress) ** 3;
       if (progress < 1) this.entering = true;
       // Damped spring retains velocity across rapid selections and responsive changes.
       const steps = Math.max(1, Math.ceil(dt / .008)), step = dt / steps;
@@ -250,18 +292,32 @@ export class CartridgeScene {
       root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetAngle.y, blend);
       root.rotation.z = THREE.MathUtils.lerp(root.rotation.z, targetAngle.z, blend);
       const hover = this.hovered === item.id && !reduced && !this.drag;
-      handling.position.z = THREE.MathUtils.lerp(handling.position.z, hover ? .045 : 0, blend);
-      handling.rotation.x = THREE.MathUtils.lerp(handling.rotation.x, hover ? -.022 : 0, blend);
-      const difference = root.position.distanceToSquared(target) + velocity.lengthSq() + Math.abs(root.rotation.x - targetAngle.x) + Math.abs(root.rotation.y - targetAngle.y) + Math.abs(root.rotation.z - targetAngle.z) + Math.abs(handling.position.z - (hover ? .045 : 0)) + Math.abs(handling.rotation.x - (hover ? -.022 : 0));
+      handling.position.z = THREE.MathUtils.lerp(handling.position.z, hover ? .012 : 0, blend);
+      handling.rotation.x = THREE.MathUtils.lerp(handling.rotation.x, hover ? -.006 : 0, blend);
+      const difference = root.position.distanceToSquared(target) + velocity.lengthSq() + Math.abs(root.rotation.x - targetAngle.x) + Math.abs(root.rotation.y - targetAngle.y) + Math.abs(root.rotation.z - targetAngle.z) + Math.abs(handling.position.z - (hover ? .012 : 0)) + Math.abs(handling.rotation.x - (hover ? -.006 : 0));
       if (difference > .00001) unsettled = true;
       else { root.position.copy(target); velocity.set(0, 0, 0); root.rotation.set(targetAngle.x, targetAngle.y, targetAngle.z); }
       this.host.dataset[`rotation${i}`] = root.rotation.toArray().slice(0, 3).join(",");
     }
+    const corrected = this.keepSeparated();
+    if (corrected) unsettled = true;
+    for (const item of this.items) this.updateContact(item);
     this.renderer.render(this.scene, this.camera);
+    const frameBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-      // In the closed desktop stack only the near edge is exposed; its center may be occluded by the shell above.
-      this.projected.set(0, !this.mobile && item.id !== this.selected ? -item.half.y + .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
+      this.host.dataset[`frontUp${i}`] = item.bounds.axes[2].y.toFixed(4);
+      this.topPoint.set(0, item.half.y, item.half.z).applyMatrix4(item.root.matrixWorld);
+      this.bottomPoint.set(0, -item.half.y, item.half.z).applyMatrix4(item.root.matrixWorld);
+      this.host.dataset[`topNear${i}`] = String(this.topPoint.distanceToSquared(this.camera.position) < this.bottomPoint.distanceToSquared(this.camera.position));
+      for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
+        this.projected.copy(item.center).addScaledVector(this.topPoint.set(x * item.half.x, y * item.half.y, z * item.half.z), 1).applyMatrix4(item.handling.matrixWorld).project(this.camera);
+        const px = (this.projected.x + 1) * this.host.clientWidth / 2, py = (1 - this.projected.y) * this.host.clientHeight / 2;
+        frameBounds.left = Math.min(frameBounds.left, px); frameBounds.right = Math.max(frameBounds.right, px);
+        frameBounds.top = Math.min(frameBounds.top, py); frameBounds.bottom = Math.max(frameBounds.bottom, py);
+      }
+      // The exposed top edge is the click target for a closed stack member.
+      this.projected.set(0, item.id !== this.selected ? item.half.y - .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
       const point = { x: (this.projected.x + 1) * this.host.clientWidth / 2, y: (1 - this.projected.y) * this.host.clientHeight / 2 };
       this.host.dataset[`hit${i}`] = JSON.stringify(point);
       this.host.style.setProperty(`--hit-${i}-x`, `${point.x}px`); this.host.style.setProperty(`--hit-${i}-y`, `${point.y}px`);
@@ -271,6 +327,7 @@ export class CartridgeScene {
         this.host.style.setProperty("--caption-y", `${(1 - this.projected.y) * this.host.clientHeight / 2}px`);
       }
     }
+    this.host.dataset.frameBounds = JSON.stringify(frameBounds);
     this.host.dataset.settled = !unsettled && !this.entering ? "true" : "false";
     if (unsettled || this.entering || this.drag) this.raf = requestAnimationFrame(this.frame);
   };
