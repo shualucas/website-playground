@@ -1,4 +1,4 @@
-// Scaffolding only: replace placeholder biography, responsibilities and outcomes.
+// About uses supplied biography; project responsibilities and outcomes remain placeholders.
 // Images belong in /public/projects; previewImage and caseStudyUrl are optional.
 export const projects = [
   {
@@ -6,27 +6,27 @@ export const projects = [
     kind: "about",
     label: "About",
     theme: "about",
-    title: "Hi, I’m\nJosh Lucas.",
-    subtitle: "Product designer. Curious by nature.",
+    title: "Josh Lucas",
+    subtitle: "Senior Product Designer at Google",
     description:
-      "Professional background, roles, and career highlights — coming soon.",
-    role: "",
+      "Passionate about creating beautiful and impactful experiences at scale. Prior to Google, I worked on Heroes of the Storm & Starcraft at Blizzard Entertainment. Currently located in San Francisco, CA.",
+    role: "Senior Product Designer",
     year: "",
-    team: "",
+    team: "Google",
     disciplines: [],
     previewImage: "",
     imageAlt: "About Josh Lucas",
     caseStudyUrl: "",
-    note: "An introduction, still in progress.",
-    sample: true,
+    note: "",
+    sample: false,
     chapters: [
       [
         "A little about me",
-        "Placeholder — introduce yourself, your background, and the way you approach design.",
+        "Passionate about creating beautiful and impactful experiences at scale.",
       ],
       [
         "Experience",
-        "Placeholder — add your Google roles and Blizzard internship details here.",
+        "Senior Product Designer at Google. Prior to Google, I worked on Heroes of the Storm & Starcraft at Blizzard Entertainment. Currently located in San Francisco, CA.",
       ],
     ],
   },

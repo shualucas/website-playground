@@ -1,4 +1,4 @@
-/** Original local paper foley, played only from actual leaf starts after a user gesture. */
+/** Recorded paper rustle from the user-selected book-slider reference, played only from actual leaf starts after a user gesture. */
 export class PageTurnSound {
   private context: AudioContext | null = null;
   private buffer: AudioBuffer | null = null;
@@ -9,7 +9,7 @@ export class PageTurnSound {
   muted = false;
   played = 0;
   preload() {
-    this.loading ??= fetch("/audio/page-turn.wav").then((r) => {
+    this.loading ??= fetch("/audio/page-turn.mp3").then((r) => {
       if (!r.ok) throw new Error("Paper audio unavailable");
       return r.arrayBuffer();
     });
@@ -55,10 +55,10 @@ export class PageTurnSound {
       gain = this.context.createGain();
     source.buffer = this.buffer;
     source.playbackRate.value =
-      (cover ? 0.91 : 1) +
-      (forward ? 0.015 : -0.015) +
-      ((this.played % 3) - 1) * 0.035;
-    gain.gain.value = (cover ? 0.6 : 0.5) / Math.sqrt(this.voices.size + 1);
+      (cover ? 0.96 : 1) +
+      (forward ? 0.005 : -0.005) +
+      ((this.played % 3) - 1) * 0.012;
+    gain.gain.value = (cover ? 0.85 : 0.75) / Math.sqrt(this.voices.size + 1);
     source.connect(gain);
     gain.connect(this.context.destination);
     this.voices.add(source);
@@ -68,7 +68,7 @@ export class PageTurnSound {
       source.disconnect();
       gain.disconnect();
     };
-    source.start();
+    source.start(this.context.currentTime + 0.045);
   }
   setMuted(muted: boolean) {
     this.muted = muted;

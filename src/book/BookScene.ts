@@ -60,6 +60,15 @@ type Callbacks = {
   printPages?: HTMLCanvasElement[];
   google: GoogleAsset;
 };
+type Dive = {
+  book: THREE.PerspectiveCamera;
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  progress: number;
+  direction: 1 | -1;
+  index: number;
+  resolve?: () => void;
+};
 type Grip = {
   id: number;
   x: number;
@@ -135,6 +144,7 @@ export class BookScene {
   private suppressClick = false;
   private pendingPage: number | null = null;
   private desktopScale = 1;
+  private dive: Dive | null = null;
   private hovered: number | null = null;
   private software = false;
   private visible = true;
@@ -328,13 +338,16 @@ export class BookScene {
         normalMap: detail.normal,
         normalScale: new THREE.Vector2(0.1, 0.1),
       }));
-    const makeFace = (map: THREE.Texture) =>
+    const makeFace = (map: THREE.Texture, cover = false) =>
       this.surface({
         map,
-        roughness: 1,
+        roughness: cover ? 0.39 : 0.58,
+        roughnessMap: detail.roughness,
+        clearcoat: cover ? 0.28 : 0.12,
+        clearcoatRoughness: 0.38,
         normalMap: detail.normal,
         normalScale: new THREE.Vector2(0.035, 0.035),
-        emissive: new THREE.Color("#a8a8a2"),
+        emissive: new THREE.Color("#ffc28a"),
         emissiveIntensity: 0,
       });
     const inside = this.callbacks.projects.map((project, i) =>
@@ -357,7 +370,14 @@ export class BookScene {
         cover,
         count,
         cover ? coverGeometry : paperGeometry,
-        [edge, edge, makeFace(faceFront), makeFace(faceBack), edge, edge],
+        [
+          edge,
+          edge,
+          makeFace(faceFront, cover),
+          makeFace(faceBack, cover),
+          edge,
+          edge,
+        ],
       );
       this.leaves.push(leaf);
       this.rig.add(leaf.group);
@@ -581,7 +601,111 @@ export class BookScene {
     this.setPrinting(boundary > 0 && boundary < this.leaves.length);
     this.report();
   }
+  enterProject(index: number): Promise<void> {
+    if (this.dive) {
+      // Browser Forward can reverse an in-flight return without losing the saved pose.
+      this.dive.resolve?.();
+      return new Promise((resolve) => {
+        const d = this.dive!;
+        d.direction = 1;
+        d.resolve = resolve;
+        this.last = 0;
+        if (this.motion.matches || d.progress === 1) {
+          d.progress = 1;
+          this.applyDive();
+          this.render();
+          d.resolve = undefined;
+          resolve();
+        } else this.schedule();
+      });
+    }
+    this.releaseCapture();
+    this.setHover(null);
+    this.updateRig();
+    const focus = this.phones.focus(index, this.camera);
+    if (!focus) return Promise.resolve();
+    this.phones.pause();
+    return new Promise((resolve) => {
+      this.dive = {
+        book: this.camera.clone(),
+        ...focus,
+        progress: 0,
+        direction: 1,
+        index,
+        resolve,
+      };
+      this.host.style.pointerEvents = "none";
+      this.last = 0;
+      if (this.motion.matches) {
+        this.dive.progress = 1;
+        this.applyDive();
+        this.render();
+        resolve();
+        this.dive.resolve = undefined;
+      } else this.schedule();
+    });
+  }
+  returnToBook(): Promise<void> {
+    if (!this.dive) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.dive!.resolve?.();
+      this.dive!.resolve = resolve;
+      this.dive!.direction = -1;
+      this.last = 0;
+      if (this.motion.matches) {
+        this.dive!.progress = 0;
+        this.applyDive();
+        this.finishDive();
+        this.render();
+      } else this.schedule();
+    });
+  }
+  private applyDive() {
+    const d = this.dive!;
+    const t = d.progress * d.progress * (3 - 2 * d.progress);
+    this.camera.position.lerpVectors(d.book.position, d.position, t);
+    this.camera.quaternion.slerpQuaternions(d.book.quaternion, d.quaternion, t);
+    this.camera.zoom = THREE.MathUtils.lerp(d.book.zoom, 1, t);
+    // Resolve the normal composition's view offset smoothly as the screen becomes the view.
+    if (d.book.view?.enabled) {
+      const v = d.book.view,
+        aspect = d.book.aspect,
+        height = THREE.MathUtils.lerp(v.height, v.fullHeight, t);
+      this.camera.setViewOffset(
+        v.fullWidth,
+        v.fullHeight,
+        v.offsetX * (1 - t),
+        v.offsetY * (1 - t),
+        v.width,
+        height,
+      );
+      this.camera.aspect = aspect;
+    }
+    this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld(true);
+    this.host.style.opacity = String(
+      1 - THREE.MathUtils.smoothstep(d.progress, 0.66, 1),
+    );
+    this.host.dataset.diveProgress = d.progress.toFixed(3);
+  }
+  private finishDive() {
+    const d = this.dive;
+    if (!d) return;
+    this.camera.copy(d.book);
+    this.camera.updateMatrixWorld(true);
+    this.host.style.opacity = "1";
+    this.host.style.pointerEvents = "";
+    this.host.dataset.diveProgress = "0";
+    this.dive = null;
+    d.resolve?.();
+    this.last = 0;
+    this.updatePhones();
+    this.updatePhase();
+    this.report();
+    this.schedule();
+  }
   goTo(page: number) {
+    if (this.dive) return;
     if (this.grip?.moved) {
       this.pendingPage = clamp(page, -1, this.callbacks.projects.length);
       this.callbacks.onRequest(this.pendingPage);
@@ -647,6 +771,11 @@ export class BookScene {
     this.schedule();
   };
   replay = () => {
+    if (this.dive) {
+      this.dive.progress = 0;
+      this.applyDive();
+      this.finishDive();
+    }
     this.pendingPage = null;
     this.releaseCapture();
     this.orientation.identity();
@@ -662,6 +791,7 @@ export class BookScene {
     this.callbacks.onRequest(-1);
     this.ambientTime = 0;
     this.scheduler.snap(0);
+    this.updatePhones();
     this.popups.reset();
     this.updateArtwork(0, true);
     this.setHover(null);
@@ -733,6 +863,7 @@ export class BookScene {
       : null;
   }
   private onMove = (event: PointerEvent) => {
+    if (this.dive) return;
     const grip = this.grip;
     if (!grip) {
       const hit = this.bookHit(event);
@@ -756,12 +887,12 @@ export class BookScene {
           ((event.clientX - grip.lastX) /
             Math.max(280, this.host.clientWidth)) *
           Math.PI *
-          2,
+          3,
         dy =
           ((event.clientY - grip.lastY) /
             Math.max(280, this.host.clientHeight)) *
           Math.PI *
-          2;
+          3;
       this.cameraRight.setFromMatrixColumn(this.camera.matrixWorld, 0);
       this.cameraUp.setFromMatrixColumn(this.camera.matrixWorld, 1);
       this.yaw.setFromAxisAngle(this.cameraUp, dx);
@@ -787,6 +918,7 @@ export class BookScene {
   private onDown = (event: PointerEvent) => {
     this.suppressClick = false;
     if (
+      this.dive ||
       event.button !== 0 ||
       this.scheduler.moving ||
       this.intro ||
@@ -858,6 +990,7 @@ export class BookScene {
   };
   private onBlur = () => this.setHover(null);
   private onClick = (event: MouseEvent) => {
+    if (this.dive) return;
     if (this.suppressClick) {
       event.preventDefault();
       event.stopPropagation();
@@ -883,21 +1016,6 @@ export class BookScene {
       this.callbacks.onOpen();
       return;
     }
-    if (
-      !this.scheduler.moving &&
-      !this.intro &&
-      boundary > 0 &&
-      boundary < this.leaves.length &&
-      id === boundary - 1 &&
-      hit.uv &&
-      hit.face?.materialIndex === 3
-    ) {
-      const button = this.leftPage.querySelector<HTMLElement>(".read-project");
-      if (button && this.hitPrintedControl(hit.uv, button)) {
-        this.callbacks.onOpen();
-        return;
-      }
-    }
     if (boundary === 0 && !this.scheduler.moving) this.stepPage(1);
     else if (boundary === this.leaves.length && !this.scheduler.moving)
       this.stepPage(-1);
@@ -906,24 +1024,6 @@ export class BookScene {
         this.localReadingSide() ?? (this.leaves[id].progress > 0.5 ? -1 : 1),
       );
   };
-  private hitPrintedControl(uv: THREE.Vector2, button: HTMLElement) {
-    let x = 0,
-      y = 0,
-      node: HTMLElement | null = button;
-    while (node && node !== this.leftPage) {
-      x += node.offsetLeft;
-      y += node.offsetTop;
-      node = node.offsetParent as HTMLElement | null;
-    }
-    const px = uv.x * 600,
-      py = (1 - uv.y) * 847;
-    return (
-      px >= x - 8 &&
-      px <= x + button.offsetWidth + 8 &&
-      py >= y - 8 &&
-      py <= y + button.offsetHeight + 8
-    );
-  }
   private resize = () => {
     const rect = this.host.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return;
@@ -935,6 +1035,7 @@ export class BookScene {
     const top = desktop ? 48 : 0,
       bottom = desktop ? 90 : 0,
       viewHeight = Math.max(1, rect.height - top - bottom);
+    if (this.dive) this.camera.copy(this.dive.book);
     this.camera.clearViewOffset();
     this.camera.aspect = rect.width / viewHeight;
     const half = Math.atan(
@@ -963,7 +1064,7 @@ export class BookScene {
       up,
       -distance *
         Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
-        (desktop ? 0.02 : 0.08),
+        (desktop ? 0.13 : 0.19),
     );
     this.cameraFocus.copy(focus);
     this.displayScale = legacyDistance / distance;
@@ -982,6 +1083,15 @@ export class BookScene {
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
     this.updateRig();
+    if (this.dive) {
+      this.dive.book = this.camera.clone();
+      const focus = this.phones.focus(this.dive.index, this.camera);
+      if (focus) {
+        this.dive.position.copy(focus.position);
+        this.dive.quaternion.copy(focus.quaternion);
+      }
+      this.applyDive();
+    }
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
   };
@@ -994,6 +1104,23 @@ export class BookScene {
     }
     const dt = this.last ? Math.min((now - this.last) / 1000, 0.25) : 0;
     this.last = now;
+    if (this.dive) {
+      this.dive.progress = clamp(
+        this.dive.progress + (dt / 0.9) * this.dive.direction,
+        0,
+        1,
+      );
+      this.applyDive();
+      if (this.dive.progress === 0 && this.dive.direction === -1)
+        this.finishDive();
+      else if (this.dive.progress === 1 && this.dive.direction === 1) {
+        this.dive.resolve?.();
+        this.dive.resolve = undefined;
+      }
+      this.render();
+      this.schedule();
+      return;
+    }
     const cpu = performance.now();
     if (this.intro) this.updateIntro(dt);
     const flex = advancePaperFlex(
@@ -1222,6 +1349,17 @@ export class BookScene {
     data.printResolution = "1200x1694";
     data.portalCoverage = "border";
     data.phoneCount = String(this.phones.count);
+    const phone = this.phones.center(this.index);
+    if (phone) {
+      const projected = phone.project(this.camera),
+        rect = this.host.getBoundingClientRect();
+      data.phoneHit = JSON.stringify({
+        x: rect.left + ((projected.x + 1) * rect.width) / 2,
+        y: rect.top + ((1 - projected.y) * rect.height) / 2,
+      });
+    } else data.phoneHit = "null";
+    data.phoneModel = "rigid-pro-style";
+    data.diveProgress = String(this.dive?.progress ?? 0);
     data.popupNames = JSON.stringify(this.popups.names());
     data.modelScale = String(this.orbit.scale.x);
     data.bookColorMode = this.dark ? "dark" : "light";
@@ -1251,7 +1389,9 @@ export class BookScene {
       document.hidden
     )
       return;
+    if (this.dive?.progress === 1 && this.dive.direction === 1) return;
     if (
+      !this.dive &&
       this.motion.matches &&
       !this.intro &&
       !this.scheduler.moving &&
@@ -1262,6 +1402,19 @@ export class BookScene {
     this.raf = requestAnimationFrame(this.frame);
   }
   private onMotion = () => {
+    if (this.dive) {
+      if (this.motion.matches) {
+        this.dive.progress = this.dive.direction === 1 ? 1 : 0;
+        this.applyDive();
+        if (this.dive.direction === -1) this.finishDive();
+        else {
+          this.dive.resolve?.();
+          this.dive.resolve = undefined;
+        }
+        this.render();
+      } else this.schedule();
+      return;
+    }
     if (this.motion.matches) {
       this.scheduler.request(this.scheduler.requested);
       this.skip();
@@ -1279,6 +1432,7 @@ export class BookScene {
   };
   dispose() {
     this.disposed = true;
+    this.dive?.resolve?.();
     cancelAnimationFrame(this.raf);
     this.releaseCapture();
     this.resizeObserver.disconnect();

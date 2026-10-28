@@ -8,39 +8,12 @@ import { projects } from "./book/projects";
 import { AsciiPortal } from "./book/ascii";
 import { projectTheme } from "./book/themes";
 import "./style.css";
+import { CaseStudy } from "./CaseStudy";
 import { CardLoader } from "./CardLoader";
 import { PageTurnSound } from "./book/page-sound";
-function Arrow({ direction = "right" }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      aria-hidden="true"
-      style={direction === "left" ? { transform: "rotate(180deg)" } : undefined}
-    >
-      <path
-        d="M4 12h15M13 6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 const pad = (n) => String(n).padStart(2, "0");
 
-function Metadata({
-  project,
-  index,
-  onRead,
-  onPrevious,
-  canPrevious,
-  onNext,
-  canNext,
-}) {
+function Metadata({ project, index, onPrevious, canPrevious }) {
   return (
     <div className="metadata-content">
       <button
@@ -50,10 +23,6 @@ function Metadata({
         onClick={onPrevious}
         disabled={!canPrevious}
       />
-      <div className="page-running-head">
-        <span>JOSH LUCAS</span>
-        <span>EDITION 01 / {pad(index + 1)}</span>
-      </div>
       <div className="chapter-label">
         <span className="chapter-rule" />
         {project.kind === "about"
@@ -61,9 +30,6 @@ function Metadata({
           : project.kind === "after-hours"
             ? "AFTER-HOURS"
             : `PROJECT ${pad(index)}`}
-        <span className="sample-label">
-          {project.sample ? "SAMPLE CONTENT" : "CASE STUDY"}
-        </span>
       </div>
       <h1>
         {project.title.split("\n").map((line, i) => (
@@ -77,23 +43,17 @@ function Metadata({
           </React.Fragment>
         ))}
       </h1>
-      <p className="project-subtitle">{project.subtitle}</p>
+      {project.kind === "about" && (
+        <p className="project-subtitle">{project.subtitle}</p>
+      )}
       <p className="project-description">{project.description}</p>
-      {project.kind !== "project" ? (
+      {project.kind === "after-hours" && (
         <div className="about-note">
-          <span>{project.kind === "about" ? "BASED IN" : "OFF THE CLOCK"}</span>
-          <strong>
-            {project.kind === "about"
-              ? "San Francisco, California"
-              : "Film · Tennis · Games"}
-          </strong>
-          <p>
-            {project.kind === "about"
-              ? "Professional background — coming soon."
-              : "A space for play and experiments."}
-          </p>
+          <span>OFF THE CLOCK</span>
+          <strong>Film · Tennis · Games</strong>
         </div>
-      ) : (
+      )}
+      {project.kind === "project" && (
         <dl className="project-facts">
           <div>
             <dt>ROLE & TEAM</dt>
@@ -111,35 +71,6 @@ function Metadata({
           </div>
         </dl>
       )}
-      <button className="read-project" onClick={onRead}>
-        {project.kind === "about"
-          ? "Professional background"
-          : project.kind === "after-hours"
-            ? "Explore after-hours"
-            : "Read the case study"}{" "}
-        <Arrow />
-      </button>
-      <div className="page-folio">
-        <button
-          className="page-corner previous"
-          onClick={onPrevious}
-          disabled={!canPrevious}
-          aria-label="Previous project"
-        >
-          <Arrow direction="left" />
-        </button>
-        <span className="page-instruction">
-          {project.label.toUpperCase()} / {pad(projects.length)}
-        </span>
-        <button
-          className="page-corner next"
-          onClick={onNext}
-          disabled={!canNext}
-          aria-label="Next project"
-        >
-          <Arrow />
-        </button>
-      </div>
     </div>
   );
 }
@@ -241,7 +172,8 @@ function App() {
   const host = useRef(null),
     engine = useRef(null),
     sound = useRef(null),
-    dialog = useRef(null),
+    viewRef = useRef("book"),
+    routeToken = useRef(0),
     indexRef = useRef(0),
     printSources = useRef([]),
     navigation = useRef(null),
@@ -271,7 +203,22 @@ function App() {
       }
     }),
     [presentation, setPresentation] = useState("loading"),
-    [loadProgress, setLoadProgress] = useState(0.1);
+    [loadProgress, setLoadProgress] = useState(0.1),
+    [view, setView] = useState("book"),
+    [reading, setReading] = useState(null),
+    [route, setRoute] = useState(() => {
+      const url = new URL(location.href);
+      const index = projects.findIndex(
+        (p) => p.id === url.searchParams.get("project") && p.kind === "project",
+      );
+      return url.searchParams.get("view") === "case-study" && index >= 0
+        ? index
+        : null;
+    });
+  const changeView = (value) => {
+    viewRef.current = value;
+    setView(value);
+  };
   const finishLoader = () => {
     loaderGate.current.done = true;
     loaderGate.current.resolve?.();
@@ -296,8 +243,73 @@ function App() {
     }
   };
   const openRead = () => {
-    if (!dialog.current.open) dialog.current.showModal();
+    const next = indexRef.current;
+    if (projects[next].kind !== "project" || viewRef.current !== "book") return;
+    viewRef.current = "entering";
+    const url = new URL(location.href);
+    url.searchParams.set("project", projects[next].id);
+    url.searchParams.set("view", "case-study");
+    history.pushState({ zineCaseStudy: true }, "", url);
+    setRoute(next);
   };
+  const closeRead = () => {
+    if (history.state?.zineCaseStudy) history.back();
+    else {
+      const url = new URL(location.href);
+      url.searchParams.delete("view");
+      history.replaceState(null, "", url);
+      setRoute(null);
+    }
+  };
+  useEffect(() => {
+    const pop = () => {
+      const url = new URL(location.href),
+        next = projects.findIndex(
+          (p) =>
+            p.id === url.searchParams.get("project") && p.kind === "project",
+        );
+      setRoute(
+        url.searchParams.get("view") === "case-study" && next >= 0
+          ? next
+          : null,
+      );
+    };
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, []);
+  useEffect(() => {
+    if (presentation !== "ready" || (route !== null && phase !== "ready"))
+      return;
+    const token = ++routeToken.current;
+    if (route !== null) {
+      changeView("entering");
+      (async () => {
+        await engine.current?.enterProject(route);
+        if (token !== routeToken.current) return;
+        setReading(route);
+        changeView("reading");
+      })();
+    } else if (viewRef.current !== "book") {
+      changeView("leaving");
+      setReading(null);
+      (async () => {
+        await engine.current?.returnToBook();
+        if (token !== routeToken.current) return;
+        changeView("book");
+        requestAnimationFrame(() => {
+          const target =
+            host.current?.querySelector(".phone-hit") ||
+            document.querySelector(".fallback-book .phone-hit");
+          (
+            target || navigation.current?.querySelector('[aria-current="page"]')
+          )?.focus({ preventScroll: true });
+        });
+      })();
+    }
+    return () => {
+      routeToken.current++;
+    };
+  }, [route, presentation, phase]);
   const navigate = (page) => {
     const next = Math.max(-1, Math.min(projects.length, page));
     setRequestedPage(next);
@@ -320,7 +332,7 @@ function App() {
   };
   const restart = () => {
     if (presentation === "loading") return;
-    dialog.current?.close();
+    if (viewRef.current !== "book") return;
     setRequestedPage(-1);
     engine.current?.replay();
     if (fallback) showView(-1);
@@ -502,12 +514,19 @@ function App() {
         e.target.closest("input,textarea,select,[contenteditable]")
       )
         return;
+      if (route !== null) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeRead();
+        }
+        return;
+      }
       if (e.key.toLowerCase() === "r" && !e.repeat) {
         e.preventDefault();
         restart();
         return;
       }
-      if (dialog.current?.open) return;
+
       if (e.key === "ArrowRight") {
         e.preventDefault();
         turn(1);
@@ -523,7 +542,15 @@ function App() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [phase, fallback, selectedPage, requestedPage, index, presentation]);
+  }, [
+    phase,
+    fallback,
+    selectedPage,
+    requestedPage,
+    index,
+    presentation,
+    route,
+  ]);
   const left = (
     <Metadata
       project={projects[spread.left]}
@@ -549,6 +576,7 @@ function App() {
     <main
       className={`spellbook ${fallback ? "is-fallback" : ""}`}
       data-presentation={presentation}
+      data-view={view}
       data-color-mode={colorMode}
       aria-busy={presentation === "loading"}
     >
@@ -565,7 +593,12 @@ function App() {
           active={presentation === "loading"}
         />
       </div>
-      <div className="scene-tools" role="group" aria-label="Scene controls">
+      <div
+        className="scene-tools"
+        role="group"
+        aria-label="Scene controls"
+        inert={view !== "book" ? true : undefined}
+      >
         <button
           type="button"
           className="icon-button"
@@ -655,8 +688,8 @@ function App() {
         Drag the zine to rotate it through 360 degrees in place. Click the right
         page to go forward or the left page to go back. Use the bottom
         navigation or Left and Right keys as alternatives. Press R to reset the
-        rotation and return to the closed cover. Choose Read the case study on
-        the left page to read the full project.
+        rotation and return to the closed cover. Select a phone preview to enter
+        its full case study.
       </p>
       <div className="print-sources" aria-hidden="true" inert>
         {projects.map((item, i) => (
@@ -682,7 +715,9 @@ function App() {
         className="book-stage"
         aria-label="Interactive portfolio zine"
         aria-describedby="book-instructions"
-        tabIndex={0}
+        tabIndex={view === "book" ? 0 : -1}
+        inert={view !== "book" ? true : undefined}
+        aria-hidden={view !== "book" ? true : undefined}
       />
       {mounts && (
         <>
@@ -691,7 +726,11 @@ function App() {
         </>
       )}
       {fallback && selectedPage >= 0 && selectedPage < projects.length && (
-        <div className="fallback-book">
+        <div
+          className="fallback-book"
+          inert={view !== "book" ? true : undefined}
+          aria-hidden={view !== "book" ? true : undefined}
+        >
           <div className="printed-page page-verso">{left}</div>
           <div className="printed-page page-recto">{right}</div>
         </div>
@@ -708,7 +747,11 @@ function App() {
             }
           />
         )}
-      <nav className="book-navigation" aria-label="Zine pages">
+      <nav
+        className="book-navigation"
+        aria-label="Zine pages"
+        inert={view !== "book" ? true : undefined}
+      >
         <div className="book-navigation-scroll" ref={navigation}>
           {[-1, ...projects.map((_, i) => i), projects.length].map((page) => (
             <button
@@ -743,86 +786,13 @@ function App() {
               ? "Back cover"
               : project.label}
       </span>
-      <dialog
-        ref={dialog}
-        className="reading-dialog"
-        aria-label={
-          project.kind === "about"
-            ? "About Josh Lucas"
-            : project.kind === "after-hours"
-              ? "After-hours"
-              : `${project.label} case study`
-        }
-        onClick={(e) => {
-          if (e.target === e.currentTarget) dialog.current.close();
-        }}
-      >
-        <article className="dialog-paper">
-          <button
-            className="close-dialog"
-            aria-label="Close reading view"
-            onClick={() => dialog.current.close()}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="22"
-              height="22"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="m6 6 12 12M18 6 6 18"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
-            </svg>
-          </button>
-          <p className="eyebrow">
-            {project.kind === "about"
-              ? "ABOUT"
-              : project.kind === "after-hours"
-                ? "AFTER-HOURS"
-                : `PROJECT ${pad(index)}`}
-            {project.sample ? " / PLACEHOLDER" : ""}
-          </p>
-          <h2>{project.title.replace("\n", " ")}</h2>
-          <p className="dialog-intro">{project.subtitle}</p>
-          {project.kind === "project" ? (
-            <PhoneFallback project={project} controls />
-          ) : project.previewImage ? (
-            <img
-              className="project-image"
-              src={project.previewImage}
-              alt={project.imageAlt}
-            />
-          ) : (
-            <PortalFallback project={project} />
-          )}
-          {project.chapters.map(([title, copy], i) => (
-            <section className="case-chapter" key={title}>
-              <span>{pad(i + 1)}</span>
-              <div>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-              </div>
-            </section>
-          ))}
-          {project.caseStudyUrl && (
-            <a className="read-project" href={project.caseStudyUrl}>
-              View full project <Arrow />
-            </a>
-          )}
-          <p className="scaffold-note">
-            {project.sample
-              ? project.kind === "about"
-                ? "Professional biography — ready for your story."
-                : project.kind === "after-hours"
-                  ? "Personal projects and experiments — coming soon."
-                  : "Placeholder case study — ready for your story, images, and verified results."
-              : project.note}
-          </p>
-        </article>
-      </dialog>
+      {reading !== null && (
+        <CaseStudy
+          project={projects[reading]}
+          onBack={closeRead}
+          Media={PhoneFallback}
+        />
+      )}
     </main>
   );
 }

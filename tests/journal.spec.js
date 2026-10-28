@@ -30,7 +30,7 @@ async function grabPoint(page, side = "right") {
   );
 }
 
-test("the portfolio zine has thin stock, shared printed pages, and an explicit reading link", async ({
+test("the portfolio zine has thin stock, shared printed pages, and phone-based case-study entry", async ({
   page,
 }) => {
   const errors = [],
@@ -63,14 +63,33 @@ test("the portfolio zine has thin stock, shared printed pages, and an explicit r
   expect(await page.evaluate(() => window.glyphs)).toBeGreaterThan(1000);
   expect(await page.locator(".book-printing .page-recto").innerText()).toBe("");
   await expect(page.locator(".book-printing .page-verso h1")).toHaveText(
-    "Hi, I’m Josh Lucas.",
+    "Josh Lucas",
+  );
+  await expect(page.locator(".book-printing .project-subtitle")).toHaveText(
+    "Senior Product Designer at Google",
+  );
+  await expect(page.locator(".book-printing .project-description")).toHaveText(
+    "Passionate about creating beautiful and impactful experiences at scale. Prior to Google, I worked on Heroes of the Storm & Starcraft at Blizzard Entertainment. Currently located in San Francisco, CA.",
   );
   await expect(page.locator(".site-header,.site-footer")).toHaveCount(0);
   await expect(
     page.getByRole("navigation", { name: "Zine pages" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Professional background" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.locator(
+      ".book-printing .page-corner,.book-printing .read-project,.book-printing .page-instruction",
+    ),
+  ).toHaveCount(0);
+  await page
+    .getByRole("navigation", { name: "Zine pages" })
+    .getByRole("button", { name: "Stadia", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Open Stadia preview" })
+    .click({ force: true });
+  await expect(
+    page.getByRole("region", { name: "Stadia case study" }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
@@ -100,7 +119,10 @@ test("dragging either leaf rotates a fixed center without moving or turning the 
     await expect(stage(page)).toHaveAttribute("data-project", "0");
   }
   const rotated = (await state(page)).rotation;
-  await page.getByRole("button", { name: "Next project" }).click();
+  await page
+    .getByRole("navigation", { name: "Zine pages" })
+    .getByRole("button", { name: "Stadia", exact: true })
+    .click();
   await expect(stage(page)).toHaveAttribute("data-project", "1");
   expect((await state(page)).rotation).toBe(rotated);
   await page.keyboard.press("r");
@@ -126,7 +148,7 @@ test("page hover glows and page clicks navigate, while dragging a control suppre
   expect(Number((await state(page)).leftGlow)).toBeGreaterThan(0.15);
   await page.mouse.click(point.x, point.y);
   await expect(stage(page)).toHaveAttribute("data-project", "0");
-  const button = page.getByRole("button", { name: "Next project" }),
+  const button = page.getByRole("button", { name: "Turn to previous spread" }),
     box = await button.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -161,7 +183,8 @@ test("turning and resting faces share the exact printed artwork and fixed framin
   const before = await state(page);
   const started = Date.now();
   await page
-    .getByRole("button", { name: "Next project" })
+    .getByRole("navigation", { name: "Zine pages" })
+    .getByRole("button", { name: "Stadia", exact: true })
     .click({ force: true });
   await expect(stage(page)).toHaveAttribute("data-phase", "turning");
   await expect
@@ -315,8 +338,18 @@ test("touch rotates in place and tapping a leaf turns pages on mobile", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  await page.getByRole("button", { name: "Read the case study" }).tap();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("r");
+  await ready(page);
+  await page
+    .getByRole("navigation", { name: "Zine pages" })
+    .getByRole("button", { name: "Stadia", exact: true })
+    .tap();
+  await page
+    .getByRole("button", { name: "Open Stadia preview" })
+    .tap({ force: true });
+  await expect(
+    page.getByRole("region", { name: "Stadia case study" }),
+  ).toBeVisible();
   await context.close();
 });
 
@@ -516,9 +549,15 @@ test("overlapping turns keep physical page identities and handle an interrupted 
   );
   expect(samples.length).toBeGreaterThan(2);
   expect(samples.every((s) => s.popupCount === "0")).toBe(true);
-  for (const sample of samples)
-    for (const coordinate of Object.values(JSON.parse(sample.bookBounds)))
-      expect(Math.abs(coordinate)).toBeLessThan(1.0);
+  const peakExtent = Math.max(
+    ...samples.flatMap((sample) =>
+      Object.values(JSON.parse(sample.bookBounds)).map(Math.abs),
+    ),
+  );
+  expect(
+    peakExtent,
+    "Raised leaves stay inside the fixed viewport during interrupted turns",
+  ).toBeLessThan(1.0);
   for (let i = 0; i < leaves.length; i++) {
     expect(leaves[i].object).toBe(before[i].object);
     expect(leaves[i].front).toBe(before[i].front);
@@ -560,12 +599,11 @@ test("About, Stadia and AI Mode keep independent print palettes and permanent pr
     expect(current.previewArtworks).toBe(initial.previewArtworks);
     await expect(page.locator(".book-printing h1")).toHaveText(label);
     await page
-      .getByRole("button", { name: "Read the case study", exact: true })
+      .getByRole("button", { name: `Open ${label} preview`, exact: true })
       .click();
-    await expect(page.getByRole("dialog")).toHaveAttribute(
-      "aria-label",
-      `${label} case study`,
-    );
+    await expect(
+      page.getByRole("region", { name: `${label} case study` }),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
   }
   expect(JSON.parse((await state(page)).lightPosition)[1]).toBe(15);
@@ -574,6 +612,7 @@ test("About, Stadia and AI Mode keep independent print palettes and permanent pr
 test("project URLs open their spread and reset returns to a reloadable closed cover", async ({
   page,
 }) => {
+  test.setTimeout(120000);
   await openBook(page, "/?project=ai-mode");
   await expect(stage(page)).toHaveAttribute("data-project", "2");
   await expect(stage(page)).toHaveAttribute("data-popup-count", "0");

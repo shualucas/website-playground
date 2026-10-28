@@ -8,6 +8,8 @@ import { JellyCage } from "./jelly";
 type Item = {
   anchor: THREE.Group;
   fold: THREE.Group;
+  pose: THREE.Group;
+  lift: number;
   amount: number;
   delay: number;
   jelly: JellyCage;
@@ -57,14 +59,35 @@ export class PagePopups {
         leaf.bones[bone].add(anchor);
         anchor.add(fold);
         fold.add(content);
+        content.position.y = 0.11;
         content.rotation.y = yaw;
+        // Model fronts start upright in XY. Lay them back toward the page.
+        content.rotation.x = -Math.PI * 0.31;
         content.add(model);
         model.scale.multiplyScalar(2 / 3);
+        // Fit the tilted model above the paper once, leaving room for its ambient bob.
+        content.updateWorldMatrix(true, true);
+        const inverse = anchor.matrixWorld.clone().invert(),
+          bounds = new THREE.Box3();
+        model.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            object.geometry.computeBoundingBox();
+            bounds.union(
+              object.geometry
+                .boundingBox!.clone()
+                .applyMatrix4(inverse.clone().multiply(object.matrixWorld)),
+            );
+          }
+        });
+        const lift = Math.max(0.11, 0.21 - bounds.min.y);
+        content.position.y = lift;
         const jelly = new JellyCage(content, surface, color, software);
         anchor.visible = false;
         spread.items.push({
           anchor,
           fold,
+          pose: content,
+          lift,
           jelly,
           amount: 0,
           delay: spread.items.length * 0.11,
@@ -142,7 +165,7 @@ export class PagePopups {
     let changed = false;
     this.spreads.forEach((spread, index) => {
       spread.time = target === index ? spread.time + dt : 0;
-      spread.items.forEach((item) => {
+      spread.items.forEach((item, itemIndex) => {
         const before = item.amount;
         if (reduced) item.amount = target === index ? 1 : 0;
         else if (target !== index)
@@ -158,7 +181,13 @@ export class PagePopups {
         item.anchor.visible = p > 0;
         item.fold.scale.setScalar(Math.max(0.001, 0.35 + 0.65 * bounce));
         item.fold.rotation.x = (-Math.pow(1 - p, 3) * Math.PI) / 2;
-        changed ||= before !== p;
+        const phase = spread.time * 0.85 + itemIndex * 2.1;
+        item.pose.position.y =
+          p * (item.lift + (reduced ? 0 : Math.sin(phase) * 0.035));
+        item.pose.rotation.x =
+          -Math.PI * 0.31 + (reduced ? 0 : Math.sin(phase * 0.73) * 0.025);
+        item.pose.rotation.z = reduced ? 0 : Math.cos(phase * 0.8) * 0.018;
+        changed ||= before !== p || (!reduced && p > 0);
       });
     });
     return changed;

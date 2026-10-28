@@ -213,8 +213,6 @@ export function pageTexture(
   ctx.scale(1200 / 900, 1694 / 1260);
   ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
   ctx.font = `500 17px ${fonts.sans}`;
-  ctx.fillText("JOSH LUCAS / SELECTED WORK", 76, 81);
-  line(ctx, 112);
   ctx.fillStyle = dark ? "#cfcfc9" : "#333333";
   ctx.font = `500 16px ${fonts.sans}`;
   ctx.fillText(
@@ -232,19 +230,16 @@ export function pageTexture(
     y += 89;
   }
   ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
-  ctx.font = `500 31px ${fonts.sans}`;
-  y = wrapped(ctx, project.subtitle, 76, y + 24, 710, 43);
+  if (project.kind === "about") {
+    ctx.font = `500 31px ${fonts.sans}`;
+    y = wrapped(ctx, project.subtitle, 76, y + 20, 710, 43);
+  }
   ctx.font = `400 25px ${fonts.sans}`;
   y = wrapped(ctx, project.description, 76, y + 30, 710, 40);
   line(ctx, y + 14);
   ctx.fillStyle = dark ? "#cfcfc9" : "#333333";
   ctx.font = `500 16px ${fonts.sans}`;
-  if (project.kind === "about") {
-    ctx.fillText("BASED IN", 76, y + 63);
-    ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
-    ctx.font = `500 25px ${fonts.sans}`;
-    ctx.fillText("San Francisco, California", 76, y + 102);
-  } else {
+  if (project.kind === "project") {
     ctx.fillText("ROLE & TEAM", 76, y + 63);
     ctx.fillText("YEAR", 650, y + 63);
     ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
@@ -254,21 +249,6 @@ export function pageTexture(
     ctx.font = `400 20px ${fonts.sans}`;
     wrapped(ctx, project.disciplines.join(" · "), 76, y + 160, 720, 32);
   }
-  ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
-  ctx.font = `500 23px ${fonts.sans}`;
-  ctx.fillText(
-    project.kind === "about" ? "A little about me →" : "Read the case study →",
-    76,
-    Math.min(1080, y + 230),
-  );
-  line(ctx, 1160);
-  ctx.font = `400 16px ${fonts.sans}`;
-  ctx.fillText(project.label.toUpperCase(), 76, 1204);
-  ctx.fillText(
-    String(index * 2 + (side === "left" ? 1 : 2)).padStart(2, "0"),
-    800,
-    1204,
-  );
   applyRisoPrint(ctx, 900, 1260);
   return texture(element);
 }
