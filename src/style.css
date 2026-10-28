@@ -59,74 +59,6 @@ svg {
   );
   isolation: isolate;
 }
-/* Presentation follows the reference's studio backdrop, drifting type, and page pills. */
-.scene-marquee {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  transform: rotate(-2deg);
-  pointer-events: none;
-  z-index: 0;
-}
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: portfolio-marquee 55s linear infinite;
-}
-.marquee-copy {
-  display: flex;
-  align-items: center;
-  gap: 5vw;
-  padding-right: 5vw;
-  flex: 0 0 auto;
-  color: #2357a5;
-  font-size: clamp(100px, 13vw, 230px);
-  line-height: 1.1;
-  letter-spacing: -0.055em;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.marquee-outline {
-  color: transparent;
-  -webkit-text-stroke: 1px #f0518c;
-  font-style: italic;
-}
-.marquee-light {
-  font-weight: 400;
-  font-style: italic;
-}
-@keyframes portfolio-marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-.scene-brand {
-  position: absolute;
-  top: max(28px, env(safe-area-inset-top));
-  left: max(36px, env(safe-area-inset-left));
-  z-index: 4;
-  display: flex;
-  gap: 13px;
-  align-items: center;
-  color: #2357a5;
-  text-align: left;
-  padding: 4px;
-  min-height: 44px;
-}
-.brand-monogram {
-  font-size: 43px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -5px;
-}
-.brand-name {
-  font-size: 9px;
-  font-weight: 500;
-  line-height: 1.65;
-  letter-spacing: 1.6px;
-}
 .book-navigation {
   position: absolute;
   bottom: max(30px, env(safe-area-inset-bottom));
@@ -832,4 +764,194 @@ h1 {
 .print-overlay .metadata-turn-page,
 .print-overlay .portal-hit {
   pointer-events: none !important;
+}
+
+/* The scene is revealed only after fonts, printed layouts and WebGL are ready. */
+.scene-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    #fbf8ed,
+    #eeeadd 70%,
+    #e4dfd0
+  );
+  color: var(--ink);
+  transition:
+    opacity 300ms ease,
+    visibility 300ms;
+}
+.loader-content {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 22px;
+}
+.loader-book {
+  width: 72px;
+  height: 54px;
+}
+.loader-content > span {
+  font:
+    11px/1.5 "Courier New",
+    monospace;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.loader-track {
+  width: 100px;
+  height: 2px;
+  background: #2357a51a;
+  overflow: hidden;
+}
+.loader-track i {
+  display: block;
+  width: 45%;
+  height: 100%;
+  background: var(--gold);
+  animation: loading-ink 1.3s ease-in-out infinite alternate;
+}
+@keyframes loading-ink {
+  to {
+    transform: translateX(125%);
+  }
+}
+.spellbook:not([data-presentation="loading"]) .scene-loader {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.spellbook[data-presentation="loading"] .book-stage {
+  opacity: 0;
+  pointer-events: none;
+}
+.book-navigation {
+  transition: opacity 350ms ease 200ms;
+}
+.spellbook[data-presentation="loading"] .book-navigation {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.metadata-content {
+  --project-ink: #2357a5;
+  --project-accent: #d82f79;
+}
+.metadata-content .page-running-head,
+.metadata-content .sample-label,
+.metadata-content .project-subtitle,
+.metadata-content .project-description,
+.metadata-content .project-facts dd,
+.metadata-content .read-project,
+.metadata-content .page-folio,
+.metadata-content .page-corner {
+  color: var(--project-ink);
+}
+.metadata-content .page-running-head,
+.metadata-content .project-facts,
+.metadata-content .page-folio,
+.metadata-content .page-corner,
+.metadata-content .read-project {
+  border-color: color-mix(in srgb, var(--project-ink) 45%, transparent);
+}
+.metadata-content .chapter-label,
+.metadata-content .project-facts dt,
+.metadata-content .page-corner.next {
+  color: var(--project-accent);
+}
+.metadata-content .chapter-rule {
+  background: var(--project-accent);
+}
+.metadata-content .ink-swatches i {
+  background: var(--project-ink);
+}
+.metadata-content .ink-swatches i + i {
+  background: var(--project-accent);
+}
+.metadata-content h1 {
+  color: var(--project-ink);
+  text-shadow: none;
+}
+.metadata-content.theme-stadia h1,
+.metadata-content.theme-ai h1 {
+  width: fit-content;
+  max-width: 100%;
+  background: var(--project-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  padding-bottom: 8px;
+  font-size: 82px;
+  letter-spacing: -5px;
+}
+.metadata-content.theme-ai .ink-swatches {
+  width: 54px;
+  height: 6px;
+  background: linear-gradient(
+    90deg,
+    #4285f4 25%,
+    #ea4335 25% 50%,
+    #fbbc05 50% 75%,
+    #34a853 75%
+  );
+}
+.metadata-content.theme-ai .ink-swatches i {
+  display: none;
+}
+.about-note {
+  border-top: 1px solid #2357a550;
+  padding-top: 23px;
+  margin-top: 22px;
+  color: var(--project-ink);
+}
+.about-note span {
+  display: block;
+  font:
+    700 10px/1.3 "Courier New",
+    monospace;
+  color: var(--project-accent);
+  margin-bottom: 10px;
+}
+.about-note strong {
+  font-size: 17px;
+  font-weight: 500;
+}
+.about-note p {
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 310px;
+  margin: 15px 0;
+}
+.reading-dialog .dialog-paper {
+  color: var(--project-ink);
+}
+.reading-dialog h2 {
+  background: var(--project-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.reading-dialog .eyebrow,
+.reading-dialog .case-chapter > span {
+  color: var(--project-accent);
+}
+.reading-dialog .read-project {
+  color: var(--project-ink);
+}
+.fallback-cover {
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-track i {
+    animation: none;
+    width: 100%;
+  }
+  .scene-loader,
+  .book-navigation {
+    transition: none;
+  }
 }

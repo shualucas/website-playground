@@ -3,7 +3,7 @@ export class AsciiPortal {
   readonly canvas = document.createElement("canvas");
   private ctx: CanvasRenderingContext2D;
   private last = -1;
-  constructor() {
+  constructor(private colors: readonly string[] = ["#2357a5", "#f0518c"]) {
     this.canvas.width = 768;
     this.canvas.height = 1056;
     this.ctx = this.canvas.getContext("2d")!;
@@ -14,6 +14,7 @@ export class AsciiPortal {
     if (frame === this.last) return false;
     this.last = frame;
     const ctx = this.ctx;
+    const ink = this.colors[0];
     ctx.clearRect(0, 0, 768, 1056);
     ctx.font = 'bold 17px "Courier New",monospace';
     ctx.textAlign = "center";
@@ -34,10 +35,14 @@ export class AsciiPortal {
         const seed = Math.sin(col * 12.9898 + row * 78.233) * 43758.5453,
           hash = seed - Math.floor(seed);
         if (stone) {
-          ctx.fillStyle = "rgba(35,87,165,.13)";
+          ctx.fillStyle = ink + "21";
           ctx.fillRect(col * cw + 1, row * ch + 1, cw - 2, ch - 2);
           const level = 0.46 + 0.24 * hash;
-          ctx.fillStyle = `rgba(35,87,165,${level})`;
+          ctx.fillStyle =
+            ink +
+            Math.round(level * 255)
+              .toString(16)
+              .padStart(2, "0");
           ctx.fillText(
             "#%H+=:[]"[Math.floor(hash * 8)],
             (col + 0.5) * cw,
@@ -46,7 +51,7 @@ export class AsciiPortal {
           continue;
         }
         if (edge > -0.04 || y < -0.91) continue;
-        ctx.fillStyle = "rgba(35,87,165,.18)";
+        ctx.fillStyle = ink + "2e";
         ctx.fillRect(col * cw + 1, row * ch + 1, cw - 2, ch - 2);
         const r = Math.hypot(x * 1.04, (y + 0.03) * 0.74),
           a = Math.atan2(y * 0.74, x),
@@ -61,7 +66,7 @@ export class AsciiPortal {
         );
         if (intensity < 0.055) {
           if (hash > 0.38) continue;
-          ctx.fillStyle = "rgba(35,87,165,.25)";
+          ctx.fillStyle = ink + "40";
           ctx.fillText(".", (col + 0.5) * cw, (row + 0.5) * ch);
           continue;
         }
@@ -70,10 +75,20 @@ export class AsciiPortal {
             ramp[
               Math.min(ramp.length - 1, Math.floor(intensity * ramp.length))
             ];
+        const colorIndex =
+          this.colors.length > 2
+            ? Math.floor(
+                ((a + Math.PI + t * 0.1) / (Math.PI * 2)) * this.colors.length +
+                  this.colors.length,
+              ) % this.colors.length
+            : flow > 0.12
+              ? 1
+              : 0;
         ctx.fillStyle =
-          flow > 0.12
-            ? `rgba(240,81,140,${Math.min(1, 0.4 + intensity * 0.5)})`
-            : `rgba(35,87,165,${Math.min(1, 0.45 + intensity * 0.5)})`;
+          this.colors[colorIndex] +
+          Math.round(Math.min(1, 0.45 + intensity * 0.5) * 255)
+            .toString(16)
+            .padStart(2, "0");
         ctx.fillText(glyph, (col + 0.5) * cw, (row + 0.5) * ch);
       }
     return true;

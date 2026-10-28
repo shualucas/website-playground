@@ -1,10 +1,15 @@
 import * as THREE from "three";
+import { projectTheme } from "./themes";
 
 export const PAGE_WIDTH = 3.35,
   PAGE_HEIGHT = 4.7,
   STACK = 0.035,
   SURFACE = 0.06;
 export interface Project {
+  id: string;
+  kind: "about" | "project";
+  label: string;
+  theme: string;
   title: string;
   subtitle: string;
   description: string;
@@ -228,49 +233,65 @@ export function pageTexture(
     applyRisoPrint(ctx, 900, 1260);
     return texture(element);
   }
-  ctx.fillStyle = "#706144";
+  const palette = projectTheme(project.theme);
+  ctx.fillStyle = palette.ink;
   ctx.font = `500 17px ${fonts.sans}`;
-  ctx.fillText(
-    side === "left" ? "THE FIELD JOURNAL" : "A WINDOW INTO THE WORK",
-    76,
-    81,
-  );
+  ctx.fillText("FIELD NOTES / RISO EDITION", 76, 81);
   line(ctx, 112);
-  if (side === "left") {
-    ctx.font = `500 16px ${fonts.sans}`;
-    ctx.fillText(`CHAPTER ${String(index + 1).padStart(2, "0")}`, 76, 188);
-    ctx.fillStyle = "#34382c";
-    ctx.font = `500 89px ${fonts.serif}`;
-    let y = 263;
-    for (const part of project.title.split("\n")) {
-      ctx.fillText(part, 76, y);
-      y += 87;
-    }
-    ctx.fillStyle = "#65644c";
-    ctx.font = `italic 36px ${fonts.serif}`;
-    y = wrapped(ctx, project.subtitle, 76, y + 16, 710, 45);
-    ctx.font = `400 25px ${fonts.sans}`;
-    y = wrapped(ctx, project.description, 76, y + 24, 710, 40);
-    line(ctx, y + 8);
-    ctx.fillStyle = "#776443";
-    ctx.font = `400 14px ${fonts.sans}`;
-    ctx.fillText("ROLE & TEAM", 76, y + 49);
-    ctx.fillText("YEAR", 650, y + 49);
-    ctx.font = `400 23px ${fonts.sans}`;
-    ctx.fillStyle = "#444a37";
-    ctx.fillText(`${project.role} · ${project.team}`, 76, y + 82);
-    ctx.fillText(project.year, 650, y + 82);
-    ctx.font = `400 14px ${fonts.sans}`;
-    ctx.fillText("FOCUS", 76, y + 130);
-    ctx.font = `400 22px ${fonts.sans}`;
-    wrapped(ctx, project.disciplines.join(" · "), 76, y + 163, 720, 32);
-    ctx.font = `500 23px ${fonts.sans}`;
-    ctx.fillText("Open the case study", 76, 1035);
+  ctx.fillStyle = palette.accent;
+  ctx.font = `500 16px ${fonts.sans}`;
+  ctx.fillText(
+    project.kind === "about"
+      ? "ABOUT"
+      : `PROJECT ${String(index).padStart(2, "0")}`,
+    76,
+    184,
+  );
+  ctx.fillStyle = palette.ink;
+  ctx.font = `700 89px ${fonts.sans}`;
+  const gradient = ctx.createLinearGradient(76, 0, 760, 0);
+  palette.colors.forEach((color, i) =>
+    gradient.addColorStop(i / (palette.colors.length - 1), color),
+  );
+  if (project.kind !== "about") ctx.fillStyle = gradient;
+  let y = 282;
+  for (const part of project.title.split("\n")) {
+    ctx.fillText(part, 76, y);
+    y += 89;
   }
+  ctx.fillStyle = palette.ink;
+  ctx.font = `500 31px ${fonts.sans}`;
+  y = wrapped(ctx, project.subtitle, 76, y + 24, 710, 43);
+  ctx.font = `400 25px ${fonts.sans}`;
+  y = wrapped(ctx, project.description, 76, y + 30, 710, 40);
+  line(ctx, y + 14);
+  ctx.fillStyle = palette.accent;
+  ctx.font = `500 16px ${fonts.sans}`;
+  if (project.kind === "about") {
+    ctx.fillText("BASED IN", 76, y + 63);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `500 25px ${fonts.sans}`;
+    ctx.fillText("San Francisco, California", 76, y + 102);
+  } else {
+    ctx.fillText("ROLE & TEAM", 76, y + 63);
+    ctx.fillText("YEAR", 650, y + 63);
+    ctx.fillStyle = palette.ink;
+    ctx.font = `400 23px ${fonts.sans}`;
+    wrapped(ctx, `${project.role} · ${project.team}`, 76, y + 104, 520, 30);
+    ctx.fillText(project.year, 650, y + 104);
+    ctx.font = `400 20px ${fonts.sans}`;
+    wrapped(ctx, project.disciplines.join(" · "), 76, y + 160, 720, 32);
+  }
+  ctx.fillStyle = palette.ink;
+  ctx.font = `500 23px ${fonts.sans}`;
+  ctx.fillText(
+    project.kind === "about" ? "A little about me →" : "Read the case study →",
+    76,
+    Math.min(1080, y + 230),
+  );
   line(ctx, 1160);
   ctx.font = `400 16px ${fonts.sans}`;
-  ctx.fillStyle = "#776c50";
-  ctx.fillText("SELECTED WORK", 76, 1204);
+  ctx.fillText(project.label.toUpperCase(), 76, 1204);
   ctx.fillText(
     String(index * 2 + (side === "left" ? 1 : 2)).padStart(2, "0"),
     800,

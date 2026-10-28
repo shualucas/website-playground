@@ -9,6 +9,7 @@ import "@fontsource/cormorant-garamond/latin-500.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { projects } from "./book/projects";
 import { AsciiPortal } from "./book/ascii";
+import { projectTheme, themeStyle } from "./book/themes";
 import "./style.css";
 function Star({ className = "" }) {
   return (
@@ -64,7 +65,10 @@ function Metadata({
   canNext,
 }) {
   return (
-    <div className="metadata-content">
+    <div
+      className={`metadata-content theme-${project.theme}`}
+      style={themeStyle(project.theme)}
+    >
       <button
         className="metadata-turn-page"
         data-turn-page="left"
@@ -81,7 +85,7 @@ function Metadata({
       </div>
       <div className="chapter-label">
         <span className="chapter-rule" />
-        PROJECT {pad(index + 1)}
+        {project.kind === "about" ? "ABOUT" : `PROJECT ${pad(index)}`}
         <span className="sample-label">
           {project.sample ? "SAMPLE CONTENT" : "CASE STUDY"}
         </span>
@@ -100,24 +104,35 @@ function Metadata({
       </h1>
       <p className="project-subtitle">{project.subtitle}</p>
       <p className="project-description">{project.description}</p>
-      <dl className="project-facts">
-        <div>
-          <dt>ROLE & TEAM</dt>
-          <dd>
-            {project.role} · {project.team}
-          </dd>
+      {project.kind === "about" ? (
+        <div className="about-note">
+          <span>BASED IN</span>
+          <strong>San Francisco, California</strong>
+          <p>
+            A few words about your approach, interests, and what comes next.
+          </p>
         </div>
-        <div>
-          <dt>YEAR</dt>
-          <dd>{project.year}</dd>
-        </div>
-        <div>
-          <dt>FOCUS</dt>
-          <dd>{project.disciplines.join(" · ")}</dd>
-        </div>
-      </dl>
+      ) : (
+        <dl className="project-facts">
+          <div>
+            <dt>ROLE & TEAM</dt>
+            <dd>
+              {project.role} · {project.team}
+            </dd>
+          </div>
+          <div>
+            <dt>YEAR</dt>
+            <dd>{project.year}</dd>
+          </div>
+          <div>
+            <dt>FOCUS</dt>
+            <dd>{project.disciplines.join(" · ")}</dd>
+          </div>
+        </dl>
+      )}
       <button className="read-project" onClick={onRead}>
-        Read the case study <Arrow />
+        {project.kind === "about" ? "A little about me" : "Read the case study"}{" "}
+        <Arrow />
       </button>
       <div className="page-folio">
         <button
@@ -129,7 +144,7 @@ function Metadata({
           <Arrow direction="left" />
         </button>
         <span className="page-instruction">
-          PROJECT {pad(index + 1)} / {pad(projects.length)}
+          {project.label.toUpperCase()} / {pad(projects.length)}
         </span>
         <button
           className="page-corner next"
@@ -144,10 +159,10 @@ function Metadata({
   );
 }
 
-function PortalFallback() {
+function PortalFallback({ project = projects[0] }) {
   const ref = useRef(null);
   useEffect(() => {
-    const portal = new AsciiPortal(),
+    const portal = new AsciiPortal(projectTheme(project.theme).colors),
       canvas = ref.current,
       ctx = canvas.getContext("2d"),
       preference = matchMedia("(prefers-reduced-motion: reduce)");
@@ -173,7 +188,7 @@ function PortalFallback() {
       cancelAnimationFrame(raf);
       preference.removeEventListener("change", start);
     };
-  }, []);
+  }, [project.theme]);
   return (
     <canvas
       ref={ref}
@@ -181,11 +196,11 @@ function PortalFallback() {
       height="1056"
       className="ascii-portal"
       role="img"
-      aria-label="Pink and blue RISO-inspired ASCII print"
+      aria-label={`${project.label} RISO-inspired ASCII portal`}
     />
   );
 }
-function PreviewPage({ onNext, fallback }) {
+function PreviewPage({ project, onNext, fallback }) {
   return (
     <div className="preview-content portal-only">
       <button
@@ -194,7 +209,7 @@ function PreviewPage({ onNext, fallback }) {
         aria-label="Turn to next spread"
         onClick={onNext}
       >
-        {fallback ? <PortalFallback /> : null}
+        {fallback ? <PortalFallback project={project} /> : null}
       </button>
     </div>
   );
@@ -210,7 +225,8 @@ function App() {
     [index, setIndex] = useState(0),
     [fallback, setFallback] = useState(false),
     [spread, setSpread] = useState({ left: 0, right: 0 }),
-    [selectedPage, setSelectedPage] = useState(0);
+    [selectedPage, setSelectedPage] = useState(-1),
+    [presentation, setPresentation] = useState("loading");
   const project = projects[index],
     busy = phase !== "ready";
   const select = (next) => {
@@ -222,6 +238,14 @@ function App() {
     url.searchParams.set("project", projects[next].id);
     history.replaceState(null, "", url);
   };
+  const showView = (page) => {
+    setSelectedPage(page);
+    if (page === -1 || page === projects.length) {
+      const url = new URL(location.href);
+      url.searchParams.delete("project");
+      history.replaceState(null, "", url);
+    }
+  };
   const openRead = () => {
     if (!dialog.current.open) dialog.current.showModal();
   };
@@ -230,7 +254,7 @@ function App() {
     const next = Math.max(-1, Math.min(projects.length, page));
     if (fallback) {
       if (next >= 0 && next < projects.length) select(next);
-      setSelectedPage(next);
+      showView(next);
     } else engine.current?.goTo(next);
   };
   const turn = (direction) => {
@@ -247,6 +271,7 @@ function App() {
   };
   useEffect(() => {
     let disposed = false;
+    const started = performance.now();
     const initial = projects.findIndex(
       (p) => p.id === new URLSearchParams(location.search).get("project"),
     );
@@ -259,6 +284,7 @@ function App() {
     Promise.all([
       document.fonts.load('400 20px "DM Sans"'),
       document.fonts.load('500 20px "DM Sans"'),
+      document.fonts.load('700 69px "DM Sans"'),
       document.fonts.load('500 40px "Cormorant Garamond"'),
     ])
       .catch(() => [])
@@ -298,19 +324,32 @@ function App() {
             {
               projects,
               onPhase: setPhase,
-              onView: setSelectedPage,
+              onView: showView,
+              onPresented: () => setPresentation("ready"),
               onIndex: select,
               onSpread: (left, right) => setSpread({ left, right }),
               onOpen: openRead,
               printPages,
             },
-            indexRef.current,
+            initial >= 0 ? initial : -1,
           );
           engine.current = book;
           setMounts({ left: book.leftPage, right: book.rightPage });
+          await new Promise((resolve) =>
+            setTimeout(
+              resolve,
+              Math.max(0, 450 - (performance.now() - started)),
+            ),
+          );
+          if (disposed) return;
+          setPresentation("revealing");
+          requestAnimationFrame(() => {
+            if (!disposed) book.appear();
+          });
         } catch (error) {
           console.info("Showing the book reading layout.", error.message);
           setFallback(true);
+          setPresentation("ready");
           setPhase("ready");
         }
       });
@@ -322,6 +361,7 @@ function App() {
   }, []);
   useEffect(() => {
     const key = (e) => {
+      if (presentation === "loading") return;
       if (
         e.ctrlKey ||
         e.metaKey ||
@@ -333,8 +373,7 @@ function App() {
         e.preventDefault();
         dialog.current?.close();
         engine.current?.replay();
-        if (fallback) select(0);
-        setSelectedPage(0);
+        if (fallback) showView(-1);
         return;
       }
       if (dialog.current?.open) return;
@@ -353,7 +392,7 @@ function App() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [phase, fallback, selectedPage, index]);
+  }, [phase, fallback, selectedPage, index, presentation]);
   const left = (
     <Metadata
       project={projects[spread.left]}
@@ -376,37 +415,54 @@ function App() {
     />
   );
   return (
-    <main className={`spellbook ${fallback ? "is-fallback" : ""}`}>
-      <div className="scene-marquee" aria-hidden="true">
-        <div className="marquee-track">
-          {[0, 1].map((copy) => (
-            <div className="marquee-copy" key={copy}>
-              <span>Field notes</span>
-              <span className="marquee-outline">Selected work</span>
-              <span className="marquee-light">Product designer</span>
-              <span className="marquee-outline">Ink. Paper. Play.</span>
-            </div>
-          ))}
+    <main
+      className={`spellbook ${fallback ? "is-fallback" : ""}`}
+      data-presentation={presentation}
+      aria-busy={presentation === "loading"}
+    >
+      <div
+        className="scene-loader"
+        role="status"
+        aria-label="Preparing your zine"
+        aria-hidden={presentation !== "loading"}
+      >
+        <div className="loader-content">
+          <svg
+            className="loader-book"
+            viewBox="0 0 80 60"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="m16 10 40-4 9 40-40 7z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="m23 8 9 42M31 18l19-2M33 24l19-2"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <circle
+              cx="49"
+              cy="34"
+              r="7"
+              stroke="var(--gold)"
+              strokeWidth="1.5"
+            />
+          </svg>
+          <span>Preparing your edition</span>
+          <div className="loader-track">
+            <i />
+          </div>
         </div>
       </div>
-      <button
-        className="scene-brand"
-        onClick={() => navigate(-1)}
-        aria-label="Go to zine cover"
-      >
-        <span className="brand-monogram">JL.</span>
-        <span className="brand-name">
-          JOSH LUCAS
-          <br />
-          RISO EDITION
-        </span>
-      </button>
       <p className="sr-only" id="book-instructions">
         Drag the zine to rotate it through 360 degrees in place. Click the right
         page to go forward or the left page to go back. Use the bottom
         navigation or Left and Right keys as alternatives. Press R to reset the
-        rotation and replay the opening. Choose Read the case study on the left
-        page to read the full project.
+        rotation and return to the closed cover. Choose Read the case study on
+        the left page to read the full project.
       </p>
       <div className="print-sources" aria-hidden="true" inert>
         {projects.map((item, i) => (
@@ -448,9 +504,11 @@ function App() {
       )}
       {fallback &&
         (selectedPage === -1 || selectedPage === projects.length) && (
-          <div
+          <button
             className="fallback-cover"
-            role="img"
+            onClick={() =>
+              navigate(selectedPage === -1 ? 0 : projects.length - 1)
+            }
             aria-label={
               selectedPage === -1
                 ? "RISO-printed front cover"
@@ -465,13 +523,17 @@ function App() {
               key={page}
               aria-current={selectedPage === page ? "page" : undefined}
               onClick={() => navigate(page)}
-              disabled={(!mounts && !fallback) || phase === "rotating"}
+              disabled={
+                presentation !== "ready" ||
+                (!mounts && !fallback) ||
+                phase === "rotating"
+              }
             >
               {page === -1
                 ? "Cover"
                 : page === projects.length
                   ? "Back cover"
-                  : `Page ${page + 1}`}
+                  : projects[page].label}
             </button>
           ))}
         </div>
@@ -484,16 +546,24 @@ function App() {
               ? "The zine is closing"
               : phase === "turning"
                 ? "Turning the page"
-                : "The zine is opening"
+                : phase === "arriving"
+                  ? "The zine is arriving"
+                  : "The zine is opening"
           : selectedPage === -1
             ? "Front cover"
             : selectedPage === projects.length
               ? "Back cover"
-              : `Project ${index + 1} of ${projects.length}: ${project.title.replace("\n", " ")}`}
+              : project.label}
       </span>
       <dialog
         ref={dialog}
         className="reading-dialog"
+        aria-label={
+          project.kind === "about"
+            ? "About Josh Lucas"
+            : `${project.label} case study`
+        }
+        style={themeStyle(project.theme)}
         onClick={(e) => {
           if (e.target === e.currentTarget) dialog.current.close();
         }}
@@ -520,8 +590,8 @@ function App() {
           </button>
           <Star className="dialog-star" />
           <p className="eyebrow">
-            PROJECT {pad(index + 1)}
-            {project.sample ? " / SAMPLE CASE STUDY" : ""}
+            {project.kind === "about" ? "ABOUT" : `PROJECT ${pad(index)}`}
+            {project.sample ? " / PLACEHOLDER" : ""}
           </p>
           <h2>{project.title.replace("\n", " ")}</h2>
           <p className="dialog-intro">{project.subtitle}</p>
@@ -532,7 +602,7 @@ function App() {
               alt={project.imageAlt}
             />
           ) : (
-            <PortalFallback />
+            <PortalFallback project={project} />
           )}
           {project.chapters.map(([title, copy], i) => (
             <section className="case-chapter" key={title}>
@@ -550,7 +620,9 @@ function App() {
           )}
           <p className="scaffold-note">
             {project.sample
-              ? "Sample content — ready for your project story, images, and results."
+              ? project.kind === "about"
+                ? "Placeholder biography — ready for your story."
+                : "Placeholder case study — ready for your story, images, and verified results."
               : project.note}
           </p>
         </article>
