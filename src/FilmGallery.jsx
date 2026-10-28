@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { filmPhotos } from "./content/film-photos";
 
-export function FilmGallery({ onClose }) {
+export function FilmGallery({ onClose, emptyCopy = "A collection in the making." }) {
   const dialog = useRef(null),
     viewer = useRef(null),
     [selected, setSelected] = useState(null);
@@ -56,7 +56,7 @@ export function FilmGallery({ onClose }) {
         {!filmPhotos.length ? (
           <div className="film-gallery-empty">
             <span aria-hidden="true">▧</span>
-            <p>A collection in the making.</p>
+            <p>{emptyCopy}</p>
           </div>
         ) : photo ? (
           <div

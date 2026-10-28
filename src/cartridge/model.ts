@@ -43,12 +43,6 @@ export function makeCartridge(color: string, label: THREE.Texture, grain: THREE.
   mesh(lg, paper, 0, -.25, .197).name = "Label";
   // Upper molded inset and recessed grip grooves, visible from either side.
   mesh(rounded(1.79, .31, .018, .06), frame, -.04, 1.04, .177);
-  const stamp = document.createElement("canvas"); stamp.width = 768; stamp.height = 100;
-  const ctx = stamp.getContext("2d")!; ctx.clearRect(0, 0, 768, 100);
-  ctx.fillStyle = "#30372e"; ctx.font = 'bold 36px Arial'; ctx.textAlign = "center";
-  ctx.fillText("JOSH LUCAS", 384, 65);
-  const stampTexture = new THREE.CanvasTexture(stamp); stampTexture.colorSpace = THREE.SRGBColorSpace;
-  mesh(new THREE.PlaneGeometry(1.45, .19), new THREE.MeshBasicMaterial({ map: stampTexture, transparent: true, depthWrite: false, opacity: .65 }), -.04, 1.04, .19);
   for (const side of [-1, 1]) for (let i = 0; i < 4; i++) mesh(rounded(.19, .026, .025, .008), frame, side * 1.085, .62 + i * .075, .17);
   mesh(rounded(1.77, .085, .04, .012), dark, 0, -1.33, .152).name = "Connector recess";
   const gold = new THREE.MeshStandardMaterial({ color: "#baa367", metalness: .7, roughness: .48 });

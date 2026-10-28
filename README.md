@@ -1,8 +1,10 @@
 # Josh Lucas — Portfolio editions
 
-The default site is now an interactive **Game Boy-style cartridge collection**: About, Stadia, AI Mode, and After-hours. Each cartridge has original editable label artwork, a beveled molded-plastic shell, grip grooves, a recessed paper label, connector details, and a finished back. A single Three.js scene supplies studio reflections, overhead shadows, hover lift, and drag rotation. Click a cartridge or its corresponding HTML link to read. Dragging never opens a project. Reset returns inspected cartridges to their original positions. Theme switching, keyboard access, reduced motion, deep links, browser Back/Forward, photography gallery, and a WebGL-free illustrated fallback are included.
+The default site is a compact **Game Boy-style cartridge stack**, informed by the public source of mamuso.dev. A short professional introduction sits beside the stack on desktop; below it are Selected work and After-hours. Mobile uses a horizontal edge-on rack. The page has no invented slogans, name monogram, shell name stamps, or name-based label branding. Only the supplied professional information and useful navigation remain.
 
-**The exact linked Sketchfab model is not included:** Sketchfab returned HTTP 403 here. This implementation uses original procedural geometry, with an optional GLB import path ready in `src/cartridge/config.ts`. Upload/download the licensed model and check its label mesh and orientation to substitute it. See `public/cartridges/README.md`.
+Click a cartridge to turn its face forward; neighbors make space and a separate View action opens its content. Drag the selected cartridge to inspect all sides. Reset or R restores its orientation; click the selected cartridge again, Close, or Escape to fold it back. Selection and responsive changes preserve position-spring velocities, camera framing stays stable during rotation, and rendering stops when motion settles or the scene is hidden. HTML buttons provide keyboard selection. Theme switching, deep links, browser Back/Forward, photography gallery, and a WebGL-free illustrated fallback remain available.
+
+The shells and labels are original assets from the previous cartridge iteration. **The exact linked Sketchfab model is not included:** this environment's connection gateway returned HTTP 403 before retrieving the page; that does not establish a Sketchfab account or model restriction. An optional GLB import path remains ready in `src/cartridge/config.ts`. See `public/cartridges/README.md`.
 
 ## Keep or switch editions
 
@@ -22,7 +24,7 @@ The default site is now an interactive **Game Boy-style cartridge collection**: 
 - `src/cartridge/CartridgeScene.ts` — renderer, lighting, framing, input, animation, lifecycle.
 - `src/cartridge/model.ts` — original shell geometry and optional GLB adapter.
 
-No new dependencies were added. The zine's GPU scene is only loaded on `/zine/`; the cartridge entry has its own scene and stylesheet. The shared case-study component accepts an optional back label and otherwise preserves its old behavior.
+No new dependencies were added. The zine's GPU scene is only loaded on `/zine/`; the cartridge entry has its own scene and stylesheet. The shared case-study component accepts optional back-label and identity props; the gallery accepts optional empty-state copy. Their defaults preserve the zine presentation.
 
 ```sh
 npm ci

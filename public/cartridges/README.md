@@ -1,6 +1,6 @@
 # Cartridge assets
 
-The shipped shell is original procedural geometry (`src/cartridge/model.ts`), **not** a downloaded Sketchfab model or the mamuso.dev asset. The requested Sketchfab page and API returned HTTP 403 in the build environment, so its download availability and license could not be verified:
+The shipped shell is original procedural geometry (`src/cartridge/model.ts`), **not** a downloaded Sketchfab model or the mamuso.dev asset. The build environment’s connection gateway rejected the tunnel with HTTP 403 before the Sketchfab page or API could be retrieved, so its download availability and license could not be verified:
 https://sketchfab.com/3d-models/game-cartridge-gameboy-aa19e18342014d01a026770d32200a7f
 
 ## Labels

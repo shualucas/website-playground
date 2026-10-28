@@ -2,17 +2,17 @@ import React, { useEffect, useRef } from "react";
 import { projectTheme } from "./book/themes";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
-export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine" }) {
+export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
   const heading = useRef(null),
     theme = projectTheme(project.theme);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     const previous = document.title;
-    document.title = `${project.label} — Josh Lucas`;
+    document.title = `${project.label}${identity ? " — " + identity : ""}`;
     return () => {
       document.title = previous;
     };
-  }, [project.id]);
+  }, [project.id, identity]);
   return (
     <section
       className="case-study"
@@ -38,7 +38,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine" }
           </svg>
           {backLabel}
         </button>
-        <span>JOSH LUCAS</span>
+        {identity && <span>{identity.toUpperCase()}</span>}
       </header>
       <article className="case-study-content">
         <header className="case-study-hero">
@@ -48,7 +48,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine" }
           <h1 ref={heading} tabIndex={-1}>
             {project.title.replace("\n", " ")}
           </h1>
-          <p className="case-study-deck">{project.subtitle}</p>
+          {project.subtitle && <p className="case-study-deck">{project.subtitle}</p>}
           <dl className="case-study-facts">
             <div>
               <dt>ROLE & TEAM</dt>
