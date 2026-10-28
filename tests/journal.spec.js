@@ -30,7 +30,7 @@ async function grabPoint(page, side = "right") {
   );
 }
 
-test("the RISO zine has thin stock, shared printed pages, and an explicit reading link", async ({
+test("the portfolio zine has thin stock, shared printed pages, and an explicit reading link", async ({
   page,
 }) => {
   const errors = [],
@@ -199,6 +199,7 @@ test("loading reveals a bouncing closed cover, idle motion continues, and R retu
   );
   await expect(stage(page)).toHaveAttribute("data-view", "cover");
   const before = await state(page);
+  expect(Number(before.firstRevealAt)).toBeGreaterThanOrEqual(1490);
   await expect
     .poll(async () => (await state(page)).ambientPosition)
     .not.toBe(before.ambientPosition);
@@ -307,7 +308,7 @@ test("the HTML fallback retains print artwork, leaf clicks, and reading access",
     };
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "RISO-printed front cover" }).click();
+  await page.getByRole("button", { name: "Printed front cover" }).click();
   await expect(page.locator(".fallback-book")).toBeVisible();
   await expect(page.locator(".fallback-book .ascii-portal")).toBeVisible();
   expect(await page.locator(".fallback-book .page-recto").innerText()).toBe("");
@@ -540,7 +541,7 @@ test("About, Stadia and AI Mode keep independent print palettes and permanent pr
     );
     await page.keyboard.press("Escape");
   }
-  expect(Number((await state(page)).shadowDistance)).toBe(3);
+  expect(JSON.parse((await state(page)).lightPosition)[1]).toBe(15);
 });
 
 test("project URLs open their spread and reset returns to a reloadable closed cover", async ({
@@ -559,4 +560,137 @@ test("project URLs open their spread and reset returns to a reloadable closed co
   await page.reload();
   await ready(page);
   await expect(stage(page)).toHaveAttribute("data-view", "cover");
+});
+
+test("navigation highlights the requested destination before settled content changes", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await openBook(page);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const nav = page.getByRole("navigation", { name: "Zine pages" });
+  await nav.getByRole("button", { name: "AI Mode", exact: true }).click();
+  await expect(
+    nav.getByRole("button", { name: "AI Mode", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  expect((await state(page)).project).toBe("0");
+  await nav.getByRole("button", { name: "Cover", exact: true }).click();
+  await expect(
+    nav.getByRole("button", { name: "Cover", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(stage(page)).toHaveAttribute("data-view", "cover", {
+    timeout: 45000,
+  });
+  await ready(page);
+});
+
+test("light/dark preference persists without changing paper, artwork or orientation", async ({
+  page,
+}) => {
+  await openBook(page);
+  const before = await state(page);
+  await expect(page.locator(".spellbook")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
+  const left = page.locator(".print-sources .metadata-content").nth(1);
+  await expect(left.locator("h1")).toHaveCSS("color", "rgb(17, 17, 17)");
+  await expect(left.locator(".project-description")).toHaveCSS(
+    "color",
+    "rgb(17, 17, 17)",
+  );
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(page.locator(".spellbook")).toHaveAttribute(
+    "data-color-mode",
+    "dark",
+  );
+  await expect(page.locator(".spellbook")).toHaveCSS(
+    "background-color",
+    "rgb(20, 20, 20)",
+  );
+  const dark = await state(page);
+  expect(dark.rotation).toBe(before.rotation);
+  expect(dark.previewArtworks).toBe(before.previewArtworks);
+  expect(dark.settledBoundary).toBe(before.settledBoundary);
+  await expect(left.locator("h1")).toHaveCSS("color", "rgb(17, 17, 17)");
+  await page.reload();
+  await ready(page);
+  await expect(page.locator(".spellbook")).toHaveAttribute(
+    "data-color-mode",
+    "dark",
+  );
+  await page.getByRole("button", { name: "Switch to light mode" }).click();
+  await expect(page.locator(".spellbook")).toHaveAttribute(
+    "data-color-mode",
+    "light",
+  );
+});
+
+test("restart button and R reset to the same cover without viewport focus lines", async ({
+  page,
+}) => {
+  await openBook(page);
+  await stage(page).focus();
+  await expect(stage(page)).toHaveCSS("outline-style", "none");
+  await expect(stage(page)).toHaveAttribute("data-hovered-page", "right");
+  await page.getByRole("button", { name: "Stadia", exact: true }).click();
+  await page.getByRole("button", { name: "Restart zine" }).click();
+  await ready(page);
+  const button = await state(page);
+  await page.getByRole("button", { name: "AI Mode", exact: true }).click();
+  await page.keyboard.press("r");
+  await ready(page);
+  const keyboard = await state(page);
+  for (const key of [
+    "view",
+    "rotation",
+    "requestedPage",
+    "popupCount",
+    "coverOpen",
+  ])
+    expect(keyboard[key]).toBe(button[key]);
+  await expect(
+    page.getByRole("button", { name: "Cover", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+});
+
+test("cover-to-cover navigation launches the final leaf without waiting at the last spread", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await openBook(page);
+  await page.getByRole("button", { name: "Cover", exact: true }).click();
+  await page.evaluate(() => {
+    window.closures = [];
+    new MutationObserver(() =>
+      window.closures.push({
+        ...document.querySelector(".book-stage").dataset,
+      }),
+    ).observe(document.querySelector(".book-stage"), {
+      attributes: true,
+      attributeFilter: ["data-leaf-states"],
+    });
+  });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "Back cover", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-view", "back", {
+    timeout: 45000,
+  });
+  await ready(page);
+  const forward = await page.evaluate(() => window.closures);
+  expect(forward.some((s) => Number(s.maxConcurrent) === 4)).toBe(true);
+  const firstCoverFrame = forward.find(
+    (s) => JSON.parse(s.leafStates).at(-1).target === 1,
+  );
+  expect(firstCoverFrame).toBeTruthy();
+  expect(
+    JSON.parse(firstCoverFrame.leafStates)
+      .slice(0, -1)
+      .some((l) => !l.settled),
+  ).toBe(true);
+  await page.getByRole("button", { name: "Cover", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-view", "cover", {
+    timeout: 45000,
+  });
+  await ready(page);
 });

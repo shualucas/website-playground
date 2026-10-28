@@ -1,4 +1,24 @@
 import * as THREE from "three";
+
+/** Shadow-only fade prevents the canvas edge from reading as a horizontal rule. */
+export function softenShadowEdges(material: THREE.ShadowMaterial) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader =
+      "varying vec4 vShadowClip;\n" +
+      shader.vertexShader.replace(
+        "#include <project_vertex>",
+        "#include <project_vertex>\nvShadowClip = gl_Position;",
+      );
+    shader.fragmentShader =
+      "varying vec4 vShadowClip;\n" +
+      shader.fragmentShader.replace(
+        "#include <premultiplied_alpha_fragment>",
+        "vec2 edgeDistance = 1.0 - abs(vShadowClip.xy / vShadowClip.w);\ngl_FragColor.a *= smoothstep(0.0, 0.18, min(edgeDistance.x, edgeDistance.y));\n#include <premultiplied_alpha_fragment>",
+      );
+  };
+  material.customProgramCacheKey = () => "soft-viewport-shadow-1";
+  return material;
+}
 /** A soft, static studio shadow under the paper edition. */
 export function contactShadow() {
   const canvas = document.createElement("canvas");

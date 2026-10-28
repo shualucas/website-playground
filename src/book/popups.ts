@@ -3,6 +3,7 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { PAGE_WIDTH as W, PAGE_HEIGHT as H, type Project } from "./materials";
 import { SkinnedLeaf, LEAF_SEGMENTS, type PaperMaterial } from "./leaf";
 import { projectTheme } from "./themes";
+import { aboutMiniatures } from "./miniatures";
 
 type Item = {
   anchor: THREE.Group;
@@ -31,21 +32,21 @@ export class PagePopups {
         materials = new Map<string, PaperMaterial>();
       const material = (color: string) => {
         if (!materials.has(color))
-          materials.set(color, surface({ color, map: paper, roughness: 0.96 }));
+          materials.set(color, surface({ color, map: paper, roughness: 0.72 }));
         return materials.get(color)!;
       };
       const shape = (
         width: number,
         height: number,
         depth: number,
-        color = "#fff9ee",
+        color = "#f7f7f4",
         radius = 0.035,
       ) => {
         const mesh = new THREE.Mesh(
           new RoundedBoxGeometry(
             width,
             height,
-            depth,
+            depth * 1.7,
             2,
             Math.min(radius, width / 3, height / 3, depth / 3),
           ),
@@ -65,7 +66,7 @@ export class PagePopups {
         y: number,
         z: number,
       ) => {
-        mesh.position.set(x, y, z);
+        mesh.position.set(x, y, z * 1.7);
         group.add(mesh);
         return mesh;
       };
@@ -121,48 +122,29 @@ export class PagePopups {
           );
       };
       if (project.kind === "about") {
-        // A small folded RISO print with a two-ink moon, pencil and print swatches.
-        item(
-          0.54,
-          0.49,
-          (g) => {
-            add(g, shape(1.15, 1.4, 0.045), 0, 0.72, 0);
-            add(g, shape(0.86, 0.48, 0.012, colors[0]), 0, 1.08, 0.03);
-            const disc = new THREE.Mesh(
-              new THREE.CircleGeometry(0.2, 24),
-              material(colors[1]),
-            );
-            disc.geometry.computeBoundingBox();
-            disc.userData.leaf = leaf.id;
-            disc.userData.popup = true;
-            this.meshes.push(disc);
-            add(g, disc, 0.16, 1.08, 0.039);
-            lines(g, -0.02, 0.64, 0.031, 0.78, colors[0], 4);
-          },
-          -0.18,
-        );
-        item(0.27, 0.75, (g) => {
-          const pencil = shape(0.11, 1.05, 0.1, colors[1]);
-          pencil.rotation.z = -0.3;
-          add(g, pencil, 0, 0.53, 0);
-          add(g, shape(0.13, 0.16, 0.12, colors[0]), 0.15, 1.04, 0);
+        const models = aboutMiniatures(surface, (mesh) => {
+          mesh.userData.leaf = leaf.id;
+          mesh.userData.popup = true;
+          this.meshes.push(mesh);
         });
+        item(0.35, 0.37, (g) => g.add(models.camera), -0.16);
         item(
-          0.76,
-          0.76,
+          0.79,
+          0.4,
           (g) => {
-            for (let i = 0; i < 3; i++) {
-              const card = shape(
-                0.57,
-                0.58,
-                0.035,
-                i === 1 ? colors[1] : "#fff9ee",
-              );
-              card.rotation.z = (i - 1) * 0.16;
-              add(g, card, i * 0.1 - 0.1, 0.32 + i * 0.1, i * 0.04);
-            }
+            models.racket.rotation.z = -0.12;
+            g.add(models.racket);
           },
-          -0.25,
+          0.12,
+        );
+        item(
+          0.49,
+          0.77,
+          (g) => {
+            models.controller.rotation.x = -0.14;
+            g.add(models.controller);
+          },
+          0.14,
         );
       } else if (project.theme === "stadia") {
         item(
@@ -174,7 +156,7 @@ export class PagePopups {
             add(g, shape(1.28, 0.13, 0.01, colors[0]), 0, 0.72, 0.055);
             add(g, shape(0.12, 0.4, 0.12, colors[0]), 0, 0.26, 0);
             add(g, shape(0.7, 0.05, 0.4), 0, 0.035, 0.02);
-            lines(g, -0.18, 1.08, 0.057, 0.75, "#fff9ee", 2);
+            lines(g, -0.18, 1.08, 0.057, 0.75, "#f7f7f4", 2);
           },
           -0.14,
         );
@@ -182,10 +164,10 @@ export class PagePopups {
           0.48,
           0.78,
           (g) => {
-            const pad = shape(1.2, 0.53, 0.25, "#fff9ee", 0.13);
+            const pad = shape(1.2, 0.53, 0.25, "#f7f7f4", 0.13);
             add(g, pad, 0, 0.38, 0);
             for (const x of [-0.39, 0.39]) {
-              const grip = shape(0.31, 0.47, 0.24, "#fff9ee", 0.09);
+              const grip = shape(0.31, 0.47, 0.24, "#f7f7f4", 0.09);
               grip.rotation.z = x < 0 ? -0.25 : 0.25;
               add(g, grip, x, 0.18, 0);
             }
@@ -260,6 +242,25 @@ export class PagePopups {
       }
       this.spreads.push(spread);
     });
+  }
+  restEnvelope(rig: THREE.Group) {
+    rig.updateWorldMatrix(true, true);
+    const inverse = rig.matrixWorld.clone().invert(),
+      result: THREE.Vector3[] = [];
+    for (const mesh of this.meshes) {
+      const box = mesh.geometry.boundingBox!;
+      for (let i = 0; i < 8; i++)
+        result.push(
+          new THREE.Vector3(
+            i & 1 ? box.max.x : box.min.x,
+            i & 2 ? box.max.y : box.min.y,
+            i & 4 ? box.max.z : box.min.z,
+          )
+            .applyMatrix4(mesh.matrixWorld)
+            .applyMatrix4(inverse),
+        );
+    }
+    return result;
   }
   get folded() {
     return this.spreads.every((s) => s.items.every((i) => i.amount === 0));

@@ -1,10 +1,10 @@
 /** Print palettes shared by HTML, captured pages, portals and pop-up objects. */
 export const THEMES = {
   about: {
-    ink: "#2357a5",
-    accent: "#d82f79",
-    colors: ["#2357a5", "#f0518c"],
-    gradient: "linear-gradient(110deg, #2357a5, #d82f79)",
+    ink: "#161616",
+    accent: "#5b5b5b",
+    colors: ["#171717", "#606060"],
+    gradient: "linear-gradient(110deg, #161616, #606060)",
   },
   stadia: {
     ink: "#a93021",
@@ -23,12 +23,4 @@ export const THEMES = {
 export type ThemeName = keyof typeof THEMES;
 export function projectTheme(name: string = "about") {
   return THEMES[name as ThemeName] ?? THEMES.about;
-}
-export function themeStyle(name: string) {
-  const theme = projectTheme(name);
-  return {
-    "--project-ink": theme.ink,
-    "--project-accent": theme.accent,
-    "--project-gradient": theme.gradient,
-  };
 }

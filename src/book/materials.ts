@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { projectTheme } from "./themes";
 
 export const PAGE_WIDTH = 3.35,
   PAGE_HEIGHT = 4.7,
@@ -21,7 +20,6 @@ export interface Project {
   previewImage?: string;
 }
 const fonts = {
-  serif: '"Cormorant Garamond",Georgia,serif',
   sans: '"DM Sans",sans-serif',
 };
 function canvas(w = 900, h = 1260) {
@@ -50,8 +48,8 @@ function grain(
   for (let i = 0; i < 32000; i++) {
     ctx.fillStyle =
       random() > 0.5
-        ? `rgba(255,235,195,${dark ? 0.07 : 0.09})`
-        : `rgba(45,23,9,${dark ? 0.12 : 0.035})`;
+        ? `rgba(255,255,255,${dark ? 0.07 : 0.07})`
+        : `rgba(35,35,35,${dark ? 0.1 : 0.02})`;
     ctx.fillRect(
       random() * w,
       random() * h,
@@ -60,7 +58,6 @@ function grain(
     );
   }
 }
-export const RISO = { blue: "#2357a5", pink: "#f0518c", paper: "#f1eddc" };
 let printGrain: HTMLCanvasElement | undefined;
 /** A static ink-and-fiber veil is shared by every printed surface. */
 export function applyRisoPrint(
@@ -85,83 +82,52 @@ export function applyRisoPrint(
   ctx.drawImage(printGrain, 0, 0, width, height);
   ctx.restore();
 }
-function halftoneDisc(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  radius: number,
-  color: string,
-) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  for (let yy = -radius; yy <= radius; yy += 11)
-    for (let xx = -radius; xx <= radius; xx += 11) {
-      if (xx * xx + yy * yy > radius * radius) continue;
-      const r = 1.7 + (2.6 * (1 + Math.sin((xx + yy) / 120))) / 2;
-      ctx.moveTo(x + xx + r, y + yy);
-      ctx.arc(x + xx, y + yy, r, 0, Math.PI * 2);
-    }
-  ctx.fill();
-}
-/** Original two-ink cover art; slight registration offsets are intentional. */
-export function risoCoverTexture(back = false) {
+/** An original monochrome editorial cover: sculptural contour artwork and small type. */
+export function coverTexture(back = false) {
   const { element, ctx } = canvas();
-  ctx.drawImage(paperTextureCanvas(), 0, 0);
-  ctx.fillStyle = RISO.blue;
-  ctx.font = `700 22px ${fonts.sans}`;
-  ctx.fillText("JOSH LUCAS", 64, 76);
-  ctx.textAlign = "right";
-  ctx.fillText(back ? "COLOPHON / 016" : "SELECTED WORK / 001", 836, 76);
-  ctx.textAlign = "left";
+  ctx.fillStyle = back ? "#191919" : "#fafaf8";
+  ctx.fillRect(0, 0, 900, 1260);
   ctx.save();
-  ctx.globalCompositeOperation = "multiply";
-  if (back) {
-    halftoneDisc(ctx, 445, 520, 320, RISO.blue);
-    halftoneDisc(ctx, 550, 640, 295, RISO.pink);
-    ctx.fillStyle = RISO.blue;
-    ctx.font = `700 88px ${fonts.sans}`;
-    ctx.fillText("MADE WITH", 64, 1030);
-    ctx.fillText("CURIOSITY.", 64, 1115);
-  } else {
-    ctx.fillStyle = RISO.pink;
-    ctx.font = `700 180px ${fonts.sans}`;
-    ctx.fillText("FIELD", 61, 291);
-    ctx.fillText("NOTES", 61, 453);
-    ctx.fillStyle = RISO.blue;
-    ctx.fillText("FIELD", 66, 288);
-    ctx.fillText("NOTES", 66, 450);
-    halftoneDisc(ctx, 465, 824, 318, RISO.pink);
-    ctx.save();
-    ctx.translate(440, 804);
-    ctx.rotate(-0.42);
-    ctx.fillStyle = RISO.blue;
-    ctx.fillRect(-390, -105, 780, 210);
-    ctx.restore();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = RISO.paper;
-    ctx.font = `700 120px ${fonts.sans}`;
-    ctx.fillText("01—03", 190, 855);
-  }
-  ctx.restore();
-  ctx.fillStyle = RISO.blue;
-  ctx.font = `500 18px ${fonts.sans}`;
-  ctx.fillText("PRODUCT DESIGN · SAN FRANCISCO", 64, 1201);
-  ctx.textAlign = "right";
-  ctx.fillText("TWO INKS. MANY IDEAS.", 836, 1201);
-  // Two small registration crosses make the printing process visible.
-  ctx.strokeStyle = RISO.pink;
-  ctx.lineWidth = 2;
-  for (const [x, y] of [
-    [38, 1165],
-    [864, 1165],
-  ]) {
+  ctx.translate(back ? 560 : 450, back ? 540 : 610);
+  ctx.rotate(-0.27);
+  ctx.strokeStyle = back ? "#e7e7e2" : "#202020";
+  ctx.lineWidth = 1.9;
+  for (let ring = 0; ring < 60; ring++) {
     ctx.beginPath();
-    ctx.moveTo(x - 9, y);
-    ctx.lineTo(x + 9, y);
-    ctx.moveTo(x, y - 9);
-    ctx.lineTo(x, y + 9);
+    for (let step = 0; step <= 160; step++) {
+      const a = (step / 160) * Math.PI * 2,
+        radius = 32 + ring * 4.9;
+      const swell =
+        radius + Math.sin(a * 3 + ring * 0.025) * (18 + ring * 0.28);
+      const x = Math.cos(a) * swell * 0.91,
+        y = Math.sin(a) * swell * 1.14 + Math.sin(a * 2) * 26;
+      if (step) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
     ctx.stroke();
   }
+  ctx.restore();
+  ctx.fillStyle = back ? "#fafaf8" : "#161616";
+  ctx.font = `500 24px ${fonts.sans}`;
+  ctx.fillText("JOSH LUCAS", 70, 94);
+  ctx.textAlign = "right";
+  ctx.fillText(back ? "COLOPHON" : "EDITION 01", 830, 94);
+  ctx.textAlign = "left";
+  ctx.font = `500 31px ${fonts.sans}`;
+  ctx.fillText(
+    back ? "Always a work in progress." : "Selected things.",
+    70,
+    1110,
+  );
+  ctx.font = `400 18px ${fonts.sans}`;
+  ctx.fillText(
+    back ? "SAN FRANCISCO, CALIFORNIA" : "ABOUT  /  STADIA  /  AI MODE",
+    70,
+    1175,
+  );
+  ctx.textAlign = "right";
+  ctx.fillText("01—03", 830, 1175);
   applyRisoPrint(ctx, 900, 1260);
   return texture(element);
 }
@@ -179,7 +145,7 @@ export function paperTexture() {
 }
 export function edgeTexture() {
   const { element, ctx } = canvas(512, 1024);
-  ctx.fillStyle = "#e9e2ca";
+  ctx.fillStyle = "#e5e5e2";
   ctx.fillRect(0, 0, 512, 1024);
   for (let i = 0; i < 8; i++) {
     const y = (i * 1024) / 8;
@@ -226,19 +192,18 @@ export function pageTexture(
   side: "left" | "right",
   captured?: HTMLCanvasElement,
 ) {
-  const { element, ctx } = canvas();
-  ctx.drawImage(paperTextureCanvas(), 0, 0);
+  const { element, ctx } = canvas(1200, 1694);
+  ctx.drawImage(paperTextureCanvas(), 0, 0, 1200, 1694);
   if (captured) {
-    ctx.drawImage(captured, 0, 0, 900, 1260);
-    applyRisoPrint(ctx, 900, 1260);
+    ctx.drawImage(captured, 0, 0, 1200, 1694);
     return texture(element);
   }
-  const palette = projectTheme(project.theme);
-  ctx.fillStyle = palette.ink;
+  ctx.scale(1200 / 900, 1694 / 1260);
+  ctx.fillStyle = "#111111";
   ctx.font = `500 17px ${fonts.sans}`;
-  ctx.fillText("FIELD NOTES / RISO EDITION", 76, 81);
+  ctx.fillText("JOSH LUCAS / SELECTED WORK", 76, 81);
   line(ctx, 112);
-  ctx.fillStyle = palette.accent;
+  ctx.fillStyle = "#333333";
   ctx.font = `500 16px ${fonts.sans}`;
   ctx.fillText(
     project.kind === "about"
@@ -247,42 +212,37 @@ export function pageTexture(
     76,
     184,
   );
-  ctx.fillStyle = palette.ink;
+  ctx.fillStyle = "#111111";
   ctx.font = `700 89px ${fonts.sans}`;
-  const gradient = ctx.createLinearGradient(76, 0, 760, 0);
-  palette.colors.forEach((color, i) =>
-    gradient.addColorStop(i / (palette.colors.length - 1), color),
-  );
-  if (project.kind !== "about") ctx.fillStyle = gradient;
   let y = 282;
   for (const part of project.title.split("\n")) {
     ctx.fillText(part, 76, y);
     y += 89;
   }
-  ctx.fillStyle = palette.ink;
+  ctx.fillStyle = "#111111";
   ctx.font = `500 31px ${fonts.sans}`;
   y = wrapped(ctx, project.subtitle, 76, y + 24, 710, 43);
   ctx.font = `400 25px ${fonts.sans}`;
   y = wrapped(ctx, project.description, 76, y + 30, 710, 40);
   line(ctx, y + 14);
-  ctx.fillStyle = palette.accent;
+  ctx.fillStyle = "#333333";
   ctx.font = `500 16px ${fonts.sans}`;
   if (project.kind === "about") {
     ctx.fillText("BASED IN", 76, y + 63);
-    ctx.fillStyle = palette.ink;
+    ctx.fillStyle = "#111111";
     ctx.font = `500 25px ${fonts.sans}`;
     ctx.fillText("San Francisco, California", 76, y + 102);
   } else {
     ctx.fillText("ROLE & TEAM", 76, y + 63);
     ctx.fillText("YEAR", 650, y + 63);
-    ctx.fillStyle = palette.ink;
+    ctx.fillStyle = "#111111";
     ctx.font = `400 23px ${fonts.sans}`;
     wrapped(ctx, `${project.role} · ${project.team}`, 76, y + 104, 520, 30);
     ctx.fillText(project.year, 650, y + 104);
     ctx.font = `400 20px ${fonts.sans}`;
     wrapped(ctx, project.disciplines.join(" · "), 76, y + 160, 720, 32);
   }
-  ctx.fillStyle = palette.ink;
+  ctx.fillStyle = "#111111";
   ctx.font = `500 23px ${fonts.sans}`;
   ctx.fillText(
     project.kind === "about" ? "A little about me →" : "Read the case study →",
@@ -304,7 +264,7 @@ let paperCanvas: HTMLCanvasElement | undefined;
 function paperTextureCanvas() {
   if (!paperCanvas) {
     const { element, ctx } = canvas();
-    ctx.fillStyle = "#f1eddc";
+    ctx.fillStyle = "#fafaf8";
     ctx.fillRect(0, 0, 900, 1260);
     grain(ctx, 900, 1260);
     let seed = 17;
@@ -331,10 +291,7 @@ function paperTextureCanvas() {
       pixels = c.createImageData(45, 63);
     for (let i = 0; i < 45 * 63; i++) {
       const v = 85 + Math.round(random() * 145);
-      pixels.data.set(
-        [v, Math.round(v * 0.85), Math.round(v * 0.62), 60],
-        i * 4,
-      );
+      pixels.data.set([v, v, v, 40], i * 4);
     }
     c.putImageData(pixels, 0, 0);
     ctx.save();

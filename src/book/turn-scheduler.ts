@@ -37,11 +37,12 @@ export class TurnScheduler {
       const forward = this.requested > this.launched,
         leaf = this.leaves[forward ? this.launched : this.launched - 1];
       // Retarget a moving leaf immediately; it does not consume another active slot.
-      if (this.active < 3 || !leaf.settled) {
+      if (this.active < Math.min(4, this.leaves.length) || !leaf.settled) {
         leaf.turnTo(forward);
         this.launched += forward ? 1 : -1;
         const distance = Math.abs(this.requested - this.launched);
-        this.untilLaunch = intro ? 0.13 : distance > 1 ? 0.1 : 0.18;
+        // Launch the final cover in the same riffle; never wait for a settled spread.
+        this.untilLaunch = intro ? 0.13 : distance > 1 ? 0.085 : 0.12;
       }
     }
     let changed = false;

@@ -4,35 +4,10 @@ import { createPortal } from "react-dom";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
-import "@fontsource/cormorant-garamond/latin-400.css";
-import "@fontsource/cormorant-garamond/latin-500.css";
-import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { projects } from "./book/projects";
 import { AsciiPortal } from "./book/ascii";
-import { projectTheme, themeStyle } from "./book/themes";
+import { projectTheme } from "./book/themes";
 import "./style.css";
-function Star({ className = "" }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M16 1l3.4 11.6L31 16l-11.6 3.4L16 31l-3.4-11.6L1 16l11.6-3.4L16 1Z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="m6 6 10 6 10-6-6 10 6 10-10-6-10 6 6-10L6 6Z"
-        stroke="currentColor"
-        strokeWidth=".7"
-      />
-      <circle cx="16" cy="16" r="2" fill="currentColor" />
-    </svg>
-  );
-}
 function Arrow({ direction = "right" }) {
   return (
     <svg
@@ -65,10 +40,7 @@ function Metadata({
   canNext,
 }) {
   return (
-    <div
-      className={`metadata-content theme-${project.theme}`}
-      style={themeStyle(project.theme)}
-    >
+    <div className="metadata-content">
       <button
         className="metadata-turn-page"
         data-turn-page="left"
@@ -77,11 +49,8 @@ function Metadata({
         disabled={!canPrevious}
       />
       <div className="page-running-head">
-        <span>FIELD NOTES / RISO EDITION</span>
-        <span className="ink-swatches" aria-hidden="true">
-          <i />
-          <i />
-        </span>
+        <span>JOSH LUCAS</span>
+        <span>EDITION 01 / {pad(index + 1)}</span>
       </div>
       <div className="chapter-label">
         <span className="chapter-rule" />
@@ -108,9 +77,7 @@ function Metadata({
         <div className="about-note">
           <span>BASED IN</span>
           <strong>San Francisco, California</strong>
-          <p>
-            A few words about your approach, interests, and what comes next.
-          </p>
+          <p>A fuller introduction is on its way.</p>
         </div>
       ) : (
         <dl className="project-facts">
@@ -226,6 +193,16 @@ function App() {
     [fallback, setFallback] = useState(false),
     [spread, setSpread] = useState({ left: 0, right: 0 }),
     [selectedPage, setSelectedPage] = useState(-1),
+    [requestedPage, setRequestedPage] = useState(-1),
+    [colorMode, setColorMode] = useState(() => {
+      try {
+        return localStorage.getItem("zine-color-mode") === "dark"
+          ? "dark"
+          : "light";
+      } catch {
+        return "light";
+      }
+    }),
     [presentation, setPresentation] = useState("loading");
   const project = projects[index],
     busy = phase !== "ready";
@@ -252,6 +229,7 @@ function App() {
   const navigate = (page) => {
     if (phase === "rotating") return;
     const next = Math.max(-1, Math.min(projects.length, page));
+    setRequestedPage(next);
     if (fallback) {
       if (next >= 0 && next < projects.length) select(next);
       showView(next);
@@ -263,15 +241,30 @@ function App() {
       engine.current?.stepPage(direction);
       return;
     }
-    const current =
-      selectedPage === -1 || selectedPage === projects.length
-        ? selectedPage
-        : indexRef.current;
-    navigate(current + direction);
+    navigate(requestedPage + direction);
+  };
+  const restart = () => {
+    if (presentation === "loading") return;
+    dialog.current?.close();
+    setRequestedPage(-1);
+    engine.current?.replay();
+    if (fallback) showView(-1);
   };
   useEffect(() => {
+    document.documentElement.dataset.colorMode = colorMode;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", colorMode === "dark" ? "#141414" : "#ffffff");
+    try {
+      localStorage.setItem("zine-color-mode", colorMode);
+    } catch {
+      /* Private browsing can disable persistence. */
+    }
+    engine.current?.setDarkMode(colorMode === "dark");
+  }, [colorMode, mounts]);
+  useEffect(() => {
     let disposed = false;
-    const started = performance.now();
+    const revealAt = 1500; // performance.now() is relative to the navigation time origin.
     const initial = projects.findIndex(
       (p) => p.id === new URLSearchParams(location.search).get("project"),
     );
@@ -279,13 +272,13 @@ function App() {
       indexRef.current = initial;
       setIndex(initial);
       setSelectedPage(initial);
+      setRequestedPage(initial);
       setSpread({ left: initial, right: initial });
     }
     Promise.all([
       document.fonts.load('400 20px "DM Sans"'),
       document.fonts.load('500 20px "DM Sans"'),
       document.fonts.load('700 69px "DM Sans"'),
-      document.fonts.load('500 40px "Cormorant Garamond"'),
     ])
       .catch(() => [])
       .then(async () => {
@@ -306,7 +299,7 @@ function App() {
                 toCanvas(source, {
                   width: 600,
                   height: 847,
-                  pixelRatio: 1,
+                  pixelRatio: 2,
                   fontEmbedCSS,
                   style: { transform: "none", opacity: "1", clipPath: "none" },
                 }),
@@ -325,6 +318,7 @@ function App() {
               projects,
               onPhase: setPhase,
               onView: showView,
+              onRequest: setRequestedPage,
               onPresented: () => setPresentation("ready"),
               onIndex: select,
               onSpread: (left, right) => setSpread({ left, right }),
@@ -336,10 +330,7 @@ function App() {
           engine.current = book;
           setMounts({ left: book.leftPage, right: book.rightPage });
           await new Promise((resolve) =>
-            setTimeout(
-              resolve,
-              Math.max(0, 450 - (performance.now() - started)),
-            ),
+            setTimeout(resolve, Math.max(0, revealAt - performance.now())),
           );
           if (disposed) return;
           setPresentation("revealing");
@@ -348,6 +339,10 @@ function App() {
           });
         } catch (error) {
           console.info("Showing the book reading layout.", error.message);
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.max(0, revealAt - performance.now())),
+          );
+          if (disposed) return;
           setFallback(true);
           setPresentation("ready");
           setPhase("ready");
@@ -371,9 +366,7 @@ function App() {
         return;
       if (e.key.toLowerCase() === "r" && !e.repeat) {
         e.preventDefault();
-        dialog.current?.close();
-        engine.current?.replay();
-        if (fallback) showView(-1);
+        restart();
         return;
       }
       if (dialog.current?.open) return;
@@ -392,7 +385,7 @@ function App() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [phase, fallback, selectedPage, index, presentation]);
+  }, [phase, fallback, selectedPage, requestedPage, index, presentation]);
   const left = (
     <Metadata
       project={projects[spread.left]}
@@ -418,6 +411,7 @@ function App() {
     <main
       className={`spellbook ${fallback ? "is-fallback" : ""}`}
       data-presentation={presentation}
+      data-color-mode={colorMode}
       aria-busy={presentation === "loading"}
     >
       <div
@@ -447,7 +441,7 @@ function App() {
               cx="49"
               cy="34"
               r="7"
-              stroke="var(--gold)"
+              stroke="currentColor"
               strokeWidth="1.5"
             />
           </svg>
@@ -456,6 +450,62 @@ function App() {
             <i />
           </div>
         </div>
+      </div>
+      <div className="scene-tools" role="group" aria-label="Scene controls">
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => setColorMode(colorMode === "light" ? "dark" : "light")}
+          aria-label={
+            colorMode === "light"
+              ? "Switch to dark mode"
+              : "Switch to light mode"
+          }
+          aria-pressed={colorMode === "dark"}
+          title={colorMode === "light" ? "Dark mode" : "Light mode"}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            {colorMode === "light" ? (
+              <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
+            ) : (
+              <>
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5" />
+              </>
+            )}
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={restart}
+          aria-label="Restart zine"
+          title="Restart (R)"
+          disabled={presentation === "loading"}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 10a8 8 0 1 1 1.8 7.2M4 4v6h6" />
+          </svg>
+        </button>
       </div>
       <p className="sr-only" id="book-instructions">
         Drag the zine to rotate it through 360 degrees in place. Click the right
@@ -486,7 +536,7 @@ function App() {
       <section
         ref={host}
         className="book-stage"
-        aria-label="Interactive RISO zine portfolio"
+        aria-label="Interactive portfolio zine"
         aria-describedby="book-instructions"
         tabIndex={0}
       />
@@ -510,9 +560,7 @@ function App() {
               navigate(selectedPage === -1 ? 0 : projects.length - 1)
             }
             aria-label={
-              selectedPage === -1
-                ? "RISO-printed front cover"
-                : "RISO-printed back cover"
+              selectedPage === -1 ? "Printed front cover" : "Printed back cover"
             }
           />
         )}
@@ -521,7 +569,7 @@ function App() {
           {[-1, ...projects.map((_, i) => i), projects.length].map((page) => (
             <button
               key={page}
-              aria-current={selectedPage === page ? "page" : undefined}
+              aria-current={requestedPage === page ? "page" : undefined}
               onClick={() => navigate(page)}
               disabled={
                 presentation !== "ready" ||
@@ -563,7 +611,6 @@ function App() {
             ? "About Josh Lucas"
             : `${project.label} case study`
         }
-        style={themeStyle(project.theme)}
         onClick={(e) => {
           if (e.target === e.currentTarget) dialog.current.close();
         }}
@@ -588,7 +635,6 @@ function App() {
               />
             </svg>
           </button>
-          <Star className="dialog-star" />
           <p className="eyebrow">
             {project.kind === "about" ? "ABOUT" : `PROJECT ${pad(index)}`}
             {project.sample ? " / PLACEHOLDER" : ""}

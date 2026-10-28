@@ -1,9 +1,9 @@
-/** A portal made of actual monospace glyphs, printed into the book's page texture. */
+/** A full-bleed vortex of actual printed monospace glyphs. */
 export class AsciiPortal {
   readonly canvas = document.createElement("canvas");
   private ctx: CanvasRenderingContext2D;
   private last = -1;
-  constructor(private colors: readonly string[] = ["#2357a5", "#f0518c"]) {
+  constructor(private colors: readonly string[] = ["#171717", "#606060"]) {
     this.canvas.width = 768;
     this.canvas.height = 1056;
     this.ctx = this.canvas.getContext("2d")!;
@@ -13,83 +13,39 @@ export class AsciiPortal {
     const frame = Math.floor(time * 12);
     if (frame === this.last) return false;
     this.last = frame;
-    const ctx = this.ctx;
-    const ink = this.colors[0];
+    const ctx = this.ctx,
+      t = frame / 12;
     ctx.clearRect(0, 0, 768, 1056);
     ctx.font = 'bold 17px "Courier New",monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const cols = 48,
-      rows = 66,
-      cw = 16,
-      ch = 16,
-      t = frame / 12;
-    for (let row = 0; row < rows; row++)
-      for (let col = 0; col < cols; col++) {
-        const x = (col + 0.5 - cols / 2) / (cols * 0.43),
-          y = (rows * 0.51 - row - 0.5) / (rows * 0.47);
-        // Tall arched threshold: the border and the vortex are both glyphs.
-        const arch = y > 0.3 ? Math.hypot(x, y - 0.3) : Math.abs(x);
-        const edge = Math.max(arch - 0.75, -y - 0.94);
-        const stone = edge > -0.055 && edge < 0.1 && y > -0.99;
-        const seed = Math.sin(col * 12.9898 + row * 78.233) * 43758.5453,
-          hash = seed - Math.floor(seed);
-        if (stone) {
-          ctx.fillStyle = ink + "21";
-          ctx.fillRect(col * cw + 1, row * ch + 1, cw - 2, ch - 2);
-          const level = 0.46 + 0.24 * hash;
-          ctx.fillStyle =
-            ink +
-            Math.round(level * 255)
-              .toString(16)
-              .padStart(2, "0");
-          ctx.fillText(
-            "#%H+=:[]"[Math.floor(hash * 8)],
-            (col + 0.5) * cw,
-            (row + 0.5) * ch,
-          );
-          continue;
-        }
-        if (edge > -0.04 || y < -0.91) continue;
-        ctx.fillStyle = ink + "2e";
-        ctx.fillRect(col * cw + 1, row * ch + 1, cw - 2, ch - 2);
-        const r = Math.hypot(x * 1.04, (y + 0.03) * 0.74),
-          a = Math.atan2(y * 0.74, x),
-          flow = Math.sin(
-            a * 5 + r * 20 - t * 1.8 + Math.sin(a * 3 - r * 7 + t * 0.6) * 1.7,
-          ),
-          ring = Math.exp(-(((r - 0.52) * 3.3) ** 2)),
-          core = Math.min(1, r * 2.3);
-        const intensity = Math.max(
-          0,
-          (0.22 + Math.pow((flow + 1) / 2, 2) * 1.2) * ring * core,
+    for (let row = 0; row < 66; row++)
+      for (let col = 0; col < 48; col++) {
+        const x = (col + 0.5 - 24) / 24,
+          y = (row + 0.5 - 33) / 33;
+        const r = Math.hypot(x, y * 1.04),
+          a = Math.atan2(y, x);
+        const wave = Math.sin(
+          a * 5 - r * 18 + t * 1.5 + Math.sin(a * 3 + r * 8 - t * 0.5),
         );
-        if (intensity < 0.055) {
-          if (hash > 0.38) continue;
-          ctx.fillStyle = ink + "40";
-          ctx.fillText(".", (col + 0.5) * cw, (row + 0.5) * ch);
-          continue;
-        }
+        const intensity = 0.2 + 0.8 * Math.pow((wave + 1) / 2, 1.35);
         const ramp = ".,:;+*xS#@",
-          glyph =
-            ramp[
-              Math.min(ramp.length - 1, Math.floor(intensity * ramp.length))
-            ];
-        const colorIndex =
+          glyph = ramp[Math.min(9, Math.floor(intensity * 10))];
+        const index =
           this.colors.length > 2
             ? Math.floor(
-                ((a + Math.PI + t * 0.1) / (Math.PI * 2)) * this.colors.length +
+                ((a + Math.PI) / (Math.PI * 2) + t * 0.025 + 2) *
                   this.colors.length,
               ) % this.colors.length
-            : flow > 0.12
-              ? 1
-              : 0;
+            : wave > 0.08
+              ? 0
+              : 1;
         ctx.fillStyle =
-          this.colors[colorIndex] +
-          Math.round(Math.min(1, 0.45 + intensity * 0.5) * 255)
+          this.colors[index] +
+          Math.round((0.4 + intensity * 0.6) * 255)
             .toString(16)
             .padStart(2, "0");
-        ctx.fillText(glyph, (col + 0.5) * cw, (row + 0.5) * ch);
+        ctx.fillText(glyph, (col + 0.5) * 16, (row + 0.5) * 16);
       }
     return true;
   }

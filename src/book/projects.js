@@ -9,7 +9,7 @@ export const projects = [
     title: "Hi, I’m\nJosh Lucas.",
     subtitle: "Product designer. Curious by nature.",
     description:
-      "A little space for the person behind the work. This introduction is a placeholder for your story, interests, and what you want to make next.",
+      "Based in San Francisco. Away from the screen: film photography, tennis, and games.",
     role: "",
     year: "",
     team: "",
@@ -38,7 +38,7 @@ export const projects = [
     title: "Stadia",
     subtitle: "Play, without the boundaries.",
     description:
-      "A space for your Stadia case study: the challenge, your contribution, and the decisions behind the experience. Project details are coming soon.",
+      "A placeholder for the challenge, design decisions, and impact behind my work on Stadia.",
     role: "Role to come",
     year: "Year to come",
     team: "Team to come",
@@ -71,7 +71,7 @@ export const projects = [
     title: "AI Mode",
     subtitle: "A new way to explore a question.",
     description:
-      "A space for your AI Mode case study: making room for the research, interactions, and thinking behind the work. Project details are coming soon.",
+      "A placeholder for the research, interactions, and thinking behind my AI Mode work.",
     role: "Role to come",
     year: "Year to come",
     team: "Team to come",

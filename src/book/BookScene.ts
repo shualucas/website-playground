@@ -4,11 +4,12 @@ import {
   CSS3DRenderer,
 } from "three/addons/renderers/CSS3DRenderer.js";
 import { studioEnvironment, surfaceDetail } from "./surfaces";
-import { contactShadow } from "./effects";
+import { contactShadow, softenShadowEdges } from "./effects";
 import { createBinding } from "./binding";
 import { AsciiPortal } from "./ascii";
 import { PagePopups } from "./popups";
 import { projectTheme } from "./themes";
+import { measureTurnEnvelope, fitTurnEnvelope, FRAME_MARGIN } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
 import {
   createLeafGeometry,
@@ -21,7 +22,7 @@ import { TurnScheduler } from "./turn-scheduler";
 import {
   PAGE_WIDTH as W,
   PAGE_HEIGHT as H,
-  risoCoverTexture,
+  coverTexture,
   pageTexture,
   blankPageCanvas,
   applyRisoPrint,
@@ -30,26 +31,10 @@ import {
 } from "./materials";
 
 const INTRO_DURATION = 0.85;
-const SHADOW_DISTANCE = 3;
+// Keep the overhead shadow within the scene and below every rotated leaf.
+const SHADOW_DISTANCE = 1;
 // Centering a partially opened cover adds a small offset to the leaf-local bounds.
 const SCENE_RADIUS = LEAF_RADIUS + 0.22;
-// Shared by the resize fit and rotation fit; no geometry or camera changes on turns.
-const VIEW_ENVELOPE: THREE.Vector3[] = [];
-for (let step = 0; step <= 24; step++) {
-  const p = step / 24,
-    angle = p * Math.PI;
-  for (const offset of [0, (-W / 2) * (1 - p), (W / 2) * p])
-    for (const u of [0, W / 2, W])
-      for (const z of [-H / 2, H / 2])
-        for (const lift of [-0.22, 0.22])
-          VIEW_ENVELOPE.push(
-            new THREE.Vector3(
-              u * Math.cos(angle) + offset,
-              u * Math.sin(angle) + lift,
-              z,
-            ),
-          );
-}
 const clamp = THREE.MathUtils.clamp;
 type Phase =
   | "arriving"
@@ -67,6 +52,7 @@ type Callbacks = {
   onSpread: (left: number, right: number) => void;
   onOpen: () => void;
   onPresented: () => void;
+  onRequest: (page: number) => void;
   onView?: (page: number) => void;
   printPages?: HTMLCanvasElement[];
 };
@@ -94,7 +80,10 @@ export class BookScene {
   private ambientStrength = 1;
   private entered = false;
   private presentationScale = 1;
-  private displayScale = 1.6;
+  private displayScale = 1;
+  private viewEnvelope: THREE.Vector3[] = [];
+  private keyLight!: THREE.DirectionalLight;
+  private floorMaterial!: THREE.ShadowMaterial;
   private rotationFit = 1;
   private fitOrientation = new THREE.Quaternion(0, 0, 0, 0);
   private cameraDistance = 0;
@@ -211,6 +200,11 @@ export class BookScene {
     this.updateArtwork(0, true);
     this.light();
     this.buildLeaves();
+    this.viewEnvelope = measureTurnEnvelope(
+      this.leaves,
+      this.samples,
+      this.popups.restEnvelope(this.rig),
+    );
     this.buildPrinting();
     this.scheduler = new TurnScheduler(this.leaves);
     this.scheduler.snap(0);
@@ -242,9 +236,9 @@ export class BookScene {
     this.schedule();
   }
   private light() {
-    this.scene.add(new THREE.HemisphereLight("#f1eeff", "#4b435f", 1.1));
-    const key = new THREE.DirectionalLight("#fffaff", 2.7);
-    key.position.set(3.5, 12, 6.5);
+    this.scene.add(new THREE.HemisphereLight("#ffffff", "#63635f", 1.05));
+    const key = (this.keyLight = new THREE.DirectionalLight("#fffefa", 2.5));
+    key.position.set(-2, 15, -1);
     key.castShadow = true;
     key.shadow.mapSize.set(
       this.software ? 1024 : 2048,
@@ -262,14 +256,18 @@ export class BookScene {
     key.shadow.normalBias = 0.009;
     key.shadow.bias = -0.0001;
     this.scene.add(key);
-    const fill = new THREE.DirectionalLight("#dbeaff", 0.35);
+    const fill = new THREE.DirectionalLight("#ffffff", 0.18);
     fill.position.set(5, 6, -4);
     this.scene.add(fill);
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(120, 120),
-      new THREE.ShadowMaterial({ opacity: 0.23, depthWrite: false }),
+      (this.floorMaterial = new THREE.ShadowMaterial({
+        opacity: 0.22,
+        depthWrite: false,
+      })),
     );
     floor.rotation.x = -Math.PI / 2;
+    softenShadowEdges(this.floorMaterial);
     floor.position.y = this.groundY;
     floor.receiveShadow = true;
     this.scene.add(floor);
@@ -292,8 +290,8 @@ export class BookScene {
       normalMap: params.normalMap,
       normalScale: params.normalScale,
       side: params.side,
-      shininess: 2,
-      specular: new THREE.Color("#15150f"),
+      shininess: Math.max(2, Math.pow(1 - (params.roughness ?? 1), 2) * 100),
+      specular: new THREE.Color(params.metalness ? "#747474" : "#242424"),
     };
     material.setValues(
       Object.fromEntries(
@@ -303,12 +301,12 @@ export class BookScene {
     return material;
   }
   private buildLeaves() {
-    const front = this.keep(risoCoverTexture()),
-      back = this.keep(risoCoverTexture(true)),
+    const front = this.keep(coverTexture()),
+      back = this.keep(coverTexture(true)),
       detail = surfaceDetail("paper"),
       paper = this.keep(paperTexture());
     Object.values(detail).forEach((map) => this.keep(map));
-    const edge = this.surface({ color: "#e6dec8", roughness: 1 }),
+    const edge = this.surface({ color: "#e6e6e2", roughness: 1 }),
       saddle = this.surface({
         map: paper,
         roughness: 1,
@@ -320,8 +318,8 @@ export class BookScene {
         map,
         roughness: 1,
         normalMap: detail.normal,
-        normalScale: new THREE.Vector2(0.12, 0.12),
-        emissive: new THREE.Color("#f36a9c"),
+        normalScale: new THREE.Vector2(0.035, 0.035),
+        emissive: new THREE.Color("#a8a8a2"),
         emissiveIntensity: 0,
       });
     const inside = this.callbacks.projects.map((project, i) =>
@@ -395,15 +393,19 @@ export class BookScene {
       const ctx = this.rightCanvases[i].getContext("2d")!;
       ctx.clearRect(0, 0, 900, 1260);
       ctx.drawImage(this.paperCanvas, 0, 0);
-      // Keep the printed portal legible as a backdrop for the raised objects.
-      ctx.globalAlpha = 0.68;
-      ctx.drawImage(portal.canvas, 36, 38, 828, 1178);
-      ctx.globalAlpha = 1;
+      ctx.drawImage(portal.canvas, 0, 0, 900, 1260);
       applyRisoPrint(ctx, 900, 1260);
       this.rightTextures[i].needsUpdate = true;
     });
   }
+  setDarkMode(dark: boolean) {
+    this.host.dataset.colorMode = dark ? "dark" : "light";
+    this.floorMaterial.opacity = dark ? 0.45 : 0.22;
+    this.renderer.shadowMap.needsUpdate = true;
+    this.render();
+  }
   appear = () => {
+    this.host.dataset.firstRevealAt ??= performance.now().toFixed(1);
     this.entered = true;
     this.elapsed = 0;
     this.intro = !this.motion.matches;
@@ -466,11 +468,12 @@ export class BookScene {
     if (this.cameraDistance && !this.fitOrientation.equals(this.orientation)) {
       this.fitOrientation.copy(this.orientation);
       const vertical =
-          Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 0.91,
+          Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
+          FRAME_MARGIN,
         horizontal = vertical * this.camera.aspect,
         c = this.focusInView;
       let fit = 1;
-      for (const point of VIEW_ENVELOPE) {
+      for (const point of this.viewEnvelope) {
         const p = this.scratch
           .copy(point)
           .applyQuaternion(this.orientation)
@@ -542,6 +545,7 @@ export class BookScene {
     this.intro = false;
     this.elapsed = INTRO_DURATION;
     this.scheduler.request(clamp(page + 1, 0, this.leaves.length));
+    this.callbacks.onRequest(this.scheduler.requested - 1);
     if (this.motion.matches) {
       this.scheduler.snap(this.scheduler.requested);
       this.popups.step(
@@ -606,6 +610,7 @@ export class BookScene {
     this.elapsed = 0;
     this.portalTime = 0;
     this.introTarget = 0;
+    this.callbacks.onRequest(-1);
     this.ambientTime = 0;
     this.scheduler.snap(0);
     this.popups.reset();
@@ -629,6 +634,7 @@ export class BookScene {
     if (this.motion.matches) {
       this.updateHighlight(1);
       this.render();
+      this.report();
     } else this.schedule();
   }
   private updateHighlight(dt: number) {
@@ -775,6 +781,10 @@ export class BookScene {
     if (!this.grip) this.setHover(null);
   };
   private onFocus = (event: FocusEvent) => {
+    if (event.target === this.host) {
+      this.setHover(Math.min(this.scheduler.committed, this.leaves.length - 1));
+      return;
+    }
     const direction = (event.target as HTMLElement).closest<HTMLElement>(
         "[data-turn-page]",
       )?.dataset.turnPage,
@@ -852,29 +862,22 @@ export class BookScene {
           Math.min(1, this.camera.aspect),
       ),
       legacyDistance = (SCENE_RADIUS / Math.sin(half)) * 1.02;
-    const focus = this.cameraFocus,
-      direction = new THREE.Vector3(0.22, 0.75, 0.69).normalize();
-    this.camera.up.set(0.04, 1, 0);
-    this.camera.position.copy(focus).add(direction);
-    this.camera.lookAt(focus);
-    const inverse = this.camera.quaternion.clone().invert(),
-      point = new THREE.Vector3();
-    const vertical = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)),
-      horizontal = vertical * this.camera.aspect;
-    let distance = legacyDistance / (rect.width > 760 ? 1.6 : 1.05);
-    // Fit a complete hinge sweep, including both cover-centering offsets and props.
-    // This runs on resize, never during navigation, so turning cannot pump the zoom.
-    for (const candidate of VIEW_ENVELOPE) {
-      point.copy(candidate).sub(focus).applyQuaternion(inverse);
-      distance = Math.max(
-        distance,
-        point.z + Math.abs(point.x) / (horizontal * 0.91),
-        point.z + Math.abs(point.y) / (vertical * 0.91),
-      );
-    }
+    const direction = new THREE.Vector3(0.18, 0.9, 0.67).normalize();
+    this.camera.up.set(0.035, 1, 0);
+    this.camera.position.copy(direction);
+    this.camera.lookAt(0, 0, 0);
+    const { distance, focus } = fitTurnEnvelope(
+      this.viewEnvelope,
+      this.camera.quaternion,
+      this.camera.fov,
+      this.camera.aspect,
+    );
+    this.cameraFocus.copy(focus);
+    const inverse = this.camera.quaternion.clone().invert();
     this.displayScale = legacyDistance / distance;
     this.camera.position.copy(focus).addScaledVector(direction, distance);
     this.camera.lookAt(focus);
+    this.camera.far = Math.max(100, distance + 80);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
     this.cameraDistance = distance;
@@ -1099,6 +1102,10 @@ export class BookScene {
     data.geometryMode = "gpu-skinning";
     data.bindingConnected = "true";
     data.framingRadius = String(SCENE_RADIUS);
+    data.framingVertices = String(this.viewEnvelope.length);
+    data.lightPosition = JSON.stringify(this.keyLight.position.toArray());
+    data.printResolution = "1200x1694";
+    data.portalCoverage = "full-page";
     data.displayScale = String(this.displayScale);
     data.rotationFit = String(this.rotationFit);
     data.arrivalScale = this.presentationScale.toFixed(4);
@@ -1169,7 +1176,7 @@ export class BookScene {
     const geometries = new Set<THREE.BufferGeometry>(),
       materials = new Set<THREE.Material>();
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
         geometries.add(object.geometry);
         (Array.isArray(object.material)
           ? object.material

@@ -143,7 +143,7 @@ export class SkinnedLeaf {
   step(delta: number, flex: number, speed = 1) {
     if (this.settled && Math.abs(flex - this.lastFlex) < 0.00005) return false;
     const dt = Math.min(Math.max(delta, 0), 0.25) * speed;
-    damp(this.hinge, 0, this.target, 5.3, dt);
+    damp(this.hinge, 0, this.target, this.cover ? 7.2 : 5.8, dt);
     this.shape(dt, flex, false);
     if (
       Math.abs(this.target - this.progress) < 0.0008 &&
