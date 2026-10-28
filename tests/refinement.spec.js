@@ -222,7 +222,7 @@ test("a video finishing its load after reduced motion is enabled stays paused", 
   await page.evaluate(() => window.pendingPreview.dispose());
 });
 
-test("rotation preserves miniatures and phone glow, pills stay opaque, and queued navigation waits for release", async ({
+test("rotation preserves miniatures and phone visibility, pills stay opaque, and queued navigation waits for release", async ({
   page,
 }) => {
   test.setTimeout(150000);
@@ -294,8 +294,8 @@ test("rotation preserves miniatures and phone glow, pills stay opaque, and queue
   await page.mouse.move(p.x - 55, p.y + 35, { steps: 5 });
   await page.waitForTimeout(350);
   expect(
-    await page.evaluate(() => window.activeBook.phones.phones[0].glow.opacity),
-  ).toBeGreaterThan(0.3);
+    await page.evaluate(() => window.activeBook.phones.phones[0].root.visible),
+  ).toBe(true);
   expect(
     await page.evaluate(() =>
       window.activeBook.phones.phones[0].meshes

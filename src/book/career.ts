@@ -193,12 +193,12 @@ export function careerMiniatures(
   asset.blizzard.forEach((part) => add(blizzard, part, "#087cdb"));
   const bridge = new THREE.Group();
   bridge.name = "Golden Gate Bridge";
-  box(bridge, 1.65, 0.09, 0.32, "#e95723", 0, 0.4, 0);
+  box(bridge, 1.65, 0.09, 0.32, "#cf312c", 0, 0.4, 0);
   for (const x of [-0.46, 0.46]) {
     for (const z of [-0.12, 0.12])
-      box(bridge, 0.065, 1.3, 0.065, "#e7481b", x, 0.66, z);
+      box(bridge, 0.065, 1.3, 0.065, "#cb292b", x, 0.66, z);
     for (const y of [0.68, 1, 1.28])
-      box(bridge, 0.09, 0.04, 0.3, "#f5703d", x, y, 0);
+      box(bridge, 0.09, 0.04, 0.3, "#e23b37", x, y, 0);
   }
   for (const z of [-0.15, 0.15]) {
     const curve = new THREE.CatmullRomCurve3([
@@ -208,14 +208,14 @@ export function careerMiniatures(
       new THREE.Vector3(0.46, 1.34, z),
       new THREE.Vector3(0.81, 0.43, z),
     ]);
-    add(bridge, new THREE.TubeGeometry(curve, 48, 0.016, 6, false), "#f26532");
+    add(bridge, new THREE.TubeGeometry(curve, 48, 0.016, 6, false), "#dd302e");
     for (let i = 1; i < 16; i++) {
       const p = curve.getPoint(i / 16);
       if (p.y < 0.45) continue;
       add(
         bridge,
         new THREE.CylinderGeometry(0.006, 0.006, p.y - 0.43, 5),
-        "#f56c34",
+        "#e03a34",
         p.x,
         (p.y + 0.43) / 2,
         z,

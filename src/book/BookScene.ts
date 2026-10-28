@@ -53,6 +53,10 @@ type Callbacks = {
   onIndex: (index: number) => void;
   onSpread: (left: number, right: number) => void;
   onOpen: () => void;
+  onMiniatureHover?: (
+    item: { id: string; x: number; y: number } | null,
+  ) => void;
+  onMiniatureOpen?: (id: string, x: number, y: number) => void;
   onPresented: () => void;
   onRequest: (page: number) => void;
   onTurn?: (forward: boolean, cover: boolean) => void;
@@ -144,6 +148,7 @@ export class BookScene {
   private pendingPage: number | null = null;
   private desktopScale = 1;
   private dive: Dive | null = null;
+  private overlayOpen = false;
   private hovered: number | null = null;
   private software = false;
   private visible = true;
@@ -600,6 +605,17 @@ export class BookScene {
     this.setPrinting(boundary > 0 && boundary < this.leaves.length);
     this.report();
   }
+  setOverlayOpen(open: boolean) {
+    this.overlayOpen = open;
+    this.callbacks.onMiniatureHover?.(null);
+    if (open) {
+      cancelAnimationFrame(this.raf);
+      this.raf = 0;
+      this.releaseCapture();
+    }
+    this.last = 0;
+    if (!open) this.schedule();
+  }
   enterProject(index: number): Promise<void> {
     if (this.dive) {
       // Browser Forward can reverse an in-flight return without losing the saved pose.
@@ -690,6 +706,7 @@ export class BookScene {
     this.schedule();
   }
   goTo(page: number) {
+    this.callbacks.onMiniatureHover?.(null);
     if (this.dive) return;
     if (this.grip?.moved) {
       this.pendingPage = clamp(page, -1, this.callbacks.projects.length);
@@ -776,7 +793,7 @@ export class BookScene {
     this.callbacks.onRequest(-1);
     this.ambientTime = 0;
     this.scheduler.snap(0);
-    this.updatePhones();
+    this.phones.step(0, -1, true, false);
     this.popups.reset();
     this.updateArtwork(0, true);
     this.setHover(null);
@@ -852,7 +869,14 @@ export class BookScene {
     const grip = this.grip;
     if (!grip) {
       const hit = this.bookHit(event);
-      this.setHover(hit ? Number(hit.object.userData.leaf) : null);
+      const id = hit?.object.userData.miniature;
+      this.callbacks.onMiniatureHover?.(
+        id && !this.scheduler.moving
+          ? { id, x: event.clientX, y: event.clientY }
+          : null,
+      );
+      this.setHover(id ? null : hit ? Number(hit.object.userData.leaf) : null);
+      if (id) this.host.style.cursor = "pointer";
       return;
     }
     if (event.pointerId !== grip.id) return;
@@ -901,6 +925,7 @@ export class BookScene {
     grip.lastY = event.clientY;
   };
   private onDown = (event: PointerEvent) => {
+    this.callbacks.onMiniatureHover?.(null);
     this.suppressClick = false;
     if (
       this.dive ||
@@ -958,6 +983,7 @@ export class BookScene {
     this.host.style.cursor = "default";
   }
   private onLeave = () => {
+    this.callbacks.onMiniatureHover?.(null);
     if (!this.grip) this.setHover(null);
   };
   private onFocus = (event: FocusEvent) => {
@@ -991,6 +1017,14 @@ export class BookScene {
       boundary = this.scheduler.committed;
     if (!hit) return;
     const id = Number(hit.object.userData.leaf);
+    if (hit.object.userData.miniature && !this.scheduler.moving) {
+      this.callbacks.onMiniatureOpen?.(
+        hit.object.userData.miniature,
+        event.clientX,
+        event.clientY,
+      );
+      return;
+    }
     if (
       hit.object.userData.phone &&
       id === boundary &&
@@ -1081,7 +1115,8 @@ export class BookScene {
   };
   private frame = (now: number) => {
     this.raf = 0;
-    if (this.disposed || !this.visible || document.hidden) return;
+    if (this.disposed || this.overlayOpen || !this.visible || document.hidden)
+      return;
     if (this.software && this.last && now - this.last < 100) {
       this.schedule();
       return;
@@ -1132,7 +1167,7 @@ export class BookScene {
       this.rotationImpulse,
     );
     const changed =
-      this.popups.folded || !this.scheduler.moving
+      (this.popups.folded && this.phones.folded) || !this.scheduler.moving
         ? this.scheduler.step(dt, this.paperFlex)
         : false;
     if (!this.motion.matches) {
@@ -1367,6 +1402,7 @@ export class BookScene {
   private schedule() {
     if (
       !this.entered ||
+      this.overlayOpen ||
       this.raf ||
       this.disposed ||
       !this.visible ||

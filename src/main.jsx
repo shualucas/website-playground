@@ -4,6 +4,11 @@ import { createPortal } from "react-dom";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
+import "@fontsource/cormorant-garamond/latin-400-italic.css";
+import { prepareTitleFont } from "./content/typography";
+import { miniatureDetails } from "./content/miniatures";
+import { FilmGallery } from "./FilmGallery";
+import { MiniatureTooltip } from "./MiniatureTooltip";
 import { projects } from "./book/projects";
 import { AsciiPortal } from "./book/ascii";
 import { projectTheme } from "./book/themes";
@@ -174,6 +179,7 @@ function App() {
     sound = useRef(null),
     viewRef = useRef("book"),
     routeToken = useRef(0),
+    galleryOpenRef = useRef(false),
     indexRef = useRef(0),
     printSources = useRef([]),
     navigation = useRef(null),
@@ -206,6 +212,8 @@ function App() {
     [loadProgress, setLoadProgress] = useState(0.1),
     [view, setView] = useState("book"),
     [reading, setReading] = useState(null),
+    [galleryOpen, setGalleryOpen] = useState(false),
+    [tooltip, setTooltip] = useState(null),
     [route, setRoute] = useState(() => {
       const url = new URL(location.href);
       const index = projects.findIndex(
@@ -219,6 +227,36 @@ function App() {
     viewRef.current = value;
     setView(value);
   };
+  const hoverMiniature = (item) =>
+    setTooltip((previous) => (previous?.pinned ? previous : item));
+  const openMiniature = (id, x = innerWidth / 2, y = innerHeight - 100) => {
+    if (id === "camera") {
+      setTooltip(null);
+      galleryOpenRef.current = true;
+      setGalleryOpen(true);
+      engine.current?.setOverlayOpen(true);
+    } else setTooltip({ id, x, y, pinned: true });
+  };
+  const closeGallery = () => {
+    galleryOpenRef.current = false;
+    setGalleryOpen(false);
+    engine.current?.setOverlayOpen(false);
+    requestAnimationFrame(() =>
+      document
+        .querySelector('[data-miniature-control="camera"]')
+        ?.focus({ preventScroll: true }),
+    );
+  };
+  useEffect(() => {
+    const dismiss = (event) => {
+      if (!event.target.closest(".miniature-tooltip")) setTooltip(null);
+    };
+    window.addEventListener("pointerdown", dismiss);
+    return () => window.removeEventListener("pointerdown", dismiss);
+  }, []);
+  useEffect(() => {
+    setTooltip(null);
+  }, [requestedPage, view]);
   const finishLoader = () => {
     loaderGate.current.done = true;
     loaderGate.current.resolve?.();
@@ -395,6 +433,7 @@ function App() {
       setSpread({ left: initial, right: initial });
     }
     Promise.all([
+      prepareTitleFont(),
       document.fonts.load('400 20px "DM Sans"'),
       document.fonts.load('500 20px "DM Sans"'),
       document.fonts.load('700 69px "DM Sans"'),
@@ -460,6 +499,8 @@ function App() {
               onIndex: select,
               onSpread: (left, right) => setSpread({ left, right }),
               onOpen: openRead,
+              onMiniatureHover: hoverMiniature,
+              onMiniatureOpen: openMiniature,
               printPages,
               google,
             },
@@ -506,7 +547,11 @@ function App() {
   }, []);
   useEffect(() => {
     const key = (e) => {
-      if (presentation === "loading") return;
+      if (presentation === "loading" || galleryOpenRef.current) return;
+      if (e.key === "Escape" && tooltip) {
+        setTooltip(null);
+        return;
+      }
       if (
         e.ctrlKey ||
         e.metaKey ||
@@ -550,6 +595,7 @@ function App() {
     index,
     presentation,
     route,
+    tooltip,
   ]);
   const left = (
     <Metadata
@@ -786,6 +832,38 @@ function App() {
               ? "Back cover"
               : project.label}
       </span>
+      {view === "book" && !galleryOpen && (
+        <div
+          className="miniature-access"
+          role="group"
+          aria-label="Miniature descriptions"
+        >
+          {Object.entries(miniatureDetails)
+            .filter(
+              ([, detail]) => detail.spread === projects[selectedPage]?.kind,
+            )
+            .map(([id, detail]) => (
+              <button
+                key={id}
+                data-miniature-control={id}
+                aria-describedby={
+                  tooltip?.id === id ? "miniature-tooltip" : undefined
+                }
+                onFocus={() =>
+                  setTooltip({ id, x: innerWidth / 2, y: innerHeight - 100 })
+                }
+                onBlur={() => setTooltip(null)}
+                onClick={() => openMiniature(id)}
+              >
+                {detail.title}
+              </button>
+            ))}
+        </div>
+      )}
+      {view === "book" && !galleryOpen && (
+        <MiniatureTooltip item={tooltip} onClose={() => setTooltip(null)} />
+      )}
+      {galleryOpen && <FilmGallery onClose={closeGallery} />}
       {reading !== null && (
         <CaseStudy
           project={projects[reading]}

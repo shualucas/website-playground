@@ -4,7 +4,7 @@ This portfolio zine is an independent Three.js implementation. Earlier ASCII exp
 
 - **Three.js** provides the WebGL renderer, geometry, lighting, materials, and CSS3DRenderer. MIT license, copyright three.js authors. Full notice: `public/licenses/three-MIT.txt`.
 - **DM Sans** is bundled locally through `@fontsource/dm-sans`. SIL Open Font License: `public/licenses/DM-Sans-OFL.txt`.
-- **Cormorant Garamond** remains in the dependency manifest from earlier editions but is not loaded by the current presentation. Its retained SIL Open Font License is `public/licenses/Cormorant-Garamond-OFL.txt`.
+- **Cormorant Garamond Regular Italic** is bundled as the current title-font fallback while the licensed Quincy CF Regular Italic file is unavailable. Its SIL Open Font License is `public/licenses/Cormorant-Garamond-OFL.txt`.
 - **html-to-image** captures the local React page layout and embedded fonts into a shared print texture. MIT license: `public/licenses/html-to-image-MIT.txt`.
 - **React**, **React DOM**, **Vite**, **TypeScript**, and **Playwright** retain their licenses in their distributed packages.
 

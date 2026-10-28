@@ -3,7 +3,6 @@ import { parseGIF, decompressFrames } from "gifuct-js";
 import { SkinnedLeaf, LEAF_SEGMENTS } from "./leaf";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { PAGE_WIDTH as W, PAGE_HEIGHT as H, type Project } from "./materials";
-import { projectTheme } from "./themes";
 
 const PHONE_LIFT = 0.18,
   PHONE_THICKNESS = 0.14,
@@ -21,8 +20,8 @@ type Phone = {
   meshes: THREE.Mesh[];
   root: THREE.Group;
   screenMesh: THREE.Mesh;
-  glows: THREE.MeshBasicMaterial[];
-  glow: THREE.MeshBasicMaterial;
+  amount: number;
+  time: number;
   screen: THREE.MeshBasicMaterial;
   poster: THREE.CanvasTexture;
   video?: HTMLVideoElement;
@@ -52,7 +51,6 @@ export class PhonePreviews {
       const leaf = leaves[index + 1],
         root = new THREE.Group(),
         meshes: THREE.Mesh[] = [],
-        colors = projectTheme(project.theme).colors,
         joint = Math.floor(0.51 * LEAF_SEGMENTS);
       root.position.set(W * 0.51 - (joint * W) / LEAF_SEGMENTS, PHONE_LIFT, 0);
       root.name = `${project.label} rigid Pro handset`;
@@ -104,128 +102,24 @@ export class PhonePreviews {
         screen,
         "phone screen",
       );
-      const inkCanvas = document.createElement("canvas");
-      inkCanvas.width = inkCanvas.height = 128;
-      const ctx = inkCanvas.getContext("2d")!,
-        gradient = ctx.createLinearGradient(0, 128, 128, 0);
-      colors.forEach((color, i) =>
-        gradient.addColorStop(i / (colors.length - 1), color),
+      const edgeMap = new THREE.DataTexture(
+        new Uint8Array([255, 255, 255, 255]),
+        1,
+        1,
       );
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 128, 128);
-      const ink = new THREE.CanvasTexture(inkCanvas);
-      ink.colorSpace = THREE.SRGBColorSpace;
-      this.textures.add(ink);
-      const rim = new THREE.MeshBasicMaterial({ map: ink, toneMapped: false });
-      // 0.012-world-unit outline is approximately one CSS pixel in the default view.
+      edgeMap.needsUpdate = true;
+      this.textures.add(edgeMap);
+      const rim = new THREE.MeshBasicMaterial({
+        map: edgeMap,
+        color: "#27292b",
+        toneMapped: false,
+      });
       rounded(rim, 1.894, 3.574, 0.172);
       add(
         plane(1.894, 3.574, PHONE_SCREEN_Y - 0.002),
         rim,
         "one-pixel rounded outline",
       );
-      const halo = new THREE.MeshBasicMaterial({
-        map: ink,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        toneMapped: false,
-        side: THREE.DoubleSide,
-      });
-      halo.onBeforeCompile = (shader) => {
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <clipping_planes_fragment>",
-          `#include <clipping_planes_fragment>\nvec2 q=abs(vMapUv-.5)*vec2(2.75,4.43)-vec2(.775,1.615);
-          float d=length(max(q,vec2(0.)))+min(max(q.x,q.y),0.)-.16;
-          if(d<0.)discard;diffuseColor.a*=exp(-d*d/0.035)*.68;`,
-        );
-      };
-      halo.customProgramCacheKey = () => "rounded-phone-halo-v1";
-      add(
-        plane(2.75, 4.43, PHONE_SCREEN_Y - 0.008),
-        halo,
-        "rounded colored halo",
-      );
-      // Continuous rounded perimeter with a vertical feathered veil, rather than four strips.
-      const positions: number[] = [],
-        uvs: number[] = [],
-        rise: number[] = [],
-        indices: number[] = [];
-      const contour: THREE.Vector2[] = [];
-      for (let corner = 0; corner < 4; corner++) {
-        const angle = -Math.PI / 2 + (corner * Math.PI) / 2,
-          cx = corner === 0 || corner === 1 ? 0.775 : -0.775,
-          cz =
-            corner < 2
-              ? corner === 0
-                ? -1.615
-                : 1.615
-              : corner === 2
-                ? 1.615
-                : -1.615;
-        for (let j = 0; j <= 10; j++) {
-          const theta = angle + ((j / 10) * Math.PI) / 2;
-          contour.push(
-            new THREE.Vector2(
-              cx + Math.cos(theta) * 0.172,
-              cz + Math.sin(theta) * 0.172,
-            ),
-          );
-        }
-      }
-      for (let i = 0; i <= contour.length; i++) {
-        const point = contour[i % contour.length];
-        for (let k = 0; k <= 4; k++) {
-          const h = k / 4,
-            x = point.x * (1 + h * 0.08),
-            z = point.y * (1 + h * 0.04);
-          positions.push(x, PHONE_SCREEN_Y + 0.001 + h * 0.42, z);
-          uvs.push(x / 1.894 + 0.5, 0.5 - z / 3.574);
-          rise.push(h);
-        }
-        if (i < contour.length)
-          for (let k = 0; k < 4; k++) {
-            const a = i * 5 + k,
-              b = a + 5;
-            indices.push(a, b, a + 1, b, b + 1, a + 1);
-          }
-      }
-      const veilGeometry = new THREE.BufferGeometry();
-      veilGeometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(positions, 3),
-      );
-      veilGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-      veilGeometry.setAttribute(
-        "aRise",
-        new THREE.Float32BufferAttribute(rise, 1),
-      );
-      veilGeometry.setIndex(indices);
-      veilGeometry.computeVertexNormals();
-      const glow = new THREE.MeshBasicMaterial({
-        map: ink,
-        transparent: true,
-        opacity: 0,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        toneMapped: false,
-      });
-      glow.onBeforeCompile = (shader) => {
-        shader.vertexShader =
-          "attribute float aRise; varying float vRise;\n" + shader.vertexShader;
-        shader.vertexShader = shader.vertexShader.replace(
-          "#include <begin_vertex>",
-          "#include <begin_vertex>\nvRise=aRise;",
-        );
-        shader.fragmentShader =
-          "varying float vRise;\n" + shader.fragmentShader;
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <clipping_planes_fragment>",
-          "#include <clipping_planes_fragment>\ndiffuseColor.a*=pow(1.-vRise,2.)*.8;",
-        );
-      };
-      glow.customProgramCacheKey = () => "rounded-phone-spell-v1";
-      add(veilGeometry, glow, "continuous rising phone glow");
       const metal = new THREE.MeshStandardMaterial({
         color: "#747779",
         metalness: 0.78,
@@ -299,15 +193,15 @@ export class PhonePreviews {
         "dynamic island",
       );
       island.position.set(0, PHONE_SCREEN_Y + 0.006, -1.59);
-      this.materials.push(screen, rim, halo, glow, metal, glass);
+      this.materials.push(screen, rim, metal, glass);
       const phone: Phone = {
         index,
         project,
         root,
         screenMesh,
         meshes,
-        glow,
-        glows: [halo, glow],
+        amount: 0,
+        time: 0,
         screen,
         poster,
         frame: 0,
@@ -466,13 +360,16 @@ export class PhonePreviews {
       const active = spread === p.index && visible && !document.hidden;
       const changed = active !== p.active;
       p.active = active;
-      p.root.visible = active;
-      const opacity = reduced
-        ? active
-          ? 0.96
-          : 0
-        : THREE.MathUtils.damp(p.glow.opacity, active ? 0.96 : 0, 14, dt);
-      p.glows.forEach((material) => (material.opacity = opacity));
+      p.time = active ? p.time + dt : 0;
+      if (reduced) p.amount = active ? 1 : 0;
+      else if (!active) p.amount = Math.max(0, p.amount - dt / 0.18);
+      else if (p.time > 0.08) p.amount = Math.min(1, p.amount + dt / 0.55);
+      const q = p.amount - 1,
+        bounce = 1 + 2.6 * q * q * q + 1.6 * q * q;
+      p.root.visible = p.amount > 0;
+      p.root.scale.setScalar(Math.max(0.001, 0.35 + 0.65 * bounce));
+      p.root.position.y = PHONE_LIFT + 0.1 * Math.sin(Math.PI * p.amount);
+      p.root.rotation.x = -0.22 * Math.pow(1 - p.amount, 3);
       if (active && !reduced) void this.load(p);
       if (p.video) {
         if (active && !reduced && changed) void p.video.play().catch(() => {});
@@ -495,14 +392,11 @@ export class PhonePreviews {
       p.active = false;
     });
   }
+  get folded() {
+    return this.phones.every((p) => p.amount === 0);
+  }
   get hitMeshes() {
-    return this.phones.flatMap((p) =>
-      p.active
-        ? p.meshes.filter(
-            (m) => m.material !== p.glows[0] && m.material !== p.glows[1],
-          )
-        : [],
-    );
+    return this.phones.flatMap((p) => (p.root.visible ? p.meshes : []));
   }
   get count() {
     return this.phones.length;

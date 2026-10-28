@@ -46,6 +46,7 @@ export class PagePopups {
         model: THREE.Group,
         color: string,
         yaw = 0,
+        id = "",
       ) => {
         const anchor = new THREE.Group(),
           fold = new THREE.Group(),
@@ -64,6 +65,9 @@ export class PagePopups {
         // Model fronts start upright in XY. Lay them back toward the page.
         content.rotation.x = -Math.PI * 0.31;
         content.add(model);
+        model.traverse((object) => {
+          if (object instanceof THREE.Mesh) object.userData.miniature = id;
+        });
         model.scale.multiplyScalar(2 / 3);
         // Fit the tilted model above the paper once, leaving room for its ambient bob.
         content.updateWorldMatrix(true, true);
@@ -96,16 +100,16 @@ export class PagePopups {
       };
       if (project.kind === "about") {
         const models = careerMiniatures(google, surface, register);
-        item(0.34, 0.37, models.google, "#779aef", -0.12);
-        item(0.78, 0.39, models.blizzard, "#149aff", 0.15);
-        item(0.51, 0.78, models.bridge, "#e88961", -0.1);
+        item(0.34, 0.37, models.google, "#779aef", -0.12, "google");
+        item(0.78, 0.39, models.blizzard, "#149aff", 0.15, "blizzard");
+        item(0.51, 0.78, models.bridge, "#df4a4a", -0.1, "bridge");
       } else if (project.kind === "after-hours") {
         const models = aboutMiniatures(surface, register);
-        item(0.35, 0.37, models.camera, "#808080", -0.16);
+        item(0.35, 0.37, models.camera, "#808080", -0.16, "camera");
         models.racket.rotation.z = -0.12;
-        item(0.79, 0.4, models.racket, "#b6ec35", 0.12);
+        item(0.79, 0.4, models.racket, "#b6ec35", 0.12, "racket");
         models.controller.rotation.x = -0.14;
-        item(0.49, 0.77, models.controller, "#ad86dc", 0.14);
+        item(0.49, 0.77, models.controller, "#ad86dc", 0.14, "controller");
       }
       this.spreads.push(spread);
     });

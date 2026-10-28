@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { titleFontFamily } from "../content/typography";
 
 export const PAGE_WIDTH = 3.35,
   PAGE_HEIGHT = 4.7,
@@ -112,28 +113,6 @@ export function coverTexture(back = false, dark = false) {
     ctx.stroke();
   }
   ctx.restore();
-  ctx.fillStyle = inverse ? "#fafaf8" : "#161616";
-  ctx.font = `500 24px ${fonts.sans}`;
-  ctx.fillText("JOSH LUCAS", 70, 94);
-  ctx.textAlign = "right";
-  ctx.fillText(back ? "COLOPHON" : "EDITION 01", 830, 94);
-  ctx.textAlign = "left";
-  ctx.font = `500 31px ${fonts.sans}`;
-  ctx.fillText(
-    back ? "Always a work in progress." : "Selected things.",
-    70,
-    1110,
-  );
-  ctx.font = `400 18px ${fonts.sans}`;
-  ctx.fillText(
-    back
-      ? "SAN FRANCISCO, CALIFORNIA"
-      : "ABOUT  /  SELECTED WORK  /  AFTER-HOURS",
-    70,
-    1175,
-  );
-  ctx.textAlign = "right";
-  ctx.fillText("01—04", 830, 1175);
   applyRisoPrint(ctx, 900, 1260);
   return texture(element);
 }
@@ -223,7 +202,7 @@ export function pageTexture(
     184,
   );
   ctx.fillStyle = dark ? "#eeeeeb" : "#111111";
-  ctx.font = `700 89px ${fonts.sans}`;
+  ctx.font = `italic 400 89px ${titleFontFamily}`;
   let y = 282;
   for (const part of project.title.split("\n")) {
     ctx.fillText(part, 76, y);

@@ -713,13 +713,12 @@ svg {
   position: relative;
   width: min(260px, 100%);
   aspect-ratio: 1.87 / 3.55;
-  border: 3px solid var(--project-color);
+  border: 1px solid #27292b;
   border-radius: 20px;
   overflow: hidden;
   background: #000;
   color: white;
-  box-shadow: 0 -8px 35px
-    color-mix(in srgb, var(--project-color) 30%, transparent);
+  box-shadow: 0 12px 24px #0002;
   margin: 30px auto;
 }
 .phone-placeholder video,
@@ -1090,4 +1089,198 @@ svg {
   .card-dealt {
     display: none;
   }
+}
+
+/* Quincy CF slots in when its licensed file is supplied; bundled italic serif fallback. */
+h1,
+h2,
+h3,
+.metadata-content h1,
+.case-study-hero h1,
+.case-study .case-chapter h2 {
+  font-family: "Quincy CF", "Cormorant Garamond", Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.025em;
+}
+.miniature-tooltip {
+  position: fixed;
+  z-index: 15;
+  padding: 18px 20px;
+  background: var(--scene-bg);
+  color: var(--ui-text);
+  border: 1px solid color-mix(in srgb, var(--ui-text) 15%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 10px 35px #00000016;
+  pointer-events: none;
+}
+.miniature-tooltip.is-pinned {
+  pointer-events: auto;
+}
+.miniature-tooltip h3 {
+  font-size: 26px;
+  margin: 0 18px 8px 0;
+  line-height: 1.1;
+}
+.miniature-tooltip p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--ui-muted);
+}
+.miniature-tooltip > span {
+  display: block;
+  font-size: 11px;
+  margin-top: 12px;
+}
+.miniature-tooltip > button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+}
+.miniature-access {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--scene-bg);
+  border-radius: 12px;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.miniature-access:focus-within {
+  clip-path: none;
+  width: max-content;
+  height: auto;
+  overflow: visible;
+  max-width: calc(100vw - 24px);
+}
+.miniature-access button {
+  padding: 10px;
+  min-height: 44px;
+  font-size: 12px;
+}
+.film-gallery {
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ui-text) 12%, transparent);
+  border-radius: 18px;
+  background: var(--scene-bg);
+  color: var(--ui-text);
+  width: min(1100px, calc(100vw - 36px));
+  max-height: 88svh;
+}
+.film-gallery::backdrop {
+  background: #0007;
+  backdrop-filter: blur(8px);
+}
+.film-gallery-paper {
+  padding: clamp(24px, 4vw, 48px);
+}
+.film-gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.film-gallery-header h2 {
+  font-size: clamp(36px, 6vw, 62px);
+  line-height: 1;
+  margin: 10px 0 0;
+}
+.gallery-close {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  font-size: 28px;
+  border-radius: 50%;
+  background: var(--ui-fill);
+}
+.film-gallery-empty {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--ui-muted);
+}
+.film-gallery-empty > span {
+  font-size: 42px;
+}
+.film-gallery-empty p {
+  font-size: 15px;
+}
+.film-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 20px;
+}
+.film-photo-grid button {
+  padding: 0;
+  text-align: left;
+}
+.film-photo-grid img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+  border-radius: 6px;
+}
+.film-photo-grid span {
+  display: block;
+  font-size: 13px;
+  margin-top: 10px;
+  color: var(--ui-muted);
+}
+.film-viewer figure {
+  margin: 24px 0;
+}
+.film-viewer img {
+  display: block;
+  max-width: 100%;
+  max-height: 58svh;
+  object-fit: contain;
+  margin: auto;
+}
+.film-viewer figcaption {
+  margin-top: 18px;
+  font-size: 14px;
+  text-align: center;
+}
+.film-viewer figcaption span {
+  display: block;
+  color: var(--ui-muted);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.film-viewer nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  font-size: 12px;
+}
+.film-viewer nav button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ui-fill);
+}
+.gallery-text-button {
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.film-viewer:focus {
+  outline: none;
 }
