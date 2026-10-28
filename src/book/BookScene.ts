@@ -63,7 +63,6 @@ type Callbacks = {
 type Dive = {
   book: THREE.PerspectiveCamera;
   position: THREE.Vector3;
-  quaternion: THREE.Quaternion;
   progress: number;
   direction: 1 | -1;
   index: number;
@@ -664,27 +663,13 @@ export class BookScene {
     const d = this.dive!;
     const t = d.progress * d.progress * (3 - 2 * d.progress);
     this.camera.position.lerpVectors(d.book.position, d.position, t);
-    this.camera.quaternion.slerpQuaternions(d.book.quaternion, d.quaternion, t);
-    this.camera.zoom = THREE.MathUtils.lerp(d.book.zoom, 1, t);
-    // Resolve the normal composition's view offset smoothly as the screen becomes the view.
-    if (d.book.view?.enabled) {
-      const v = d.book.view,
-        aspect = d.book.aspect,
-        height = THREE.MathUtils.lerp(v.height, v.fullHeight, t);
-      this.camera.setViewOffset(
-        v.fullWidth,
-        v.fullHeight,
-        v.offsetX * (1 - t),
-        v.offsetY * (1 - t),
-        v.width,
-        height,
-      );
-      this.camera.aspect = aspect;
-    }
+    // Preserve the user's perspective for the entire dolly, including lens and view offset.
+    this.camera.quaternion.copy(d.book.quaternion);
+    this.camera.zoom = d.book.zoom;
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
     this.host.style.opacity = String(
-      1 - THREE.MathUtils.smoothstep(d.progress, 0.66, 1),
+      1 - THREE.MathUtils.smoothstep(d.progress, 0.78, 1),
     );
     this.host.dataset.diveProgress = d.progress.toFixed(3);
   }
@@ -1088,7 +1073,6 @@ export class BookScene {
       const focus = this.phones.focus(this.dive.index, this.camera);
       if (focus) {
         this.dive.position.copy(focus.position);
-        this.dive.quaternion.copy(focus.quaternion);
       }
       this.applyDive();
     }

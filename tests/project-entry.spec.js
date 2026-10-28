@@ -27,6 +27,28 @@ test("phone dive animates from a rotated zine and browser Back/Forward restores 
   await page.mouse.up();
   await expect(stage(page)).toHaveAttribute("data-phase", "ready");
   const before = await stage(page).evaluate((el) => ({ ...el.dataset }));
+  await page.evaluate(async () => {
+    const source = performance
+      .getEntriesByType("resource")
+      .find((entry) => entry.name.includes("/src/book/BookScene.ts")).name;
+    const { BookScene } = await import(source);
+    const apply = BookScene.prototype.applyDive;
+    window.diveFrames = [];
+    BookScene.prototype.applyDive = function () {
+      const result = apply.call(this);
+      window.diveFrames.push({
+        progress: this.dive.progress,
+        position: this.camera.position.toArray(),
+        quaternion: this.camera.quaternion.toArray(),
+        originalQuaternion: this.dive.book.quaternion.toArray(),
+        projection: this.camera.projectionMatrix.toArray(),
+        originalProjection: this.dive.book.projectionMatrix.toArray(),
+        zoom: this.camera.zoom,
+        originalZoom: this.dive.book.zoom,
+      });
+      return result;
+    };
+  });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   // A genuine canvas/raycast click, rather than invoking the overlay's React handler.
   const phone = JSON.parse(await stage(page).getAttribute("data-phone-hit"));
@@ -45,6 +67,28 @@ test("phone dive animates from a rotated zine and browser Back/Forward restores 
     page.getByRole("region", { name: "Stadia case study" }),
   ).toBeVisible({ timeout: 20000 });
   expect(page.url()).toContain("view=case-study");
+  const frames = await page.evaluate(() =>
+    window.diveFrames.filter(
+      (frame) => frame.progress > 0 && frame.progress < 1,
+    ),
+  );
+  expect(frames.length).toBeGreaterThan(2);
+  expect(
+    frames.every((frame) =>
+      frame.quaternion.every(
+        (n, i) => Math.abs(n - frame.originalQuaternion[i]) < 1e-10,
+      ),
+    ),
+  ).toBe(true);
+  expect(frames.every((frame) => frame.zoom === frame.originalZoom)).toBe(true);
+  expect(
+    frames.every((frame) =>
+      frame.projection.every(
+        (n, i) => Math.abs(n - frame.originalProjection[i]) < 1e-10,
+      ),
+    ),
+  ).toBe(true);
+  expect(frames.at(-1).position).not.toEqual(frames[0].position);
   await expect(
     page.getByRole("heading", { name: "Stadia", exact: true }),
   ).toBeFocused();
@@ -56,7 +100,9 @@ test("phone dive animates from a rotated zine and browser Back/Forward restores 
   );
   expect(page.url()).not.toContain("view=");
   const after = await stage(page).evaluate((el) => ({ ...el.dataset }));
-  expect(after.orientation).toBe(before.orientation);
+  JSON.parse(after.orientation).forEach((component, index) =>
+    expect(component).toBeCloseTo(JSON.parse(before.orientation)[index], 12),
+  );
   expect(after.camera).toBe(before.camera);
   expect(after.zoom).toBe("1.2");
   expect(after.settledBoundary).toBe("2");

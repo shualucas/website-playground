@@ -5,6 +5,10 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { PAGE_WIDTH as W, PAGE_HEIGHT as H, type Project } from "./materials";
 import { projectTheme } from "./themes";
 
+const PHONE_LIFT = 0.18,
+  PHONE_THICKNESS = 0.14,
+  PHONE_SCREEN_Y = 0.019 + PHONE_THICKNESS + 0.006;
+
 type Frame = {
   patch: Uint8ClampedArray;
   dims: { left: number; top: number; width: number; height: number };
@@ -50,7 +54,7 @@ export class PhonePreviews {
         meshes: THREE.Mesh[] = [],
         colors = projectTheme(project.theme).colors,
         joint = Math.floor(0.51 * LEAF_SEGMENTS);
-      root.position.set(W * 0.51 - (joint * W) / LEAF_SEGMENTS, 0.026, 0);
+      root.position.set(W * 0.51 - (joint * W) / LEAF_SEGMENTS, PHONE_LIFT, 0);
       root.name = `${project.label} rigid Pro handset`;
       leaf.bones[joint].add(root);
       const add = (
@@ -95,7 +99,11 @@ export class PhonePreviews {
         toneMapped: false,
       });
       rounded(screen, 1.87, 3.55, 0.16);
-      const screenMesh = add(plane(1.87, 3.55, 0.101), screen, "phone screen");
+      const screenMesh = add(
+        plane(1.87, 3.55, PHONE_SCREEN_Y),
+        screen,
+        "phone screen",
+      );
       const inkCanvas = document.createElement("canvas");
       inkCanvas.width = inkCanvas.height = 128;
       const ctx = inkCanvas.getContext("2d")!,
@@ -111,7 +119,11 @@ export class PhonePreviews {
       const rim = new THREE.MeshBasicMaterial({ map: ink, toneMapped: false });
       // 0.012-world-unit outline is approximately one CSS pixel in the default view.
       rounded(rim, 1.894, 3.574, 0.172);
-      add(plane(1.894, 3.574, 0.099), rim, "one-pixel rounded outline");
+      add(
+        plane(1.894, 3.574, PHONE_SCREEN_Y - 0.002),
+        rim,
+        "one-pixel rounded outline",
+      );
       const halo = new THREE.MeshBasicMaterial({
         map: ink,
         transparent: true,
@@ -129,7 +141,11 @@ export class PhonePreviews {
         );
       };
       halo.customProgramCacheKey = () => "rounded-phone-halo-v1";
-      add(plane(2.75, 4.43, 0.093), halo, "rounded colored halo");
+      add(
+        plane(2.75, 4.43, PHONE_SCREEN_Y - 0.008),
+        halo,
+        "rounded colored halo",
+      );
       // Continuous rounded perimeter with a vertical feathered veil, rather than four strips.
       const positions: number[] = [],
         uvs: number[] = [],
@@ -163,7 +179,7 @@ export class PhonePreviews {
           const h = k / 4,
             x = point.x * (1 + h * 0.08),
             z = point.y * (1 + h * 0.04);
-          positions.push(x, 0.102 + h * 0.42, z);
+          positions.push(x, PHONE_SCREEN_Y + 0.001 + h * 0.42, z);
           uvs.push(x / 1.894 + 0.5, 0.5 - z / 3.574);
           rise.push(h);
         }
@@ -258,23 +274,23 @@ export class PhonePreviews {
         return geometry;
       };
       const body = add(
-        roundedBody(1.91, 3.59, 0.18, 0.078, 0.019),
+        roundedBody(1.91, 3.59, 0.18, PHONE_THICKNESS, 0.019),
         metal,
         "titanium frame",
       );
       body.castShadow = true;
       add(roundedBody(1.89, 3.57, 0.17, 0.008, 0.013), glass, "back glass");
       for (const [x, z, length] of [
-        [-0.977, -0.65, 0.28],
-        [-0.977, -0.15, 0.28],
-        [0.977, -0.4, 0.45],
+        [-0.96, -0.65, 0.28],
+        [-0.96, -0.15, 0.28],
+        [0.96, -0.4, 0.45],
       ]) {
         const key = add(
           new RoundedBoxGeometry(0.018, 0.035, length, 2, 0.008),
           metal,
           "side control",
         );
-        key.position.set(x, 0.06, z);
+        key.position.set(x, 0.019 + PHONE_THICKNESS / 2, z);
       }
       // A restrained island leaves the actual media surface uninterrupted and black by default.
       const island = add(
@@ -282,7 +298,7 @@ export class PhonePreviews {
         glass,
         "dynamic island",
       );
-      island.position.set(0, 0.107, -1.59);
+      island.position.set(0, PHONE_SCREEN_Y + 0.006, -1.59);
       this.materials.push(screen, rim, halo, glow, metal, glass);
       const phone: Phone = {
         index,
@@ -314,29 +330,19 @@ export class PhonePreviews {
       }
     });
   }
-  /** Phone-facing camera pose derived from its current world transform. */
+  /** Approach the screen along the current camera-to-phone ray; never square up. */
   focus(index: number, camera: THREE.PerspectiveCamera) {
-    const phone = this.phones.find((p) => p.index === index);
-    if (!phone) return null;
-    phone.root.updateWorldMatrix(true, true);
-    const center = phone.root.localToWorld(new THREE.Vector3(0, 0.104, 0)),
-      rotation = phone.root.getWorldQuaternion(new THREE.Quaternion()),
-      normal = new THREE.Vector3(0, 1, 0).applyQuaternion(rotation),
-      up = new THREE.Vector3(0, 0, -1).applyQuaternion(rotation),
-      distance =
-        (Math.min(1.87 / camera.aspect, 3.55) /
-          (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))) *
-        0.78,
-      position = center.clone().addScaledVector(normal, distance),
-      target = new THREE.PerspectiveCamera();
-    target.position.copy(position);
-    target.up.copy(up);
-    target.lookAt(center);
-    return { position, quaternion: target.quaternion.clone() };
+    const center = this.center(index);
+    if (!center) return null;
+    const approach = center.clone().sub(camera.position).normalize();
+    // End just in front of the screen; the late fade hides the near-plane crossing.
+    return { position: center.addScaledVector(approach, -0.24) };
   }
   center(index: number) {
     const phone = this.phones.find((p) => p.index === index);
-    return phone?.screenMesh.getWorldPosition(new THREE.Vector3());
+    if (!phone) return undefined;
+    phone.root.updateWorldMatrix(true, true);
+    return phone.root.localToWorld(new THREE.Vector3(0, PHONE_SCREEN_Y, 0));
   }
   private poster(project: Project) {
     const c = document.createElement("canvas");
