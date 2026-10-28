@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["src/book/**/*.ts"]
+  "include": ["src/book/**/*.ts", "src/cartridge/**/*.ts"]
 }

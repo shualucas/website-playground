@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
-  timeout: 45000,
+  timeout: 60000,
+  testMatch: "**/cartridges.spec.js",
   workers: 1,
   testDir: "./tests",
   use: {

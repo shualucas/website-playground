@@ -1,4 +1,45 @@
-# Selected Things — Portfolio Zine
+# Josh Lucas — Portfolio editions
+
+The default site is now an interactive **Game Boy-style cartridge collection**: About, Stadia, AI Mode, and After-hours. Each cartridge has original editable label artwork, a beveled molded-plastic shell, grip grooves, a recessed paper label, connector details, and a finished back. A single Three.js scene supplies studio reflections, overhead shadows, hover lift, and drag rotation. Click a cartridge or its corresponding HTML link to read. Dragging never opens a project. Reset returns inspected cartridges to their original positions. Theme switching, keyboard access, reduced motion, deep links, browser Back/Forward, photography gallery, and a WebGL-free illustrated fallback are included.
+
+**The exact linked Sketchfab model is not included:** Sketchfab returned HTTP 403 here. This implementation uses original procedural geometry, with an optional GLB import path ready in `src/cartridge/config.ts`. Upload/download the licensed model and check its label mesh and orientation to substitute it. See `public/cartridges/README.md`.
+
+## Keep or switch editions
+
+- `/` — new cartridge edition.
+- `/zine/` — runnable zine edition, retaining the original scene and interactions.
+- `/versions/portfolio-zine-v1-source.zip` — complete standalone source snapshot of the zine at `22a93bd`, before cartridge work. Unzip, run `npm ci`, then `npm run dev`. No new cartridge code is required.
+- Git tag `portfolio-zine-v1` records that same original commit.
+
+`npm run build` produces both website entries in `dist/`. Deploy the whole folder; both versions work without server-side routing. The source archive is also available through the cartridge footer.
+
+## Cartridge content and artwork
+
+- `src/cartridge/config.ts` — cartridge names, shell colors, label image URLs, optional external GLB configuration.
+- `public/cartridges/labels/*.svg` — original custom artwork for all four labels. Replace with SVG, PNG, or JPG to redesign them.
+- `src/book/projects.js` — existing biography, case-study text, and project media, shared between editions. Unverified project details remain explicit placeholders.
+- `src/content/film-photos.js` and `public/photos/` — After-hours photograph collection.
+- `src/cartridge/CartridgeScene.ts` — renderer, lighting, framing, input, animation, lifecycle.
+- `src/cartridge/model.ts` — original shell geometry and optional GLB adapter.
+
+No new dependencies were added. The zine's GPU scene is only loaded on `/zine/`; the cartridge entry has its own scene and stylesheet. The shared case-study component accepts an optional back label and otherwise preserves its old behavior.
+
+```sh
+npm ci
+npm run dev
+npm run typecheck
+npm run build
+npm test                 # cartridge browser checks
+npm run test:zine        # preserved zine regression suite, isolated entry/port
+```
+
+Quincy CF remains ready for a licensed font file; the bundled Cormorant Garamond italic is still the active fallback.
+
+---
+
+## Preserved zine documentation
+
+### Selected Things — Portfolio Zine
 
 An interactive, saddle-stitched portfolio on a white or charcoal canvas. The closed editorial cover arrives after a monochrome CRT logo loader with “JOSHUA” stacked above “LUCAS”. Open it into **About → Stadia → AI Mode → After-hours**. About contains the supplied professional biography and a gradient Google G, the Blizzard Entertainment logo and Golden Gate Bridge. After-hours contains the black point-and-shoot film camera with wrist strap, EZONE-inspired blue racket with lime tape and purple GameCube-style controller. Project spreads contain original rigid Pro-style handsets instead of miniatures, with restrained device frames and full-page animated ASCII contour fields.
 

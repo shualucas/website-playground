@@ -49,3 +49,10 @@ The revised compact black point-and-shoot camera and wrist strap are original pr
 ## Matte clay and CRT revision
 
 The miniature and handset materials now use original, shared procedural pore/roughness maps with zero metalness and zero clearcoat. The existing bounded deformation cage is retained at lower amplitude and higher damping; it is not a clay simulation. The full-page ASCII contour field and monochrome stacked-name CRT loader are original procedural work. About tooltips and the extra After-hours description navigation have been removed; object-level keyboard controls retain access to the film gallery.
+
+
+## Cartridge edition (October 2026)
+
+The cartridge geometry and label SVG artwork in `src/cartridge/model.ts` and `public/cartridges/labels/` were created for this portfolio. No geometry, textures, code, or artwork from mamuso.dev or the linked Sketchfab cartridge is bundled. Those sites informed the requested object category and visual direction only. The linked Sketchfab page/API could not be accessed (HTTP 403); its license and downloadable assets have not been verified. The optional GLB path is inactive until a separately supplied asset is configured.
+
+Three.js built-in `RoomEnvironment`, `RoundedBoxGeometry`, and optional `GLTFLoader` are used under Three.js's existing MIT notice. Existing font and SVG logo notices still apply to the preserved zine. The zine source ZIP retains its original notices unchanged.

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:zine": "playwright test --config playwright.zine.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",

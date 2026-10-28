@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { projectTheme } from "./book/themes";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
-export function CaseStudy({ project, onBack, Media }) {
+export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine" }) {
   const heading = useRef(null),
     theme = projectTheme(project.theme);
   useEffect(() => {
@@ -36,7 +36,7 @@ export function CaseStudy({ project, onBack, Media }) {
           >
             <path d="M20 12H4m6-6-6 6 6 6" />
           </svg>
-          Back to zine
+          {backLabel}
         </button>
         <span>JOSH LUCAS</span>
       </header>
@@ -99,7 +99,7 @@ export function CaseStudy({ project, onBack, Media }) {
         )}
         <footer>
           <button className="back-to-zine" onClick={onBack}>
-            ← Back to zine
+            ← {backLabel}
           </button>
         </footer>
       </article>
