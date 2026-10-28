@@ -66,7 +66,9 @@ export class PagePopups {
         content.rotation.x = -Math.PI * 0.31;
         content.add(model);
         model.traverse((object) => {
-          if (object instanceof THREE.Mesh) object.userData.miniature = id;
+          if (object instanceof THREE.Mesh)
+            object.userData.miniature =
+              project.kind === "after-hours" ? id : undefined;
         });
         model.scale.multiplyScalar(2 / 3);
         // Fit the tilted model above the paper once, leaving room for its ambient bob.

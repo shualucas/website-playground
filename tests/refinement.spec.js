@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("card progress waits for real asset readiness, reaches ten, then reveals", async ({
+test("CRT name loader waits for real asset readiness before revealing the zine", async ({
   page,
 }) => {
   let release;
@@ -15,9 +15,9 @@ test("card progress waits for real asset readiness, reaches ten, then reveals", 
     includeHidden: true,
   });
   await expect(progress).toBeVisible();
-  await expect(progress).toHaveAttribute("aria-valuenow", "30");
+  await expect(progress).toHaveAttribute("aria-valuenow", "35");
   await page.waitForTimeout(350);
-  await expect(progress).toHaveAttribute("aria-valuenow", "30");
+  await expect(progress).toHaveAttribute("aria-valuenow", "35");
   expect(
     await page.locator(".spellbook").getAttribute("data-presentation"),
   ).toBe("loading");
@@ -311,7 +311,7 @@ test("rotation preserves miniatures and phone visibility, pills stay opaque, and
   expect(await page.evaluate(() => window.paperSounds)).toBe(count);
 });
 
-test("dense jelly keeps saturated colors and full opacity; empty phone screens are black", async ({
+test("clay surfaces stay matte, saturated and opaque; empty phone screens are black", async ({
   page,
 }) => {
   await page.goto("/tests/fixtures/blank.html");
@@ -346,6 +346,9 @@ test("dense jelly keeps saturated colors and full opacity; empty phone screens a
     );
     const canvas = phones.phones[0].poster.image;
     const values = {
+      roughness: material.roughness,
+      clearcoat: material.clearcoat,
+      metalness: material.metalness,
       transmission: material.transmission,
       opacity: material.opacity,
       transparent: material.transparent,
@@ -359,6 +362,9 @@ test("dense jelly keeps saturated colors and full opacity; empty phone screens a
     return values;
   });
   expect(result).toEqual({
+    roughness: 0.88,
+    clearcoat: 0,
+    metalness: 0,
     transmission: 0,
     opacity: 1,
     transparent: false,

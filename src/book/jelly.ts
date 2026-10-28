@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { acquireClayGrain } from "./clay";
 
 const deformation = `
 uniform float jellyActive;
@@ -40,6 +41,7 @@ export class JellyCage {
   private materials: THREE.Material[] = [];
   private outlines: THREE.ShaderMaterial[] = [];
   private outlineColor: THREE.Color;
+  private grain = acquireClayGrain();
   constructor(
     readonly root: THREE.Group,
     surface: (p: THREE.MeshPhysicalMaterialParameters) => THREE.Material,
@@ -84,11 +86,15 @@ export class JellyCage {
       const material = surface({
         color: tint.clone(),
         map: original.map ?? null,
-        roughness: 0.24,
+        roughness: 0.88,
         metalness: 0,
         transmission: 0,
-        clearcoat: 0.5,
-        clearcoatRoughness: 0.22,
+        clearcoat: 0,
+        clearcoatRoughness: 1,
+        specularIntensity: 0.15,
+        normalMap: this.grain.normal,
+        normalScale: new THREE.Vector2(0.14, 0.14),
+        roughnessMap: this.grain.roughness,
         transparent: false,
         opacity: 1,
       });
@@ -140,7 +146,7 @@ export class JellyCage {
         },
         vertexShader:
           deformation +
-          `void main(){vec3 p=jellyPoint(position);vec3 n=jellyNormal(position,normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(p+n*.018,1.);}`,
+          `void main(){vec3 p=jellyPoint(position);vec3 n=jellyNormal(position,normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(p+n*.012,1.);}`,
         fragmentShader: `uniform vec3 outlineColor;void main(){gl_FragColor=vec4(outlineColor,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`,
         side: THREE.BackSide,
         depthWrite: false,
@@ -149,7 +155,7 @@ export class JellyCage {
       const shell = new THREE.Mesh(mesh.geometry, outline);
       shell.matrixAutoUpdate = false;
       shell.matrix.copy(mesh.matrix);
-      shell.name = "colored jelly silhouette";
+      shell.name = "colored clay silhouette";
       mesh.parent!.add(shell);
       this.outlines.push(outline);
       this.materials.push(outline);
@@ -157,11 +163,11 @@ export class JellyCage {
   }
   excite(amount = 1) {
     this.active.value = 1;
-    this.state[1] += 0.13 * amount;
-    this.state[3] -= 0.09 * amount;
-    this.state[5] += 0.25 * amount;
-    this.state[7] -= 0.18 * amount;
-    this.state[9] += 0.2 * amount;
+    this.state[1] += 0.045 * amount;
+    this.state[3] -= 0.03 * amount;
+    this.state[5] += 0.08 * amount;
+    this.state[7] -= 0.06 * amount;
+    this.state[9] += 0.05 * amount;
   }
   step(delta: number, reduced: boolean) {
     if (reduced) this.state.fill(0);
@@ -171,7 +177,7 @@ export class JellyCage {
       for (let i = 0; i < 10; i += 2) {
         const omega = i < 4 ? 13 : 10;
         this.state[i + 1] +=
-          (-omega * omega * this.state[i] - 8 * this.state[i + 1]) * dt;
+          (-omega * omega * this.state[i] - 12 * this.state[i + 1]) * dt;
         this.state[i] += this.state[i + 1] * dt;
         this.state[i] = THREE.MathUtils.clamp(
           this.state[i],
@@ -196,6 +202,7 @@ export class JellyCage {
         .offsetHSL(0, 0, dark ? 0.06 : 0);
   }
   dispose() {
+    this.grain.release();
     new Set(this.materials).forEach((m) => m.dispose());
   }
 }

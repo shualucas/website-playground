@@ -431,7 +431,9 @@ export class BookScene {
         !force &&
         (this.intro ||
           this.leaves[0].progress === 0 ||
-          this.leaves[i + 1].progress === 1)
+          (i !== (this.scheduler?.committed ?? 1) - 1 &&
+            !this.leaves[i].turning &&
+            !this.leaves[i + 1].turning))
       )
         return;
       if (!portal.draw(time) && !force) return;
@@ -1366,7 +1368,7 @@ export class BookScene {
     data.framingVertices = String(this.viewEnvelope.length);
     data.lightPosition = JSON.stringify(this.keyLight.position.toArray());
     data.printResolution = "1200x1694";
-    data.portalCoverage = "border";
+    data.portalCoverage = "full-page";
     data.phoneCount = String(this.phones.count);
     const phone = this.phones.center(this.index);
     if (phone) {

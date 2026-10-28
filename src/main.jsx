@@ -14,7 +14,7 @@ import { AsciiPortal } from "./book/ascii";
 import { projectTheme } from "./book/themes";
 import "./style.css";
 import { CaseStudy } from "./CaseStudy";
-import { CardLoader } from "./CardLoader";
+import { CRTLoader } from "./CRTLoader";
 import { PageTurnSound } from "./book/page-sound";
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -52,12 +52,6 @@ function Metadata({ project, index, onPrevious, canPrevious }) {
         <p className="project-subtitle">{project.subtitle}</p>
       )}
       <p className="project-description">{project.description}</p>
-      {project.kind === "after-hours" && (
-        <div className="about-note">
-          <span>OFF THE CLOCK</span>
-          <strong>Film · Tennis · Games</strong>
-        </div>
-      )}
       {project.kind === "project" && (
         <dl className="project-facts">
           <div>
@@ -150,7 +144,14 @@ function PhoneFallback({ project, controls = false }) {
     </div>
   );
 }
-function PreviewPage({ project, onNext, onRead, fallback }) {
+function PreviewPage({
+  project,
+  onNext,
+  onRead,
+  fallback,
+  onMiniatureOpen,
+  onMiniatureHover,
+}) {
   return (
     <div className="preview-content portal-only">
       <button
@@ -161,6 +162,25 @@ function PreviewPage({ project, onNext, onRead, fallback }) {
       >
         {fallback ? <PortalFallback project={project} /> : null}
       </button>
+      {project.kind === "after-hours" &&
+        ["camera", "racket", "controller"].map((id) => (
+          <button
+            key={id}
+            className={`miniature-hit miniature-hit-${id}`}
+            data-miniature-control={id}
+            aria-label={miniatureDetails[id].title}
+            onClick={() => onMiniatureOpen(id)}
+            onFocus={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              onMiniatureHover({
+                id,
+                x: rect.left + rect.width / 2,
+                y: rect.top,
+              });
+            }}
+            onBlur={() => onMiniatureHover(null)}
+          />
+        ))}
       {project.kind === "project" && (
         <button
           className="phone-hit"
@@ -228,8 +248,15 @@ function App() {
     setView(value);
   };
   const hoverMiniature = (item) =>
-    setTooltip((previous) => (previous?.pinned ? previous : item));
+    setTooltip((previous) =>
+      previous?.pinned
+        ? previous
+        : item && miniatureDetails[item.id]?.spread === "after-hours"
+          ? item
+          : null,
+    );
   const openMiniature = (id, x = innerWidth / 2, y = innerHeight - 100) => {
+    if (miniatureDetails[id]?.spread !== "after-hours") return;
     if (id === "camera") {
       setTooltip(null);
       galleryOpenRef.current = true;
@@ -616,6 +643,8 @@ function App() {
       onNext={() => turn(1)}
       canNext={true}
       fallback={fallback}
+      onMiniatureOpen={openMiniature}
+      onMiniatureHover={hoverMiniature}
     />
   );
   return (
@@ -632,7 +661,7 @@ function App() {
         aria-label="Preparing your zine"
         aria-hidden={presentation !== "loading"}
       >
-        <CardLoader
+        <CRTLoader
           progress={loadProgress}
           dark={colorMode === "dark"}
           onComplete={finishLoader}
@@ -832,34 +861,6 @@ function App() {
               ? "Back cover"
               : project.label}
       </span>
-      {view === "book" && !galleryOpen && (
-        <div
-          className="miniature-access"
-          role="group"
-          aria-label="Miniature descriptions"
-        >
-          {Object.entries(miniatureDetails)
-            .filter(
-              ([, detail]) => detail.spread === projects[selectedPage]?.kind,
-            )
-            .map(([id, detail]) => (
-              <button
-                key={id}
-                data-miniature-control={id}
-                aria-describedby={
-                  tooltip?.id === id ? "miniature-tooltip" : undefined
-                }
-                onFocus={() =>
-                  setTooltip({ id, x: innerWidth / 2, y: innerHeight - 100 })
-                }
-                onBlur={() => setTooltip(null)}
-                onClick={() => openMiniature(id)}
-              >
-                {detail.title}
-              </button>
-            ))}
-        </div>
-      )}
       {view === "book" && !galleryOpen && (
         <MiniatureTooltip item={tooltip} onClose={() => setTooltip(null)} />
       )}

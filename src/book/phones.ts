@@ -1,12 +1,13 @@
 import * as THREE from "three";
 import { parseGIF, decompressFrames } from "gifuct-js";
 import { SkinnedLeaf, LEAF_SEGMENTS } from "./leaf";
+import { acquireClayGrain } from "./clay";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { PAGE_WIDTH as W, PAGE_HEIGHT as H, type Project } from "./materials";
 
 const PHONE_LIFT = 0.18,
   PHONE_THICKNESS = 0.14,
-  PHONE_SCREEN_Y = 0.019 + PHONE_THICKNESS + 0.006;
+  PHONE_SCREEN_Y = 0.019 + PHONE_THICKNESS + 0.018;
 
 type Frame = {
   patch: Uint8ClampedArray;
@@ -45,6 +46,7 @@ export class PhonePreviews {
   private materials: THREE.Material[] = [];
   private disposed = false;
   private reduced = false;
+  private grain = acquireClayGrain();
   constructor(projects: Project[], leaves: SkinnedLeaf[]) {
     projects.forEach((project, index) => {
       if (project.kind !== "project") return;
@@ -120,15 +122,21 @@ export class PhonePreviews {
         rim,
         "one-pixel rounded outline",
       );
-      const metal = new THREE.MeshStandardMaterial({
-        color: "#747779",
-        metalness: 0.78,
-        roughness: 0.26,
+      const frameClay = new THREE.MeshStandardMaterial({
+        color: "#5e6265",
+        metalness: 0,
+        roughness: 0.9,
+        normalMap: this.grain.normal,
+        normalScale: new THREE.Vector2(0.14, 0.14),
+        roughnessMap: this.grain.roughness,
       });
-      const glass = new THREE.MeshStandardMaterial({
+      const darkClay = new THREE.MeshStandardMaterial({
         color: "#050608",
-        metalness: 0.08,
-        roughness: 0.18,
+        metalness: 0,
+        roughness: 0.92,
+        normalMap: this.grain.normal,
+        normalScale: new THREE.Vector2(0.1, 0.1),
+        roughnessMap: this.grain.roughness,
       });
       const roundedBody = (
         width: number,
@@ -157,9 +165,9 @@ export class PhonePreviews {
         const geometry = new THREE.ExtrudeGeometry(shape, {
           depth,
           bevelEnabled: true,
-          bevelSize: 0.0025,
-          bevelThickness: 0.0025,
-          bevelSegments: 1,
+          bevelSize: 0.018,
+          bevelThickness: 0.012,
+          bevelSegments: 3,
           curveSegments: 8,
           steps: 1,
         });
@@ -169,11 +177,11 @@ export class PhonePreviews {
       };
       const body = add(
         roundedBody(1.91, 3.59, 0.18, PHONE_THICKNESS, 0.019),
-        metal,
-        "titanium frame",
+        frameClay,
+        "clay frame",
       );
       body.castShadow = true;
-      add(roundedBody(1.89, 3.57, 0.17, 0.008, 0.013), glass, "back glass");
+      add(roundedBody(1.89, 3.57, 0.17, 0.008, 0.013), darkClay, "clay back");
       for (const [x, z, length] of [
         [-0.96, -0.65, 0.28],
         [-0.96, -0.15, 0.28],
@@ -181,7 +189,7 @@ export class PhonePreviews {
       ]) {
         const key = add(
           new RoundedBoxGeometry(0.018, 0.035, length, 2, 0.008),
-          metal,
+          frameClay,
           "side control",
         );
         key.position.set(x, 0.019 + PHONE_THICKNESS / 2, z);
@@ -189,11 +197,11 @@ export class PhonePreviews {
       // A restrained island leaves the actual media surface uninterrupted and black by default.
       const island = add(
         new RoundedBoxGeometry(0.42, 0.008, 0.105, 3, 0.004),
-        glass,
+        darkClay,
         "dynamic island",
       );
       island.position.set(0, PHONE_SCREEN_Y + 0.006, -1.59);
-      this.materials.push(screen, rim, metal, glass);
+      this.materials.push(screen, rim, frameClay, darkClay);
       const phone: Phone = {
         index,
         project,
@@ -402,6 +410,7 @@ export class PhonePreviews {
     return this.phones.length;
   }
   dispose() {
+    this.grain.release();
     this.disposed = true;
     this.phones.forEach((p) => {
       p.video?.pause();

@@ -45,3 +45,7 @@ The Blizzard Entertainment vector wordmark is bundled from `svg/b/blizzard-enter
 The Pro-style phone is original procedural geometry (rounded frame, black screen, side controls and small front camera island), not an Apple-distributed asset or a dimension-certified iPhone 17 Pro model. No external handset model or Apple artwork is bundled.
 
 The revised compact black point-and-shoot camera and wrist strap are original procedural geometry. The racket's blue/black frame and lime grip are an EZONE-inspired color treatment, without Yonex logos or copied product models. Dense opaque jelly retains the independently implemented deformation cage; the former transmission and white tint are removed. The editorial cover and ASCII art direction are retained.
+
+## Matte clay and CRT revision
+
+The miniature and handset materials now use original, shared procedural pore/roughness maps with zero metalness and zero clearcoat. The existing bounded deformation cage is retained at lower amplitude and higher damping; it is not a clay simulation. The full-page ASCII contour field and monochrome stacked-name CRT loader are original procedural work. About tooltips and the extra After-hours description navigation have been removed; object-level keyboard controls retain access to the film gallery.

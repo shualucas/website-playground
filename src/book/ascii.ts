@@ -1,4 +1,4 @@
-/** A moving border of actual printed monospace glyphs, with a clear content window. */
+/** Full-page, slowly flowing contour bands made from actual monospace glyphs. */
 export class AsciiPortal {
   readonly canvas = document.createElement("canvas");
   private ctx: CanvasRenderingContext2D;
@@ -18,38 +18,34 @@ export class AsciiPortal {
     if (frame === this.last) return false;
     this.last = frame;
     const ctx = this.ctx,
-      t = frame / 12;
+      t = frame / 12,
+      ramp = ".:-=+*#";
     ctx.clearRect(0, 0, 768, 1056);
-    ctx.font = 'bold 17px "Courier New",monospace';
+    ctx.font = 'bold 15px "Courier New",monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (let row = 0; row < 66; row++)
       for (let col = 0; col < 48; col++) {
-        if (row > 6 && row < 59 && col > 5 && col < 42) continue;
-        const x = (col + 0.5 - 24) / 24,
-          y = (row + 0.5 - 33) / 33;
-        const r = Math.hypot(x, y * 1.04),
-          a = Math.atan2(y, x);
-        const wave = Math.sin(
-          a * 5 - r * 18 + t * 1.5 + Math.sin(a * 3 + r * 8 - t * 0.5),
-        );
-        const intensity = 0.2 + 0.8 * Math.pow((wave + 1) / 2, 1.35);
-        const ramp = ".,:;+*xS#@",
-          glyph = ramp[Math.min(9, Math.floor(intensity * 10))];
-        const index =
-          this.colors.length > 2
-            ? Math.floor(
-                ((a + Math.PI) / (Math.PI * 2) + t * 0.025 + 2) *
-                  this.colors.length,
-              ) % this.colors.length
-            : wave > 0.08
-              ? 0
-              : 1;
-        ctx.fillStyle =
-          this.colors[index] +
-          Math.round((0.4 + intensity * 0.6) * 255)
+        const x = (col + 0.5) / 24 - 1,
+          y = (row + 0.5) / 33 - 1,
+          field =
+            0.7 * Math.sin(x * 2.7 + 0.8 * Math.sin(y * 2.3 + t * 0.16)) +
+            0.45 * Math.cos(y * 3.4 - x * 1.1 - t * 0.13) +
+            0.14 * Math.sin((x + y) * 6 + t * 0.12),
+          contour = Math.pow((Math.cos(field * 12) + 1) / 2, 7),
+          soft = 0.5 + 0.5 * Math.sin(field * 4 + y * 2),
+          density = 0.1 + contour * 0.85;
+        const glyph =
+            ramp[Math.min(ramp.length - 1, Math.floor(density * ramp.length))],
+          index =
+            Math.floor(
+              ((field + 1.6) / 3.2) * this.colors.length +
+                this.colors.length * 4,
+            ) % this.colors.length,
+          alpha = Math.round((0.09 + contour * 0.55 + soft * 0.04) * 255)
             .toString(16)
             .padStart(2, "0");
+        ctx.fillStyle = this.colors[index] + alpha;
         ctx.fillText(glyph, (col + 0.5) * 16, (row + 0.5) * 16);
       }
     return true;
