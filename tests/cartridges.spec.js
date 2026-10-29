@@ -500,7 +500,7 @@ test("camera coasts after release, and selected cartridges drift without changin
 });
 
 test("Last.fm refreshes every 20 seconds and reveals history above the song without moving the page", async ({ page }) => {
-  const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({ time:initial }); await page.clock.pauseAt(initial);
+  const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({ time:initial }); await page.clock.pauseAt(new Date(initial.getTime()+1000));
   let request = 0;
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.route("**/api/listening", route => {
@@ -539,6 +539,30 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   await expect(page.locator(".listening-widget")).toHaveAttribute("data-listening-status","unavailable");
   await toggle.click();await expect(dialog).toContainText("Showing your last available history.");
   await expect(footer).toHaveAttribute("href","https://www.last.fm/music/fixture");
+});
+
+test("listening history animates closed, can reopen mid-exit, and dismisses immediately with reduced motion", async ({ page }) => {
+  const initial=new Date('2026-10-29T19:00:00Z');await page.clock.install({time:initial});await page.clock.pauseAt(new Date(initial.getTime()+1000));
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  const track={title:'Current song',artist:'Fixture artist',url:'https://www.last.fm/music/fixture',playing:true,artwork:''};
+  await page.route('**/api/listening',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({track,recent:Array.from({length:5},(_,i)=>({...track,title:`Past song ${i+1}`,playing:false}))})}));
+  await page.goto('/');await expect(page.locator('.now-playing')).toHaveAttribute('data-track','Current song');
+  const toggle=page.getByRole('button',{name:'Show last five songs'}),panel=page.locator('.listening-history');
+  await toggle.scrollIntoViewIfNeeded();await page.clock.fastForward(5000);
+  await toggle.click();await expect(panel).toHaveAttribute('data-state','open');
+  const before=await page.evaluate(()=>({scrollY,height:document.documentElement.scrollHeight,y:document.querySelector('.listening-current').getBoundingClientRect().y}));
+  await toggle.click();await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(panel).toHaveAttribute('data-state','closing');await expect(panel).toHaveAttribute('aria-hidden','true');await expect(panel).toHaveAttribute('inert','');
+  await expect(panel).toHaveCSS('transition-duration','0.28s');
+  await page.clock.fastForward(150);await expect(panel).toHaveCount(1);
+  // Reopening cancels the previous dismissal timer, without a forced remount.
+  await toggle.click();await expect(panel).toHaveAttribute('data-state','open');await expect(panel).not.toHaveAttribute('inert','');
+  await page.clock.fastForward(400);await expect(panel).toHaveCount(1);await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await panel.locator('a').first().focus();await page.keyboard.press('Escape');await expect(toggle).toBeFocused();await expect(panel).toHaveAttribute('data-state','closing');
+  await page.clock.fastForward(321);await expect(panel).toHaveCount(0);
+  expect(await page.evaluate(()=>({scrollY,height:document.documentElement.scrollHeight,y:document.querySelector('.listening-current').getBoundingClientRect().y}))).toEqual(before);
+  await page.emulateMedia({reducedMotion:'reduce'});await toggle.click();await expect(panel).toHaveCount(1);await toggle.click();await expect(panel).toHaveCount(0);
 });
 
 test("empty listening history, unavailable artwork and API failure remain usable", async ({ page }) => {

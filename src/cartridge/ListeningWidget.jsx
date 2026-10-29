@@ -45,6 +45,18 @@ function TrackTransition(view) {
 export function ListeningWidget() {
   const { track, recent, status, stale } = useListening();
   const [open, setOpen] = useState(false);
+  const [historyPresent, setHistoryPresent] = useState(false);
+  // Keep the absolute panel mounted for its exit; a new click cancels dismissal.
+  useEffect(() => {
+    if (open) { setHistoryPresent(true); return; }
+    const motion = matchMedia("(prefers-reduced-motion: reduce)");
+    const dismiss = () => setHistoryPresent(false);
+    if (motion.matches) { dismiss(); return; }
+    const timer = setTimeout(dismiss, 320);
+    const onMotionChange = () => { if (motion.matches) dismiss(); };
+    motion.addEventListener("change", onMotionChange);
+    return () => { clearTimeout(timer); motion.removeEventListener("change", onMotionChange); };
+  }, [open]);
   const [caption] = useState(() => listeningCaptions[Math.floor(Math.random() * listeningCaptions.length)]);
   const toggle = useRef(null);
   const playing = Boolean(track?.playing && !stale);
@@ -54,7 +66,7 @@ export function ListeningWidget() {
   return <div className="listening-widget" data-listening-status={status} onKeyDown={event => {
     if (open && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); toggle.current?.focus({ preventScroll: true }); }
   }}>
-    {open && <section className="listening-history" id="recent-listening" role="region" aria-label="Recently listened">
+    {(open || historyPresent) && <section className="listening-history" id="recent-listening" role="region" aria-label="Recently listened" data-state={open ? "open" : "closing"} aria-hidden={!open} inert={!open}>
       {recent.length ? <><ol>{recent.map((song, i) => <li key={`${song.playedAt ?? i}-${song.title}`} style={{ "--history-delay": `${(recent.length - 1 - i) * 65}ms` }}><a href={song.url || profile} target="_blank" rel="noopener noreferrer"><TrackArtwork track={song} /><span className="listening-song"><span>{song.title}</span><span>{song.artist}</span></span></a></li>)}</ol>{stale && <p className="listening-history-note">Showing your last available history.</p>}</> : <p className="listening-empty">{status === "loading" ? "Loading your recent songs…" : status === "unavailable" ? "Listening history is temporarily unavailable. Try again shortly." : status === "unconfigured" ? "Listening history will appear here once connected." : "Your first scrobbles will appear here."}</p>}
     </section>}
     <div className="listening-current" data-reveal data-reveal-at={entrance.footerStart + 90}>
