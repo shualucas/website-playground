@@ -1,17 +1,18 @@
 import { test, expect } from "@playwright/test";
+import { funFacts } from "../src/cartridge/fun-facts.js";
 const names = ["Blizzard Entertainment", "Gmail", "Stadia", "Search", "Early work"];
 const dates = ["2017", "2019", "2020 – 2022", "2022 – now", ""];
-const bio = "I'm josh, a designer from a small rural town in Georgia, currently based in the big urban city of San Francisco, building helpful things at Google.";
-const fact = "A random thing about me: I attribute my world of warcraft addiction as a kid to me now designing software as a career.";
+const bio = "I'm Josh, currently making things for fun at Google.";
+const body = "I'm a systems thinker with a knack for micro interactions and finer details. I like figuring out what should exist, what it should feel like, and how to make it happen.";
 async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
   await expect(page.locator(".collection")).toHaveAttribute("data-status", "ready", { timeout: 60000 });
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-hit2", /"x"/);
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-hit2", /"x"/, { timeout: 60000 });
 }
 async function choose(page, name) {
   const control = page.getByRole("button", { name: `View ${name} cartridge`, exact: true });
   await control.focus(); await control.press("Enter");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", { timeout: 60000 });
 }
 async function point(page, index) {
   const stage = page.locator(".cartridge-stage"), bounds = await stage.boundingBox();
@@ -19,20 +20,29 @@ async function point(page, index) {
   return { x: bounds.x + position.x, y: bounds.y + position.y };
 }
 
-test("career collection uses exact bio, five tonal cartridges, top-down view and doubled magnification", async ({ page, request }) => {
+test("career collection uses exact bio and five individually visible, tilted top-edge cartridges", async ({ page, request }) => {
   await load(page);
-  await expect(page.locator("h1")).toHaveText(bio); await expect(page.locator(".random-fact")).toHaveText(fact);
+  const copy = await page.locator("h1").evaluate((el) => {
+    const clone = el.cloneNode(true), name = clone.querySelector(".name-toggle");
+    name.textContent = name.getAttribute("aria-label").split(",")[0]; return clone.textContent;
+  });
+  expect(copy).toBe(bio); await expect(page.locator(".bio-details")).toHaveText(body);
+  expect(funFacts).toContain(await page.locator(".random-fact").textContent());
   await expect(page.locator(".collection-header").getByRole("button", { name: "About", exact: true })).toHaveCount(0);
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
   await expect(page.locator(".cartridge-keyboard")).toHaveCount(5);
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "top-down");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "tilted-top-edge");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-elevation", "70");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-contact");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "80");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-silhouette");
+  const hits = [];
   for (let i = 0; i < 5; i++) {
-    expect(Number(await page.locator(".cartridge-stage").getAttribute(`data-front-up${i}`))).toBeGreaterThan(.98);
+    const facing = Number(await page.locator(".cartridge-stage").getAttribute(`data-front-facing${i}`));
+    expect(facing).toBeGreaterThan(.1); expect(facing).toBeLessThan(.25);
     await expect(page.locator(".cartridge-stage")).toHaveAttribute(`data-top-near${i}`, "true");
+    hits.push(JSON.parse(await page.locator(".cartridge-stage").getAttribute(`data-hit${i}`)));
   }
+  for (let i = 1; i < hits.length; i++) expect(hits[i].y - hits[i - 1].y).toBeGreaterThan(20);
   for (const id of ["blizzard", "gmail", "stadia", "search", "early-work"]) {
     const label = await request.get(`/cartridges/labels/${id}-tonal.svg`); expect(label.ok()).toBe(true);
     expect(await label.text()).not.toMatch(/<text|Josh|Lucas|logo/i);
@@ -80,12 +90,16 @@ test("mobile keeps enlarged cartridges and captions in view, with persistent the
   await page.setViewportSize({ width: 390, height: 844 }); await load(page);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-composition", "stack-mobile");
   for (const name of ["Blizzard Entertainment", "Search", "Early work"]) {
-    await choose(page, name); await expect(page.locator(".cartridge-caption")).toBeInViewport();
+    await choose(page, name);
+    // The long supplied bio and canvas form a scrollable mobile page. Keyboard
+    // users can reach the caption normally, even when selection moves its slot.
+    await page.locator(".cartridge-caption").focus();
+    await expect(page.locator(".cartridge-caption")).toBeInViewport();
     const bounds = await page.locator(".cartridge-caption").boundingBox(); expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.setViewportSize({ width: 844, height: 390 });
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   const framed = await page.locator(".cartridge-stage").evaluate((el) => {
     const bounds = JSON.parse(el.dataset.frameBounds);
     return bounds.left >= 0 && bounds.top >= 0 && bounds.right <= el.clientWidth && bounds.bottom <= el.clientHeight;
@@ -123,20 +137,56 @@ test("zine snapshot is downloadable and preserved edition remains runnable", asy
 });
 
 
-test("bold name toggles in both directions with keyboard access and the anecdote matches bio type size", async ({ page }) => {
+test("medium-weight name toggles in both directions with keyboard access and the anecdote matches bio type size", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const toggle = page.getByRole("button", { name: /show full name/i });
-  await expect(toggle).toHaveText("josh");
-  expect(await toggle.evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBeGreaterThanOrEqual(600);
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  const before = await toggle.evaluate((el) => el.getBoundingClientRect().width);
+  expect(await toggle.evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBe(500);
   await toggle.click();
-  await expect(page.getByRole("button", { name: /show short name/i })).toHaveText("joshua lucas");
   await expect(page.getByRole("button", { name: /show short name/i })).toHaveAttribute("aria-expanded", "true");
+  expect(await page.getByRole("button", { name: /show short name/i }).evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(before + 50);
   await page.keyboard.press("Enter");
-  await expect(toggle).toHaveText("josh");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
   expect(await page.locator(".collection-intro").evaluate((el) => {
     const bio = getComputedStyle(el.querySelector("h1")), fact = getComputedStyle(el.querySelector(".random-fact"));
     return { size: bio.fontSize === fact.fontSize, lineHeight: bio.lineHeight === fact.lineHeight };
   })).toEqual({ size: true, lineHeight: true });
+});
+
+test("each load chooses a supplied fact without immediate repeats; interactions keep the current one", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
+  });
+  await page.goto("/"); let previous = "";
+  for (let i = 0; i < 4; i++) {
+    await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
+    const fact = await page.locator(".random-fact").textContent();
+    expect(funFacts).toContain(fact); expect(fact).not.toBe(previous); previous = fact;
+    if (i < 3) await page.reload();
+  }
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("button", { name: /show full name/i }).click();
+  expect(await page.locator(".random-fact").textContent()).toBe(previous);
+});
+
+test("the zine film camera appears at the desktop viewport bottom and stays clear of mobile content", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 }); await load(page);
+  const camera = page.locator(".film-camera-dock");
+  await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
+  await expect(camera).toBeVisible(); await expect(camera.locator("canvas")).toHaveCount(1);
+  const bounds = await camera.boundingBox();
+  expect(bounds.bottom ?? bounds.y + bounds.height).toBeLessThanOrEqual(1000);
+  expect(bounds.y).toBeGreaterThan(850);
+  expect(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => r.name.includes("BookScene")))).toBe(false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await choose(page, "Stadia"); await page.locator(".cartridge-caption").click();
+  await expect(camera).toBeHidden();
 });
 
 test("shell halves and their inset seam have separate surfaces", async ({ page }) => {
@@ -154,25 +204,70 @@ test("shell halves and their inset seam have separate surfaces", async ({ page }
   expect(result.label.min).toBeGreaterThan(result.surround.max + .001);
 });
 
-test("top-side-up poses remain separated through interrupted selection and inspection", async ({ page }) => {
+test("opening poses remain separated through interrupted selection and full rotation", async ({ page }) => {
   test.setTimeout(120000);
   await load(page);
   await page.evaluate(() => {
-    window.intersectionsSeen = [];
+    window.intersectionsSeen = []; window.orderChanges = [];
     const stage = document.querySelector(".cartridge-stage");
-    new MutationObserver(() => { if (Number(stage.dataset.intersections) > 0) window.intersectionsSeen.push(stage.dataset.intersections); }).observe(stage, { attributes: true, attributeFilter: ["data-intersections"] });
+    new MutationObserver(() => {
+      if (Number(stage.dataset.intersections) > 0) window.intersectionsSeen.push(stage.dataset.intersections);
+      const ys = [0,1,2,3,4].map(i => Number(stage.dataset[`position${i}`].split(",")[1]));
+      if (ys.some((y, i) => i > 0 && y >= ys[i - 1])) window.orderChanges.push(ys);
+    }).observe(stage, { attributes: true, attributeFilter: ["data-intersections"] });
   });
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  // A direct middle selection previously let two lower neighbors exchange
+  // slots and prevented settling, despite the final target poses being clear.
+  await page.getByRole("button", { name: "View Stadia cartridge", exact: true }).focus(); await page.keyboard.press("Enter");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   for (const name of ["Gmail", "Early work", "Blizzard Entertainment", "Stadia"]) {
     const control = page.getByRole("button", { name: `View ${name} cartridge`, exact: true }); await control.focus(); await control.press("Enter");
   }
   const stage = page.locator(".cartridge-stage");
   await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   await expect(stage).toHaveAttribute("data-intersections", "0");
-  for (let i = 0; i < 5; i++) expect(Number(await stage.getAttribute(`data-front-up${i}`))).toBeGreaterThan(.98);
+  expect(Number(await stage.getAttribute("data-front-facing2"))).toBeGreaterThan(.98);
+  for (const i of [0, 1, 3, 4]) {
+    const facing = Number(await stage.getAttribute(`data-front-facing${i}`));
+    expect(facing).toBeGreaterThan(.1); expect(facing).toBeLessThan(.25);
+  }
+  const positions = await stage.evaluate((el) => [0,1,2,3,4].map(i => el.dataset[`position${i}`].split(",").map(Number)));
+  expect(positions[1][1]).toBeGreaterThan(positions[2][1]);
+  expect(positions[3][1]).toBeLessThan(positions[2][1]);
   const p = await point(page, 2);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 220, p.y + 45, { steps: 8 }); await page.mouse.up();
   await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   await expect(stage).toHaveAttribute("data-intersections", "0");
   expect(await page.evaluate(() => window.intersectionsSeen)).toEqual([]);
+  expect(await page.evaluate(() => window.orderChanges)).toEqual([]);
+});
+
+test("intro words sweep in reading order and name extensions animate reversibly", async ({ page }) => {
+  // Isolate DOM motion from GPU timing; these interactions also work in fallback.
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
+  });
+  await page.goto("/");
+  await page.locator(".intro-word").first().waitFor();
+  const sweep = await page.locator(".intro-word").evaluateAll((elements) => {
+    const values = elements.map((el) => {
+      const animation = el.getAnimations()[0]; animation.pause(); animation.currentTime = 600;
+      const style = getComputedStyle(el);
+      return { delay: parseFloat(style.animationDelay), opacity: Number(style.opacity), blur: style.filter, duration: style.animationDuration };
+    });
+    return values;
+  });
+  expect(sweep[0].opacity).toBeGreaterThan(sweep.at(-1).opacity);
+  expect(sweep[0].duration).toBe("0.7s"); expect(sweep[0].blur).toMatch(/blur/);
+  expect(sweep.every((value, i) => i === 0 || value.delay > sweep[i - 1].delay)).toBe(true);
+  const toggle = page.locator(".name-toggle");
+  await toggle.click({ force: true });
+  const transitions = await toggle.locator(".name-extension").evaluateAll((els) => els.map((el) => ({ duration: getComputedStyle(el).transitionDuration, delay: getComputedStyle(el).transitionDelay })));
+  expect(transitions).toEqual([{ duration: "0.32s", delay: "0s" }, { duration: "0.32s", delay: "0.06s" }]);
+  await toggle.press("Space"); await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const reduced = await toggle.locator(".name-extension").first().evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration));
+  expect(reduced).toBeLessThan(.001);
 });

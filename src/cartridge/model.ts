@@ -7,7 +7,7 @@ const rounded = (w: number, h: number, d: number, radius = .035) => new RoundedB
 /** An original DMG-like silhouette, modeled locally; no third-party cartridge asset. */
 export function makeCartridge(color: string, label: THREE.Texture, grain: THREE.Texture) {
   const group = new THREE.Group();
-  const shell = new THREE.MeshPhysicalMaterial({ color, roughness: .52, metalness: 0, clearcoat: .12, clearcoatRoughness: .58, bumpMap: grain, bumpScale: .006 });
+  const shell = new THREE.MeshPhysicalMaterial({ color, roughness: .6, metalness: 0, clearcoat: .08, clearcoatRoughness: .6, bumpMap: grain, bumpScale: .006 });
   const dark = new THREE.MeshStandardMaterial({ color: "#343936", roughness: .8 });
   const frame = new THREE.MeshStandardMaterial({ color, roughness: .72 });
   frame.color.multiplyScalar(.86);

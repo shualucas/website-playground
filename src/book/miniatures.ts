@@ -9,6 +9,7 @@ type Finish = "matte" | "metal" | "rubber" | "glass" | "plastic";
 export function aboutMiniatures(
   surface: (params: THREE.MeshPhysicalMaterialParameters) => PaperMaterial,
   register: (mesh: THREE.Mesh) => void,
+  cameraOnly = false,
 ) {
   const materials = new Map<string, PaperMaterial>();
   const material = (color: string, finish: Finish = "matte") => {
@@ -218,6 +219,10 @@ export function aboutMiniatures(
     0,
     "rubber",
   );
+
+  // The cartridge edition reuses this exact camera without building the other
+  // two miniatures. The zine's existing default path is unchanged.
+  if (cameraOnly) return { camera, racket: new THREE.Group(), controller: new THREE.Group() };
 
   const racket = new THREE.Group();
   racket.name = "EZONE-inspired blue tennis racket with lime grip tape";
