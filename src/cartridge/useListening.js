@@ -1,25 +1,26 @@
 import { useEffect, useState } from "react";
 
 export function useListening() {
-  const [track, setTrack] = useState(null);
+  const [listening, setListening] = useState({ track: null, recent: [], status: "loading", stale: false });
   useEffect(() => {
     let alive = true, current = null;
     const update = async () => {
       if (document.hidden || current) return;
-      current = new AbortController();
+      const controller = new AbortController(); current = controller;
+      const timeout = setTimeout(() => controller.abort(), 8000);
       try {
-        const response = await fetch("/api/listening", { signal: current.signal });
+        const response = await fetch("/api/listening", { signal: controller.signal, cache: "no-cache" });
         if (!response.ok) throw new Error("Unavailable");
         const data = response.status === 204 ? null : await response.json();
-        if (alive) setTrack(data?.title && data?.artist ? { ...data, stale: false } : null);
+        if (alive) setListening({ track: data?.track?.title ? data.track : null, recent: Array.isArray(data?.recent) ? data.recent.slice(0, 5) : [], status: response.status === 204 ? "unconfigured" : "ready", stale: false });
       } catch {
-        if (alive) setTrack(previous => previous ? { ...previous, stale: true } : null);
-      } finally { current = null; }
+        if (alive && !document.hidden) setListening(previous => ({ ...previous, status: "unavailable", stale: true }));
+      } finally { clearTimeout(timeout); if (current === controller) current = null; }
     };
     const visibility = () => { if (document.hidden) current?.abort(); else void update(); };
-    void update(); const timer = setInterval(update, 60000);
+    void update(); const timer = setInterval(update, 20000);
     document.addEventListener("visibilitychange", visibility);
     return () => { alive = false; current?.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", visibility); };
   }, []);
-  return track;
+  return listening;
 }

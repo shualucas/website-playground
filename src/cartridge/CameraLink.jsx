@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FilmCamera } from "./FilmCamera";
 
-export function CameraLink({ dark, hidden, ready, fallback }) {
+export function CameraLink({ dark, hidden, ready }) {
   const controller = useRef(null), gesture = useRef(null), suppress = useRef(false), timer = useRef(null);
   const [flashing, setFlashing] = useState(false), [arming, setArming] = useState(false);
   const origin = useRef({ x: 0, y: 0 });
@@ -55,7 +55,7 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
           timer.current = setTimeout(() => location.assign(destination), 500);
         }, 180);
       }}>
-      {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} /> : fallback}
+      {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} /> : null}
       <span className="camera-ready-light" aria-hidden="true" />
       <span className="camera-lens-flash" aria-hidden="true" />
     </a>

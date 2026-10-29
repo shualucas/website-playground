@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { funFacts } from "../src/cartridge/fun-facts.js";
+
+// Keep UI checks independent of the private local API key and live listening.
+test.beforeEach(async ({ page }) => { await page.route("**/api/listening", route => route.fulfill({ status:204 })); });
 const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment", "Early work"];
 const dates = ["2022 – now", "2020 – 2022", "2019", "2017", ""];
 const body = "based in beautiful California, building fun things at Google.";
@@ -329,7 +332,7 @@ test("all seven lowercase roles cycle, with a shared entrance and pause/resume",
   for(const label of labels){
     await expect(role).toHaveAttribute("data-role",label);
     if(label.includes(" ")) expect(await role.locator(".role-suffix").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
-    await page.clock.fastForward(2001); await expect(role.locator(".role-first")).toHaveClass(/is-leaving/); await page.clock.fastForward(280);
+    await page.clock.fastForward(2001); await expect(role.locator(".role-label")).toHaveClass(/is-leaving/); await page.clock.fastForward(280);
   }
   await expect(role).toHaveAttribute("data-role",labels[0]); await role.click();await page.clock.fastForward(10000);await expect(role).toHaveAttribute("data-role",labels[0]);
   await role.click();await page.clock.fastForward(2281);await expect(role).toHaveAttribute("data-role",labels[1]);
@@ -468,17 +471,45 @@ test("camera coasts after release, and selected cartridges drift without changin
   await page.emulateMedia({reducedMotion:"reduce"}); await expect(stage).toHaveAttribute("data-drift2", "0,0");
 });
 
-test("Last.fm widget distinguishes current listening, last played and a temporarily stale response", async ({ page }) => {
+test("Last.fm refreshes every 20 seconds, retains stale history, and opens the recent five above the artwork", async ({ page }) => {
+  const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({ time:initial }); await page.clock.pauseAt(initial);
   let request = 0;
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.route("**/api/listening", route => {
     request++;
-    return route.fulfill({status:request>2?502:200,contentType:"application/json",body:JSON.stringify({title:"Fixture track",artist:"Fixture artist",url:"https://www.last.fm/music/fixture",artwork:"/cartridges/labels/search-tonal.svg",playing:request===1})});
+    const track = {title:"Fixture track",artist:"Fixture artist",url:"https://www.last.fm/music/fixture",artwork:"/cartridges/labels/search-tonal.svg",playing:request===1};
+    return route.fulfill({status:request>2?502:200,contentType:"application/json",body:JSON.stringify({track,recent:Array.from({length:5},(_,i)=>({...track,title:`Past track ${i+1}`,playing:false}))})});
   });
   await page.goto("/"); const footer=page.locator(".now-playing");
-  await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText("Now playing");
+  await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText("currently listening");
+  await expect(footer).toContainText("Fixture artist"); await expect(footer.locator(".listening-indicator")).toHaveCount(1);
   await expect(footer.locator("img")).toHaveAttribute("src","/cartridges/labels/search-tonal.svg");
-  await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange"))); await expect(footer).toContainText("Last played");
-  await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange"))); await expect(footer).toContainText("Last seen");
+  const toggle=page.getByRole("button",{name:"Show last five songs"}); await toggle.click();
+  const dialog=page.getByRole("dialog",{name:"Last listened"});await expect(dialog).toBeVisible();await expect(dialog.locator("li")).toHaveCount(5);
+  const panel=await dialog.boundingBox(), button=await toggle.boundingBox();expect(panel.y+panel.height).toBeLessThan(button.y);
+  await expect(dialog.getByRole("button",{name:"Close listening history"})).toBeFocused();
+  await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);await expect(toggle).toBeFocused();
+  await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer.locator(".listening-indicator")).toHaveCount(0);expect(request).toBe(2);
+  await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer).toHaveAttribute("data-track","Fixture track");
+  await expect(page.locator(".listening-widget")).toHaveAttribute("data-listening-status","unavailable");
+  await toggle.click();await expect(dialog).toContainText("Showing your last available history.");
   await expect(footer).toHaveAttribute("href","https://www.last.fm/music/fixture");
+});
+
+test("empty listening history, unavailable artwork and API failure remain usable", async ({ page }) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  let payload={track:null,recent:[]},failed=false;
+  await page.route("**/api/listening",route=>route.fulfill({status:failed?502:200,contentType:"application/json",body:JSON.stringify(payload)}));
+  await page.route("**/missing-art.png",route=>route.fulfill({status:404,body:""}));
+  await page.goto("/");await expect(page.locator(".now-playing")).toContainText("Nothing scrobbled yet");
+  await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("dialog")).toContainText("Your first scrobbles will appear here.");
+  await page.getByRole("button",{name:"Close listening history"}).click();
+  payload={track:{title:"No artwork",artist:"An artist",artwork:"/missing-art.png",url:"https://www.last.fm/music/fixture",playing:false},recent:[]};
+  await page.reload();await expect(page.locator(".now-playing img")).toHaveCount(0);await expect(page.locator(".now-playing .listening-artwork svg")).toBeVisible();
+  await expect(page.locator(".now-playing")).toContainText("No artwork");
+  failed=true;await page.reload();await expect(page.locator(".now-playing")).toContainText("Listening unavailable");
+  await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("dialog")).toContainText("temporarily unavailable");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await expect(page.locator("audio,video")).toHaveCount(0);
 });

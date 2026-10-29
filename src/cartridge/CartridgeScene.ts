@@ -12,7 +12,7 @@ type Callbacks = {
 };
 type Item = {
   id: CartridgeId; root: THREE.Group; idle: THREE.Group; handling: THREE.Group; hitbox: THREE.Mesh;
-  reveal: { value: number }; half: THREE.Vector3; center: THREE.Vector3; bounds: RigidBounds; spin: THREE.Vector2; angle: THREE.Euler;
+  half: THREE.Vector3; center: THREE.Vector3; bounds: RigidBounds; spin: THREE.Vector2; angle: THREE.Euler;
   target: THREE.Vector3; targetAngle: THREE.Vector3; velocity: THREE.Vector3; angularVelocity: THREE.Vector3; wait: number;
 };
 const PITCH = 80 * Math.PI / 180;
@@ -163,22 +163,13 @@ export class CartridgeScene {
         const root = new THREE.Group(), idle = new THREE.Group(), handling = new THREE.Group(); handling.add(model); idle.add(handling); root.add(idle);
         const hitbox = new THREE.Mesh(new THREE.BoxGeometry(half.x * 2, half.y * 2, half.z * 2), new THREE.MeshBasicMaterial({ visible: false }));
         hitbox.position.copy(center); hitbox.userData.cartridgeId = config.id; idle.add(hitbox); this.scene.add(root);
-        const reveal = { value: this.motion.matches ? 1 : 0 };
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
-            for (const material of materials) {
-              const original = material.onBeforeCompile;
-              material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) => {
-                original.call(material, shader, renderer); shader.uniforms.entryOpacity = reveal;
-                shader.fragmentShader = "uniform float entryOpacity;\n" + shader.fragmentShader.replace("#include <alphatest_fragment>", "#include <alphatest_fragment>\nif(entryOpacity < .999 && fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)>entryOpacity) discard;");
-              };
-              material.customProgramCacheKey = () => "cartridge-entry-reveal-1";
-            }
             object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible && !((m as THREE.MeshPhysicalMaterial).transmission > .05)); object.receiveShadow = false;
           }
         });
-        this.items.push({ id: config.id, root, idle, handling, hitbox, reveal, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
+        this.items.push({ id: config.id, root, idle, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
       }
       this.layout();
       for (const item of this.items) {
@@ -324,8 +315,6 @@ export class CartridgeScene {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i], { root, handling, target, targetAngle, velocity, angularVelocity } = item;
       const progress = reduced ? 1 : THREE.MathUtils.clamp((this.entranceTime - (this.items.length - 1 - i) * .12) / .85, 0, 1);
-      item.reveal.value = reduced ? 1 : THREE.MathUtils.smoothstep(progress, 0, .5);
-      this.host.dataset[`reveal${i}`] = item.reveal.value.toFixed(3);
       const entrance = 3.2 * (1 - progress) ** 3;
       const turnEntrance = -.95 * (1 - Math.min(1, progress / 1.25)) ** 3;
       if (progress < 1) this.entering = true;
@@ -366,6 +355,7 @@ export class CartridgeScene {
     const corrected = this.keepSeparated();
     if (corrected) unsettled = true;
     this.renderer.render(this.scene, this.camera);
+    if (this.host.dataset.rendered !== "true") this.host.dataset.rendered = "true";
     const frameBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];

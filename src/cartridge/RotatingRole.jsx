@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
+import { RoleWord } from "./RoleWord";
+import "./role-effects.css";
 
 export const roles = [
-  { label: "product designer", effect: "slide" },
-  { label: "merch maker", effect: "stamp" },
-  { label: "brand builder", effect: "letters" },
-  { label: "prototyper", effect: "focus" },
-  { label: "systems thinker", effect: "slide" },
-  { label: "storyteller", effect: "focus" },
-  { label: "community organizer", effect: "letters" },
+  { label: "product designer", effect: "click" },
+  { label: "merch maker", effect: "roller" },
+  { label: "brand builder", effect: "fonts" },
+  { label: "prototyper", effect: "prototype" },
+  { label: "systems thinker", effect: "ascii" },
+  { label: "storyteller", effect: "illustrate" },
+  { label: "community organizer", effect: "gather" },
 ];
 
 export function RotatingRole({ active = true }) {
@@ -33,14 +35,11 @@ export function RotatingRole({ active = true }) {
   const [first, ...rest] = role.label.split(" ");
   return <button className="role-rotator" aria-label={`${role.label}, ${reduced ? "next role" : paused ? "resume role rotation" : "pause role rotation"}`}
     aria-pressed={reduced ? undefined : paused} title={reduced ? "Show next role" : paused ? "Resume rotation" : "Pause rotation"}
-    data-ready={ready} data-role={role.label} data-effect={role.effect} data-paused={!active || !ready || paused || reduced || !visible}
+    data-ready={ready} data-phase={leaving ? "leaving" : "visible"} data-role={role.label} data-effect={role.effect} data-paused={!active || !ready || paused || reduced || !visible}
     onClick={() => reduced ? setIndex((value) => (value + 1) % roles.length) : setPaused((value) => !value)}>
     {roles.map((item) => <span className="role-measure" aria-hidden="true" key={item.label}>{item.label}</span>)}
-    <span className="role-label" aria-hidden="true">
-      <span key={role.label} className={`role-first role-${role.effect}${leaving ? " is-leaving" : ""}`}>
-        {role.effect === "letters" ? Array.from(first).map((letter, i) => <span className="role-letter" style={{ "--letter-delay": `${i * 110 + 180}ms` }} data-letter={letter} key={i}><span>{letter}</span></span>) : <span className="role-word-ink">{first}</span>}
-        {role.effect === "focus" && <span className="role-particles" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ left: `${i * 100 / 18}%`, "--dx": `${(i * 17 % 41) - 20}px`, "--dy": `${(i * 13 % 29) - 14}px`, "--particle-delay": `${i * 13}ms` }} />)}</span>}
-      </span>
+    <span key={role.label} className={`role-label${leaving ? " is-leaving" : ""}`} aria-hidden="true">
+      <span className={`role-first role-${role.effect}`}><RoleWord word={first} effect={role.effect} /></span>
       {rest.length > 0 && <span className="role-suffix">{rest.join(" ")}</span>}
     </span>
   </button>;
