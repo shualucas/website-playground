@@ -93,12 +93,48 @@ test("all career captions contain only team and supplied dates; early work has n
   await expect(page.getByText("High school & college", { exact: true }).first()).toBeVisible();
 });
 
+test("captions enter with their cartridge and stay clear of every shell during interrupted selections", async ({ page }) => {
+  test.setTimeout(120000);await load(page);await page.emulateMedia({reducedMotion:'no-preference'});
+  const stage=page.locator('.cartridge-stage'),caption=page.locator('.cartridge-caption');
+  await page.evaluate(()=>{
+    window.captionSamples={visible:0,overlaps:[]};
+    const sample=()=>{
+      const stage=document.querySelector('.cartridge-stage'),caption=stage.querySelector('.cartridge-caption');
+      if(caption && getComputedStyle(caption).visibility==='visible' && Number(getComputedStyle(caption).opacity)>.02){
+        window.captionSamples.visible++;
+        const origin=stage.getBoundingClientRect(),box=caption.getBoundingClientRect();
+        for(let i=0;i<5;i++){
+          const frame=stage.dataset[`frame${i}`];if(!frame)continue;const cart=JSON.parse(frame);
+          if(box.right-origin.x>cart.left && box.left-origin.x<cart.right && box.bottom-origin.y>cart.top && box.top-origin.y<cart.bottom)window.captionSamples.overlaps.push({selected:stage.dataset.selected,cart:i});
+        }
+      }
+      window.captionSampleFrame=requestAnimationFrame(sample);
+    };sample();
+  });
+  const select=async name=>page.getByRole('button',{name:`View ${name} cartridge`,exact:true}).evaluate(el=>el.click());
+  await select('Blizzard Entertainment');await expect(stage).toHaveAttribute('data-caption-ready','true',{timeout:60000});await expect(caption).toBeVisible();
+  await expect(caption).toHaveCSS('animation-name','cartridge-caption-in');await expect(caption).toHaveCSS('animation-duration','0.16s');
+  await select('Search');await expect(stage).toHaveAttribute('data-caption-ready','false');await expect(caption).toBeHidden();
+  // Interrupt the moving stack with another selection; only its caption may enter.
+  await select('Gmail');await expect(caption.locator(':scope > span').first()).toHaveText('Gmail');
+  await expect(stage).toHaveAttribute('data-caption-ready','true',{timeout:60000});
+  await expect(caption).toBeVisible();
+  await page.waitForTimeout(200);const before=await caption.boundingBox();await page.waitForTimeout(200);const after=await caption.boundingBox();
+  expect(after.x).toBeCloseTo(before.x,0);expect(after.y).toBeCloseTo(before.y,0);
+  // Sample rendered frames, rather than assuming a GPU frame rate in CI.
+  await expect.poll(()=>page.evaluate(()=>window.captionSamples.visible),{timeout:10000}).toBeGreaterThan(2);
+  const samples=await page.evaluate(()=>{cancelAnimationFrame(window.captionSampleFrame);return window.captionSamples});
+  expect(samples.visible).toBeGreaterThan(2);expect(samples.overlaps).toEqual([]);
+  await page.emulateMedia({reducedMotion:'reduce'});await select('Early work');await expect(caption).toBeVisible();await expect(caption).toHaveCSS('animation-name','none');
+});
+
 test("canvas selection, drag rotation, caption entry and browser history work with the new chronology", async ({ page }) => {
   test.setTimeout(120000); const errors = []; page.on("pageerror", (e) => errors.push(e.message));
   await load(page); const stage = page.locator(".cartridge-stage"), target = await point(page, 1);
   await page.mouse.click(target.x, target.y);
   await expect(stage).toHaveAttribute("data-selected", "stadia"); await expect(stage).toHaveAttribute("data-settled", "true");
-  const caption = page.getByRole("button", { name: "Open Stadia, 2020 – 2022", exact: true });
+  const caption = page.locator(".cartridge-caption");
+  await expect(caption).toHaveAttribute("aria-label", "Open Stadia, 2020 – 2022");
   const captionBefore = await caption.boundingBox();
   for (const text of await caption.locator(":scope > span").all()) expect(await text.evaluate(el => getComputedStyle(el).fontWeight)).toBe("700");
   const before = await stage.getAttribute("data-rotation1"), p = await point(page, 1);
@@ -106,7 +142,9 @@ test("canvas selection, drag rotation, caption entry and browser history work wi
   await expect(stage).not.toHaveAttribute("data-rotation1", before); await expect(page.locator(".case-study")).toHaveCount(0);
   const captionAfter = await caption.boundingBox();
   expect(captionAfter.x).toBeCloseTo(captionBefore.x, 1); expect(captionAfter.y).toBeCloseTo(captionBefore.y, 1);
+  await expect(caption).toBeHidden(); // The rotated shell occupies this fixed slot.
   await page.keyboard.press("r"); await expect(stage).toHaveAttribute("data-rotation1", before);
+  await expect(caption).toBeVisible();
   await caption.click();
   await expect(page.getByRole("heading", { name: "Stadia", exact: true })).toBeFocused();
   await expect(page.getByRole("region", { name: "Stadia case study" }).getByText("2020–2022", { exact: true })).toBeVisible();
@@ -121,6 +159,7 @@ test("mobile keeps enlarged cartridges and captions in view, with persistent the
     await choose(page, name);
     // The long supplied bio and canvas form a scrollable mobile page. Keyboard
     // users can reach the fixed caption normally after selecting a cartridge.
+    await expect(page.locator(".cartridge-caption")).toBeVisible();
     await page.locator(".cartridge-caption").focus();
     await expect(page.locator(".cartridge-caption")).toBeInViewport();
     const bounds = await page.locator(".cartridge-caption").boundingBox(); expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);

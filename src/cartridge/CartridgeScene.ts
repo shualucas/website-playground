@@ -49,6 +49,11 @@ export class CartridgeScene {
   private disposed = false;
   private paused = false;
   private entering = true;
+  private captionY = 0;
+  private captionWidth = 260;
+  private captionHeight = 48;
+  private captionEntered = false;
+  private captionClearTime = 0;
   private ambientTime = 0;
   private inView = true;
   private mobile = false;
@@ -222,10 +227,35 @@ export class CartridgeScene {
     const halfHeight = Math.max(0, ...this.items.map((item) => item.half.y + Math.abs(item.center.y)));
     const halfDepth = Math.max(0, ...this.items.map((item) => item.half.z + Math.abs(item.center.z)));
     this.projected.set(0, -halfHeight, 1.8 + halfDepth).project(this.camera);
-    this.host.style.setProperty("--caption-y", `${(1 - this.projected.y) * this.host.clientHeight / 2 + 12}px`);
+    this.captionY = (1 - this.projected.y) * this.host.clientHeight / 2 + 12;
+    this.host.style.setProperty("--caption-y", `${this.captionY}px`);
+    // Reserve the actual text rectangle in screen space. Only lower neighbors
+    // yield, and only by the missing clearance; camera/selected shell stay fixed.
+    let clearance = 0;
+    const lowerEdge = 1 - 2 * (this.captionY + this.captionHeight + 12) / this.host.clientHeight;
+    for (let i = active + 1; active >= 0 && i < this.items.length; i++) {
+      const item = this.items[i];
+      this.extentRotation.makeRotationFromEuler(item.angle.set(item.targetAngle.x, item.targetAngle.y, item.targetAngle.z)).setPosition(item.target);
+      for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
+        this.projected.copy(item.center).add(this.topPoint.set(x * item.half.x, y * item.half.y, z * item.half.z)).applyMatrix4(this.extentRotation);
+        this.bottomPoint.copy(this.projected).project(this.camera);
+        this.bottomPoint.y = lowerEdge;
+        this.bottomPoint.unproject(this.camera);
+        clearance = Math.max(clearance, this.projected.y - this.bottomPoint.y);
+      }
+    }
+    if (clearance > 0) for (let i = active + 1; i < this.items.length; i++) this.items[i].target.y -= clearance;
+  }
+  private measureCaption() {
+    // Selection/resize only: pointer dragging and GPU frames reuse these sizes.
+    const caption = this.host.querySelector<HTMLElement>(".cartridge-caption");
+    this.captionWidth = caption?.offsetWidth || 260;
+    this.captionHeight = caption?.offsetHeight || 48;
   }
   setSelected(id: CartridgeId | null) {
     if (id !== this.selected) {
+      this.host.dataset.captionReady = "false";
+      this.captionEntered = false; this.captionClearTime = 0;
       // Early input takes over from the exact current entry pose, without a snap.
       if (this.host.dataset.ready === "true") this.entranceTime = Math.max(2, this.entranceTime);
       const active = this.items.findIndex((item) => item.id === id);
@@ -234,7 +264,7 @@ export class CartridgeScene {
         this.items[i].wait = i === active ? 0 : .025 + Math.min(3, Math.abs(i - active)) * .012;
       }
     }
-    this.selected = id; this.layout(); this.start();
+    this.selected = id; this.measureCaption(); this.layout(); this.start();
   }
   setHovered(id: CartridgeId | null) { this.hovered = id; this.start(); }
   setPaused(value: boolean) { this.paused = value; if (value) this.stop(); else this.start(); }
@@ -258,7 +288,7 @@ export class CartridgeScene {
     this.camera.lookAt(0, 0, 0);
     this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = "80"; this.host.dataset.magnification = String(this.camera.zoom); this.host.dataset.shadow = "soft-silhouette";
     this.host.dataset.order = cartridges.map((item) => item.id).join(",");
-    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.layout(); this.viewport(); this.start();
+    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.measureCaption(); this.layout(); this.viewport(); this.start();
   }
   private pick(event: PointerEvent) {
     const rect = this.host.getBoundingClientRect();
@@ -364,6 +394,9 @@ export class CartridgeScene {
     this.renderer.render(this.scene, this.camera);
     if (this.host.dataset.rendered !== "true") this.host.dataset.rendered = "true";
     const frameBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    const captionLeft = (this.host.clientWidth - this.captionWidth) / 2 - 6;
+    const captionRight = (this.host.clientWidth + this.captionWidth) / 2 + 6;
+    let captionClear = Boolean(this.selected), captionArrived = false;
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       let itemBottom = -Infinity;
@@ -382,6 +415,11 @@ export class CartridgeScene {
         frameBounds.left = Math.min(frameBounds.left, px); frameBounds.right = Math.max(frameBounds.right, px);
         frameBounds.top = Math.min(frameBounds.top, py); frameBounds.bottom = Math.max(frameBounds.bottom, py);
       }
+      this.host.dataset[`frame${i}`] = JSON.stringify({ left: itemLeft, top: itemTop, right: itemRight, bottom: itemBottom });
+      // The fixed caption waits for the same opening motion as its cartridge.
+      // Test every shell, including neighbors sweeping through this space.
+      if (itemRight > captionLeft && itemLeft < captionRight && itemBottom > this.captionY - 2 && itemTop < this.captionY + this.captionHeight + 6) captionClear = false;
+      if (item.id === this.selected) captionArrived = Math.abs(itemBottom - (this.captionY - 12)) < 18 && Math.abs(item.root.rotation.x - item.targetAngle.x) < .18;
       // The exposed top edge is the click target for a closed stack member.
       this.projected.set(0, item.id !== this.selected ? item.half.y - .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
       const point = { x: (this.projected.x + 1) * this.host.clientWidth / 2, y: (1 - this.projected.y) * this.host.clientHeight / 2 };
@@ -392,6 +430,10 @@ export class CartridgeScene {
         this.host.dataset.selectedFrame = JSON.stringify({ left: itemLeft, top: itemTop, right: itemRight, bottom: itemBottom });
       }
     }
+    this.captionClearTime = captionClear ? this.captionClearTime + dt : 0;
+    const captionReady = captionClear && (reduced || this.captionClearTime >= .045) && (reduced || this.captionEntered || captionArrived);
+    if (captionReady) this.captionEntered = true;
+    if (this.host.dataset.captionReady !== String(captionReady)) this.host.dataset.captionReady = String(captionReady);
     if (!this.selected) delete this.host.dataset.selectedFrame;
     this.host.dataset.frameBounds = JSON.stringify(frameBounds);
     this.host.dataset.entrance = this.entering ? "entering" : "complete";
