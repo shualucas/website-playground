@@ -76,8 +76,9 @@ export class CartridgeScene {
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     const room = new RoomEnvironment(); this.environment = this.pmrem.fromScene(room, .045); room.dispose();
     this.scene.environment = this.environment.texture; this.scene.environmentIntensity = .65;
+    this.scene.environmentRotation.set(.32, .34, 0);
     this.scene.add(new THREE.HemisphereLight("#ffffff", "#d6d3cd", .35));
-    const key = this.key; key.position.set(-1.2, 3, 45); key.castShadow = true;
+    const key = this.key; key.position.set(-1.1, 2.5, 45); key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024); key.shadow.radius = 10; key.shadow.blurSamples = 8;
     key.shadow.bias = -.00015; key.shadow.normalBias = .025;
     Object.assign(key.shadow.camera, { left: -5, right: 5, top: 8, bottom: -8, near: 1, far: 65 });
@@ -216,6 +217,12 @@ export class CartridgeScene {
     }
     this.host.dataset.composition = this.mobile ? "stack-mobile" : "stack";
     this.host.dataset.selected = this.selected ?? "";
+    // Caption belongs to the layout, not the animated shell's bounds. Use the
+    // same front-facing envelope for every selection; drag/idle cannot move it.
+    const halfHeight = Math.max(0, ...this.items.map((item) => item.half.y + Math.abs(item.center.y)));
+    const halfDepth = Math.max(0, ...this.items.map((item) => item.half.z + Math.abs(item.center.z)));
+    this.projected.set(0, -halfHeight, 1.8 + halfDepth).project(this.camera);
+    this.host.style.setProperty("--caption-y", `${(1 - this.projected.y) * this.host.clientHeight / 2 + 12}px`);
   }
   setSelected(id: CartridgeId | null) {
     if (id !== this.selected) {
@@ -383,12 +390,6 @@ export class CartridgeScene {
       this.host.style.setProperty(`--hit-${i}-y`, `${THREE.MathUtils.clamp(point.y, 22, this.host.clientHeight - 22)}px`);
       if (item.id === this.selected) {
         this.host.dataset.selectedFrame = JSON.stringify({ left: itemLeft, top: itemTop, right: itemRight, bottom: itemBottom });
-        // Keep the caption screen-aligned even when the selected shell rotates.
-        this.projected.copy(item.root.position).project(this.camera);
-        this.host.style.setProperty("--caption-x", `${(this.projected.x + 1) * this.host.clientWidth / 2}px`);
-        this.host.style.setProperty("--caption-y", `${itemBottom + 12}px`);
-        const turnRemaining = Math.abs(item.root.rotation.x - item.targetAngle.x) + Math.abs(item.root.rotation.y - item.targetAngle.y);
-        this.host.style.setProperty("--caption-opacity", String(THREE.MathUtils.smoothstep(1 - turnRemaining / 1.4, .3, .95)));
       }
     }
     if (!this.selected) delete this.host.dataset.selectedFrame;

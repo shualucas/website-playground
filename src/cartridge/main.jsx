@@ -21,7 +21,7 @@ const selectedRoute = () => {
 const readRoute = () => new URL(location.href).searchParams.get("view") === "case-study" ? selectedRoute() : null;
 function Icon({ type }) {
   return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {type === "sun" ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : type === "moon" ? <path d="M20.6 13.4A8.8 8.8 0 0 1 10.6 3.3a9 9 0 1 0 10 10.1Z" /> : type === "arrow" ? <path d="m6 18 12-12M6 6h12v12" /> : type === "download" ? <path d="M12 3v16m-6-6 6 6 6-6M4 21h16" /> : type === "back" ? <path d="M20 12H4m6-6-6 6 6 6" /> : type === "reset" ? <path d="M4 9a8 8 0 1 1 .7 8M4 4v5h5" /> : <path d="m6 6 12 12M6 18 18 6" />}
+    {type === "sun" ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : type === "moon" ? <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" /> : type === "arrow" ? <path d="m6 18 12-12M6 6h12v12" /> : type === "download" ? <path d="M12 3v16m-6-6 6 6 6-6M4 21h16" /> : type === "back" ? <path d="M20 12H4m6-6-6 6 6 6" /> : type === "reset" ? <path d="M4 9a8 8 0 1 1 .7 8M4 4v5h5" /> : <path d="m6 6 12 12M6 18 18 6" />}
   </svg>;
 }
 function ProjectMedia({ project, controls }) {
@@ -114,7 +114,7 @@ function App() {
   }, []);
   return <>
     <main className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
-      <header className="collection-header"><a className="zine-edition-link" href="/after-hours/">Zine edition <Icon type="arrow" /></a><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
+      <header className="collection-header"><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">

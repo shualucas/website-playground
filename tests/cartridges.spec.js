@@ -27,7 +27,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   await load(page);
   await expect(page.locator(".miniature-loader")).toHaveCount(0);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
-  await expect(page.locator(".portfolio-name")).toHaveText("I'm Josh, a");
+  await expect(page.getByRole("button", { name: "Josh, show full name" })).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "product designer");
   await expect(page.locator(".bio-continuation")).toHaveText(body);
   expect(funFacts).toContain(await page.locator(".random-fact").textContent());
@@ -79,7 +79,7 @@ test("all career captions contain only team and supplied dates; early work has n
     }));
     expect(visible).toBe(true);
   }
-  await page.getByRole("button", { name: "Open Early work", exact: true }).click();
+  await page.getByRole("button", { name: "Open Early work, Before 2017", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Early work", exact: true })).toBeFocused();
   await expect(page.getByText("High school & college", { exact: true }).first()).toBeVisible();
 });
@@ -89,13 +89,18 @@ test("canvas selection, drag rotation, caption entry and browser history work wi
   await load(page); const stage = page.locator(".cartridge-stage"), target = await point(page, 1);
   await page.mouse.click(target.x, target.y);
   await expect(stage).toHaveAttribute("data-selected", "stadia"); await expect(stage).toHaveAttribute("data-settled", "true");
+  const caption = page.getByRole("button", { name: "Open Stadia, 2020 – 2022", exact: true });
+  const captionBefore = await caption.boundingBox();
+  for (const text of await caption.locator(":scope > span").all()) expect(await text.evaluate(el => getComputedStyle(el).fontWeight)).toBe("700");
   const before = await stage.getAttribute("data-rotation1"), p = await point(page, 1);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 80, p.y + 25, { steps: 5 }); await page.mouse.up();
   await expect(stage).not.toHaveAttribute("data-rotation1", before); await expect(page.locator(".case-study")).toHaveCount(0);
+  const captionAfter = await caption.boundingBox();
+  expect(captionAfter.x).toBeCloseTo(captionBefore.x, 1); expect(captionAfter.y).toBeCloseTo(captionBefore.y, 1);
   await page.keyboard.press("r"); await expect(stage).toHaveAttribute("data-rotation1", before);
-  const caption = page.getByRole("button", { name: "Open Stadia, 2020 – 2022", exact: true }); await caption.click();
+  await caption.click();
   await expect(page.getByRole("heading", { name: "Stadia", exact: true })).toBeFocused();
-  await expect(page.getByRole("region", { name: "Stadia case study" }).getByText("2020 – 2022", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Stadia case study" }).getByText("2020–2022", { exact: true })).toBeVisible();
   await page.goBack(); await expect(page.locator(".case-study")).toHaveCount(0); await expect(caption).toBeFocused();
   await page.goForward(); await expect(page.getByRole("region", { name: "Stadia case study" })).toBeVisible(); expect(errors).toEqual([]);
 });
@@ -106,7 +111,7 @@ test("mobile keeps enlarged cartridges and captions in view, with persistent the
   for (const name of ["Blizzard Entertainment", "Search", "Early work"]) {
     await choose(page, name);
     // The long supplied bio and canvas form a scrollable mobile page. Keyboard
-    // users can reach the caption normally, even when selection moves its slot.
+    // users can reach the fixed caption normally after selecting a cartridge.
     await page.locator(".cartridge-caption").focus();
     await expect(page.locator(".cartridge-caption")).toBeInViewport();
     const bounds = await page.locator(".cartridge-caption").boundingBox(); expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
@@ -155,11 +160,18 @@ test("zine snapshot is downloadable and preserved edition remains runnable", asy
 });
 
 
-test("full name stays medium-weight and reduced-motion readers can explore each role by keyboard", async ({ page }) => {
+test("Josh expands to Josh Lucas at medium weight and reduced-motion readers can explore each role by keyboard", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   expect(await page.locator(".portfolio-name").evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBe(500);
+  const name = page.locator(".intro-name");
+  await expect(name).toHaveAccessibleName("Josh, show full name");
+  await name.focus(); await name.press("Enter");
+  await expect(name).toHaveAttribute("aria-expanded", "true"); await expect(name).toHaveAccessibleName("Josh Lucas, show short name");
+  await expect.poll(async () => (await page.locator(".name-surname").boundingBox()).width).toBeGreaterThan(30);
+  await name.press("Enter"); await expect(name).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(async () => (await page.locator(".name-surname").boundingBox()).width).toBeLessThan(1);
   const role = page.locator(".role-rotator"); await role.focus();
   expect(await role.evaluate(el => getComputedStyle(el).fontWeight)).toBe("500");
   for (const label of ["product designer", "merch maker", "brand builder", "prototyper", "systems thinker", "storyteller", "community organizer"]) {
@@ -232,7 +244,7 @@ test("footer links and music stay usable on small screens without WebGL", async 
   });
   await page.goto("/");
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
-  await expect(page.locator(".collection-header").getByRole("link", { name: "Zine edition" })).toHaveAttribute("href", "/after-hours/");
+  await expect(page.locator(".collection-header").getByRole("link", { name: "Zine edition" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Download zine source" })).toHaveCount(0);
   const footer = page.locator(".collection-footer");
   await expect(footer.getByRole("link", { name: "shualucas on X" })).toHaveAttribute("href", "https://x.com/shualucas");
@@ -473,7 +485,7 @@ test("camera coasts after release, and selected cartridges drift without changin
   await page.emulateMedia({reducedMotion:"reduce"}); await expect(stage).toHaveAttribute("data-drift2", "0,0");
 });
 
-test("Last.fm refreshes every 20 seconds, retains stale history, and opens the recent five above the artwork", async ({ page }) => {
+test("Last.fm refreshes every 20 seconds, retains stale history, and shows the recent five inline above the current song", async ({ page }) => {
   const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({ time:initial }); await page.clock.pauseAt(initial);
   let request = 0;
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
@@ -483,13 +495,18 @@ test("Last.fm refreshes every 20 seconds, retains stale history, and opens the r
     return route.fulfill({status:request>2?502:200,contentType:"application/json",body:JSON.stringify({track,recent:Array.from({length:5},(_,i)=>({...track,title:`Past track ${i+1}`,playing:false}))})});
   });
   await page.goto("/"); const footer=page.locator(".now-playing");
-  await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText("currently listening");
+  await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText(/now-ish listening|currently spinning|in the rotation/);
   await expect(footer).toContainText("Fixture artist"); await expect(footer.locator(".listening-indicator")).toHaveCount(1);
   await expect(footer.locator("img")).toHaveAttribute("src","/cartridges/labels/search-tonal.svg");
   const toggle=page.getByRole("button",{name:"Show last five songs"}); await toggle.click();
-  const dialog=page.getByRole("dialog",{name:"Last listened"});await expect(dialog).toBeVisible();await expect(dialog.locator("li")).toHaveCount(5);
-  const panel=await dialog.boundingBox(), button=await toggle.boundingBox();expect(panel.y+panel.height).toBeLessThan(button.y);
-  await expect(dialog.getByRole("button",{name:"Close listening history"})).toBeFocused();
+  const dialog=page.getByRole("region",{name:"Recently listened"});await expect(dialog).toBeVisible();await expect(dialog.locator("li")).toHaveCount(5);
+  const panel=await dialog.boundingBox(), current=await page.locator(".listening-current").boundingBox();expect(panel.y+panel.height).toBeLessThanOrEqual(current.y+1);
+  await expect(toggle).toBeFocused();
+  expect(await dialog.evaluate(el=>getComputedStyle(el).position)).toBe("static");
+  const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
+  expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeGreaterThanOrEqual(copy.height);
+  const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));
+  expect(green[1]).toBeGreaterThan(green[0]);expect(green[1]).toBeGreaterThan(green[2]);
   await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);await expect(toggle).toBeFocused();
   await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer.locator(".listening-indicator")).toHaveCount(0);expect(request).toBe(2);
   await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer).toHaveAttribute("data-track","Fixture track");
@@ -505,13 +522,13 @@ test("empty listening history, unavailable artwork and API failure remain usable
   await page.route("**/api/listening",route=>route.fulfill({status:failed?502:200,contentType:"application/json",body:JSON.stringify(payload)}));
   await page.route("**/missing-art.png",route=>route.fulfill({status:404,body:""}));
   await page.goto("/");await expect(page.locator(".now-playing")).toContainText("Nothing scrobbled yet");
-  await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("dialog")).toContainText("Your first scrobbles will appear here.");
-  await page.getByRole("button",{name:"Close listening history"}).click();
+  await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("region",{name:"Recently listened"})).toContainText("Your first scrobbles will appear here.");
+  await page.getByRole("button",{name:"Show last five songs"}).click();
   payload={track:{title:"No artwork",artist:"An artist",artwork:"/missing-art.png",url:"https://www.last.fm/music/fixture",playing:false},recent:[]};
   await page.reload();await expect(page.locator(".now-playing img")).toHaveCount(0);await expect(page.locator(".now-playing .listening-artwork svg")).toBeVisible();
   await expect(page.locator(".now-playing")).toContainText("No artwork");
   failed=true;await page.reload();await expect(page.locator(".now-playing")).toContainText("Listening unavailable");
-  await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("dialog")).toContainText("temporarily unavailable");
+  await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("region",{name:"Recently listened"})).toContainText("temporarily unavailable");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await expect(page.locator("audio,video")).toHaveCount(0);
 });
@@ -525,5 +542,5 @@ test("an unconfigured deployment has a quiet client fallback and does not preten
   await expect(page.locator(".now-playing")).toContainText("my listening history");
   await expect(page.locator(".listening-indicator")).toHaveCount(0);
   await page.getByRole("button",{name:"Show last five songs"}).click();
-  await expect(page.getByRole("dialog")).toContainText("once connected");
+  await expect(page.getByRole("region",{name:"Recently listened"})).toContainText("once connected");
 });
