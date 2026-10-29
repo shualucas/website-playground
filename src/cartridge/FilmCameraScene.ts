@@ -50,7 +50,7 @@ export class FilmCameraScene {
   setTheme(dark: boolean) { this.fill.intensity = dark ? 1.1 : .8; this.draw(); }
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight;
-    if (!width || !height) return;
+    if (!width || !height) { this.sync(); return; }
     const aspect = width / height, halfHeight = Math.max(this.size.y / 2, this.size.x / (2 * aspect)) * 1.2;
     this.camera.left = -halfHeight * aspect; this.camera.right = halfHeight * aspect;
     this.camera.top = halfHeight; this.camera.bottom = -halfHeight; this.camera.updateProjectionMatrix();
@@ -71,8 +71,8 @@ export class FilmCameraScene {
   };
   private frame = (now: number) => {
     this.raf = 0; this.time += Math.min((now - this.last) / 1000, .05); this.last = now;
-    this.rig.position.y = Math.sin(this.time * .95) * .045;
-    this.rig.rotation.set(Math.sin(this.time * .61) * .02, Math.sin(this.time * .73) * .045, Math.sin(this.time * .54) * .035);
+    this.rig.position.y = Math.sin(this.time * 1.05) * .09;
+    this.rig.rotation.set(Math.sin(this.time * .67) * .04, Math.sin(this.time * .81) * .09, Math.sin(this.time * .63) * .065);
     this.host.dataset.float = [this.rig.position.y, this.rig.rotation.y, this.rig.rotation.z].map((v) => v.toFixed(5)).join(",");
     this.draw(); this.raf = requestAnimationFrame(this.frame);
   };

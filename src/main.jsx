@@ -674,6 +674,10 @@ function App() {
         aria-label="Scene controls"
         inert={view !== "book" ? true : undefined}
       >
+        <a className="zine-source-link" href="/versions/portfolio-zine-v1-source.zip" download aria-label="Download zine source">
+          Download source
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v16m-6-6 6 6 6-6M4 21h16" /></svg>
+        </a>
         <button
           type="button"
           className="icon-button"

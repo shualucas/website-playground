@@ -101,6 +101,15 @@ svg {
   z-index: 8;
   color: var(--ui-text);
 }
+.zine-source-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+.zine-source-link:hover { color: var(--ui-text); }
 .icon-button {
   width: 44px;
   height: 44px;

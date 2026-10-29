@@ -23,7 +23,7 @@ const ROLLS = [.008, -.012, .013, -.006, .01];
 const YAWS = [-.019, .025, -.014, .018, -.015];
 const SHIFTS = [-.035, .025, -.02, .035, -.01];
 const COMPONENTS = ["x", "y", "z"] as const;
-const REST_CENTER_Y = 2.35;
+const REST_CENTER_Y = .35;
 
 /** Tilted, top-edge-first stack; rigid shells, interruptible springs, one clock. */
 export class CartridgeScene {
@@ -62,6 +62,8 @@ export class CartridgeScene {
   constructor(private host: HTMLElement, private callbacks: Callbacks) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+    // Tinted, frosted plastic needs no full-resolution refraction buffer.
+    this.renderer.transmissionResolutionScale = .5;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .95;
     this.renderer.shadowMap.enabled = true;
@@ -151,7 +153,7 @@ export class CartridgeScene {
       }));
       if (this.disposed) return;
       for (let i = 0; i < cartridges.length; i++) {
-        const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell, this.grain) ?? makeCartridge(config.shell, maps[i], this.grain);
+        const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell, this.grain, config.finish) ?? makeCartridge(config.shell, maps[i], this.grain);
         if (this.disposed) { this.disposeObject(model); return; }
         const modelBounds = new THREE.Box3().setFromObject(model);
         const half = modelBounds.getSize(new THREE.Vector3()).multiplyScalar(.5), center = modelBounds.getCenter(new THREE.Vector3());
@@ -161,7 +163,7 @@ export class CartridgeScene {
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
-            object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible); object.receiveShadow = false;
+            object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible && !((m as THREE.MeshPhysicalMaterial).transmission > .05)); object.receiveShadow = false;
           }
         });
         this.items.push({ id: config.id, root, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
@@ -200,6 +202,12 @@ export class CartridgeScene {
       item.targetAngle.set(i === active ? 0 : PITCH, YAWS[i], ROLLS[i]);
       if (i === active) { item.targetAngle.x += item.spin.x; item.targetAngle.y += item.spin.y; }
     }
+    // Keep the inspected shell centered at the enlarged scale. Its neighbors
+    // yield above/below and may leave the viewport, as in the reference.
+    if (active >= 0) {
+      const offset = this.items[active].target.y;
+      for (const item of this.items) item.target.y -= offset;
+    }
     this.host.dataset.composition = this.mobile ? "stack-mobile" : "stack";
     this.host.dataset.selected = this.selected ?? "";
   }
@@ -225,17 +233,18 @@ export class CartridgeScene {
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight; if (!width || !height) return;
     this.mobile = innerWidth < 880; this.camera.aspect = width / height;
-    // Frame the complete open composition once, never the current drag/selection.
-    // Keep the established 2× zoom while fitting the taller Game Boy silhouette.
-    const span = Math.max(17.2, 7.2 / this.camera.aspect);
-    this.camera.zoom = 2;
+    // Double the previous desktop magnification, capped by the available width
+    // on narrow displays. Selection/drag never alters the camera or its zoom.
+    const span = 17.2;
+    this.camera.zoom = Math.min(4, span * this.camera.aspect / 3.2);
     const distance = span / (2 * Math.tan(7 * Math.PI / 180));
     this.camera.position.set(0, 0, distance);
     // Preserve depth precision for the recessed paper and shell seam. A near
     // plane at .1 wastes precision when this long lens sits ~70 units away.
     this.camera.near = Math.max(.1, distance - 12); this.camera.far = distance + 12;
     this.camera.lookAt(0, 0, 0);
-    this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = "80"; this.host.dataset.magnification = "2"; this.host.dataset.shadow = "soft-silhouette";
+    this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = "80"; this.host.dataset.magnification = String(this.camera.zoom); this.host.dataset.shadow = "soft-silhouette";
+    this.host.dataset.order = cartridges.map((item) => item.id).join(",");
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.layout(); this.start();
   }
   private pick(event: PointerEvent) {
@@ -289,7 +298,9 @@ export class CartridgeScene {
   private stop() { cancelAnimationFrame(this.raf); this.raf = 0; }
   private frame = (now: number) => {
     this.raf = 0; if (this.disposed || this.paused || document.hidden) return;
-    const dt = Math.min((now - this.last) / 1000, .04); this.last = now;
+    // Preserve wall-clock timing on slower GPUs. The spring loop below uses
+    // <=8ms integration steps, so catching up does not destabilize the motion.
+    const dt = Math.min((now - this.last) / 1000, .25); this.last = now;
     const reduced = this.motion.matches, blend = reduced ? 1 : 1 - Math.exp(-13 * dt);
     this.entranceTime = reduced ? 2 : this.entranceTime + dt;
     let unsettled = false;
@@ -335,6 +346,7 @@ export class CartridgeScene {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       let itemBottom = -Infinity;
+      let itemLeft = Infinity, itemRight = -Infinity, itemTop = Infinity;
       this.host.dataset[`position${i}`] = item.root.position.toArray().join(",");
       this.host.dataset[`frontUp${i}`] = item.bounds.axes[2].y.toFixed(4);
       this.host.dataset[`frontFacing${i}`] = item.bounds.axes[2].z.toFixed(4);
@@ -345,6 +357,7 @@ export class CartridgeScene {
         this.projected.copy(item.center).addScaledVector(this.topPoint.set(x * item.half.x, y * item.half.y, z * item.half.z), 1).applyMatrix4(item.handling.matrixWorld).project(this.camera);
         const px = (this.projected.x + 1) * this.host.clientWidth / 2, py = (1 - this.projected.y) * this.host.clientHeight / 2;
         itemBottom = Math.max(itemBottom, py);
+        itemLeft = Math.min(itemLeft, px); itemRight = Math.max(itemRight, px); itemTop = Math.min(itemTop, py);
         frameBounds.left = Math.min(frameBounds.left, px); frameBounds.right = Math.max(frameBounds.right, px);
         frameBounds.top = Math.min(frameBounds.top, py); frameBounds.bottom = Math.max(frameBounds.bottom, py);
       }
@@ -352,8 +365,10 @@ export class CartridgeScene {
       this.projected.set(0, item.id !== this.selected ? item.half.y - .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
       const point = { x: (this.projected.x + 1) * this.host.clientWidth / 2, y: (1 - this.projected.y) * this.host.clientHeight / 2 };
       this.host.dataset[`hit${i}`] = JSON.stringify(point);
-      this.host.style.setProperty(`--hit-${i}-x`, `${point.x}px`); this.host.style.setProperty(`--hit-${i}-y`, `${point.y}px`);
+      this.host.style.setProperty(`--hit-${i}-x`, `${THREE.MathUtils.clamp(point.x, 22, this.host.clientWidth - 22)}px`);
+      this.host.style.setProperty(`--hit-${i}-y`, `${THREE.MathUtils.clamp(point.y, 22, this.host.clientHeight - 22)}px`);
       if (item.id === this.selected) {
+        this.host.dataset.selectedFrame = JSON.stringify({ left: itemLeft, top: itemTop, right: itemRight, bottom: itemBottom });
         // Keep the caption screen-aligned even when the selected shell rotates.
         this.projected.copy(item.root.position).project(this.camera);
         this.host.style.setProperty("--caption-x", `${(this.projected.x + 1) * this.host.clientWidth / 2}px`);
@@ -362,6 +377,7 @@ export class CartridgeScene {
         this.host.style.setProperty("--caption-opacity", String(THREE.MathUtils.smoothstep(1 - turnRemaining / 1.4, .3, .95)));
       }
     }
+    if (!this.selected) delete this.host.dataset.selectedFrame;
     this.host.dataset.frameBounds = JSON.stringify(frameBounds);
     this.host.dataset.entrance = this.entering ? "entering" : "complete";
     this.host.dataset.settled = !unsettled && !this.entering ? "true" : "false";

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { funFacts } from "../src/cartridge/fun-facts.js";
-const names = ["Blizzard Entertainment", "Gmail", "Stadia", "Search", "Early work"];
-const dates = ["2017", "2019", "2020 – 2022", "2022 – now", ""];
+const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment", "Early work"];
+const dates = ["2022 – now", "2020 – 2022", "2019", "2017", ""];
 const body = "I'm a systems thinker with a knack for micro interactions and finer details. I like figuring out what should exist, what it should feel like, and how to make it happen.";
 async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
@@ -42,10 +42,14 @@ test("career collection uses exact bio and five individually visible, tilted top
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
   await expect(page.locator(".cartridge-keyboard")).toHaveCount(5);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "tilted-top-edge");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "4");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "80");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-silhouette");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-model", "external-glb");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-order", "search,stadia,gmail,blizzard,early-work");
+  const projected = JSON.parse(await page.locator(".cartridge-stage").getAttribute("data-frame-bounds"));
+  expect(projected.right - projected.left).toBeGreaterThan(500);
+  expect(await page.locator(".bio-details").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
   for (let i = 0; i < 5; i++) {
     const facing = Number(await page.locator(".cartridge-stage").getAttribute(`data-front-facing${i}`));
@@ -72,7 +76,7 @@ test("all career captions contain only team and supplied dates; early work has n
     await expect(page.getByRole("button", { name: "Reset cartridge rotation" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Close cartridge" })).toHaveCount(0);
     const visible = await page.locator(".cartridge-stage").evaluate((el) => [0,1,2,3,4].every((i) => {
-      const p = JSON.parse(el.dataset[`hit${i}`]); return p.x > 0 && p.x < el.clientWidth && p.y > 0 && p.y < el.clientHeight;
+      const x = parseFloat(el.style.getPropertyValue(`--hit-${i}-x`)), y = parseFloat(el.style.getPropertyValue(`--hit-${i}-y`)); return x >= 22 && x <= el.clientWidth - 22 && y >= 22 && y <= el.clientHeight - 22;
     }));
     expect(visible).toBe(true);
   }
@@ -83,13 +87,13 @@ test("all career captions contain only team and supplied dates; early work has n
 
 test("canvas selection, drag rotation, caption entry and browser history work with the new chronology", async ({ page }) => {
   test.setTimeout(120000); const errors = []; page.on("pageerror", (e) => errors.push(e.message));
-  await load(page); const stage = page.locator(".cartridge-stage"), target = await point(page, 2);
+  await load(page); const stage = page.locator(".cartridge-stage"), target = await point(page, 1);
   await page.mouse.click(target.x, target.y);
   await expect(stage).toHaveAttribute("data-selected", "stadia"); await expect(stage).toHaveAttribute("data-settled", "true");
-  const before = await stage.getAttribute("data-rotation2"), p = await point(page, 2);
+  const before = await stage.getAttribute("data-rotation1"), p = await point(page, 1);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 80, p.y + 25, { steps: 5 }); await page.mouse.up();
-  await expect(stage).not.toHaveAttribute("data-rotation2", before); await expect(page.locator(".case-study")).toHaveCount(0);
-  await page.keyboard.press("r"); await expect(stage).toHaveAttribute("data-rotation2", before);
+  await expect(stage).not.toHaveAttribute("data-rotation1", before); await expect(page.locator(".case-study")).toHaveCount(0);
+  await page.keyboard.press("r"); await expect(stage).toHaveAttribute("data-rotation1", before);
   const caption = page.getByRole("button", { name: "Open Stadia, 2020 – 2022", exact: true }); await caption.click();
   await expect(page.getByRole("heading", { name: "Stadia", exact: true })).toBeFocused();
   await expect(page.getByRole("region", { name: "Stadia case study" }).getByText("2020 – 2022", { exact: true })).toBeVisible();
@@ -112,7 +116,7 @@ test("mobile keeps enlarged cartridges and captions in view, with persistent the
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   const framed = await page.locator(".cartridge-stage").evaluate((el) => {
-    const bounds = JSON.parse(el.dataset.frameBounds);
+    const bounds = JSON.parse(el.dataset.selectedFrame);
     return bounds.left >= 0 && bounds.top >= 0 && bounds.right <= el.clientWidth && bounds.bottom <= el.clientHeight;
   });
   expect(framed).toBe(true);
@@ -147,6 +151,8 @@ test("zine snapshot is downloadable and preserved edition remains runnable", asy
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/zine/?project=about");
   await expect(page.locator(".spellbook")).toHaveAttribute("data-presentation", "ready", { timeout: 90000 });
   await expect(page.locator(".book-stage")).toHaveAttribute("data-phase", "ready", { timeout: 90000 });
+  await expect(page.getByRole("link", { name: "Download zine source" })).toHaveAttribute("href", "/versions/portfolio-zine-v1-source.zip");
+  await expect(page.getByRole("link", { name: "Download zine source" })).toHaveAttribute("download", "");
 });
 
 
@@ -186,7 +192,7 @@ test("each load chooses a supplied fact without immediate repeats; interactions 
   expect(await page.locator(".random-fact").textContent()).toBe(previous);
 });
 
-test("the camera follows the footer, floats only in view, and respects reduced motion", async ({ page }) => {
+test("the camera is centered in the footer, floats only in view, and respects reduced motion", async ({ page }) => {
   test.setTimeout(120000);
   await page.setViewportSize({ width: 1440, height: 1000 }); await load(page);
   const camera = page.locator(".film-camera-dock");
@@ -195,7 +201,10 @@ test("the camera follows the footer, floats only in view, and respects reduced m
   await expect(camera).toBeVisible(); await expect(camera.locator("canvas")).toHaveCount(1);
   expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
   const footer = await page.locator(".collection-footer").boundingBox(), bounds = await camera.boundingBox();
-  expect(bounds.y).toBeGreaterThan(footer.y + footer.height);
+  expect(bounds.y).toBeGreaterThanOrEqual(footer.y);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(footer.y + footer.height);
+  expect(Math.abs(bounds.x + bounds.width / 2 - (footer.x + footer.width / 2))).toBeLessThan(1);
+  await expect(page.locator(".footer-camera figcaption")).toHaveText("say cheese");
   expect(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => r.name.includes("BookScene")))).toBe(false);
   await page.setViewportSize({ width: 390, height: 844 });
   await camera.scrollIntoViewIfNeeded();
@@ -211,6 +220,28 @@ test("the camera follows the footer, floats only in view, and respects reduced m
   await camera.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-motion", "reduced");
   await choose(page, "Stadia"); await page.locator(".cartridge-caption").click();
   await expect(camera).toBeHidden();
+  await expect(camera).toHaveAttribute("data-motion", "reduced");
+});
+
+test("footer links and music stay usable on small screens without WebGL", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
+  });
+  await page.goto("/");
+  await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
+  await expect(page.locator(".collection-header").getByRole("link", { name: "Zine edition" })).toHaveAttribute("href", "/zine/");
+  await expect(page.getByRole("link", { name: "Download zine source" })).toHaveCount(0);
+  const footer = page.locator(".collection-footer");
+  await expect(footer.getByRole("link", { name: "shualucas on X" })).toHaveAttribute("href", "https://x.com/shualucas");
+  await expect(footer.locator("figcaption")).toHaveText("say cheese");
+  await expect(footer.locator(".now-playing")).toHaveAttribute("href", /https:\/\/open\.spotify\.com\/(playlist|track)\/[a-zA-Z0-9]+$/);
+  const href = await footer.locator(".now-playing").getAttribute("href");
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(footer.locator(".now-playing")).toHaveAttribute("href", href);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("shell halves and their inset seam have separate surfaces", async ({ page }) => {
@@ -251,15 +282,15 @@ test("opening poses remain separated through interrupted selection and full rota
   const stage = page.locator(".cartridge-stage");
   await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   await expect(stage).toHaveAttribute("data-intersections", "0");
-  expect(Number(await stage.getAttribute("data-front-facing2"))).toBeGreaterThan(.98);
-  for (const i of [0, 1, 3, 4]) {
+  expect(Number(await stage.getAttribute("data-front-facing1"))).toBeGreaterThan(.98);
+  for (const i of [0, 2, 3, 4]) {
     const facing = Number(await stage.getAttribute(`data-front-facing${i}`));
     expect(facing).toBeGreaterThan(.1); expect(facing).toBeLessThan(.25);
   }
   const positions = await stage.evaluate((el) => [0,1,2,3,4].map(i => el.dataset[`position${i}`].split(",").map(Number)));
-  expect(positions[1][1]).toBeGreaterThan(positions[2][1]);
-  expect(positions[3][1]).toBeLessThan(positions[2][1]);
-  const p = await point(page, 2);
+  expect(positions[0][1]).toBeGreaterThan(positions[1][1]);
+  expect(positions[2][1]).toBeLessThan(positions[1][1]);
+  const p = await point(page, 1);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 220, p.y + 45, { steps: 8 }); await page.mouse.up();
   await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   await expect(stage).toHaveAttribute("data-intersections", "0");
@@ -301,16 +332,26 @@ test("roles cycle with four distinct effects and pause/resume on click", async (
   const role = page.locator(".role-rotator");
   await expect(role).toHaveAttribute("data-role", "Brand developer");
   await expect(role).toHaveAttribute("data-effect", "letters");
+  await expect(role.locator(".role-first")).toHaveText("Brand");
+  await expect(role.locator(".role-suffix")).toHaveText("developer");
   await page.clock.fastForward(3481);
   await expect(role).toHaveAttribute("data-role", "Merch maker");
   await expect(role).toHaveAttribute("data-effect", "stamp");
+  await expect(role.locator(".role-first")).toHaveText("Merch");
+  await expect(role.locator(".role-suffix")).toHaveText("maker");
+  expect(await role.locator(".role-suffix").evaluate((el) => {
+    const style = getComputedStyle(el); return { animation: style.animationName, transform: style.transform, filter: style.filter };
+  })).toEqual({ animation: "none", transform: "none", filter: "none" });
   await role.click(); await expect(role).toHaveAttribute("data-paused", "true");
   await page.clock.fastForward(10000); await expect(role).toHaveAttribute("data-role", "Merch maker");
   await role.click();
   await page.clock.fastForward(3481); await expect(role).toHaveAttribute("data-role", "Product designer");
   await expect(role).toHaveAttribute("data-effect", "slide");
+  await expect(role.locator(".role-suffix")).toHaveText("designer");
   await page.clock.fastForward(3481); await expect(role).toHaveAttribute("data-role", "Visionary");
   await expect(role).toHaveAttribute("data-effect", "focus");
+  await expect(role.locator(".role-first")).toHaveText("Visionary");
+  await expect(role.locator(".role-suffix")).toHaveCount(0);
   await page.clock.fastForward(3481); await expect(role).toHaveAttribute("data-role", "Brand developer");
 });
 
@@ -351,6 +392,7 @@ test("fallback loader cycles all props for three seconds and also waits for real
   await page.goto("/");
   const loader = page.locator(".miniature-loader");
   await expect(loader).toHaveAttribute("data-backend", "fallback");
+  await expect(page.locator(".loader-dots")).toHaveCount(0);
   for (const model of ["camera", "cdj", "zine", "bulb"]) {
     await expect(loader).toHaveAttribute("data-active", model); await page.clock.runFor(750);
   }
@@ -359,4 +401,37 @@ test("fallback loader cycles all props for three seconds and also waits for real
   release(); await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
   await page.clock.runFor(241);
   await expect(loader).toHaveCount(0); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
+});
+
+test("translucent shells retain opaque labels and team-specific finishes", async ({ page }) => {
+  await page.goto("/tests/fixtures/blank.html");
+  const finishes = await page.evaluate(async () => {
+    const THREE = await import("/node_modules/.vite/deps/three.js");
+    const { cartridges } = await import("/src/cartridge/config.ts");
+    const { loadExternalShell } = await import("/src/cartridge/model.ts");
+    const result = {};
+    for (const config of cartridges) {
+      const model = await loadExternalShell(new THREE.Texture(), config.shell, undefined, config.finish);
+      const shells = [], labels = [];
+      model.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          const finish = { transmission: material.transmission ?? 0, opacity: material.opacity, transparent: material.transparent, color: material.color?.getHexString() };
+          if (material.name === "Cartridge Shell") shells.push(finish);
+          if (object.userData.label) labels.push(finish);
+        }
+      });
+      result[config.id] = { shells, labels };
+    }
+    return result;
+  });
+  for (const { shells, labels } of Object.values(finishes)) {
+    expect(shells.length).toBeGreaterThan(0); expect(labels.length).toBeGreaterThan(0);
+    expect(shells.every((m) => m.opacity === 1 && !m.transparent)).toBe(true);
+    expect(labels.every((m) => m.transmission === 0 && m.opacity === 1 && !m.transparent)).toBe(true);
+  }
+  expect(finishes.search.shells.every((m) => m.transmission > .5)).toBe(true);
+  expect(finishes.blizzard.shells.every((m) => m.transmission > 0 && m.transmission < .3)).toBe(true);
+  expect(finishes.gmail.shells.every((m) => m.transmission === 0 && m.color === "b8af98")).toBe(true);
+  expect(finishes.stadia.shells.every((m) => m.transmission === 0 && m.color === "34383a")).toBe(true);
 });

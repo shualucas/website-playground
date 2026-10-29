@@ -7,7 +7,7 @@ import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { cartridges } from "./config";
 import { careerProjects } from "./projects";
 import { Intro } from "./Intro";
-import { FilmCamera } from "./FilmCamera";
+import { PortfolioFooter } from "./PortfolioFooter";
 import { LoadingScreen } from "./LoadingScreen";
 import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
@@ -84,11 +84,13 @@ function App() {
   useEffect(() => { engine.current?.setSelected(selected); }, [selected]);
   useEffect(() => { engine.current?.setHovered(hovered); }, [hovered]);
   useEffect(() => {
-    engine.current?.setPaused(Boolean(reading) || !presented || status === "fallback");
-    if (previousReading.current && !reading) requestAnimationFrame(() => {
+    // The DOM has committed and inert is removed. Restore keyboard focus now,
+    // rather than making it wait behind the resumed scene's GPU frame.
+    if (previousReading.current && !reading) {
       const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current : buttons.current[selected];
       target?.focus({ preventScroll: true });
-    });
+    }
+    engine.current?.setPaused(Boolean(reading) || !presented || status === "fallback");
     previousReading.current = reading;
   }, [reading, presented, status]);
   useEffect(() => {
@@ -108,7 +110,7 @@ function App() {
   }, []);
   return <>
     <main className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
-      <header className="collection-header"><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
+      <header className="collection-header"><a className="zine-edition-link" href="/zine/">Zine edition <Icon type="arrow" /></a><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
@@ -119,8 +121,7 @@ function App() {
           {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
-      <footer className="collection-footer"><a href="/zine/">Zine edition <Icon type="arrow" /></a><a href="/versions/portfolio-zine-v1-source.zip" download>Download zine source <Icon type="download" /></a></footer>
-      {status === "ready" && presented && <FilmCamera dark={dark} hidden={Boolean(reading)} />}
+      {presented && <PortfolioFooter dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />}
     </main>
     {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
     {!presented && <LoadingScreen ready={status !== "loading"} onComplete={() => setPresented(true)} />}

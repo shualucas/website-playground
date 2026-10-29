@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { cartridgeModel } from "./config";
+import { cartridgeModel, type ShellFinish } from "./config";
 
 const rounded = (w: number, h: number, d: number, radius = .035) => new RoundedBoxGeometry(w, h, d, 3, radius);
 
@@ -73,7 +73,7 @@ async function externalTemplate(url: string) {
   return template.promise;
 }
 
-export async function loadExternalShell(label: THREE.Texture, color: string, grain?: THREE.Texture): Promise<THREE.Group | null> {
+export async function loadExternalShell(label: THREE.Texture, color: string, grain?: THREE.Texture, finish?: ShellFinish): Promise<THREE.Group | null> {
   if (!cartridgeModel.url) return null;
   const group = (await externalTemplate(cartridgeModel.url)).clone(true);
   group.rotation.set(...cartridgeModel.rotation); group.updateMatrixWorld(true);
@@ -98,7 +98,16 @@ export async function loadExternalShell(label: THREE.Texture, color: string, gra
       const clone = material.clone() as THREE.MeshStandardMaterial;
       if (material.name === "Label (Paper)") { clone.visible = false; object.castShadow = false; }
       else if (material.name === "Cartridge Shell") {
-        clone.color.set(color); clone.metalness = 0; clone.roughness = .6; clone.envMapIntensity = .85;
+        if (finish && finish.transmission > 0) {
+          clone.dispose();
+          const tint = new THREE.Color(color).lerp(new THREE.Color("#ffffff"), .015);
+          return new THREE.MeshPhysicalMaterial({ name: "Cartridge Shell", color: tint, metalness: 0,
+            roughness: finish.roughness, transmission: finish.transmission, thickness: finish.thickness,
+            attenuationColor: new THREE.Color(color), attenuationDistance: finish.attenuationDistance,
+            ior: 1.46, clearcoat: .18, clearcoatRoughness: .35, envMapIntensity: 1,
+            transparent: false, opacity: 1, side: THREE.FrontSide });
+        }
+        clone.color.set(color); clone.metalness = 0; clone.roughness = finish?.roughness ?? .6; clone.envMapIntensity = .85;
         if (grain && object.geometry.hasAttribute("uv")) { clone.bumpMap = grain; clone.bumpScale = .003; }
       }
       return clone;

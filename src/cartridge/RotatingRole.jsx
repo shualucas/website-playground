@@ -25,13 +25,17 @@ export function RotatingRole({ active = true }) {
     return () => { clearTimeout(exit); clearTimeout(next); };
   }, [index, active, paused, reduced, visible]);
   const role = roles[index];
+  const [first, ...rest] = role.label.split(" ");
   return <button className="role-rotator" aria-label={`${role.label}, ${reduced ? "next role" : paused ? "resume role rotation" : "pause role rotation"}`}
     aria-pressed={reduced ? undefined : paused} title={reduced ? "Show next role" : paused ? "Resume rotation" : "Pause rotation"}
     data-role={role.label} data-effect={role.effect} data-paused={!active || paused || reduced || !visible}
     onClick={() => reduced ? setIndex((value) => (value + 1) % roles.length) : setPaused((value) => !value)}>
     {roles.map((item) => <span className="role-measure" aria-hidden="true" key={item.label}>{item.label}</span>)}
-    <span key={role.label} className={`role-label role-${role.effect}${leaving ? " is-leaving" : ""}`} aria-hidden="true">
-      {role.effect === "letters" ? Array.from(role.label).map((letter, i) => <span className="role-letter" style={{ "--letter-delay": `${i * 22}ms` }} key={i}>{letter === " " ? "\u00a0" : letter}</span>) : role.label}
+    <span className="role-label" aria-hidden="true">
+      <span key={role.label} className={`role-first role-${role.effect}${leaving ? " is-leaving" : ""}`}>
+        {role.effect === "letters" ? Array.from(first).map((letter, i) => <span className="role-letter" style={{ "--letter-delay": `${i * 22}ms` }} key={i}>{letter}</span>) : first}
+      </span>
+      {rest.length > 0 && <span className="role-suffix">{rest.join(" ")}</span>}
     </span>
   </button>;
 }

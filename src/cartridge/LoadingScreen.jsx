@@ -44,7 +44,6 @@ export function LoadingScreen({ ready, onComplete }) {
     <div className="loader-center" aria-hidden="true">
       <div className="loader-model-stage" ref={host} />
       {backend !== "3d" && <div className="loader-fallback"><FlatMiniature index={index} /></div>}
-      <div className="loader-dots">{ids.map((id, i) => <span key={id} data-active={i === index} />)}</div>
       <span className="loader-label">Loading</span>
     </div>
   </div>;
