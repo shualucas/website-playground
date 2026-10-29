@@ -1,8 +1,19 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { resolve } from "node:path";
+import { createListeningHandler } from "./api/listening.js";
 
 export default defineConfig(({ mode }) => ({
-  plugins: mode === "zine" ? [{
+  plugins: [{
+    name: "local-listening-api",
+    configureServer(server) {
+      const env = loadEnv(mode, process.cwd(), "LASTFM_");
+      server.middlewares.use("/api/listening", createListeningHandler({ user: env.LASTFM_USER || "shualucas", apiKey: env.LASTFM_API_KEY }));
+    },
+    configurePreviewServer(server) {
+      const env = loadEnv(mode, process.cwd(), "LASTFM_");
+      server.middlewares.use("/api/listening", createListeningHandler({ user: env.LASTFM_USER || "shualucas", apiKey: env.LASTFM_API_KEY }));
+    },
+  }, ...(mode === "zine" ? [{
     name: "preserved-zine-test-entry",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
@@ -10,7 +21,7 @@ export default defineConfig(({ mode }) => ({
         next();
       });
     },
-  }] : [],
+  }] : [])],
   build: {
     rollupOptions: {
       input: { afterHours: resolve(import.meta.dirname, "after-hours/index.html"), cartridges: resolve(import.meta.dirname, "index.html"), zine: resolve(import.meta.dirname, "zine/index.html") },

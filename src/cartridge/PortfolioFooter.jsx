@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { pickMusic } from "../content/music";
+import React, { useEffect, useState } from "react";
+import { useListening } from "./useListening";
 import { CameraLink } from "./CameraLink";
 
 function RecordArtwork() {
@@ -26,8 +26,10 @@ function FlatCamera() {
 }
 
 export function PortfolioFooter({ dark, ready, hidden }) {
-  const [{ track, playlist }] = useState(pickMusic);
+  const track = useListening();
+  const profile = "https://www.last.fm/user/shualucas";
   const [artworkFailed, setArtworkFailed] = useState(false);
+  useEffect(() => setArtworkFailed(false), [track?.artwork]);
   return <footer className="collection-footer" hidden={hidden}>
     <a className="social-link" href="https://x.com/shualucas" target="_blank" rel="noopener noreferrer">
       <span>shualucas on</span>{" "}<span className="social-platform">X</span>
@@ -36,12 +38,12 @@ export function PortfolioFooter({ dark, ready, hidden }) {
       <CameraLink dark={dark} hidden={hidden} ready={ready} fallback={<FlatCamera />} />
       <figcaption>say cheese</figcaption>
     </figure>
-    <a className="now-playing" href={track?.url ?? playlist.url} target="_blank" rel="noopener noreferrer"
-      aria-label={track ? `Listen to ${track.title} by ${track.artist} on Spotify` : "Open one of my playlists on Spotify"}
-      title={track ? `${track.title} — ${track.artist}` : "My rotation on Spotify"} data-track={track?.title ?? ""}>
-      <span className="now-playing-row"><span className="now-playing-copy"><span>Now-ish playing</span><span className="now-playing-title">{track?.title ?? "my rotation"}</span></span>
+    <a className="now-playing" href={track?.url ?? profile} target="_blank" rel="noopener noreferrer"
+      aria-label={track ? `${track.stale ? "Last seen" : track.playing ? "Now playing" : "Last played"}: ${track.title} by ${track.artist} on Last.fm` : "Open my listening history on Last.fm"}
+      title={track ? `${track.title} — ${track.artist}` : "My listening history on Last.fm"} data-track={track?.title ?? ""}>
+      <span className="now-playing-row"><span className="now-playing-copy"><span>{track ? track.stale ? "Last seen" : track.playing ? "Now playing" : "Last played" : "Now-ish playing"}</span><span className="now-playing-title">{track?.title ?? "my listening history"}</span></span>
       <span className="now-playing-artwork">
-        {track && !artworkFailed ? <img src={track.artwork} alt={`${track.title} album artwork`} width="36" height="36" loading="lazy" onError={() => setArtworkFailed(true)} /> : <RecordArtwork />}
+        {track?.artwork && !artworkFailed ? <img src={track.artwork} alt={`${track.title} album artwork`} width="36" height="36" loading="lazy" onError={() => setArtworkFailed(true)} /> : <RecordArtwork />}
       </span>
       </span>
     </a>

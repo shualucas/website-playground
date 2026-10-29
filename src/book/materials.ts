@@ -7,7 +7,7 @@ export const PAGE_WIDTH = 3.35,
   SURFACE = 0.06;
 export interface Project {
   id: string;
-  kind: "about" | "project" | "after-hours";
+  kind: "about" | "project" | "after-hours" | "blank";
   label: string;
   theme: string;
   title: string;

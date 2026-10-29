@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "playwright test",
     "typecheck": "tsc --noEmit",
-    "test:zine": "playwright test --config playwright.zine.config.js"
+    "test:zine": "playwright test --config playwright.zine.config.js",
+    "test:listening": "node --test checks/listening.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",

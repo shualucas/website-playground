@@ -19,8 +19,8 @@ svg { display:block; flex-shrink:0; }
 .text-link:hover,a:hover { color:var(--ui-muted); }
 .tool-button { width:44px; height:44px; display:grid; place-items:center; border-radius:50%; transition:background 180ms ease; }
 .tool-button:hover { background:var(--ui-fill); }
-.collection-hero { display:grid; grid-template-columns:minmax(280px,340px) minmax(0,1fr); gap:40px; min-height:920px; }
-.collection-intro { position:relative; z-index:1; max-width:340px; align-self:center; padding:0; }
+.collection-hero { display:grid; grid-template-columns:minmax(0,380fr) minmax(0,440fr); gap:40px; min-height:920px; max-width:860px; margin-inline:auto; }
+.collection-intro { position:relative; z-index:1; width:100%; max-width:356px; align-self:center; justify-self:end; padding:0; }
 .collection-intro h1 { font:400 23px/1.3 "DM Sans",Arial,sans-serif; letter-spacing:-.015em; color:var(--ui-muted); margin:0; text-wrap:pretty; }
 .collection-intro strong { font-weight:500; color:var(--ui-text); }
 .collection-display { position:relative; min-width:0; height:920px; }
@@ -71,7 +71,7 @@ svg { display:block; flex-shrink:0; }
 @media(max-width:879px) {
  .collection { padding:24px 24px 28px; }
  .collection-header { height:64px; }
- .collection-hero { display:block; min-height:0; }
+ .collection-hero { display:block; min-height:0; max-width:none; }
  .collection-intro { max-width:520px; padding:0; }
  .collection-intro h1 { font-size:23px; line-height:1.3; }
  .collection-display { width:100%; height:760px; margin-top:24px; }
@@ -99,7 +99,7 @@ svg { display:block; flex-shrink:0; }
 .role-suffix { display:inline-block; }
 .role-letter { display:inline-block; position:relative; }
 .role-letter > span { animation:role-case-base 260ms steps(1,end) both; animation-delay:var(--letter-delay); }
-.role-letter::after { content:attr(data-upper); position:absolute; inset:0; opacity:0; animation:role-case-upper 260ms steps(1,end) both; animation-delay:var(--letter-delay); }
+.role-letter::after { content:attr(data-letter); position:absolute; inset:0; opacity:0; animation:role-case-upper 260ms steps(1,end) both; animation-delay:var(--letter-delay); }
 .role-stamp { padding:0 .12em; margin:0 -.12em; background:var(--ui-text); color:var(--scene-bg); transform:rotate(-3deg); border-radius:1px; animation:role-peel-in 650ms cubic-bezier(.22,1,.36,1) both; }
 .role-stamp::after { content:""; position:absolute; right:0; top:0; bottom:0; width:.22em; background:var(--ui-muted); transform-origin:right; animation:role-peel-edge 650ms ease-out both; }
 .role-slide { position:relative; padding:0 .12em; margin:0 -.12em; border-radius:2px; background:var(--ui-fill); animation:role-highlight-in 500ms ease-out both; }
@@ -110,7 +110,7 @@ svg { display:block; flex-shrink:0; }
 .role-particles i { position:absolute; top:50%; width:2px; height:2px; border-radius:50%; background:currentColor; animation:role-particle-in 650ms ease-out both; animation-delay:var(--particle-delay); }
 .role-first.is-leaving { animation:role-out 280ms cubic-bezier(.4,0,1,1) both; }
 @keyframes role-case-base { 0%,100% { opacity:1; } 25%,75% { opacity:0; } }
-@keyframes role-case-upper { 0%,100% { opacity:0; } 25%,75% { opacity:1; } }
+@keyframes role-case-upper { 0% { opacity:0; transform:rotateX(-75deg) translateY(3px); } 25%,75% { opacity:1; transform:none; } 100% { opacity:0; transform:rotateX(75deg) translateY(-3px); } }
 @keyframes role-peel-in { 0% { opacity:0; clip-path:inset(0 100% 0 0); transform:perspective(140px) rotateY(-65deg) rotate(-7deg); } 55% { opacity:1; clip-path:inset(0); transform:perspective(140px) rotateY(12deg) rotate(-3deg); } 100% { opacity:1; clip-path:inset(0); transform:rotate(-3deg); } }
 @keyframes role-peel-edge { from { opacity:.8; transform:scaleX(4); } to { opacity:0; transform:scaleX(0); } }
 @keyframes role-highlight-in { from { opacity:0; } to { opacity:1; } }
@@ -127,8 +127,11 @@ svg { display:block; flex-shrink:0; }
 .camera-lens-flash { position:absolute; left:var(--flash-x,30%); top:var(--flash-y,40%); width:6px; height:6px; background:white; border-radius:50%; opacity:0; pointer-events:none; z-index:2; transform:translate(-50%,-50%); }
 .camera-link[data-flashing="true"] .camera-lens-flash { animation:camera-source-flash 180ms ease-out both; }
 @keyframes camera-source-flash { 0% { opacity:0; box-shadow:0 0 0 0 white; } 25% { opacity:1; box-shadow:0 0 12px 9px white,0 0 45px 25px #fff9,0 0 90px 45px #fff4; } 100% { opacity:0; box-shadow:0 0 30px 20px #fff0,0 0 90px 60px #fff0; } }
-.camera-page-flash { position:fixed; inset:0; background:white; z-index:100; pointer-events:all; animation:camera-flash-in 120ms 60ms ease-out both; }
-@keyframes camera-flash-in { from { opacity:0; } to { opacity:1; } }
+.camera-ready-light { position:absolute; width:4px; height:4px; border-radius:50%; background:#e72323; left:var(--ready-x,75%); top:var(--ready-y,48%); transform:translate(-50%,-50%); opacity:0; pointer-events:none; z-index:2; }
+.camera-link[data-arming="true"] .camera-ready-light { opacity:1; box-shadow:0 0 8px 3px #f22b; }
+.camera-page-flash { position:fixed; inset:0; background:white; z-index:100; pointer-events:all; clip-path:circle(0 at var(--origin-x) var(--origin-y)); animation:camera-flash-in 400ms 80ms cubic-bezier(.55,0,.3,1) both; }
+@keyframes camera-flash-in { from { clip-path:circle(0 at var(--origin-x) var(--origin-y)); } to { clip-path:circle(160vmax at var(--origin-x) var(--origin-y)); } }
+
 .film-camera-dock { position:relative; width:164px; height:164px; margin:0 auto; pointer-events:none; }
 .film-camera-dock[hidden] { display:none; }
 .film-camera-dock canvas { display:block; width:100%; height:100%; }
@@ -140,7 +143,7 @@ svg { display:block; flex-shrink:0; }
  .role-first,.role-letter { animation:none !important; transform:none !important; filter:none !important; clip-path:none !important; letter-spacing:normal !important; }
 }
 
-@media(min-width:880px) and (max-width:1100px) { .collection { padding-left:36px; padding-right:36px; } .collection-hero { grid-template-columns:280px minmax(0,1fr); gap:24px; } }
+@media(min-width:880px) and (max-width:1100px) { .collection { padding-left:36px; padding-right:36px; } }
 
 @media(prefers-reduced-motion:reduce) { .role-letter > span,.role-word-ink { animation:none !important; } .role-letter::after,.role-stamp::after,.role-slide::after,.role-particles { display:none; } }
 

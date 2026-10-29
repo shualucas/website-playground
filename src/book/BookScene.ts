@@ -32,6 +32,9 @@ import {
   type Project,
 } from "./materials";
 
+
+const blankTexture = (dark = false) => { const texture = new THREE.CanvasTexture(blankPageCanvas(dark)); texture.colorSpace = THREE.SRGBColorSpace; return texture; };
+
 const INTRO_DURATION = 0.85;
 // Keep the overhead shadow within the scene and below every rotated leaf.
 const SHADOW_DISTANCE = 1;
@@ -49,6 +52,7 @@ type Phase =
   | "closing";
 type Callbacks = {
   projects: Project[];
+  blankInterior?: boolean;
   onPhase: (phase: Phase) => void;
   onIndex: (index: number) => void;
   onSpread: (left: number, right: number) => void;
@@ -215,7 +219,7 @@ export class BookScene {
       texture.colorSpace = THREE.SRGBColorSpace;
       this.rightCanvases.push(canvas);
       this.rightTextures.push(this.keep(texture));
-      this.portals.push(new AsciiPortal(projectTheme(project.theme).colors));
+      if (!callbacks.blankInterior) this.portals.push(new AsciiPortal(projectTheme(project.theme).colors));
     }
     this.updateArtwork(0, true);
     this.light();
@@ -356,7 +360,7 @@ export class BookScene {
       });
     const inside = this.callbacks.projects.map((project, i) =>
       this.keep(
-        pageTexture(project, i, "left", this.callbacks.printPages?.[i]),
+        this.callbacks.blankInterior ? blankTexture(this.dark) : pageTexture(project, i, "left", this.callbacks.printPages?.[i]),
       ),
     );
     this.coverTextures = [front, back];
@@ -426,6 +430,7 @@ export class BookScene {
     }
   }
   private updateArtwork(time: number, force = false) {
+    if (this.callbacks.blankInterior) return;
     this.portals.forEach((portal, i) => {
       if (
         !force &&
@@ -466,7 +471,7 @@ export class BookScene {
     this.leftTextures.forEach((texture, i) =>
       replace(
         texture,
-        pageTexture(
+        this.callbacks.blankInterior ? blankTexture(dark) : pageTexture(
           this.callbacks.projects[i],
           i,
           "left",
@@ -475,6 +480,7 @@ export class BookScene {
         ),
       ),
     );
+    if (this.callbacks.blankInterior) this.rightTextures.forEach(texture => replace(texture, blankTexture(dark)));
     this.paperCanvas = blankPageCanvas(dark);
     this.portals.forEach((portal, i) => {
       const project = this.callbacks.projects[i];

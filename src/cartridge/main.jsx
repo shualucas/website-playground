@@ -114,7 +114,7 @@ function App() {
   }, []);
   return <>
     <main className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
-      <header className="collection-header"><a className="zine-edition-link" href="/zine/">Zine edition <Icon type="arrow" /></a><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
+      <header className="collection-header"><a className="zine-edition-link" href="/after-hours/">Zine edition <Icon type="arrow" /></a><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">

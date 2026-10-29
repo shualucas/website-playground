@@ -21,6 +21,7 @@ export class FilmCameraScene {
   private lastInput = 0;
   private wobble = 0;
   private wobbleVelocity = 0;
+  private readyLight = new THREE.Mesh(new THREE.SphereGeometry(.019, 12, 8), new THREE.MeshBasicMaterial({ color: "#3b0808", toneMapped: false }));
   private flashStart = -Infinity;
   private flashPoint = new THREE.Group();
   private flashLight = new THREE.PointLight("white", 0, 3);
@@ -56,6 +57,7 @@ export class FilmCameraScene {
     ctx.fillStyle = glow; ctx.fillRect(0, 0, 64, 64); this.flareTexture = new THREE.CanvasTexture(flareCanvas);
     this.flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.flareTexture, color: "white", transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false }));
     this.flare.visible = false; this.flashPoint.position.set(-.3, .66, .26); model.add(this.flashPoint); this.flashPoint.add(this.flare, this.flashLight);
+    this.readyLight.position.set(.49, .49, .235); model.add(this.readyLight);
     this.scene.add(this.fill);
     const key = new THREE.DirectionalLight("#fffdf8", 2.4); key.position.set(-3, 5, 4); this.scene.add(key);
     const rim = new THREE.DirectionalLight("#e7edf8", 1.2); rim.position.set(3, 1, 2); this.scene.add(rim);
@@ -83,12 +85,24 @@ export class FilmCameraScene {
   }
   private publishRotation() { this.host.dataset.rotation = this.inspection.rotation.toArray().slice(0, 3).join(","); }
   resetRotation() { this.spinVelocity.set(0, 0); this.inspection.rotation.set(0, 0, 0); this.publishRotation(); this.draw(); }
+  prepareFlash() {
+    this.scene.updateMatrixWorld(true); this.flashPoint.getWorldPosition(this.flashProjection).project(this.camera);
+    const rect = this.host.getBoundingClientRect(), link = this.host.parentElement!;
+    const x = (this.flashProjection.x + 1) / 2, y = (1 - this.flashProjection.y) / 2;
+    link.style.setProperty("--flash-x", `${x * 100}%`); link.style.setProperty("--flash-y", `${y * 100}%`);
+    this.readyLight.getWorldPosition(this.flashProjection).project(this.camera);
+    link.style.setProperty("--ready-x", `${(this.flashProjection.x + 1) * 50}%`);
+    link.style.setProperty("--ready-y", `${(1 - this.flashProjection.y) * 50}%`);
+    this.readyLight.material.color.set("#ff2525"); this.readyLight.scale.setScalar(1.6); this.draw();
+    return { x: rect.left + x * rect.width, y: rect.top + y * rect.height };
+  }
   flash() {
     if (this.motion.matches) return;
     this.scene.updateMatrixWorld(true); this.flashPoint.getWorldPosition(this.flashProjection).project(this.camera);
     const link = this.host.parentElement!;
     link.style.setProperty("--flash-x", `${(this.flashProjection.x + 1) * 50}%`);
     link.style.setProperty("--flash-y", `${(1 - this.flashProjection.y) * 50}%`);
+    this.readyLight.material.color.set("#3b0808"); this.readyLight.scale.setScalar(1);
     this.flashStart = performance.now(); this.flare.visible = true; this.flare.scale.setScalar(.15); this.flashLight.intensity = 6; this.draw(); this.sync();
   }
   private resize() {

@@ -25,7 +25,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   await expect(page.locator(".miniature-loader")).toHaveCount(0);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
   await expect(page.locator(".portfolio-name")).toHaveText("I'm Josh, a");
-  await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "Brand developer");
+  await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "product designer");
   await expect(page.locator(".bio-continuation")).toHaveText(body);
   expect(funFacts).toContain(await page.locator(".random-fact").textContent());
   await expect(page.locator(".collection-header").getByRole("button", { name: "About", exact: true })).toHaveCount(0);
@@ -42,6 +42,8 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(projected.right - projected.left).toBeLessThan(430);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
   expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
+  const rightGutter = page.viewportSize().width - stage.x - projected.right;
+  expect(Math.abs(intro.x - rightGutter)).toBeLessThan(20);
   expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
   for (let i = 0; i < 5; i++) {
@@ -155,12 +157,12 @@ test("full name stays medium-weight and reduced-motion readers can explore each 
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   expect(await page.locator(".portfolio-name").evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBe(500);
   const role = page.locator(".role-rotator"); await role.focus();
-  for (const label of ["Brand developer", "Merch maker", "Product designer", "Visionary"]) {
+  for (const label of ["product designer", "merch maker", "brand builder", "prototyper", "systems thinker", "storyteller", "community organizer"]) {
     await expect(role).toHaveAttribute("data-role", label);
     await expect(role).toHaveAttribute("data-paused", "true");
     await page.keyboard.press("Enter");
   }
-  await expect(role).toHaveAttribute("data-role", "Brand developer");
+  await expect(role).toHaveAttribute("data-role", "product designer");
   expect(await page.locator(".collection-intro").evaluate((el) => {
     const bio = getComputedStyle(el.querySelector("h1")), fact = getComputedStyle(el.querySelector(".random-fact"));
     return { size: bio.fontSize === fact.fontSize, lineHeight: bio.lineHeight === fact.lineHeight };
@@ -225,12 +227,12 @@ test("footer links and music stay usable on small screens without WebGL", async 
   });
   await page.goto("/");
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
-  await expect(page.locator(".collection-header").getByRole("link", { name: "Zine edition" })).toHaveAttribute("href", "/zine/");
+  await expect(page.locator(".collection-header").getByRole("link", { name: "Zine edition" })).toHaveAttribute("href", "/after-hours/");
   await expect(page.getByRole("link", { name: "Download zine source" })).toHaveCount(0);
   const footer = page.locator(".collection-footer");
   await expect(footer.getByRole("link", { name: "shualucas on X" })).toHaveAttribute("href", "https://x.com/shualucas");
   await expect(footer.locator("figcaption")).toHaveText("say cheese");
-  await expect(footer.locator(".now-playing")).toHaveAttribute("href", /https:\/\/open\.spotify\.com\/(playlist|track)\/[a-zA-Z0-9]+$/);
+  await expect(footer.locator(".now-playing")).toHaveAttribute("href", "https://www.last.fm/user/shualucas");
   const href = await footer.locator(".now-playing").getAttribute("href");
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
   await expect(footer.locator(".now-playing")).toHaveAttribute("href", href);
@@ -316,42 +318,21 @@ test("intro words still sweep in reading order", async ({ page }) => {
 });
 
 
-test("roles cycle with four distinct effects and pause/resume on click", async ({ page }) => {
-  await page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
-  });
-  const initial = new Date("2026-10-29T12:00:00Z");
-  await page.clock.install({ time: initial }); await page.clock.pauseAt(initial);
-  await page.goto("/");
-  await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
-  await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
-  const role = page.locator(".role-rotator");
-  await expect(role).toHaveAttribute("data-role", "Brand developer");
-  await expect(role).toHaveAttribute("data-effect", "letters");
-  await expect(role.locator(".role-first")).toHaveText("Brand");
-  await expect(role.locator(".role-suffix")).toHaveText("developer");
-  await page.clock.fastForward(2001);
-  await expect(role.locator(".role-first")).toHaveClass(/is-leaving/);
-  await page.clock.fastForward(280);
-  await expect(role).toHaveAttribute("data-role", "Merch maker");
-  await expect(role).toHaveAttribute("data-effect", "stamp");
-  await expect(role.locator(".role-first")).toHaveText("Merch");
-  await expect(role.locator(".role-suffix")).toHaveText("maker");
-  expect(await role.locator(".role-suffix").evaluate((el) => {
-    const style = getComputedStyle(el); return { animation: style.animationName, transform: style.transform, filter: style.filter };
-  })).toEqual({ animation: "none", transform: "none", filter: "none" });
-  await role.click(); await expect(role).toHaveAttribute("data-paused", "true");
-  await page.clock.fastForward(10000); await expect(role).toHaveAttribute("data-role", "Merch maker");
-  await role.click();
-  await page.clock.fastForward(2281); await expect(role).toHaveAttribute("data-role", "Product designer");
-  await expect(role).toHaveAttribute("data-effect", "slide");
-  await expect(role.locator(".role-suffix")).toHaveText("designer");
-  await page.clock.fastForward(2281); await expect(role).toHaveAttribute("data-role", "Visionary");
-  await expect(role).toHaveAttribute("data-effect", "focus");
-  await expect(role.locator(".role-first")).toHaveText("Visionary");
-  await expect(role.locator(".role-suffix")).toHaveCount(0);
-  await page.clock.fastForward(2281); await expect(role).toHaveAttribute("data-role", "Brand developer");
+test("all seven lowercase roles cycle, with a shared entrance and pause/resume", async ({ page }) => {
+  const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({time:initial}); await page.clock.pauseAt(initial);
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.goto("/"); const role=page.locator(".role-rotator");
+  await expect(role).toHaveAttribute("data-ready","false");
+  expect(await page.locator(".role-entrance").evaluate(el=>getComputedStyle(el).animationName)).toBe("intro-reveal");
+  await page.clock.runFor(1001); await expect(role).toHaveAttribute("data-ready","true");
+  const labels=["product designer","merch maker","brand builder","prototyper","systems thinker","storyteller","community organizer"];
+  for(const label of labels){
+    await expect(role).toHaveAttribute("data-role",label);
+    if(label.includes(" ")) expect(await role.locator(".role-suffix").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
+    await page.clock.fastForward(2001); await expect(role.locator(".role-first")).toHaveClass(/is-leaving/); await page.clock.fastForward(280);
+  }
+  await expect(role).toHaveAttribute("data-role",labels[0]); await role.click();await page.clock.fastForward(10000);await expect(role).toHaveAttribute("data-role",labels[0]);
+  await role.click();await page.clock.fastForward(2281);await expect(role).toHaveAttribute("data-role",labels[1]);
 });
 
 test("the upstream GLB decodes locally with wide proportions and per-team shell/label materials", async ({ page }) => {
@@ -423,10 +404,10 @@ test("translucent shells retain opaque labels and team-specific finishes", async
     expect(shells.every((m) => m.opacity === 1 && !m.transparent)).toBe(true);
     expect(labels.every((m) => m.transmission === 0 && m.opacity === 1 && !m.transparent)).toBe(true);
   }
-  expect(finishes.search.shells.every((m) => m.transmission === 0 && m.color === "d8d2c3")).toBe(true);
+  expect(finishes.search.shells.every((m) => m.transmission > 0 && m.transmission < .5)).toBe(true);
   expect(finishes.blizzard.shells.every((m) => m.transmission > .5)).toBe(true);
   expect(finishes.gmail.shells.every((m) => m.transmission > .5)).toBe(true);
-  expect(finishes.stadia.shells.every((m) => m.transmission === 0 && m.color === "34383a")).toBe(true);
+  expect(finishes.stadia.shells.every((m) => m.transmission > .8)).toBe(true);
 });
 
 test("camera drag rotates without navigation; keyboard entry opens the new photo and zine page", async ({ page }) => {
@@ -443,10 +424,10 @@ test("camera drag rotates without navigation; keyboard entry opens the new photo
   await link.focus(); await page.keyboard.press("ArrowLeft"); await expect(camera).not.toHaveAttribute("data-rotation", rotated);
   await page.keyboard.press("r"); await expect(camera).toHaveAttribute("data-rotation", "0,0,0");
   await page.keyboard.press("Enter"); await expect(page).toHaveURL(/\/after-hours\/$/);
-  await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open the interactive zine" })).toHaveAttribute("href", "/zine/");
-  await expect(page.getByRole("heading", { name: "Film photographs", exact: true })).toBeVisible();
-  await page.reload(); await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
+  await expect(page.locator(".after-hours-film,.after-hours-zine")).toHaveCount(0);
+  await expect(page.locator(".after-hours-book")).toHaveAttribute("data-phase","ready",{timeout:90000});
+  await page.reload(); await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
   await page.goBack(); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   await expect(page.locator(".camera-page-flash")).toHaveCount(0);
 });
@@ -464,7 +445,7 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
   await expect(page).toHaveURL(/\/after-hours\/$/);
   expect(await page.evaluate(() => sessionStorage.getItem('camera-flash-tested'))).toBe('yes');
   await expect(page.locator("html")).toHaveAttribute("data-camera-entry", "true");
-  await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -485,4 +466,19 @@ test("camera coasts after release, and selected cartridges drift without changin
   expect(Number(await stage.getAttribute("data-front-facing2"))).toBeGreaterThan(.98);
   await expect(stage).toHaveAttribute("data-intersections", "0"); await expect(stage).toHaveAttribute("data-magnification", zoom);
   await page.emulateMedia({reducedMotion:"reduce"}); await expect(stage).toHaveAttribute("data-drift2", "0,0");
+});
+
+test("Last.fm widget distinguishes current listening, last played and a temporarily stale response", async ({ page }) => {
+  let request = 0;
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.route("**/api/listening", route => {
+    request++;
+    return route.fulfill({status:request>2?502:200,contentType:"application/json",body:JSON.stringify({title:"Fixture track",artist:"Fixture artist",url:"https://www.last.fm/music/fixture",artwork:"/cartridges/labels/search-tonal.svg",playing:request===1})});
+  });
+  await page.goto("/"); const footer=page.locator(".now-playing");
+  await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText("Now playing");
+  await expect(footer.locator("img")).toHaveAttribute("src","/cartridges/labels/search-tonal.svg");
+  await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange"))); await expect(footer).toContainText("Last played");
+  await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange"))); await expect(footer).toContainText("Last seen");
+  await expect(footer).toHaveAttribute("href","https://www.last.fm/music/fixture");
 });

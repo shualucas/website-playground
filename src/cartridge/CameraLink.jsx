@@ -4,11 +4,13 @@ import { FilmCamera } from "./FilmCamera";
 
 export function CameraLink({ dark, hidden, ready, fallback }) {
   const controller = useRef(null), gesture = useRef(null), suppress = useRef(false), timer = useRef(null);
-  const [flashing, setFlashing] = useState(false);
+  const [flashing, setFlashing] = useState(false), [arming, setArming] = useState(false);
+  const origin = useRef({ x: 0, y: 0 });
+  const busy = useRef(false), flashTimer = useRef(null);
   useEffect(() => {
-    const restore = () => { setFlashing(false); suppress.current = false; gesture.current = null; };
+    const restore = () => { setFlashing(false); setArming(false); busy.current = false; suppress.current = false; gesture.current = null; };
     window.addEventListener("pageshow", restore);
-    return () => { clearTimeout(timer.current); window.removeEventListener("pageshow", restore); };
+    return () => { clearTimeout(timer.current); clearTimeout(flashTimer.current); window.removeEventListener("pageshow", restore); };
   }, []);
   const end = (event, momentum = true) => {
     if (gesture.current?.id !== event.pointerId) return;
@@ -17,7 +19,7 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
   };
   return <>
     <a id="film-camera-link" className="camera-link" href="/after-hours/" aria-label="Explore zine and film photographs" aria-describedby="camera-help"
-      data-flashing={flashing} onDragStart={(event) => event.preventDefault()}
+      data-flashing={flashing} data-arming={arming} onDragStart={(event) => event.preventDefault()}
       onPointerDown={(event) => {
         if (event.button !== 0 || !event.isPrimary) return;
         suppress.current = false; controller.current?.beginDrag();
@@ -42,17 +44,22 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
       onClick={(event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
         event.preventDefault();
-        if ((event.detail > 0 && suppress.current) || flashing) return;
+        if ((event.detail > 0 && suppress.current) || busy.current) return;
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) { location.assign(event.currentTarget.href); return; }
-        const destination = event.currentTarget.href;
-        controller.current?.flash(); setFlashing(true);
-        try { sessionStorage.setItem("camera-entry", String(Date.now())); } catch {}
-        timer.current = setTimeout(() => location.assign(destination), 190);
+        const destination = event.currentTarget.href, rect = event.currentTarget.getBoundingClientRect();
+        origin.current = controller.current?.prepareFlash() ?? { x: rect.left + rect.width * .3, y: rect.top + rect.height * .4 };
+        busy.current = true; setArming(true);
+        flashTimer.current = setTimeout(() => {
+          controller.current?.flash(); setArming(false); setFlashing(true);
+          try { sessionStorage.setItem("camera-entry", String(Date.now())); } catch {}
+          timer.current = setTimeout(() => location.assign(destination), 500);
+        }, 180);
       }}>
       {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} /> : fallback}
+      <span className="camera-ready-light" aria-hidden="true" />
       <span className="camera-lens-flash" aria-hidden="true" />
     </a>
     <span id="camera-help" className="sr-only">Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore.</span>
-    {flashing && createPortal(<div className="camera-page-flash" aria-hidden="true" />, document.body)}
+    {flashing && createPortal(<div className="camera-page-flash" style={{ "--origin-x": `${origin.current.x}px`, "--origin-y": `${origin.current.y}px` }} aria-hidden="true" />, document.body)}
   </>;
 }
