@@ -30,7 +30,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   await load(page);
   await expect(page.locator(".miniature-loader")).toHaveCount(0);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
-  await expect(page.getByRole("button", { name: "Josh, show full name" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".intro-name")).toHaveText("Josh");
   await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "product designer");
   await expect(page.locator(".bio-continuation")).toHaveText(body);
   expect(funFacts).toContain(await page.locator(".random-fact").textContent());
@@ -169,18 +169,13 @@ test("zine snapshot is downloadable and preserved edition remains runnable", asy
 });
 
 
-test("Josh expands to Josh Lucas at medium weight and reduced-motion readers can explore each role by keyboard", async ({ page }) => {
+test("Josh stays plain text at medium weight and reduced-motion readers can explore each role by keyboard", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   expect(await page.locator(".portfolio-name").evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBe(500);
-  const name = page.locator(".intro-name");
-  await expect(name).toHaveAccessibleName("Josh, show full name");
-  await name.focus(); await name.press("Enter");
-  await expect(name).toHaveAttribute("aria-expanded", "true"); await expect(name).toHaveAccessibleName("Josh Lucas, show short name");
-  await expect.poll(async () => (await page.locator(".name-surname").boundingBox()).width).toBeGreaterThan(30);
-  await name.press("Enter"); await expect(name).toHaveAttribute("aria-expanded", "false");
-  await expect.poll(async () => (await page.locator(".name-surname").boundingBox()).width).toBeLessThan(1);
+  await expect(page.locator(".intro-name")).toHaveText("Josh");
+  await expect(page.getByRole("button", { name: /Josh/ })).toHaveCount(0);
   const role = page.locator(".role-rotator"); await role.focus();
   expect(await role.evaluate(el => getComputedStyle(el).fontWeight)).toBe("500");
   for (const label of ["product designer", "merch maker", "brand builder", "prototyper", "systems thinker", "storyteller", "community organizer"]) {
