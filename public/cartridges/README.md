@@ -10,13 +10,15 @@ The five active `labels/*-label.svg` files are self-contained vector stickers at
 
 Each background has a different static print finish, rasterized once with its SVG texture rather than running a per-frame shader:
 
-- Blizzard: satin blue crosshatch, paper tooth, RTS-manual details and monospaced Nimbus Mono PS metadata. The original logo and Team 1 artwork remain; the role shares the period/location type size and weight.
-- Gmail: ruby halftone screenprint with warm cream ink, official Gmail wordmark, one Chat mention and geometric URW Gothic metadata in a single small rail.
-- Stadia: graphite brushed-metal arcade plate, perforated halftone, slotted fasteners and controls, with the official logo/wordmark and condensed Nimbus Sans Narrow metadata.
-- Search: warm-white micro-embossed stock and a faint rounded Search capsule, with a centered gradient G. Senior Product Designer, 2022–Now and SFO all use the same DM Sans size and weight.
-- Early work: flecked recycled notebook stock, two-ink details, italic Nimbus Roman headline and monospaced small print.
+- Blizzard: icy RTS box art with an original faceted crystal and tactical landscape, the official wordmark and Team 1, plus typewriter metadata. The logo retains even-odd letter openings.
+- Gmail: red-and-cream screenprint with diagonal halftone, a layered inbox illustration and a geometric @ supergraphic. Official Gmail lettering and the single Chat mention remain; the small print is arranged in two loose rows.
+- Stadia: an illustrated controller floating on a cloud against a magenta and orange sky, with the official symbol/wordmark, condensed display lettering and a dark metadata rail.
+- Search: contemporary Material-inspired rounded geometry cropped at the edges of warm-white stock, muted Google colors, a centered gradient G and DM Sans small print. The role, period and location share one type size and weight.
+- Early work: lime-and-green student fanzine treatment with an italic Nimbus Roman headline, original 5×7 pixel WORK lettering, an original browser-game spaceship scene and red pencil doodles.
 
-Display lettering and selected metadata are outlined to preserve each typeface in browser image textures without adding runtime font downloads. Outlined groups retain their wording in `aria-label` and their typeface/size in `data-typeface` / `data-type-size`; the SVG title/description and HTML reader metadata also retain accessible career details. DM Sans comes from the existing Fontsource dependency; Nimbus and URW lettering is rendered from the installed URW Base35 fonts. No font binaries are added. Other text remains editable SVG text.
+The user's Famicase collection image informs the variety of composition, illustration and typography. All illustration is newly drawn SVG geometry; no individual cartridge label from that image is reproduced. Physical shells, model interactions and navigation are unchanged. Each label retains a different static grain/print pattern, and role/location/period details remain secondary to the artwork.
+
+Display lettering and selected metadata are outlined to preserve each typeface in browser image textures without adding runtime font downloads. Outlined groups retain their wording in `aria-label` and their typeface/size in `data-typeface` / `data-type-size`; the SVG title/description and HTML reader metadata also retain accessible career details. DM Sans comes from the existing Fontsource dependency; Nimbus and URW lettering is rendered from the installed URW Base35 fonts. The block WORK glyphs are original rectangles on a 5×7 grid. No font binaries are added. Other text remains editable SVG text.
 
 The flat print material preserves authored ink colors/contrast instead of adding the shell’s studio glare; physical lighting and transmission remain on the housing. Blizzard and Search embed the existing local Blizzard wordmark and gradient Google G. The Blizzard drawing inherits even-odd filling to preserve its letter openings. Logo and wordmark sources, revisions and collection-specific license details are recorded in `/models/BRAND-SOURCES.md`. Other motifs are original vector drawings. Every label prints each visible fact once; no field headings or redundant company names are added. The old `*-tonal.svg` panels and earlier Game Boy artwork remain unused, preserved assets.
 
