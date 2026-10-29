@@ -8,6 +8,7 @@ import { cartridges } from "./config";
 import { careerProjects } from "./projects";
 import { Intro } from "./Intro";
 import { FilmCamera } from "./FilmCamera";
+import { LoadingScreen } from "./LoadingScreen";
 import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
 import "./style.css";
@@ -30,9 +31,11 @@ function ProjectMedia({ project, controls }) {
   return <div className="collection-media-placeholder">Project preview</div>;
 }
 function App() {
-  const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null);
+  const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);
   const [selected, setSelected] = useState(selectedRoute), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
   const [reading, setReading] = useState(readRoute);
+  const [presented, setPresented] = useState(false);
+  presentedRef.current = presented;
   const previousReading = useRef(reading), restoreFocus = useRef(null), buttons = useRef({});
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("cartridge-color-mode") === "dark"; } catch { return false; } });
   const selectRef = useRef(null);
@@ -67,7 +70,7 @@ function App() {
           onError: () => { if (alive.current) { setStatus("fallback"); engine.current?.setPaused(true); } },
         });
         engine.current = scene; scene.setTheme(document.documentElement.dataset.colorMode === "dark");
-        scene.setSelected(selectedRoute()); scene.setPaused(Boolean(readingRef.current));
+        scene.setSelected(selectedRoute()); scene.setPaused(Boolean(readingRef.current) || !presentedRef.current);
       } catch { setStatus("fallback"); }
     }).catch(() => { if (alive.current) setStatus("fallback"); });
     return () => { alive.current = false; scene?.dispose(); engine.current = null; };
@@ -81,16 +84,17 @@ function App() {
   useEffect(() => { engine.current?.setSelected(selected); }, [selected]);
   useEffect(() => { engine.current?.setHovered(hovered); }, [hovered]);
   useEffect(() => {
-    engine.current?.setPaused(Boolean(reading));
+    engine.current?.setPaused(Boolean(reading) || !presented || status === "fallback");
     if (previousReading.current && !reading) requestAnimationFrame(() => {
       const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current : buttons.current[selected];
       target?.focus({ preventScroll: true });
     });
     previousReading.current = reading;
-  }, [reading]);
+  }, [reading, presented, status]);
   useEffect(() => {
     const pop = () => { setReading(readRoute()); setSelected(selectedRoute()); };
     const keyboard = (event) => {
+      if (!presentedRef.current) return;
       if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "Escape") {
         if (readingRef.current) close();
@@ -103,23 +107,23 @@ function App() {
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
   return <>
-    <main className="collection" data-status={status} data-selected={selected || ""} inert={reading ? true : undefined}>
+    <main className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
       <header className="collection-header"><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
-        <Intro />
+        <Intro active={presented} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
           <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false">
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}
             {active && status === "ready" && <button className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
           </div>
-          {status === "loading" && <div className="collection-loading" role="status">Loading</div>}
           {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
       <footer className="collection-footer"><a href="/zine/">Zine edition <Icon type="arrow" /></a><a href="/versions/portfolio-zine-v1-source.zip" download>Download zine source <Icon type="download" /></a></footer>
-      {status === "ready" && <FilmCamera dark={dark} hidden={Boolean(reading)} />}
+      {status === "ready" && presented && <FilmCamera dark={dark} hidden={Boolean(reading)} />}
     </main>
-    {project && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
+    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
+    {!presented && <LoadingScreen ready={status !== "loading"} onComplete={() => setPresented(true)} />}
   </>;
 }
 createRoot(document.getElementById("root")).render(<App />);

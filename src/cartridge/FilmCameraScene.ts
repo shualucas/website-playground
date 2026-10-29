@@ -3,7 +3,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { aboutMiniatures } from "../book/miniatures";
 import { acquireClayGrain } from "../book/clay";
 
-/** A small, static view of the original zine camera; renders only on resize/theme. */
+/** Original clay camera with gentle motion, active only while visible. */
 export class FilmCameraScene {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -12,6 +12,12 @@ export class FilmCameraScene {
   private environment: THREE.WebGLRenderTarget;
   private pmrem: THREE.PMREMGenerator;
   private observer: ResizeObserver;
+  private motion = matchMedia("(prefers-reduced-motion: reduce)");
+  private rig = new THREE.Group();
+  private inView = false;
+  private raf = 0;
+  private last = 0;
+  private time = 0;
   private size = new THREE.Vector3();
   private fill = new THREE.HemisphereLight("#ffffff", "#bbc1ca", .8);
 
@@ -29,26 +35,51 @@ export class FilmCameraScene {
       ...params, roughness: .88, metalness: 0, clearcoat: 0, transmission: 0,
       specularIntensity: .15, normalMap: this.grain.normal, normalScale: new THREE.Vector2(.14, .14), roughnessMap: this.grain.roughness,
     }), () => {}, true).camera;
-    model.rotation.set(.18, -.35, -.13); this.scene.add(model);
+    model.rotation.set(.18, -.35, -.13); this.rig.add(model); this.scene.add(this.rig);
     const bounds = new THREE.Box3().setFromObject(model);
     model.position.sub(bounds.getCenter(new THREE.Vector3())); bounds.getSize(this.size);
     this.scene.add(this.fill);
     const key = new THREE.DirectionalLight("#fffdf8", 2.4); key.position.set(-3, 5, 4); this.scene.add(key);
     const rim = new THREE.DirectionalLight("#e7edf8", 1.2); rim.position.set(3, 1, 2); this.scene.add(rim);
     this.camera.position.set(0, 0, 5); this.camera.lookAt(0, 0, 0);
-    this.observer = new ResizeObserver(() => this.render()); this.observer.observe(host); this.render();
+    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(host);
+    this.motion.addEventListener("change", this.sync); document.addEventListener("visibilitychange", this.sync);
+    window.addEventListener("scroll", this.sync, { passive: true }); window.addEventListener("resize", this.sync);
+    this.resize();
   }
-  setTheme(dark: boolean) { this.fill.intensity = dark ? 1.1 : .8; this.render(); }
-  private render() {
+  setTheme(dark: boolean) { this.fill.intensity = dark ? 1.1 : .8; this.draw(); }
+  private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight;
     if (!width || !height) return;
-    const aspect = width / height, halfHeight = Math.max(this.size.y / 2, this.size.x / (2 * aspect)) * 1.14;
+    const aspect = width / height, halfHeight = Math.max(this.size.y / 2, this.size.x / (2 * aspect)) * 1.2;
     this.camera.left = -halfHeight * aspect; this.camera.right = halfHeight * aspect;
     this.camera.top = halfHeight; this.camera.bottom = -halfHeight; this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height, false); this.renderer.render(this.scene, this.camera);
+    this.renderer.setSize(width, height, false); this.draw(); this.sync();
   }
+  private draw() { if (this.host.clientWidth && this.host.clientHeight) this.renderer.render(this.scene, this.camera); }
+  private sync = () => {
+    // Read the current viewport on scroll/resize. IntersectionObserver can keep
+    // stale root bounds across viewport changes in embedded browser previews.
+    const rect = this.host.getBoundingClientRect();
+    this.inView = rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth;
+    const animate = this.inView && !document.hidden && !this.motion.matches && Boolean(this.host.clientWidth);
+    this.host.dataset.motion = this.motion.matches ? "reduced" : animate ? "ambient" : "idle";
+    if (!animate) {
+      cancelAnimationFrame(this.raf); this.raf = 0;
+      if (this.motion.matches) { this.rig.position.y = 0; this.rig.rotation.set(0, 0, 0); this.host.dataset.float = "0,0,0"; this.draw(); }
+    } else if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(this.frame); }
+  };
+  private frame = (now: number) => {
+    this.raf = 0; this.time += Math.min((now - this.last) / 1000, .05); this.last = now;
+    this.rig.position.y = Math.sin(this.time * .95) * .045;
+    this.rig.rotation.set(Math.sin(this.time * .61) * .02, Math.sin(this.time * .73) * .045, Math.sin(this.time * .54) * .035);
+    this.host.dataset.float = [this.rig.position.y, this.rig.rotation.y, this.rig.rotation.z].map((v) => v.toFixed(5)).join(",");
+    this.draw(); this.raf = requestAnimationFrame(this.frame);
+  };
   dispose() {
-    this.observer.disconnect();
+    cancelAnimationFrame(this.raf); this.observer.disconnect();
+    this.motion.removeEventListener("change", this.sync); document.removeEventListener("visibilitychange", this.sync);
+    window.removeEventListener("scroll", this.sync); window.removeEventListener("resize", this.sync);
     const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh) {

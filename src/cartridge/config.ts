@@ -8,7 +8,7 @@ export const cartridges = [
 ] as const;
 export type CartridgeId = typeof cartridges[number]["id"];
 
-/** Optional licensed GLB. Front toward +Z, top toward +Y; normalized to 2.4 units wide. */
+/** Mamuso's Famicom GLB; source and undeclared license status are in models/SOURCE.md. */
 export const cartridgeModel: { url: string; labelMesh: string; rotation: [number, number, number] } = {
-  url: "", labelMesh: "Label", rotation: [0, 0, 0],
+  url: "/cartridges/models/mamuso-famicom.glb", labelMesh: "Label", rotation: [0, 0, 0],
 };

@@ -1,14 +1,9 @@
 # Cartridge assets
 
-The shipped shell is original procedural geometry (`src/cartridge/model.ts`), **not** a downloaded Sketchfab model or the mamuso.dev asset. The build environment’s connection gateway rejected the tunnel with HTTP 403 before the Sketchfab page or API could be retrieved, so its download availability and license could not be verified:
-https://sketchfab.com/3d-models/game-cartridge-gameboy-aa19e18342014d01a026770d32200a7f
+The active model is the Famicom cartridge used by mamuso.dev, copied unchanged from its public repository at the user's request. See `models/SOURCE.md` for its exact source, revision and undeclared license status. No reference label artwork is included. Draco decoding uses locally hosted WASM, without a runtime CDN.
 
-## Labels
+`src/cartridge/config.ts` selects the GLB, its orientation and the label node. The loader centers it, normalizes the width to 2.4 units, tints only shell materials, retains the PCB finish, and maps each local label onto the artwork primitive. The overlapping paper primitive is suppressed. The original procedural Game Boy shell remains in `src/cartridge/model.ts`; clear `cartridgeModel.url` to restore it.
 
-The five active `*-tonal.svg` files under `labels/` are blank tonal panels for Blizzard, Gmail, Stadia, Search, and Early work. Earlier printed label artwork is retained but unused. Change them directly or replace their paths in `src/cartridge/config.ts`. Artwork is mapped to a roughly 1.11:1 paper label. Export SVGs with explicit width/height and embedded assets; for exact typography across devices, outline text. PNG/JPG also work. Refresh the site to reload replaced assets.
+The five active `labels/*-tonal.svg` files are original blank tonal panels. Replace their configured paths with SVG/PNG/JPG artwork when ready. The Famicom label is wider than the old Game Boy label; prepare artwork at roughly a 2:1 aspect and visually check its UV mapping. Earlier printed label designs remain unused.
 
-## Optional authored model
-
-If you download the linked model with its permitted usage/license, retain its attribution and any accompanying files. Prefer a GLB with embedded textures. Put it under `public/cartridges/models/` and set `cartridgeModel.url` in `src/cartridge/config.ts`. Set `labelMesh` to its artwork mesh name. Adjust `rotation` to put the front toward +Z and top toward +Y. The importer centers it and normalizes its width to 2.4 units.
-
-The label mesh must have usable UVs. Non-label material colors receive the per-project shell tint; adapt the importer if the model has separate connector or hardware materials you want to keep. It may also need its label aspect ratio adjusted. Model replacement requires a visual check; arbitrary assets are not guaranteed to share the procedural shell's orientation or proportions.
+The earlier linked Sketchfab model is not included. The environment gateway returned HTTP 403 before its page/API could be retrieved; its availability and license remain unverified.

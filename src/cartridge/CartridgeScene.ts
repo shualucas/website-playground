@@ -151,7 +151,7 @@ export class CartridgeScene {
       }));
       if (this.disposed) return;
       for (let i = 0; i < cartridges.length; i++) {
-        const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell) ?? makeCartridge(config.shell, maps[i], this.grain);
+        const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell, this.grain) ?? makeCartridge(config.shell, maps[i], this.grain);
         if (this.disposed) { this.disposeObject(model); return; }
         const modelBounds = new THREE.Box3().setFromObject(model);
         const half = modelBounds.getSize(new THREE.Vector3()).multiplyScalar(.5), center = modelBounds.getCenter(new THREE.Vector3());
@@ -160,7 +160,8 @@ export class CartridgeScene {
         hitbox.position.copy(center); hitbox.userData.cartridgeId = config.id; root.add(hitbox); this.scene.add(root);
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
-            object.castShadow = object.name !== "Label"; object.receiveShadow = false;
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible); object.receiveShadow = false;
           }
         });
         this.items.push({ id: config.id, root, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });

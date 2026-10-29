@@ -54,11 +54,28 @@ export function makeCartridge(color: string, label: THREE.Texture, grain: THREE.
   return group;
 }
 
-export async function loadExternalShell(label: THREE.Texture, color: string): Promise<THREE.Group | null> {
+let template: { url: string; promise: Promise<THREE.Group> } | null = null;
+
+/** Decode once, with a locally served worker/WASM; instances own their geometry/materials. */
+async function externalTemplate(url: string) {
+  if (!template || template.url !== url) {
+    const promise = (async () => {
+      const [{ GLTFLoader }, { DRACOLoader }] = await Promise.all([
+        import("three/addons/loaders/GLTFLoader.js"), import("three/addons/loaders/DRACOLoader.js"),
+      ]);
+      const decoder = new DRACOLoader().setDecoderPath("/cartridges/draco/").setDecoderConfig({ type: "wasm" }).setWorkerLimit(1);
+      try { return (await new GLTFLoader().setDRACOLoader(decoder).loadAsync(url)).scene; }
+      finally { decoder.dispose(); }
+    })();
+    template = { url, promise };
+    promise.catch(() => { if (template?.promise === promise) template = null; });
+  }
+  return template.promise;
+}
+
+export async function loadExternalShell(label: THREE.Texture, color: string, grain?: THREE.Texture): Promise<THREE.Group | null> {
   if (!cartridgeModel.url) return null;
-  const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
-  const gltf = await new GLTFLoader().loadAsync(cartridgeModel.url);
-  const group = gltf.scene;
+  const group = (await externalTemplate(cartridgeModel.url)).clone(true);
   group.rotation.set(...cartridgeModel.rotation); group.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(group), center = bounds.getCenter(new THREE.Vector3());
   const normalized = new THREE.Group(); normalized.add(group);
@@ -67,14 +84,30 @@ export async function loadExternalShell(label: THREE.Texture, color: string): Pr
   const labelMap = label.clone(); labelMap.flipY = false; labelMap.needsUpdate = true;
   group.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
+    object.geometry = object.geometry.clone();
     object.castShadow = object.receiveShadow = true;
-    if (object.name === cartridgeModel.labelMesh) {
-      object.material = new THREE.MeshBasicMaterial({ map: labelMap, toneMapped: false }); hasLabel = true;
-    } else {
-      const tint = (material: THREE.Material) => { const clone = material.clone(); if ("color" in clone) (clone as THREE.MeshStandardMaterial).color.set(color); return clone; };
-      object.material = Array.isArray(object.material) ? object.material.map(tint) : tint(object.material);
-    }
+    const adapt = (material: THREE.Material) => {
+      // The GLB's Label node is a group: identify its artwork primitive by
+      // material, and suppress the second, overlapping paper primitive.
+      if (material.name === "Label (Artwork)" || object.name === cartridgeModel.labelMesh) {
+        hasLabel = true; object.userData.label = true;
+        return new THREE.MeshPhysicalMaterial({ name: "Project label", map: labelMap, color: "#fff", metalness: 0,
+          roughness: .66, clearcoat: .24, clearcoatRoughness: .43, side: THREE.DoubleSide,
+          polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      }
+      const clone = material.clone() as THREE.MeshStandardMaterial;
+      if (material.name === "Label (Paper)") { clone.visible = false; object.castShadow = false; }
+      else if (material.name === "Cartridge Shell") {
+        clone.color.set(color); clone.metalness = 0; clone.roughness = .6; clone.envMapIntensity = .85;
+        if (grain && object.geometry.hasAttribute("uv")) { clone.bumpMap = grain; clone.bumpScale = .003; }
+      }
+      return clone;
+    };
+    object.material = Array.isArray(object.material) ? object.material.map(adapt) : adapt(object.material);
   });
-  if (!hasLabel) throw new Error(`The model needs a label mesh named "${cartridgeModel.labelMesh}". Check cartridge/config.ts.`);
+  if (!hasLabel) {
+    group.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); for (const m of Array.isArray(object.material) ? object.material : [object.material]) m.dispose(); } });
+    labelMap.dispose(); throw new Error(`No label artwork found in ${cartridgeModel.url}. Check cartridge/config.ts.`);
+  }
   return normalized;
 }
