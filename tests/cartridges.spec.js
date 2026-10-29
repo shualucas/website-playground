@@ -213,7 +213,7 @@ test("each load chooses a supplied fact without immediate repeats; interactions 
   expect(await page.locator(".random-fact").textContent()).toBe(previous);
 });
 
-test("the camera is centered in the footer, floats only in view, and respects reduced motion", async ({ page }) => {
+test("the camera sits left of the centered X link, floats only in view, and respects reduced motion", async ({ page }) => {
   test.setTimeout(120000);
   await page.setViewportSize({ width: 1440, height: 1000 }); await load(page);
   const camera = page.locator(".film-camera-dock");
@@ -223,8 +223,9 @@ test("the camera is centered in the footer, floats only in view, and respects re
   expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
   const footer = await page.locator(".collection-footer").boundingBox(), bounds = await camera.boundingBox();
   expect(bounds.y).toBeGreaterThanOrEqual(footer.y);
-  expect(bounds.y + bounds.height).toBeLessThanOrEqual(footer.y + footer.height);
-  expect(Math.abs(bounds.x + bounds.width / 2 - (footer.x + footer.width / 2))).toBeLessThan(1);
+  expect(Math.abs(bounds.x-footer.x)).toBeLessThan(1);
+  const social=await page.locator('.social-link').boundingBox();
+  expect(Math.abs(social.x+social.width/2-footer.x-footer.width/2)).toBeLessThan(1);
   await expect(page.locator(".footer-camera figcaption")).toHaveText("say cheese");
   expect(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => r.name.includes("BookScene")))).toBe(false);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -521,9 +522,10 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const panel=await dialog.boundingBox(), current=await page.locator(".listening-current").boundingBox();expect(panel.y+panel.height).toBeLessThanOrEqual(current.y+1);
   await expect(toggle).toBeFocused();
   expect(await dialog.evaluate(el=>getComputedStyle(el).position)).toBe("absolute");
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe(await page.locator("html").evaluate(el=>getComputedStyle(el).backgroundColor));
-  expect(await dialog.evaluate(el=>getComputedStyle(el).paddingTop)).toBe("16px");
-  expect(await dialog.evaluate(el=>getComputedStyle(el).borderRadius)).toBe("20px");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).paddingTop)).toBe("0px");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).borderRadius)).toBe("0px");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).boxShadow)).toBe("none");
   expect(await dialog.locator("li").first().evaluate(el=>el.style.getPropertyValue("--history-delay"))).toBe("260ms");
   expect(await dialog.locator("li").last().evaluate(el=>el.style.getPropertyValue("--history-delay"))).toBe("0ms");
   const after=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
@@ -572,14 +574,19 @@ test("an unconfigured deployment has a quiet client fallback and does not preten
   await expect(page.getByRole("region",{name:"Recently listened"})).toContainText("once connected");
 });
 
-test("gray SF metadata keeps Pacific time, updates each minute and survives weather failure", async ({ page }) => {
+test("unlinked metadata has a blinking clock, Pacific time and a weather fallback", async ({ page }) => {
   await page.clock.install({time:new Date("2026-10-29T19:10:00Z")});
   await page.emulateMedia({reducedMotion:"reduce"});
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.setViewportSize({width:390,height:844}); await page.goto("/");
-  const meta=page.getByLabel("San Francisco local time and weather");
+  const meta=page.getByLabel("Local time and weather");
   await expect(meta.locator("time")).toHaveText("12:10 PM PDT"); await expect(meta).toContainText("58°F · Fog");
   expect(await meta.evaluate(el=>getComputedStyle(el).color)).toBe("rgb(98, 98, 106)");
+  await expect(meta).not.toContainText("San Francisco"); await expect(meta.getByRole("link")).toHaveCount(0);
+  await expect(meta.locator('.clock-colon')).toHaveCSS('animation-name','none');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  const blink=await meta.locator('.clock-colon').evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=250;const on=getComputedStyle(el).opacity;a.currentTime=750;return {on,off:getComputedStyle(el).opacity};});
+  expect(blink).toEqual({on:'1',off:'0'});
   await page.clock.fastForward(60050); await expect(meta.locator("time")).toHaveText("12:11 PM PDT");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.route("**/api/weather",route=>route.fulfill({status:502,contentType:"application/json",body:'{"error":"Unavailable"}'}));
@@ -615,7 +622,7 @@ test("the page entrance continues from the hero into the footer on one timeline"
     const heroEnd=Math.max(...[...document.querySelectorAll('.intro-word')].map(el=>{
       const style=getComputedStyle(el);return origin+parseFloat(style.animationDelay)*1000+parseFloat(style.animationDuration)*1000;
     }));
-    const starts=['.social-link','.footer-camera figcaption','.listening-current'].map(selector=>{
+    const starts=['.footer-camera figcaption','.social-link','.listening-current'].map(selector=>{
       const animation=document.querySelector(selector).getAnimations()[0];return animation.startTime+Number(animation.effect.getTiming().delay);
     });
     return {heroEnd,starts};

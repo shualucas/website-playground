@@ -15,7 +15,7 @@ export function FilmCamera({ dark, hidden, controller, highlighted = false }) {
         try {
           scene.current = new FilmCameraScene(host.current);
           scene.current.setTheme(currentDark.current); scene.current.setHovered(currentHighlight.current);
-          host.current.style.setProperty("--camera-reveal-delay", `${remainingEntranceDelay(host.current, entrance.footerStart + 45)}ms`);
+          host.current.style.setProperty("--camera-reveal-delay", `${remainingEntranceDelay(host.current, entrance.footerStart)}ms`);
           if (controller) controller.current = scene.current; setStatus("ready");
         } catch { setStatus("unavailable"); }
       }).catch(() => { if (active) setStatus("unavailable"); });

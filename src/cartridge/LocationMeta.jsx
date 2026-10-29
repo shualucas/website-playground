@@ -32,9 +32,8 @@ export function LocationMeta() {
     document.addEventListener("visibilitychange", refresh);
     return () => { active = false; clearInterval(timer); request?.abort(); document.removeEventListener("visibilitychange", refresh); };
   }, []);
-  return <div className="location-meta" data-reveal aria-label="San Francisco local time and weather">
-    <span>San Francisco</span>
-    <time dateTime={now.toISOString()}>{timeFormat.format(now)}</time>
-    {weather && <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" title="Weather data by Open-Meteo">{weather.temperature}°F{weather.condition ? ` · ${weather.condition}` : ""}</a>}
+  return <div className="location-meta" data-reveal aria-label="Local time and weather">
+    <time dateTime={now.toISOString()} aria-label={timeFormat.format(now)}><span aria-hidden="true">{timeFormat.formatToParts(now).map((part,index) => part.type === "literal" && part.value === ":" ? <span className="clock-colon" key={index}>:</span> : <React.Fragment key={index}>{part.value}</React.Fragment>)}</span></time>
+    {weather && <span title="Weather data: Open-Meteo">{weather.temperature}°F{weather.condition ? ` · ${weather.condition}` : ""}</span>}
   </div>;
 }
