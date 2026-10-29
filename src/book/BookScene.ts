@@ -15,7 +15,6 @@ import { measureTurnEnvelope, fitTurnEnvelope } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
 import {
   createLeafGeometry,
-  LEAF_RADIUS,
   LEAF_GAP,
   SkinnedLeaf,
   type PaperMaterial,
@@ -33,13 +32,13 @@ import {
 } from "./materials";
 
 
-const blankTexture = (dark = false) => { const texture = new THREE.CanvasTexture(blankPageCanvas(dark)); texture.colorSpace = THREE.SRGBColorSpace; return texture; };
+const artworkTexture = (canvas: HTMLCanvasElement) => { const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture; };
+const blankTexture = (dark = false) => artworkTexture(blankPageCanvas(dark));
 
 const INTRO_DURATION = 0.85;
 // Keep the overhead shadow within the scene and below every rotated leaf.
 const SHADOW_DISTANCE = 1;
 // Centering a partially opened cover adds a small offset to the leaf-local bounds.
-const SCENE_RADIUS = LEAF_RADIUS + 0.22;
 const clamp = THREE.MathUtils.clamp;
 type Phase =
   | "arriving"
@@ -53,6 +52,8 @@ type Phase =
 type Callbacks = {
   projects: Project[];
   blankInterior?: boolean;
+  pageWidth?: number;
+  pageArtwork?: { left: HTMLCanvasElement; right: HTMLCanvasElement }[];
   onPhase: (phase: Phase) => void;
   onIndex: (index: number) => void;
   onSpread: (left: number, right: number) => void;
@@ -138,7 +139,9 @@ export class BookScene {
   private coverTextures: THREE.CanvasTexture[] = [];
   private edgeMaterial!: PaperMaterial;
   private saddleMaterial!: PaperMaterial;
-  private groundY = (-SCENE_RADIUS - 0.2) * SHADOW_DISTANCE;
+  private pageWidth = W;
+  private sceneRadius = Math.hypot(W, H / 2) + 0.52;
+  private groundY = (-this.sceneRadius - 0.2) * SHADOW_DISTANCE;
   private phase: Phase = "arriving";
   private index = 0;
   private committedView = -100;
@@ -175,6 +178,9 @@ export class BookScene {
     private callbacks: Callbacks,
     initial = -1,
   ) {
+    this.pageWidth = callbacks.pageWidth ?? W;
+    this.sceneRadius = Math.hypot(this.pageWidth, H / 2) + 0.52;
+    this.groundY = (-this.sceneRadius - 0.2) * SHADOW_DISTANCE;
     this.index = clamp(initial, 0, callbacks.projects.length - 1);
     this.introTarget = initial + 1;
     this.renderer = new THREE.WebGLRenderer({
@@ -213,8 +219,8 @@ export class BookScene {
     this.scene.add(this.floatRoot);
     this.printing.add(this.printFloatRoot);
 
-    for (const project of callbacks.projects) {
-      const canvas = blankPageCanvas(),
+    for (const [i, project] of callbacks.projects.entries()) {
+      const canvas = callbacks.pageArtwork?.[i]?.right ?? blankPageCanvas(),
         texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       this.rightCanvases.push(canvas);
@@ -346,28 +352,30 @@ export class BookScene {
         normalMap: detail.normal,
         normalScale: new THREE.Vector2(0.1, 0.1),
       }));
-    const makeFace = (map: THREE.Texture, cover = false) =>
-      this.surface({
+    const makeFace = (map: THREE.Texture, cover = false) => {
+      const printedFlyer = Boolean(this.callbacks.pageArtwork && (map.image as HTMLCanvasElement).dataset?.flyerId);
+      return this.surface({
         map,
-        roughness: cover ? 0.39 : 0.58,
+        roughness: printedFlyer ? 0.95 : cover ? 0.39 : 0.58,
         roughnessMap: detail.roughness,
-        clearcoat: cover ? 0.28 : 0.12,
+        clearcoat: printedFlyer ? 0 : cover ? 0.28 : 0.12,
         clearcoatRoughness: 0.38,
         normalMap: detail.normal,
         normalScale: new THREE.Vector2(0.035, 0.035),
         emissive: new THREE.Color("#ffc28a"),
         emissiveIntensity: 0,
       });
+    };
     const inside = this.callbacks.projects.map((project, i) =>
       this.keep(
-        this.callbacks.blankInterior ? blankTexture(this.dark) : pageTexture(project, i, "left", this.callbacks.printPages?.[i]),
+        this.callbacks.pageArtwork?.[i]?.left ? artworkTexture(this.callbacks.pageArtwork[i].left) : this.callbacks.blankInterior ? blankTexture(this.dark) : pageTexture(project, i, "left", this.callbacks.printPages?.[i]),
       ),
     );
     this.coverTextures = [front, back];
     this.leftTextures = inside;
     this.keep(this.callbacks.google.texture);
-    const paperGeometry = createLeafGeometry(),
-      coverGeometry = createLeafGeometry(0.012),
+    const paperGeometry = createLeafGeometry(0.006, this.pageWidth),
+      coverGeometry = createLeafGeometry(0.012, this.pageWidth),
       count = inside.length + 1;
     for (let i = 0; i < count; i++) {
       const faceFront = i === 0 ? front : this.rightTextures[i - 1],
@@ -386,6 +394,7 @@ export class BookScene {
           edge,
           edge,
         ],
+        this.pageWidth,
       );
       this.leaves.push(leaf);
       this.rig.add(leaf.group);
@@ -409,7 +418,7 @@ export class BookScene {
     const p = paperGeometry.attributes.position,
       n = paperGeometry.attributes.normal;
     for (let i = 0; i < p.count; i++)
-      if (n.getY(i) > 0.9 && Math.round((p.getX(i) / W) * 30) % 5 === 0)
+      if (n.getY(i) > 0.9 && Math.round((p.getX(i) / this.pageWidth) * 30) % 5 === 0)
         this.samples.push(i);
   }
   private buildPrinting() {
@@ -417,8 +426,8 @@ export class BookScene {
       element.className = `printed-page print-overlay ${i ? "page-recto" : "page-verso"}`;
       const object = new CSS3DObject(element);
       object.rotation.x = -Math.PI / 2;
-      object.scale.setScalar(W / 600);
-      object.position.set(((i ? 1 : -1) * W) / 2, 0.055, 0);
+      object.scale.setScalar(this.pageWidth / 600);
+      object.position.set(((i ? 1 : -1) * this.pageWidth) / 2, 0.055, 0);
       this.printRig.add(object);
     }
     this.setPrinting(false);
@@ -430,7 +439,7 @@ export class BookScene {
     }
   }
   private updateArtwork(time: number, force = false) {
-    if (this.callbacks.blankInterior) return;
+    if (this.callbacks.blankInterior || this.callbacks.pageArtwork) return;
     this.portals.forEach((portal, i) => {
       if (
         !force &&
@@ -468,7 +477,7 @@ export class BookScene {
     this.coverTextures.forEach((texture, i) =>
       replace(texture, coverTexture(i === 1, dark)),
     );
-    this.leftTextures.forEach((texture, i) =>
+    if (!this.callbacks.pageArtwork) this.leftTextures.forEach((texture, i) =>
       replace(
         texture,
         this.callbacks.blankInterior ? blankTexture(dark) : pageTexture(
@@ -480,7 +489,7 @@ export class BookScene {
         ),
       ),
     );
-    if (this.callbacks.blankInterior) this.rightTextures.forEach(texture => replace(texture, blankTexture(dark)));
+    if (this.callbacks.blankInterior && !this.callbacks.pageArtwork) this.rightTextures.forEach(texture => replace(texture, blankTexture(dark)));
     this.paperCanvas = blankPageCanvas(dark);
     this.portals.forEach((portal, i) => {
       const project = this.callbacks.projects[i];
@@ -558,7 +567,7 @@ export class BookScene {
   private updateRig() {
     const first = this.leaves[0].progress,
       last = this.leaves.at(-1)!.progress;
-    this.rig.position.set((-W / 2) * (1 - first) + (W / 2) * last, 0, 0);
+    this.rig.position.set((-this.pageWidth / 2) * (1 - first) + (this.pageWidth / 2) * last, 0, 0);
     this.printRig.position.copy(this.rig.position);
     const t = this.ambientTime * 0.5,
       strength = this.motion.matches ? 0 : this.ambientStrength;
@@ -865,7 +874,7 @@ export class BookScene {
       this.readingPoint,
     );
     return point &&
-      Math.abs(point.x) < W + 0.15 &&
+      Math.abs(point.x) < this.pageWidth + 0.15 &&
       Math.abs(point.z) < H / 2 + 0.1
       ? point.x >= 0
         ? 1
@@ -1069,7 +1078,7 @@ export class BookScene {
         Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) *
           Math.min(1, this.camera.aspect),
       ),
-      legacyDistance = (SCENE_RADIUS / Math.sin(half)) * 1.02;
+      legacyDistance = (this.sceneRadius / Math.sin(half)) * 1.02;
     const direction = new THREE.Vector3(0.18, 0.9, 0.67).normalize();
     this.camera.up.set(0.035, 1, 0);
     this.camera.position.copy(direction);
@@ -1245,7 +1254,7 @@ export class BookScene {
     for (let i = 0; i < p.count; i++)
       if (n.getY(i) > 0.9) {
         const d =
-          Math.abs(p.getX(i) - u * W) + Math.abs(p.getZ(i) - (0.5 - v) * H);
+          Math.abs(p.getX(i) - u * this.pageWidth) + Math.abs(p.getZ(i) - (0.5 - v) * H);
         if (d < best) {
           best = d;
           bestIndex = i;
@@ -1303,6 +1312,10 @@ export class BookScene {
     data.settledBoundary = String(boundary);
     data.leftArtwork = this.leaves[this.index].faces[1].uuid;
     data.rightArtwork = this.rightTextures[this.index].uuid;
+    if (this.callbacks.pageArtwork) {
+      data.leftPrint = this.leftTextures[this.index].image.dataset.flyerId ?? "";
+      data.rightPrint = this.rightTextures[this.index].image.dataset.flyerId ?? "";
+    }
     data.turnBackArtwork = active?.faces[1].uuid ?? data.leftArtwork;
     data.turnProgress = (
       active ? (active.target ? active.progress : 1 - active.progress) : 0
@@ -1370,7 +1383,9 @@ export class BookScene {
     data.renderer = this.software ? "software" : "physical";
     data.geometryMode = "gpu-skinning";
     data.bindingConnected = "true";
-    data.framingRadius = String(SCENE_RADIUS);
+    data.framingRadius = String(this.sceneRadius);
+    data.pageWidth = String(this.pageWidth);
+    data.pageAspect = String(this.pageWidth / H);
     data.framingVertices = String(this.viewEnvelope.length);
     data.lightPosition = JSON.stringify(this.keyLight.position.toArray());
     data.printResolution = "1200x1694";

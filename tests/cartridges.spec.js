@@ -494,10 +494,10 @@ test("camera drag rotates without navigation; keyboard entry opens the new photo
   await page.keyboard.press("r"); await expect(camera).toHaveAttribute("data-rotation", "0,0,0");
   await page.keyboard.press("Enter"); await expect(page).toHaveURL(/\/after-hours\/$/);
   await expect(page).toHaveTitle("josh lucas - product designer");
-  await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Interactive flyer zine" })).toBeVisible();
   await expect(page.locator(".after-hours-film,.after-hours-zine")).toHaveCount(0);
   await expect(page.locator(".after-hours-book")).toHaveAttribute("data-phase","ready",{timeout:90000});
-  await page.reload(); await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
+  await page.reload(); await expect(page.getByRole("region", { name: "Interactive flyer zine" })).toBeVisible();
   await page.goBack(); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   await expect(page.locator(".camera-page-flash")).toHaveCount(0);
 });
@@ -515,7 +515,7 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
   await expect(page).toHaveURL(/\/after-hours\/$/);
   expect(await page.evaluate(() => sessionStorage.getItem('camera-flash-tested'))).toBe('yes');
   await expect(page.locator("html")).toHaveAttribute("data-camera-entry", "true");
-  await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
+  await expect(page.locator(".flyer-gallery img")).toHaveCount(5);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -714,7 +714,7 @@ test("recent projects use one column with native reader links and restore focus 
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
   const textGap=await links.first().evaluate(el=>el.querySelector('.recent-project-summary').getBoundingClientRect().left-el.querySelector('.recent-project-name').getBoundingClientRect().right);
   expect(textGap).toBeGreaterThan(0);expect(textGap).toBeLessThan(10);
-  for(let i=0;i<titles.length;i++) {
+  for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).toHaveText(descriptions[i]);
     await expect(page.locator('.case-study-facts')).toHaveCount(0);
@@ -731,9 +731,9 @@ test("recent projects use one column with native reader links and restore focus 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
   await page.goto(await links.last().getAttribute('href'));
-  await expect(page.getByRole('heading',{name:'Rave Flyer Zine',exact:true})).toBeFocused();
-  await page.getByRole('button',{name:'Back to collection',exact:true}).first().click();
-  await expect(page.locator('.case-study')).toHaveCount(0);
+  await expect(page.locator('.flyer-gallery img')).toHaveCount(5);
+  await page.getByRole('link',{name:'Back to work',exact:true}).click();
+  await expect(page.locator('.collection')).toBeVisible();
 });
 
 test("song changes crossfade without shifting the footer or replaying on unchanged polls", async ({ page }) => {
@@ -751,4 +751,51 @@ test("song changes crossfade without shifting the footer or replaying on unchang
   await page.clock.fastForward(401);await expect(outgoing).toHaveCount(0);
   await page.clock.fastForward(20000);await expect(link.locator('.now-playing-transition')).toHaveAttribute('data-changing','false');
   await page.emulateMedia({reducedMotion:'reduce'});await page.clock.fastForward(20000);await expect(link).toHaveAttribute('data-track','Third song');await expect(outgoing).toHaveCount(0);
+});
+
+test("flyer layouts preserve every source aspect ratio and fill a consistent physical page", async ({ page }) => {
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+    const {prepareFlyerPages,flyerPage}=await import('/src/after-hours/flyers.js');
+    const spreads=await prepareFlyerPages();
+    return {page:flyerPage,faces:spreads.flatMap(spread=>[spread.left,spread.right]).map(canvas=>({id:canvas.dataset.flyerId,fit:canvas.dataset.fit?JSON.parse(canvas.dataset.fit):null,size:[canvas.width,canvas.height]}))};
+  });
+  expect(result.faces.map(face=>face.id).filter(Boolean)).toEqual(['wavform','metronome','ghosts-n-stuff','jornada-coffee','picnic']);
+  for(const face of result.faces){expect(face.size).toEqual([1110,1280]);if(!face.fit)continue;const fit=face.fit;expect(fit.width/fit.height).toBeCloseTo(fit.sourceWidth/fit.sourceHeight,8);expect(fit.x).toBeGreaterThanOrEqual(0);expect(fit.y).toBeGreaterThanOrEqual(0);expect(fit.x+fit.width).toBeLessThanOrEqual(1110.001);expect(fit.y+fit.height).toBeLessThanOrEqual(1280.001);}
+  expect(result.faces[3].fit.x).toBe(103);expect(result.faces[4].fit.y).toBeGreaterThan(0);
+});
+
+test("camera flash clears the grip and the strap sags in world gravity after a camera rotation", async ({ page }) => {
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+    const THREE=await import('/node_modules/three/build/three.module.js');
+    const {aboutMiniatures}=await import('/src/book/miniatures.ts');
+    const {CameraStrap}=await import('/src/cartridge/CameraStrap.ts');
+    const scene=new THREE.Scene(),model=aboutMiniatures(params=>new THREE.MeshPhysicalMaterial(params),()=>{},true).camera;scene.add(model);
+    const box=name=>new THREE.Box3().setFromObject(model.getObjectByName(name));
+    const overlap=box('camera-front-grip').intersectsBox(box('camera-flash-bezel'));
+    const strap=new CameraStrap(model,scene),initial=strap.report();
+    const center=()=>{const p=strap.mesh.geometry.getAttribute('position'),v=new THREE.Vector3();for(let j=0;j<6;j++)v.add(new THREE.Vector3().fromBufferAttribute(p,12*6+j));return v.multiplyScalar(1/6)};
+    const before=center();model.rotation.z=Math.PI;model.updateMatrixWorld(true);strap.step(0,false);const inertialDistance=before.distanceTo(center());
+    for(let i=0;i<360;i++)strap.step(1/120,false);
+    const rotated=strap.report();
+    return {overlap,inertialDistance,initial,rotated,worldSpace:strap.mesh.parent===scene};
+  });
+  expect(result.overlap).toBe(false);expect(result.worldSpace).toBe(true);expect(result.inertialDistance).toBeLessThan(.00001);
+  for(const pose of [result.initial,result.rotated]){expect(pose.bottom).toBeLessThan(pose.anchor[1]-.15);expect(pose.stretch).toBeLessThan(.15);}
+});
+
+test("flyer zine prints one flyer per page through forward and reverse turns", async ({ page }) => {
+  test.setTimeout(120000);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/after-hours/');
+  const book=page.getByRole('region',{name:'Interactive flyer zine'});
+  await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(book).toHaveAttribute('data-flyer-count','5');await expect(book).toHaveAttribute('data-page-count','8');
+  expect(Number(await book.getAttribute('data-page-aspect'))).toBeCloseTo(1110/1280,8);
+  await book.focus();
+  const faces=[['wavform','metronome'],['ghosts-n-stuff','jornada-coffee'],['picnic','']];
+  const maps=[];
+  for(let i=0;i<faces.length;i++){await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print',faces[i][0]);await expect(book).toHaveAttribute('data-right-print',faces[i][1]);maps.push([await book.getAttribute('data-left-artwork'),await book.getAttribute('data-right-artwork')]);}
+  await page.keyboard.press('ArrowLeft');await expect(book).toHaveAttribute('data-left-print','ghosts-n-stuff');
+  expect([await book.getAttribute('data-left-artwork'),await book.getAttribute('data-right-artwork')]).toEqual(maps[1]);
+  await page.setViewportSize({width:390,height:844});await expect(book).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.keyboard.press('r');await expect(book).toHaveAttribute('data-view','cover');
 });

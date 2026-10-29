@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { ConvexHull } from "three/addons/math/ConvexHull.js";
 import { SkinnedLeaf } from "./leaf";
 import { TurnScheduler } from "./turn-scheduler";
-import { PAGE_WIDTH as W } from "./materials";
 
 export const FRAME_MARGIN = 0.92;
 
@@ -21,6 +20,7 @@ export function measureTurnEnvelope(
         leaf.count,
         leaf.mesh.geometry,
         leaf.mesh.material,
+        leaf.width,
       ),
   );
   copies.forEach((leaf) => rig.add(leaf.group));
@@ -38,7 +38,7 @@ export function measureTurnEnvelope(
     if (destinations.has(frame)) scheduler.request(destinations.get(frame)!);
     scheduler.step(1 / 30, 0);
     rig.position.x =
-      (-W / 2) * (1 - copies[0].progress) + (W / 2) * copies.at(-1)!.progress;
+      (-copies[0].width / 2) * (1 - copies[0].progress) + (copies[0].width / 2) * copies.at(-1)!.progress;
     rig.updateMatrixWorld(true);
     for (const leaf of copies) {
       leaf.updateWorld();

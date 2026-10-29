@@ -107,19 +107,23 @@ export function aboutMiniatures(
   const camera = new THREE.Group();
   camera.name = "black point-and-shoot film camera with wrist strap";
   box(camera, 1.3, 0.73, 0.4, "#090b0e", 0, 0.41, 0, "plastic", 0.105);
-  box(
+  const grip = box(
     camera,
     0.27,
-    0.63,
+    0.43,
     0.052,
     "#16191d",
     -0.48,
-    0.41,
+    0.33,
     0.215,
     "rubber",
     0.065,
   );
-  box(camera, 0.42, 0.17, 0.03, "#dedfe0", -0.3, 0.66, 0.222, "plastic", 0.024);
+  grip.name = "camera-front-grip";
+  const bezel = box(camera, 0.46, 0.20, 0.024, "#252b31", -0.3, 0.66, 0.211, "plastic", 0.024);
+  bezel.name = "camera-flash-bezel";
+  const diffuser = box(camera, 0.42, 0.15, 0.014, "#dedfe0", -0.3, 0.66, 0.231, "plastic", 0.018);
+  diffuser.name = "camera-flash-diffuser";
   for (let i = 0; i < 8; i++)
     box(
       camera,
@@ -210,7 +214,7 @@ export function aboutMiniatures(
     new THREE.Vector3(0.82, 0.41, 0.04),
     new THREE.Vector3(0.68, 0.55, 0.02),
   ]);
-  mesh(
+  const strap = mesh(
     camera,
     new THREE.TubeGeometry(strapCurve, 56, 0.022, 8, false),
     "#181d23",
@@ -219,6 +223,7 @@ export function aboutMiniatures(
     0,
     "rubber",
   );
+  strap.name = "camera-wrist-strap";
 
   // The cartridge edition reuses this exact camera without building the other
   // two miniatures. The zine's existing default path is unchanged.

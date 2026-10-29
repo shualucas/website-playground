@@ -43,7 +43,7 @@ export const recentProjects = [
   { id: "ai-mode-nudges", label: "AI Mode Nudges", description: "Helping users continue their journey's and clarify intent", cartridgeId: "search", theme: "ai" },
   { id: "search-labs", label: "Search Labs", description: "A creative playground for features on Search", cartridgeId: "search", theme: "ai" },
   { id: "stadia-store-redesign", label: "Stadia Store Redesign", description: "Guiding users towards making the right purchase", cartridgeId: "stadia", theme: "stadia" },
-  { id: "rave-flyer-zine", label: "Rave Flyer Zine", description: "Guilty pleasure creative outlet", cartridgeId: null, theme: "after-hours" },
+  { id: "rave-flyer-zine", label: "Rave Flyer Zine", description: "Guilty pleasure creative outlet", href: "/after-hours/", cartridgeId: null, theme: "after-hours" },
 ].map(project => ({
   ...project, kind: "project", title: project.label, subtitle: project.description,
   role: "", team: "", year: "", disciplines: [], chapters: [], sample: true,

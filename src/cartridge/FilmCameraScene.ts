@@ -3,6 +3,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { aboutMiniatures } from "../book/miniatures";
 import { acquireClayGrain } from "../book/clay";
 import { jellyFinish } from "../book/jelly-finish";
+import { CameraStrap } from "./CameraStrap";
 
 /** Original clay camera with gentle motion, active only while visible. */
 export class FilmCameraScene {
@@ -38,6 +39,7 @@ export class FilmCameraScene {
   private time = 0;
   private size = new THREE.Vector3();
   private fill = new THREE.HemisphereLight("#ffffff", "#bbc1ca", .8);
+  private strap: CameraStrap;
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
@@ -55,6 +57,7 @@ export class FilmCameraScene {
     model.rotation.set(.18, -.35, -.13); this.rig.add(model); this.inspection.add(this.rig); this.scene.add(this.inspection);
     const bounds = new THREE.Box3().setFromObject(model);
     model.position.sub(bounds.getCenter(new THREE.Vector3())); bounds.getSize(this.size);
+    this.strap = new CameraStrap(model, this.scene);
     const flareCanvas = document.createElement("canvas"); flareCanvas.width = flareCanvas.height = 64;
     const ctx = flareCanvas.getContext("2d")!, glow = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
     glow.addColorStop(0, "#fff"); glow.addColorStop(.12, "#fff"); glow.addColorStop(.4, "#ffffff80"); glow.addColorStop(1, "#ffffff00");
@@ -97,7 +100,7 @@ export class FilmCameraScene {
     this.sync();
   }
   private publishRotation() { this.host.dataset.rotation = this.inspection.rotation.toArray().slice(0, 3).join(","); }
-  resetRotation() { this.spinVelocity.set(0, 0); this.inspection.rotation.set(0, 0, 0); this.publishRotation(); this.draw(); }
+  resetRotation() { this.spinVelocity.set(0, 0); this.inspection.rotation.set(0, 0, 0); this.strap.reset(); this.publishRotation(); this.draw(); }
   prepareFlash() {
     this.scene.updateMatrixWorld(true); this.flashPoint.getWorldPosition(this.flashProjection).project(this.camera);
     const rect = this.host.getBoundingClientRect(), link = this.host.parentElement!;
@@ -126,8 +129,12 @@ export class FilmCameraScene {
     this.camera.top = halfHeight; this.camera.bottom = -halfHeight; this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false); this.draw(); this.sync();
   }
-  private draw() {
+  private draw(delta = 0) {
     if (!this.host.clientWidth || !this.host.clientHeight) return;
+    this.scene.updateMatrixWorld(true); this.strap.step(delta, this.motion.matches);
+    const strap = this.strap.report();
+    this.host.dataset.strapAnchor = JSON.stringify(strap.anchor); this.host.dataset.strapBottom = String(strap.bottom);
+    this.host.dataset.strapStretch = strap.stretch.toFixed(4); this.host.dataset.strapPhysics = "world-gravity-verlet";
     this.renderer.render(this.scene, this.camera);
     // Keep the small DOM glow attached to the modeled LED during float/drag,
     // and hide it when that face turns away from the viewer.
@@ -168,7 +175,7 @@ export class FilmCameraScene {
     this.rig.position.y = Math.sin(this.time * 1.05) * .09;
     this.rig.rotation.set(Math.sin(this.time * .67) * .04, Math.sin(this.time * .81) * .09, Math.sin(this.time * .63) * .065);
     this.host.dataset.float = [this.rig.position.y, this.rig.rotation.y, this.rig.rotation.z].map((v) => v.toFixed(5)).join(",");
-    this.draw(); this.raf = requestAnimationFrame(this.frame);
+    this.draw(dt); this.raf = requestAnimationFrame(this.frame);
   };
   dispose() {
     cancelAnimationFrame(this.raf); this.observer.disconnect();

@@ -9,23 +9,23 @@ export const LEAF_GAP = 0.016;
 export const LEAF_RADIUS = Math.hypot(WIDTH, HEIGHT / 2) + 0.3;
 
 /** Shared bind-pose geometry. Only bone matrices change after construction. */
-export function createLeafGeometry(thickness = 0.006) {
+export function createLeafGeometry(thickness = 0.006, width = WIDTH) {
   const geometry = new THREE.BoxGeometry(
-    WIDTH,
+    width,
     thickness,
     HEIGHT,
     LEAF_SEGMENTS,
     2,
     2,
   );
-  geometry.translate(WIDTH / 2, 0, 0);
+  geometry.translate(width / 2, 0, 0);
   const positions = geometry.attributes.position,
     normals = geometry.attributes.normal,
     uv = geometry.attributes.uv,
     indices: number[] = [],
     weights: number[] = [];
   for (let i = 0; i < positions.count; i++) {
-    const along = THREE.MathUtils.clamp(positions.getX(i) / WIDTH, 0, 1),
+    const along = THREE.MathUtils.clamp(positions.getX(i) / width, 0, 1),
       joint = Math.min(LEAF_SEGMENTS - 1, Math.floor(along * LEAF_SEGMENTS)),
       blend = along * LEAF_SEGMENTS - joint;
     indices.push(joint, joint + 1, 0, 0);
@@ -88,6 +88,7 @@ export class SkinnedLeaf {
     readonly count: number,
     geometry: THREE.BoxGeometry,
     materials: PaperMaterial[],
+    readonly width = WIDTH,
   ) {
     this.mesh = new THREE.SkinnedMesh(geometry, materials);
     this.faces = [materials[2].map!, materials[3].map!];
@@ -95,7 +96,7 @@ export class SkinnedLeaf {
     this.mesh.userData.leaf = id;
     for (let i = 0; i <= LEAF_SEGMENTS; i++) {
       const bone = new THREE.Bone();
-      bone.position.x = i ? WIDTH / LEAF_SEGMENTS : 0;
+      bone.position.x = i ? width / LEAF_SEGMENTS : 0;
       if (i) this.bones[i - 1].add(bone);
       this.bones.push(bone);
     }
@@ -104,11 +105,11 @@ export class SkinnedLeaf {
     // Conservative deformed bounds serve culling and raycasting without CPU vertex rewrites.
     this.mesh.boundingSphere = new THREE.Sphere(
       new THREE.Vector3(),
-      LEAF_RADIUS,
+      Math.hypot(width, HEIGHT / 2) + 0.3,
     );
     this.mesh.boundingBox = new THREE.Box3(
-      new THREE.Vector3(-WIDTH - 0.2, -WIDTH - 0.2, -HEIGHT / 2 - 0.2),
-      new THREE.Vector3(WIDTH + 0.2, WIDTH + 0.2, HEIGHT / 2 + 0.2),
+      new THREE.Vector3(-width - 0.2, -width - 0.2, -HEIGHT / 2 - 0.2),
+      new THREE.Vector3(width + 0.2, width + 0.2, HEIGHT / 2 + 0.2),
     );
     this.mesh.castShadow = this.mesh.receiveShadow = true;
     this.group.add(this.mesh);
