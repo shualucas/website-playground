@@ -8,7 +8,6 @@ import { cartridges } from "./config";
 import { careerProjects } from "./projects";
 import { Intro } from "./Intro";
 import { PortfolioFooter } from "./PortfolioFooter";
-import { LoadingScreen } from "./LoadingScreen";
 import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
 import "./style.css";
@@ -32,9 +31,10 @@ function ProjectMedia({ project, controls }) {
 }
 function App() {
   const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);
-  const [selected, setSelected] = useState(selectedRoute), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
+  const [selected, setSelected] = useState(null), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
   const [reading, setReading] = useState(readRoute);
-  const [presented, setPresented] = useState(false);
+  const currentSelection = useRef(null); currentSelection.current = selected;
+  const presented = true;
   presentedRef.current = presented;
   const previousReading = useRef(reading), restoreFocus = useRef(null), buttons = useRef({});
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("cartridge-color-mode") === "dark"; } catch { return false; } });
@@ -57,10 +57,14 @@ function App() {
   };
   const close = () => {
     if (history.state?.cartridgeReader) history.back();
-    else { const url = new URL(location.href); url.searchParams.delete("view"); history.replaceState(null, "", url); setReading(null); }
+    else { const url = new URL(location.href); url.searchParams.delete("view"); history.replaceState(null, "", url); setSelected(readingRef.current); setReading(null); }
   };
   useEffect(() => {
     alive.current = true; let scene;
+    if (!readingRef.current) {
+      const url = new URL(location.href); url.searchParams.delete("project");
+      history.replaceState(history.state, "", url);
+    }
     Promise.all([import("./CartridgeScene"), prepareTitleFont(), document.fonts.ready]).then(([{ CartridgeScene }]) => {
       if (!alive.current) return;
       try {
@@ -70,7 +74,7 @@ function App() {
           onError: () => { if (alive.current) { setStatus("fallback"); engine.current?.setPaused(true); } },
         });
         engine.current = scene; scene.setTheme(document.documentElement.dataset.colorMode === "dark");
-        scene.setSelected(selectedRoute()); scene.setPaused(Boolean(readingRef.current) || !presentedRef.current);
+        scene.setSelected(currentSelection.current); scene.setPaused(Boolean(readingRef.current) || !presentedRef.current);
       } catch { setStatus("fallback"); }
     }).catch(() => { if (alive.current) setStatus("fallback"); });
     return () => { alive.current = false; scene?.dispose(); engine.current = null; };
@@ -124,7 +128,6 @@ function App() {
       {presented && <PortfolioFooter dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />}
     </main>
     {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
-    {!presented && <LoadingScreen ready={status !== "loading"} onComplete={() => setPresented(true)} />}
   </>;
 }
 createRoot(document.getElementById("root")).render(<App />);

@@ -10,9 +10,9 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
     window.addEventListener("pageshow", restore);
     return () => { clearTimeout(timer.current); window.removeEventListener("pageshow", restore); };
   }, []);
-  const end = (event) => {
+  const end = (event, momentum = true) => {
     if (gesture.current?.id !== event.pointerId) return;
-    gesture.current = null; event.currentTarget.dataset.dragging = "false";
+    gesture.current = null; controller.current?.endDrag(momentum); event.currentTarget.dataset.dragging = "false";
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
   return <>
@@ -20,7 +20,7 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
       data-flashing={flashing} onDragStart={(event) => event.preventDefault()}
       onPointerDown={(event) => {
         if (event.button !== 0 || !event.isPrimary) return;
-        suppress.current = false;
+        suppress.current = false; controller.current?.beginDrag();
         gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -29,8 +29,8 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
         if (Math.hypot(event.clientX - g.startX, event.clientY - g.startY) > 6) suppress.current = true;
         if (suppress.current) { controller.current?.rotateBy(event.clientX - g.x, event.clientY - g.y); event.currentTarget.dataset.dragging = "true"; }
         g.x = event.clientX; g.y = event.clientY;
-      }} onPointerUp={end} onLostPointerCapture={end}
-      onPointerCancel={(event) => { suppress.current = true; end(event); }}
+      }} onPointerUp={(event) => end(event)} onLostPointerCapture={(event) => end(event, false)}
+      onPointerCancel={(event) => { suppress.current = true; end(event, false); }}
       onKeyDown={(event) => {
         if (event.metaKey || event.ctrlKey || event.altKey) return;
         if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "r", "R"].includes(event.key)) {
@@ -45,9 +45,9 @@ export function CameraLink({ dark, hidden, ready, fallback }) {
         if ((event.detail > 0 && suppress.current) || flashing) return;
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) { location.assign(event.currentTarget.href); return; }
         const destination = event.currentTarget.href;
-        setFlashing(true);
+        controller.current?.flash(); setFlashing(true);
         try { sessionStorage.setItem("camera-entry", String(Date.now())); } catch {}
-        timer.current = setTimeout(() => location.assign(destination), 100);
+        timer.current = setTimeout(() => location.assign(destination), 190);
       }}>
       {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} /> : fallback}
       <span className="camera-lens-flash" aria-hidden="true" />

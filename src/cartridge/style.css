@@ -87,7 +87,8 @@ svg { display:block; flex-shrink:0; }
 @media(max-width:560px) { .collection[data-status="fallback"] .collection-display { min-height:800px; } }
 
 .collection-intro .intro-title { display:block; }
-.bio-continuation { color:var(--ui-muted); }
+.bio-continuation,.intro-muted { color:var(--ui-muted); }
+.intro-muted { font-weight:400; }
 .portfolio-name { font-weight:500; color:var(--ui-text); white-space:nowrap; }
 .role-rotator { display:inline-grid; position:relative; padding:5px 0; margin:-5px 0; text-align:left; font:inherit; color:var(--ui-text); border-radius:3px; vertical-align:baseline; perspective:400px; }
 .role-rotator:hover { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
@@ -123,9 +124,10 @@ svg { display:block; flex-shrink:0; }
 .camera-link { position:relative; display:block; width:164px; height:164px; cursor:grab; touch-action:none; user-select:none; border-radius:12px; }
 .camera-link[data-dragging="true"] { cursor:grabbing; }
 .camera-link .film-camera-dock { width:100%; height:100%; }
-.camera-lens-flash { position:absolute; left:20%; top:35%; width:5px; height:5px; background:white; border-radius:50%; opacity:0; pointer-events:none; }
-.camera-link[data-flashing="true"] .camera-lens-flash { opacity:1; box-shadow:0 0 20px 15px white; }
-.camera-page-flash { position:fixed; inset:0; background:white; z-index:100; pointer-events:all; animation:camera-flash-in 90ms ease-out both; }
+.camera-lens-flash { position:absolute; left:var(--flash-x,30%); top:var(--flash-y,40%); width:6px; height:6px; background:white; border-radius:50%; opacity:0; pointer-events:none; z-index:2; transform:translate(-50%,-50%); }
+.camera-link[data-flashing="true"] .camera-lens-flash { animation:camera-source-flash 180ms ease-out both; }
+@keyframes camera-source-flash { 0% { opacity:0; box-shadow:0 0 0 0 white; } 25% { opacity:1; box-shadow:0 0 12px 9px white,0 0 45px 25px #fff9,0 0 90px 45px #fff4; } 100% { opacity:0; box-shadow:0 0 30px 20px #fff0,0 0 90px 60px #fff0; } }
+.camera-page-flash { position:fixed; inset:0; background:white; z-index:100; pointer-events:all; animation:camera-flash-in 120ms 60ms ease-out both; }
 @keyframes camera-flash-in { from { opacity:0; } to { opacity:1; } }
 .film-camera-dock { position:relative; width:164px; height:164px; margin:0 auto; pointer-events:none; }
 .film-camera-dock[hidden] { display:none; }
@@ -143,3 +145,5 @@ svg { display:block; flex-shrink:0; }
 @media(prefers-reduced-motion:reduce) { .role-letter > span,.role-word-ink { animation:none !important; } .role-letter::after,.role-stamp::after,.role-slide::after,.role-particles { display:none; } }
 
 .collection[data-presented="false"] .role-letter > span,.collection[data-presented="false"] .role-letter::after,.collection[data-presented="false"] .role-word-ink,.collection[data-presented="false"] .role-particles i { animation:none; }
+
+@media(min-width:880px) { .collection:not([data-status="fallback"]) .collection-hero { margin-top:-172px; } }

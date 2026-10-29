@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { acquireClayGrain } from "../book/clay";
 import { makeLoadingModels } from "./loading-models";
+import { jellyFinish } from "../book/jelly-finish";
 
 /** Four real miniatures, a complete >=3-second visual cycle, then real readiness. */
 export class LoadingScene {
@@ -28,9 +29,8 @@ export class LoadingScene {
     this.grain = acquireClayGrain(); this.pmrem = new THREE.PMREMGenerator(this.renderer);
     const room = new RoomEnvironment(); this.environment = this.pmrem.fromScene(room, .045); room.dispose();
     this.scene.environment = this.environment.texture; this.scene.environmentIntensity = .75;
-    const surface = (params: THREE.MeshPhysicalMaterialParameters) => new THREE.MeshPhysicalMaterial({ ...params,
-      roughness: .88, metalness: 0, clearcoat: 0, transmission: 0, specularIntensity: .18,
-      normalMap: this.grain.normal, normalScale: new THREE.Vector2(.14, .14), roughnessMap: this.grain.roughness });
+    const surface = (params: THREE.MeshPhysicalMaterialParameters) => new THREE.MeshPhysicalMaterial(jellyFinish({ ...params,
+      normalMap: this.grain.normal, roughnessMap: this.grain.roughness }));
     this.models = makeLoadingModels(surface).map((model) => {
       const bounds = new THREE.Box3().setFromObject(model), size = bounds.getSize(new THREE.Vector3());
       model.position.sub(bounds.getCenter(new THREE.Vector3()));
@@ -56,7 +56,9 @@ export class LoadingScene {
     if (index !== this.active) { this.active = index; this.models.forEach((model, i) => model.visible = i === index); this.callbacks.onIndex(index); }
     const model = this.models[index], enter = THREE.MathUtils.clamp(phase / .2, 0, 1), exit = THREE.MathUtils.clamp((1 - phase) / .16, 0, 1);
     const pop = 1 + 2.6 * (enter - 1) ** 3 + 1.6 * (enter - 1) ** 2;
-    model.scale.setScalar(this.media.matches ? 1 : Math.max(.001, pop * exit * exit));
+    const size = this.media.matches ? 1 : Math.max(.001, pop * exit * exit);
+    const wobble = this.media.matches ? 0 : Math.sin(phase * 18) * .04 * Math.exp(-phase * 5);
+    model.scale.set(size * (1 + wobble), size / (1 + wobble), size);
     model.position.y = this.media.matches ? 0 : (1 - Math.min(1, pop)) * -.12;
     model.rotation.y = this.media.matches ? 0 : (phase - .5) * .2;
     this.renderer.render(this.scene, this.camera);

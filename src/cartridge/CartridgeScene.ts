@@ -11,7 +11,7 @@ type Callbacks = {
   onError: () => void;
 };
 type Item = {
-  id: CartridgeId; root: THREE.Group; handling: THREE.Group; hitbox: THREE.Mesh;
+  id: CartridgeId; root: THREE.Group; idle: THREE.Group; handling: THREE.Group; hitbox: THREE.Mesh;
   half: THREE.Vector3; center: THREE.Vector3; bounds: RigidBounds; spin: THREE.Vector2; angle: THREE.Euler;
   target: THREE.Vector3; targetAngle: THREE.Vector3; velocity: THREE.Vector3; angularVelocity: THREE.Vector3; wait: number;
 };
@@ -49,6 +49,8 @@ export class CartridgeScene {
   private disposed = false;
   private paused = false;
   private entering = true;
+  private ambientTime = 0;
+  private inView = true;
   private mobile = false;
   private grain: THREE.CanvasTexture;
   private shadowMaterial = new THREE.ShadowMaterial({ opacity: .085, depthWrite: false });
@@ -62,7 +64,7 @@ export class CartridgeScene {
   constructor(private host: HTMLElement, private callbacks: Callbacks) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-    // Tinted, frosted plastic needs no full-resolution refraction buffer.
+    // Tinted plastic uses a shared reduced-resolution refraction buffer.
     this.renderer.transmissionResolutionScale = .5;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .95;
@@ -90,6 +92,7 @@ export class CartridgeScene {
     host.addEventListener("pointerup", this.up); host.addEventListener("pointercancel", this.cancel);
     host.addEventListener("lostpointercapture", this.cancel); host.addEventListener("pointerleave", this.leave);
     this.renderer.domElement.addEventListener("webglcontextlost", this.contextLost);
+    window.addEventListener("scroll", this.viewport, { passive: true });
     document.addEventListener("visibilitychange", this.visibility); this.motion.addEventListener("change", this.preference);
     void this.prepare();
   }
@@ -105,7 +108,7 @@ export class CartridgeScene {
     const texture = new THREE.CanvasTexture(canvas); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(5, 5); return texture;
   }
   private refreshBounds(item: Item) {
-    item.root.updateWorldMatrix(true, false); item.handling.updateWorldMatrix(false, false);
+    item.root.updateWorldMatrix(true, false); item.handling.updateWorldMatrix(true, false);
     updateBounds(item.bounds, item.center, item.half, item.handling.matrixWorld);
   }
   private verticalExtent(box: RigidBounds) {
@@ -157,16 +160,16 @@ export class CartridgeScene {
         if (this.disposed) { this.disposeObject(model); return; }
         const modelBounds = new THREE.Box3().setFromObject(model);
         const half = modelBounds.getSize(new THREE.Vector3()).multiplyScalar(.5), center = modelBounds.getCenter(new THREE.Vector3());
-        const root = new THREE.Group(), handling = new THREE.Group(); handling.add(model); root.add(handling);
+        const root = new THREE.Group(), idle = new THREE.Group(), handling = new THREE.Group(); handling.add(model); idle.add(handling); root.add(idle);
         const hitbox = new THREE.Mesh(new THREE.BoxGeometry(half.x * 2, half.y * 2, half.z * 2), new THREE.MeshBasicMaterial({ visible: false }));
-        hitbox.position.copy(center); hitbox.userData.cartridgeId = config.id; root.add(hitbox); this.scene.add(root);
+        hitbox.position.copy(center); hitbox.userData.cartridgeId = config.id; idle.add(hitbox); this.scene.add(root);
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
             object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible && !((m as THREE.MeshPhysicalMaterial).transmission > .05)); object.receiveShadow = false;
           }
         });
-        this.items.push({ id: config.id, root, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
+        this.items.push({ id: config.id, root, idle, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
       }
       this.layout();
       for (const item of this.items) {
@@ -248,7 +251,7 @@ export class CartridgeScene {
     this.camera.lookAt(0, 0, 0);
     this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = "80"; this.host.dataset.magnification = String(this.camera.zoom); this.host.dataset.shadow = "soft-silhouette";
     this.host.dataset.order = cartridges.map((item) => item.id).join(",");
-    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.layout(); this.start();
+    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.layout(); this.viewport(); this.start();
   }
   private pick(event: PointerEvent) {
     const rect = this.host.getBoundingClientRect();
@@ -292,10 +295,11 @@ export class CartridgeScene {
   private cancel = () => { this.drag = null; this.host.dataset.dragging = "false"; this.host.style.cursor = "default"; this.start(); };
   private leave = () => { if (!this.drag) { this.hovered = null; this.callbacks.onHover(null); this.start(); } };
   private contextLost = (event: Event) => { event.preventDefault(); this.stop(); this.callbacks.onError(); };
+  private viewport = () => { const rect = this.host.getBoundingClientRect(); this.inView = rect.bottom > 0 && rect.top < innerHeight; if (this.inView) this.start(); else this.stop(); };
   private visibility = () => { if (document.hidden) this.stop(); else this.start(); };
   private preference = () => { this.start(); };
   private start() {
-    if (this.raf || this.disposed || this.paused || document.hidden || !this.items.length) return;
+    if (this.raf || this.disposed || this.paused || document.hidden || !this.inView || !this.items.length) return;
     this.last = performance.now(); this.raf = requestAnimationFrame(this.frame);
   }
   private stop() { cancelAnimationFrame(this.raf); this.raf = 0; }
@@ -303,7 +307,7 @@ export class CartridgeScene {
     this.raf = 0; if (this.disposed || this.paused || document.hidden) return;
     // Preserve wall-clock timing on slower GPUs. The spring loop below uses
     // <=8ms integration steps, so catching up does not destabilize the motion.
-    const dt = Math.min((now - this.last) / 1000, .25); this.last = now;
+    const dt = Math.min((now - this.last) / 1000, .25); this.last = now; this.ambientTime += dt;
     const reduced = this.motion.matches, blend = reduced ? 1 : 1 - Math.exp(-13 * dt);
     this.entranceTime = reduced ? 2 : this.entranceTime + dt;
     let unsettled = false;
@@ -334,6 +338,12 @@ export class CartridgeScene {
           root.rotation[axis] += angularVelocity[axis] * step;
         }
       }
+      const drifting = isSelected && !reduced && !this.drag;
+      item.idle.position.y = THREE.MathUtils.lerp(item.idle.position.y, drifting ? Math.sin(this.ambientTime * .7) * .025 : 0, blend);
+      item.idle.rotation.x = THREE.MathUtils.lerp(item.idle.rotation.x, drifting ? Math.sin(this.ambientTime * .49) * .012 : 0, blend);
+      item.idle.rotation.y = THREE.MathUtils.lerp(item.idle.rotation.y, drifting ? Math.sin(this.ambientTime * .43) * .025 : 0, blend);
+      item.idle.rotation.z = THREE.MathUtils.lerp(item.idle.rotation.z, drifting ? Math.sin(this.ambientTime * .61) * .012 : 0, blend);
+      this.host.dataset[`drift${i}`] = [item.idle.position.y, item.idle.rotation.y].join(",");
       const hover = this.hovered === item.id && !reduced && !this.drag;
       handling.position.z = THREE.MathUtils.lerp(handling.position.z, hover ? .025 : 0, blend);
       handling.rotation.x = THREE.MathUtils.lerp(handling.rotation.x, hover ? -.025 : 0, blend);
@@ -384,7 +394,7 @@ export class CartridgeScene {
     this.host.dataset.frameBounds = JSON.stringify(frameBounds);
     this.host.dataset.entrance = this.entering ? "entering" : "complete";
     this.host.dataset.settled = !unsettled && !this.entering ? "true" : "false";
-    if (unsettled || this.entering || this.drag) this.raf = requestAnimationFrame(this.frame);
+    if (unsettled || this.entering || this.drag || (this.selected && !reduced && this.inView)) this.raf = requestAnimationFrame(this.frame);
   };
   private disposeObject(object: THREE.Object3D) {
     const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
@@ -398,6 +408,7 @@ export class CartridgeScene {
     this.host.removeEventListener("pointerup", this.up); this.host.removeEventListener("pointercancel", this.cancel);
     this.host.removeEventListener("lostpointercapture", this.cancel); this.host.removeEventListener("pointerleave", this.leave);
     this.renderer.domElement.removeEventListener("webglcontextlost", this.contextLost);
+    window.removeEventListener("scroll", this.viewport);
     document.removeEventListener("visibilitychange", this.visibility); this.motion.removeEventListener("change", this.preference);
     this.disposeObject(this.scene); for (const t of this.cleanup) t.dispose();
     this.key.shadow.dispose(); this.environment.dispose(); this.pmrem.dispose(); this.renderer.dispose(); this.renderer.domElement.remove();

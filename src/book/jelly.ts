@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { acquireClayGrain } from "./clay";
+import { jellyFinish } from "./jelly-finish";
 
 const deformation = `
 uniform float jellyActive;
@@ -83,7 +84,7 @@ export class JellyCage {
         jellyTwist: this.twist,
         jellyHeight: { value: height },
       };
-      const material = surface({
+      const material = surface(jellyFinish({
         color: tint.clone(),
         map: original.map ?? null,
         roughness: 0.88,
@@ -97,7 +98,7 @@ export class JellyCage {
         roughnessMap: this.grain.roughness,
         transparent: false,
         opacity: 1,
-      });
+      }));
       if (original.map) {
         material.toneMapped = false;
       }

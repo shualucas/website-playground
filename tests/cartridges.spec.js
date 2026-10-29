@@ -21,19 +21,9 @@ async function point(page, index) {
 }
 
 test("career collection uses exact bio and five individually visible, tilted top-edge cartridges", async ({ page, request }) => {
-  await page.addInitScript(() => {
-    window.loaderModels = []; window.loaderStarted = null; window.loaderFinished = null;
-    new MutationObserver(() => {
-      const loader = document.querySelector(".miniature-loader");
-      if (loader) {
-        window.loaderStarted ??= performance.now();
-        if (loader.dataset.backend === "3d" && !window.loaderModels.includes(loader.dataset.active)) window.loaderModels.push(loader.dataset.active);
-      } else if (window.loaderStarted && !window.loaderFinished) window.loaderFinished = performance.now();
-    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-active", "data-backend"] });
-  });
   await load(page);
-  const loading = await page.evaluate(() => ({ models: window.loaderModels, duration: window.loaderFinished - window.loaderStarted }));
-  expect(loading.models).toEqual(["camera", "cdj", "zine", "bulb"]); expect(loading.duration).toBeGreaterThanOrEqual(3000);
+  await expect(page.locator(".miniature-loader")).toHaveCount(0);
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
   await expect(page.locator(".portfolio-name")).toHaveText("I'm Josh, a");
   await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "Brand developer");
   await expect(page.locator(".bio-continuation")).toHaveText(body);
@@ -335,10 +325,6 @@ test("roles cycle with four distinct effects and pause/resume on click", async (
   await page.clock.install({ time: initial }); await page.clock.pauseAt(initial);
   await page.goto("/");
   await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
-  await expect(page.locator(".miniature-loader")).toHaveAttribute("data-backend", "fallback");
-  await page.clock.runFor(3000);
-  await expect(page.locator(".miniature-loader")).toHaveAttribute("data-minimum", "true");
-  await page.clock.runFor(241);
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
   const role = page.locator(".role-rotator");
   await expect(role).toHaveAttribute("data-role", "Brand developer");
@@ -375,45 +361,39 @@ test("the upstream GLB decodes locally with wide proportions and per-team shell/
     const { loadExternalShell } = await import("/src/cartridge/model.ts");
     const model = await loadExternalShell(new THREE.Texture(), "#da4c73");
     const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
-    const labels = [], shells = [], paper = [];
+    const labels = [], shells = [], paper = [], boards = [];
     model.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return;
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
         if (o.userData.label) labels.push({ flipY: m.map.flipY, uv: Boolean(o.geometry.attributes.uv) });
         if (m.name === "Cartridge Shell") shells.push(m.color.getHexString());
         if (m.name === "Label (Paper)") paper.push(m.visible);
+        if (m.name === "Green PCB with gold contacts") boards.push({ uv: Boolean(o.geometry.attributes.uv), colorMap: m.map?.image.width, metalMap: m.metalnessMap?.image.width });
       }
     });
-    return { size: size.toArray(), cartridge: Boolean(model.getObjectByName("Cartridge")), labels, shells, paper };
+    return { size: size.toArray(), cartridge: Boolean(model.getObjectByName("Cartridge")), labels, shells, paper, boards };
   });
   expect(result.cartridge).toBe(true); expect(result.size[0]).toBeCloseTo(2.4, 3);
   expect(result.size[1]).toBeLessThan(2); expect(result.size[2]).toBeLessThan(.6);
   expect(result.labels.length).toBeGreaterThan(0); expect(result.labels.every(l => !l.flipY && l.uv)).toBe(true);
   expect(result.shells.length).toBeGreaterThan(0); expect(result.shells.every(c => c === "da4c73")).toBe(true);
   expect(result.paper).toEqual([false]);
+  expect(result.boards).toEqual([{ uv: true, colorMap: 512, metalMap: 512 }, { uv: true, colorMap: 512, metalMap: 512 }]);
 });
 
-test("fallback loader cycles all props for three seconds and also waits for real scene readiness", async ({ page }) => {
-  const initial = new Date("2026-10-29T12:00:00Z");
-  await page.clock.install({ time: initial }); await page.clock.pauseAt(initial);
-  await page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
-  });
-  let release; const gate = new Promise((resolve) => { release = resolve; });
-  await page.route("**/src/cartridge/CartridgeScene*", async (route) => { await gate; await route.continue(); });
-  await page.goto("/");
-  const loader = page.locator(".miniature-loader");
-  await expect(loader).toHaveAttribute("data-backend", "fallback");
-  await expect(page.locator(".loader-dots")).toHaveCount(0);
-  for (const model of ["camera", "cdj", "zine", "bulb"]) {
-    await expect(loader).toHaveAttribute("data-active", model); await page.clock.runFor(750);
-  }
-  await expect(loader).toHaveAttribute("data-minimum", "true");
-  await expect(page.locator(".collection")).toHaveAttribute("data-presented", "false");
-  release(); await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
-  await page.clock.runFor(241);
-  await expect(loader).toHaveCount(0); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
+test("the bio appears without a loader, and stale project URLs start with no selection", async ({ page }) => {
+  let release; const gate = new Promise(resolve => { release = resolve; });
+  await page.route("**/src/cartridge/CartridgeScene*", async route => { await gate; await route.continue(); });
+  await page.goto("/?project=gmail");
+  await expect(page.locator(".portfolio-name")).toBeVisible();
+  await expect(page.locator(".miniature-loader")).toHaveCount(0);
+  await expect(page.locator(".collection")).toHaveAttribute("data-selected", "");
+  release(); await expect(page.locator(".collection")).toHaveAttribute("data-status", "ready", {timeout:60000});
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
+  await expect(page).not.toHaveURL(/project=/);
+  const muted = await page.locator(".intro-muted").evaluateAll(elements => elements.map(element => getComputedStyle(element).color));
+  const bodyColor = await page.locator(".bio-continuation").evaluate(element => getComputedStyle(element).color);
+  expect(muted).toEqual([bodyColor, bodyColor]);
 });
 
 test("translucent shells retain opaque labels and team-specific finishes", async ({ page }) => {
@@ -443,9 +423,9 @@ test("translucent shells retain opaque labels and team-specific finishes", async
     expect(shells.every((m) => m.opacity === 1 && !m.transparent)).toBe(true);
     expect(labels.every((m) => m.transmission === 0 && m.opacity === 1 && !m.transparent)).toBe(true);
   }
-  expect(finishes.search.shells.every((m) => m.transmission > .5)).toBe(true);
-  expect(finishes.blizzard.shells.every((m) => m.transmission > 0 && m.transmission < .3)).toBe(true);
-  expect(finishes.gmail.shells.every((m) => m.transmission === 0 && m.color === "b8af98")).toBe(true);
+  expect(finishes.search.shells.every((m) => m.transmission === 0 && m.color === "d8d2c3")).toBe(true);
+  expect(finishes.blizzard.shells.every((m) => m.transmission > .5)).toBe(true);
+  expect(finishes.gmail.shells.every((m) => m.transmission > .5)).toBe(true);
   expect(finishes.stadia.shells.every((m) => m.transmission === 0 && m.color === "34383a")).toBe(true);
 });
 
@@ -486,4 +466,23 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
   await expect(page.locator("html")).toHaveAttribute("data-camera-entry", "true");
   await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("camera coasts after release, and selected cartridges drift without changing heading", async ({ page }) => {
+  test.setTimeout(120000);
+  await load(page); await page.emulateMedia({ reducedMotion: "no-preference" });
+  const link = page.getByRole("link", { name: "Explore zine and film photographs" }), camera = page.locator(".film-camera-dock");
+  await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
+  const b = await link.boundingBox(); await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();
+  await page.mouse.move(b.x+b.width/2+45,b.y+b.height/2+15,{steps:6});await page.mouse.up();
+  const released = await camera.getAttribute("data-rotation");
+  await expect.poll(() => camera.getAttribute("data-rotation")).not.toBe(released);
+  await expect(camera).toHaveAttribute("data-coasting", "false", { timeout:10000 });
+  await expect(page).not.toHaveURL(/after-hours/);
+  await choose(page,"Gmail");
+  const stage = page.locator(".cartridge-stage"), drift = await stage.getAttribute("data-drift2"), zoom=await stage.getAttribute("data-magnification");
+  await expect.poll(() => stage.getAttribute("data-drift2")).not.toBe(drift);
+  expect(Number(await stage.getAttribute("data-front-facing2"))).toBeGreaterThan(.98);
+  await expect(stage).toHaveAttribute("data-intersections", "0"); await expect(stage).toHaveAttribute("data-magnification", zoom);
+  await page.emulateMedia({reducedMotion:"reduce"}); await expect(stage).toHaveAttribute("data-drift2", "0,0");
 });

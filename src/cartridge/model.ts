@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { cartridgeModel, type ShellFinish } from "./config";
+import { circuitBoardMaps, mapBoardGeometry } from "./circuit-board";
 
 const rounded = (w: number, h: number, d: number, radius = .035) => new RoundedBoxGeometry(w, h, d, 3, radius);
 
@@ -80,6 +81,9 @@ export async function loadExternalShell(label: THREE.Texture, color: string, gra
   const bounds = new THREE.Box3().setFromObject(group), center = bounds.getCenter(new THREE.Vector3());
   const normalized = new THREE.Group(); normalized.add(group);
   group.position.sub(center); normalized.scale.setScalar(2.4 / bounds.getSize(new THREE.Vector3()).x);
+  normalized.updateMatrixWorld(true);
+  const board = group.getObjectByName("PCB"), boardBounds = board ? new THREE.Box3().setFromObject(board) : null;
+  const circuitry = boardBounds ? circuitBoardMaps() : null;
   let hasLabel = false;
   const labelMap = label.clone(); labelMap.flipY = false; labelMap.needsUpdate = true;
   group.traverse((object) => {
@@ -97,6 +101,12 @@ export async function loadExternalShell(label: THREE.Texture, color: string, gra
       }
       const clone = material.clone() as THREE.MeshStandardMaterial;
       if (material.name === "Label (Paper)") { clone.visible = false; object.castShadow = false; }
+      else if (material.name === "PCB (Back)" && circuitry && boardBounds) {
+        mapBoardGeometry(object, boardBounds);
+        clone.name = "Green PCB with gold contacts"; clone.color.set("#ffffff");
+        clone.map = circuitry.map; clone.metalnessMap = circuitry.metalnessMap;
+        clone.metalness = .85; clone.roughness = .46; clone.side = THREE.DoubleSide;
+      }
       else if (material.name === "Cartridge Shell") {
         if (finish && finish.transmission > 0) {
           clone.dispose();
