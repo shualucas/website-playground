@@ -485,7 +485,7 @@ test("camera coasts after release, and selected cartridges drift without changin
   await page.emulateMedia({reducedMotion:"reduce"}); await expect(stage).toHaveAttribute("data-drift2", "0,0");
 });
 
-test("Last.fm refreshes every 20 seconds, retains stale history, and shows the recent five inline above the current song", async ({ page }) => {
+test("Last.fm refreshes every 20 seconds and reveals history above the song without moving the page", async ({ page }) => {
   const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({ time:initial }); await page.clock.pauseAt(initial);
   let request = 0;
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
@@ -498,11 +498,16 @@ test("Last.fm refreshes every 20 seconds, retains stale history, and shows the r
   await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText(/now-ish listening|currently spinning|in the rotation/);
   await expect(footer).toContainText("Fixture artist"); await expect(footer.locator(".listening-indicator")).toHaveCount(1);
   await expect(footer.locator("img")).toHaveAttribute("src","/cartridges/labels/search-tonal.svg");
-  const toggle=page.getByRole("button",{name:"Show last five songs"}); await toggle.click();
+  const toggle=page.getByRole("button",{name:"Show last five songs"}); await toggle.scrollIntoViewIfNeeded();
+  const before=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
+  await toggle.click();
   const dialog=page.getByRole("region",{name:"Recently listened"});await expect(dialog).toBeVisible();await expect(dialog.locator("li")).toHaveCount(5);
   const panel=await dialog.boundingBox(), current=await page.locator(".listening-current").boundingBox();expect(panel.y+panel.height).toBeLessThanOrEqual(current.y+1);
   await expect(toggle).toBeFocused();
-  expect(await dialog.evaluate(el=>getComputedStyle(el).position)).toBe("static");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).position)).toBe("absolute");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain("255, 255, 255");
+  const after=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
+  expect(after).toEqual(before);
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
   expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeGreaterThanOrEqual(copy.height);
   const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));

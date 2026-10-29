@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useListening } from "./useListening";
 import "./listening.css";
 
@@ -21,12 +21,11 @@ export function ListeningWidget() {
   const profile = "https://www.last.fm/user/shualucas";
   const emptyTitle = status === "loading" ? "Loading listening history…" : status === "unavailable" ? "Listening unavailable" : status === "ready" ? "Nothing scrobbled yet" : "my listening history";
   const label = playing ? caption : track ? "last listened" : "Last.fm";
-  useLayoutEffect(() => { if (open) toggle.current?.scrollIntoView({ block: "nearest", behavior: "instant" }); }, [open]);
   return <div className="listening-widget" data-listening-status={status} onKeyDown={event => {
-    if (open && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); toggle.current?.focus(); }
+    if (open && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); toggle.current?.focus({ preventScroll: true }); }
   }}>
     {open && <section className="listening-history" id="recent-listening" role="region" aria-label="Recently listened">
-      {recent.length ? <><ol>{recent.map((song, i) => <li key={`${song.playedAt ?? i}-${song.title}`}><a href={song.url || profile} target="_blank" rel="noopener noreferrer"><TrackArtwork track={song} /><span className="listening-song"><span>{song.title}</span><span>{song.artist}</span></span></a></li>)}</ol>{stale && <p className="listening-history-note">Showing your last available history.</p>}</> : <p className="listening-empty">{status === "loading" ? "Loading your recent songs…" : status === "unavailable" ? "Listening history is temporarily unavailable. Try again shortly." : status === "unconfigured" ? "Listening history will appear here once connected." : "Your first scrobbles will appear here."}</p>}
+      {recent.length ? <><ol>{recent.map((song, i) => <li key={`${song.playedAt ?? i}-${song.title}`} style={{ "--history-delay": `${i * 55}ms` }}><a href={song.url || profile} target="_blank" rel="noopener noreferrer"><TrackArtwork track={song} /><span className="listening-song"><span>{song.title}</span><span>{song.artist}</span></span></a></li>)}</ol>{stale && <p className="listening-history-note">Showing your last available history.</p>}</> : <p className="listening-empty">{status === "loading" ? "Loading your recent songs…" : status === "unavailable" ? "Listening history is temporarily unavailable. Try again shortly." : status === "unconfigured" ? "Listening history will appear here once connected." : "Your first scrobbles will appear here."}</p>}
     </section>}
     <div className="listening-current">
       <a className="now-playing" href={track?.url || profile} target="_blank" rel="noopener noreferrer"
