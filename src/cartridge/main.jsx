@@ -5,7 +5,7 @@ import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { cartridges } from "./config";
-import { careerProjects } from "./projects";
+import { portfolioProjects, cartridgeForProject } from "./projects";
 import { Intro } from "./Intro";
 import { PortfolioFooter } from "./PortfolioFooter";
 import { prepareTitleFont } from "../content/typography";
@@ -16,12 +16,12 @@ import { RecentProjects } from "./RecentProjects";
 import "./style.css";
 import "./reader.css";
 
-const selectedRoute = () => {
+const requestedProject = () => {
   const requested = new URL(location.href).searchParams.get("project");
-  const id = requested === "ai-mode" ? "search" : requested;
-  return cartridges.some((c) => c.id === id) ? id : null;
+  return requested === "ai-mode" ? "search" : requested;
 };
-const readRoute = () => new URL(location.href).searchParams.get("view") === "case-study" ? selectedRoute() : null;
+const selectedRoute = () => cartridgeForProject(requestedProject());
+const readRoute = () => new URL(location.href).searchParams.get("view") === "case-study" && portfolioProjects.some(project => project.id === requestedProject()) ? requestedProject() : null;
 function Icon({ type }) {
   return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {type === "sun" ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : type === "moon" ? <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" /> : type === "arrow" ? <path d="m6 18 12-12M6 6h12v12" /> : type === "download" ? <path d="M12 3v16m-6-6 6 6 6-6M4 21h16" /> : type === "back" ? <path d="M20 12H4m6-6-6 6 6 6" /> : type === "reset" ? <path d="M4 9a8 8 0 1 1 .7 8M4 4v5h5" /> : <path d="m6 6 12 12M6 18 18 6" />}
@@ -45,7 +45,7 @@ function App() {
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("cartridge-color-mode") === "dark"; } catch { return false; } });
   const selectRef = useRef(null);
   readingRef.current = reading;
-  const active = cartridges.find((c) => c.id === selected), project = careerProjects.find((p) => p.id === reading);
+  const active = cartridges.find((c) => c.id === selected), project = portfolioProjects.find((p) => p.id === reading);
   const select = (id) => {
     if (readingRef.current) return;
     setSelected(id); setHovered(null);
@@ -56,13 +56,13 @@ function App() {
   const open = (id) => {
     if (readingRef.current) return;
     restoreFocus.current = document.activeElement;
-    setSelected(id); setHovered(null);
+    setSelected(cartridgeForProject(id)); setHovered(null);
     const url = new URL(location.href); url.searchParams.set("project", id); url.searchParams.set("view", "case-study");
     history.pushState({ cartridgeReader: true }, "", url); setReading(id);
   };
   const close = () => {
     if (history.state?.cartridgeReader) history.back();
-    else { const url = new URL(location.href); url.searchParams.delete("view"); history.replaceState(null, "", url); setSelected(readingRef.current); setReading(null); }
+    else { const url = new URL(location.href); url.searchParams.delete("view"); history.replaceState(null, "", url); setSelected(cartridgeForProject(readingRef.current)); setReading(null); }
   };
   useEffect(() => {
     alive.current = true; let scene;

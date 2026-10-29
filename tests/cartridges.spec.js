@@ -191,7 +191,7 @@ test("Search and legacy AI Mode deep links remain readable", async ({ page }) =>
   await page.goto("/?project=ai-mode&view=case-study");
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   await expect(page.getByRole("region", { name: "Search case study" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Search case study" }).getByText("2022 – now", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Search case study" }).getByText("2022–Now", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Back to collection/ }).first().click();
   await expect(page.locator(".case-study")).toHaveCount(0); await expect(page.locator(".collection")).toHaveAttribute("data-selected", "search");
 });
@@ -700,17 +700,38 @@ test("recent projects use one column with native reader links and restore focus 
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/");
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.getByRole("link");
-  await expect(links).toHaveCount(3);
-  await expect(navigation.locator('.recent-project-name')).toHaveText(['Search','Stadia','Gmail']);
-  await expect(navigation.locator('.recent-project-year')).toHaveText(['2022–Now','2020–2022','Summer 2019']);
-  await expect(links.first()).toHaveAttribute('href','/?project=search&view=case-study');
+  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Rave Flyer Zine'];
+  const descriptions=["Helping users continue their journey's and clarify intent",'A creative playground for features on Search','Guiding users towards making the right purchase','Guilty pleasure creative outlet'];
+  await expect(links).toHaveCount(4);
+  await expect(navigation.locator('.recent-project-name')).toHaveText(titles);
+  await expect(navigation.locator('.recent-project-summary')).toHaveText(descriptions);
+  await expect(navigation.locator('.recent-project-year')).toHaveCount(0);
+  await expect(links.first()).toHaveAttribute('href','/?project=ai-mode-nudges&view=case-study');
+  for(const selector of ['.recent-project-name','.recent-project-summary']) {
+    expect(await navigation.locator(selector).first().evaluate(el=>getComputedStyle(el).fontWeight)).toBe('400');
+  }
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
-  await links.first().click(); await expect(page.getByRole('heading',{name:'Search',exact:true})).toBeFocused();
-  await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.first()).toBeFocused();
+  for(let i=0;i<titles.length;i++) {
+    await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
+    await expect(page.locator('.case-study-deck')).toHaveText(descriptions[i]);
+    await expect(page.locator('.case-study-facts')).toHaveCount(0);
+    await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
+  }
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  const before=await navigation.boundingBox();await links.first().hover();
+  await expect(links.first().locator('.recent-project-echo')).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 0)');
+  await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
+  const after=await navigation.boundingBox();expect(after.height).toBe(before.height);expect(after.y).toBe(before.y);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await expect(links.first().locator('.recent-project-name')).toHaveCSS('transform','none');
   await page.setViewportSize({width:390,height:844}); await navigation.scrollIntoViewIfNeeded();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
+  await page.goto(await links.last().getAttribute('href'));
+  await expect(page.getByRole('heading',{name:'Rave Flyer Zine',exact:true})).toBeFocused();
+  await page.getByRole('button',{name:'Back to collection',exact:true}).first().click();
+  await expect(page.locator('.case-study')).toHaveCount(0);
 });
 
 test("song changes crossfade without shifting the footer or replaying on unchanged polls", async ({ page }) => {

@@ -53,22 +53,22 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             {project.title.replace("\n", " ")}
           </h1>
           {project.subtitle && <p data-reveal className="case-study-deck">{project.subtitle}</p>}
-          <dl data-reveal className="case-study-facts">
-            <div>
+          {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
+            {(project.role || project.team) && <div>
               <dt>ROLE & TEAM</dt>
               <dd>
-                {project.role} · {project.team}
+                {[project.role, project.team].filter(Boolean).join(" · ")}
               </dd>
-            </div>
-            <div>
+            </div>}
+            {project.year && <div>
               <dt>YEAR</dt>
               <dd>{project.year}</dd>
-            </div>
-            <div>
+            </div>}
+            {project.disciplines.length > 0 && <div>
               <dt>FOCUS</dt>
               <dd>{project.disciplines.join(" · ")}</dd>
-            </div>
-          </dl>
+            </div>}
+          </dl>}
         </header>
         <div data-reveal className="case-study-preview">
           <Media project={project} controls />
