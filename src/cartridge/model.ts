@@ -95,8 +95,8 @@ export async function loadExternalShell(label: THREE.Texture, color: string, gra
       // material, and suppress the second, overlapping paper primitive.
       if (material.name === "Label (Artwork)" || object.name === cartridgeModel.labelMesh) {
         hasLabel = true; object.userData.label = true;
-        return new THREE.MeshPhysicalMaterial({ name: "Project label", map: labelMap, color: "#fff", metalness: 0,
-          roughness: .66, clearcoat: .24, clearcoatRoughness: .43, side: THREE.DoubleSide,
+        // Printed ink keeps its authored contrast rather than reflecting the studio key.
+        return new THREE.MeshBasicMaterial({ name: "Project label", map: labelMap, color: "#fff", toneMapped: false, side: THREE.DoubleSide,
           polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       }
       const clone = material.clone() as THREE.MeshStandardMaterial;

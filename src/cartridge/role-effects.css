@@ -1,4 +1,4 @@
-.role-rotator { display:inline-grid; position:relative; padding:5px 0; margin:-5px 0; text-align:left; font:inherit; color:var(--ui-text); border-radius:3px; vertical-align:baseline; }
+.role-rotator { display:inline-grid; position:relative; padding:5px 0; margin:-5px 0; text-align:left; font:inherit; font-weight:500; color:var(--ui-text); border-radius:3px; vertical-align:baseline; }
 .role-rotator:hover { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 .role-measure,.role-label { grid-area:1/1; white-space:nowrap; }
 .role-measure { visibility:hidden; pointer-events:none; }

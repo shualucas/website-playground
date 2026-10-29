@@ -8,7 +8,9 @@ const track = (name, playing = false) => ({ name, artist: { '#text': 'Fixture ar
 test('an unconfigured account makes no external request', async () => {
   const res = response();
   await createListeningHandler({ fetcher: () => { throw Error('Unexpected fetch'); } })({ method: 'GET' }, res);
-  assert.equal(res.statusCode, 204);
+  assert.equal(res.statusCode, 503);
+  assert.equal(JSON.parse(res.body).code, "LISTENING_NOT_CONFIGURED");
+  assert.equal(res.headers["Cache-Control"], "no-store");
 });
 
 test('returns the current song and five completed scrobbles, with a 20-second cache and no exposed key', async () => {

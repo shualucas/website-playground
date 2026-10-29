@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1260" height="600" viewBox="0 0 1260 600" role="img" aria-labelledby="title desc">
+<title id="title">Early work — Before 2017</title><desc id="desc">Student projects and experiments in design and games, before 2017.</desc>
+<defs><filter id="paper-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="2" seed="17" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></defs>
+<rect width="1260" height="600" fill="#d8d5c9"/>
+<g stroke="#676f68" stroke-width="1" opacity=".13"><path d="M0 0V600"/><path d="M30 0V600"/><path d="M60 0V600"/><path d="M90 0V600"/><path d="M120 0V600"/><path d="M150 0V600"/><path d="M180 0V600"/><path d="M210 0V600"/><path d="M240 0V600"/><path d="M270 0V600"/><path d="M300 0V600"/><path d="M330 0V600"/><path d="M360 0V600"/><path d="M390 0V600"/><path d="M420 0V600"/><path d="M450 0V600"/><path d="M480 0V600"/><path d="M510 0V600"/><path d="M540 0V600"/><path d="M570 0V600"/><path d="M600 0V600"/><path d="M630 0V600"/><path d="M660 0V600"/><path d="M690 0V600"/><path d="M720 0V600"/><path d="M750 0V600"/><path d="M780 0V600"/><path d="M810 0V600"/><path d="M840 0V600"/><path d="M870 0V600"/><path d="M900 0V600"/><path d="M930 0V600"/><path d="M960 0V600"/><path d="M990 0V600"/><path d="M1020 0V600"/><path d="M1050 0V600"/><path d="M1080 0V600"/><path d="M1110 0V600"/><path d="M1140 0V600"/><path d="M1170 0V600"/><path d="M1200 0V600"/><path d="M1230 0V600"/><path d="M1260 0V600"/><path d="M0 0H1260"/><path d="M0 30H1260"/><path d="M0 60H1260"/><path d="M0 90H1260"/><path d="M0 120H1260"/><path d="M0 150H1260"/><path d="M0 180H1260"/><path d="M0 210H1260"/><path d="M0 240H1260"/><path d="M0 270H1260"/><path d="M0 300H1260"/><path d="M0 330H1260"/><path d="M0 360H1260"/><path d="M0 390H1260"/><path d="M0 420H1260"/><path d="M0 450H1260"/><path d="M0 480H1260"/><path d="M0 510H1260"/><path d="M0 540H1260"/><path d="M0 570H1260"/><path d="M0 600H1260"/></g>
+<text x="58" y="69" font-family="Courier New, monospace" font-size="25" font-weight="400" letter-spacing="0.4" fill="#3c443d" >STUDENT PROJECTS &amp; EXPERIMENTS</text>
+<text x="52" y="244" font-family="Georgia, serif" font-size="151" font-weight="400" letter-spacing="-6" fill="#242c27" font-style="italic">Early</text>
+<text x="58" y="391" font-family="Arial, Helvetica, sans-serif" font-size="164" font-weight="700" letter-spacing="-9" fill="#242c27" >work.</text>
+<g transform="translate(796 113) rotate(6 170 124)" fill="#e5e1d5" stroke="#39443b" stroke-width="3">
+<rect width="326" height="237" rx="8"/><path d="M0 33h326" fill="none"/><circle cx="18" cy="16" r="4" fill="#39443b"/><circle cx="35" cy="16" r="4" fill="#39443b"/><circle cx="52" cy="16" r="4" fill="#39443b"/>
+<path d="M26 177h276M48 156v21M258 156v21" fill="none" stroke-dasharray="6 6"/>
+<path d="M85 125V98h17V81h32v17h17v27h-17v17h-32v-17z" stroke="none" fill="#39443b"/>
+<rect x="210" y="83" width="48" height="48" fill="none" stroke-dasharray="5 4"/>
+<path d="M92 199h92M211 199h62" fill="none"/>
+</g>
+<g stroke="#9e4238" fill="none" stroke-width="4" stroke-linecap="round"><path d="M755 386q67-36 165 2t226-3"/><path d="m1130 368 24 14-23 15"/><path d="m711 80 11 18m-36-1 19 9m-1-38 7 19"/></g>
+<path d="M58 459H1202" stroke="#596257" opacity=".5"/>
+<text x="58" y="516" font-family="Arial, Helvetica, sans-serif" font-size="33" font-weight="700" letter-spacing="-0.3" fill="#303a31" >Student projects &amp; experiments</text>
+<text x="58" y="557" font-family="Courier New, monospace" font-size="25" font-weight="400" letter-spacing="0.4" fill="#54614f" >DESIGN / GAMES</text>
+<text x="1202" y="529" font-family="Courier New, monospace" font-size="38" font-weight="400" letter-spacing="0.4" fill="#303a31" text-anchor="end">BEFORE 2017</text>
+<rect width="1260" height="600" filter="url(#paper-grain)" opacity=".045" style="mix-blend-mode:soft-light"/>
+</svg>

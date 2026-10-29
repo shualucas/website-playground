@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1260" height="600" viewBox="0 0 1260 600" role="img" aria-labelledby="title desc">
+<title id="title">Gmail &amp; Chat — Summer 2019</title><desc id="desc">Product Designer internship at Google, working on Gmail and Chat. San Francisco, California.</desc>
+<defs><filter id="paper-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="2" seed="17" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></defs>
+<rect width="1260" height="600" fill="#ede7d7"/>
+<rect x="18" y="18" width="1224" height="564" rx="6" fill="none" stroke="#a63139" stroke-width="2"/>
+<path d="M535 52V548" stroke="#b6a89b" stroke-width="2"/>
+<text x="58" y="72" font-family="Courier New, monospace" font-size="24" font-weight="400" letter-spacing="0.4" fill="#8b333a" >GOOGLE</text>
+<g transform="translate(62 121)" fill="none" stroke="#9b333b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><rect width="88" height="62" rx="5"/><path d="m4 7 40 30L84 7"/><path d="M118 11h63v42h-41l-18 14V53h-4z" stroke-width="7"/></g>
+<text x="55" y="306" font-family="Arial, Helvetica, sans-serif" font-size="121" font-weight="700" letter-spacing="-7" fill="#962e38" >Gmail</text>
+<text x="61" y="410" font-family="Arial, Helvetica, sans-serif" font-size="94" font-weight="400" letter-spacing="-4" fill="#962e38" >&amp; Chat</text>
+<text x="62" y="521" font-family="Courier New, monospace" font-size="29" font-weight="400" letter-spacing="0.4" fill="#782c33" >SUMMER / 2019</text>
+<g transform="translate(1120 111) rotate(12)" fill="none" stroke="#a3343d" stroke-width="2"><circle r="59"/><circle r="50"/><path d="M-36-6H36M-36 7H36"/></g>
+<text x="1120" y="107" font-family="Courier New, monospace" font-size="22" font-weight="400" letter-spacing="0.4" fill="#a3343d" text-anchor="middle" transform="rotate(12 1120 107)">SFO</text>
+<text x="594" y="232" font-family="Courier New, monospace" font-size="25" font-weight="400" letter-spacing="0.4" fill="#8b333a" >DESIGN INTERNSHIP</text>
+<text x="590" y="304" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" letter-spacing="-1.4" fill="#24251f" >Product Designer</text>
+<text x="594" y="355" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="400" letter-spacing="0" fill="#55534b" >Gmail &amp; Chat</text>
+<path d="M594 399H1199" stroke="#b7a99b"/>
+<text x="594" y="457" font-family="Courier New, monospace" font-size="29" font-weight="400" letter-spacing="0.4" fill="#3b3d34" >SAN FRANCISCO, CA</text>
+<text x="594" y="515" font-family="Courier New, monospace" font-size="29" font-weight="400" letter-spacing="0.4" fill="#3b3d34" >SUMMER 2019</text>
+<rect width="1260" height="600" filter="url(#paper-grain)" opacity=".045" style="mix-blend-mode:soft-light"/>
+</svg>

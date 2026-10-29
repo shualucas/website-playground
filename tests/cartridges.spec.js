@@ -4,7 +4,7 @@ import { funFacts } from "../src/cartridge/fun-facts.js";
 // Keep UI checks independent of the private local API key and live listening.
 test.beforeEach(async ({ page }) => { await page.route("**/api/listening", route => route.fulfill({ status:204 })); });
 const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment", "Early work"];
-const dates = ["2022 – now", "2020 – 2022", "2019", "2017", ""];
+const dates = ["2022 – now", "2020 – 2022", "2019", "2017", "Before 2017"];
 const body = "based in beautiful California, building fun things at Google.";
 async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
@@ -57,8 +57,9 @@ test("career collection uses exact bio and five individually visible, tilted top
   }
   for (let i = 1; i < hits.length; i++) expect(hits[i].y - hits[i - 1].y).toBeGreaterThan(20);
   for (const id of ["blizzard", "gmail", "stadia", "search", "early-work"]) {
-    const label = await request.get(`/cartridges/labels/${id}-tonal.svg`); expect(label.ok()).toBe(true);
-    expect(await label.text()).not.toMatch(/<text|Josh|Lucas|logo/i);
+    const label = await request.get(`/cartridges/labels/${id}-label.svg`); expect(label.ok()).toBe(true);
+    expect(await label.text()).toMatch(/<title[^>]*>.+<\/title>/);
+    expect(await label.text()).not.toMatch(/Josh|Lucas|1997|2011/);
   }
 });
 
@@ -160,6 +161,7 @@ test("full name stays medium-weight and reduced-motion readers can explore each 
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   expect(await page.locator(".portfolio-name").evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBe(500);
   const role = page.locator(".role-rotator"); await role.focus();
+  expect(await role.evaluate(el => getComputedStyle(el).fontWeight)).toBe("500");
   for (const label of ["product designer", "merch maker", "brand builder", "prototyper", "systems thinker", "storyteller", "community organizer"]) {
     await expect(role).toHaveAttribute("data-role", label);
     await expect(role).toHaveAttribute("data-paused", "true");
@@ -512,4 +514,16 @@ test("empty listening history, unavailable artwork and API failure remain usable
   await page.getByRole("button",{name:"Show last five songs"}).click();await expect(page.getByRole("dialog")).toContainText("temporarily unavailable");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await expect(page.locator("audio,video")).toHaveCount(0);
+});
+
+
+test("an unconfigured deployment has a quiet client fallback and does not pretend to be live", async ({ page }) => {
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.route("**/api/listening",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({code:"LISTENING_NOT_CONFIGURED",error:"Listening is not configured on this deployment."})}));
+  await page.goto("/");
+  await expect(page.locator(".listening-widget")).toHaveAttribute("data-listening-status","unconfigured");
+  await expect(page.locator(".now-playing")).toContainText("my listening history");
+  await expect(page.locator(".listening-indicator")).toHaveCount(0);
+  await page.getByRole("button",{name:"Show last five songs"}).click();
+  await expect(page.getByRole("dialog")).toContainText("once connected");
 });

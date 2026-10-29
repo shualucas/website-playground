@@ -15,7 +15,10 @@ export function createListeningHandler({ user = "shualucas", apiKey = "", fetche
   return async function listening(req, res) {
     res.setHeader("Cache-Control", "public, max-age=20, s-maxage=20");
     if (req.method !== "GET") { res.setHeader("Allow", "GET"); res.statusCode = 405; res.end(); return; }
-    if (!apiKey || !user) { res.statusCode = 204; res.end(); return; }
+    if (!apiKey || !user) {
+      res.setHeader("Cache-Control", "no-store"); res.setHeader("Content-Type", "application/json"); res.statusCode = 503;
+      res.end(JSON.stringify({ code: "LISTENING_NOT_CONFIGURED", error: "Listening is not configured on this deployment." })); return;
+    }
     try {
       if (!expires || clock() >= expires) {
         pending ??= (async () => {

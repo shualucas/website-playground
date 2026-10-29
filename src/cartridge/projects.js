@@ -1,9 +1,18 @@
 import { projects as zineProjects } from "../book/projects";
 import { cartridges } from "./config";
 
+const careerDetails = {
+  blizzard: { role: "UX Designer · Internship", team: "Team 1 · Heroes of the Storm & Starcraft II", period: "Summer 2017", location: "Irvine, CA" },
+  gmail: { role: "Product Designer · Internship", team: "Gmail & Chat", period: "Summer 2019", location: "San Francisco, CA" },
+  stadia: { role: "Product Designer", team: "Stadia", period: "2020–2022", location: "San Francisco, CA" },
+  search: { role: "Senior Product Designer", team: "Google Search", period: "2022–Now", location: "San Francisco, CA" },
+  "early-work": { role: "Student projects & experiments", team: "Design & games", period: "Before 2017", location: "" },
+};
+
 /** Career pages stay separate from the preserved zine's four spreads. */
 export const careerProjects = cartridges.map((cartridge) => {
   const existing = zineProjects.find((p) => p.id === (cartridge.id === "search" ? "ai-mode" : cartridge.id));
+  const details = careerDetails[cartridge.id];
   const early = cartridge.id === "early-work";
   return {
     ...existing,
@@ -11,11 +20,11 @@ export const careerProjects = cartridges.map((cartridge) => {
     kind: "project",
     label: cartridge.name,
     title: cartridge.name,
-    subtitle: "",
+    subtitle: details.location,
     theme: cartridge.id === "stadia" ? "stadia" : cartridge.id === "early-work" ? "after-hours" : cartridge.id === "gmail" ? "stadia" : "ai",
-    team: cartridge.name,
-    year: cartridge.years || "High school & college",
-    role: cartridge.id === "blizzard" ? "Internship" : early ? "Student & personal projects" : "Product design",
+    team: details.team,
+    year: details.period,
+    role: details.role,
     disciplines: early ? ["Design", "Games"] : ["Product design"],
     description: early ? "Personal design and game-related projects from high school and college." : "",
     previewVideo: existing?.previewVideo || "",

@@ -10,8 +10,12 @@ export function useListening() {
       const timeout = setTimeout(() => controller.abort(), 8000);
       try {
         const response = await fetch("/api/listening", { signal: controller.signal, cache: "no-cache" });
-        if (!response.ok) throw new Error("Unavailable");
         const data = response.status === 204 ? null : await response.json();
+        if (response.status === 503 && data?.code === "LISTENING_NOT_CONFIGURED") {
+          if (alive) setListening(previous => ({ ...previous, status: "unconfigured", stale: true }));
+          return;
+        }
+        if (!response.ok) throw new Error("Unavailable");
         if (alive) setListening({ track: data?.track?.title ? data.track : null, recent: Array.isArray(data?.recent) ? data.recent.slice(0, 5) : [], status: response.status === 204 ? "unconfigured" : "ready", stale: false });
       } catch {
         if (alive && !document.hidden) setListening(previous => ({ ...previous, status: "unavailable", stale: true }));
