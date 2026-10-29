@@ -1,5 +1,5 @@
-.listening-widget { --art-size:52px; --listening-green:#27894b; --history-scrim:255 255 255; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:320px; max-width:100%; min-width:0; }
-:root[data-color-mode="dark"] .listening-widget { --listening-green:#62d68d; --history-scrim:27 28 27; }
+.listening-widget { --art-size:52px; --listening-green:#27894b; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:320px; max-width:100%; min-width:0; }
+:root[data-color-mode="dark"] .listening-widget { --listening-green:#62d68d; }
 .listening-current { display:flex; align-items:center; gap:2px; }
 .now-playing { display:flex; align-items:center; gap:10px; min-width:0; flex:1; }
 .now-playing-copy { display:flex; flex-direction:column; min-width:0; text-align:left; line-height:1.35; }
@@ -14,7 +14,7 @@
 .listening-history-toggle:hover { background:var(--ui-fill); color:var(--ui-text); }
 .listening-history-toggle svg { transition:transform 180ms ease; }
 .listening-history-toggle[aria-expanded="true"] svg { transform:rotate(180deg); }
-.listening-history { position:absolute; z-index:5; inset:auto 0 100%; padding:18px 46px 14px 0; max-height:min(420px,calc(100svh - 100px)); overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; border-radius:12px 12px 0 0; background:linear-gradient(to bottom,rgb(var(--history-scrim) / 0),rgb(var(--history-scrim) / .97) 18px,rgb(var(--history-scrim) / .97) calc(100% - 8px),rgb(var(--history-scrim) / .9)); }
+.listening-history { position:absolute; z-index:5; inset:auto 0 calc(100% + 12px); padding:16px; max-height:min(420px,calc(100svh - 100px)); overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; border-radius:20px; background:var(--scene-bg); box-shadow:0 8px 28px #0000000d; }
 .listening-history ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
 .listening-history li a { display:flex; align-items:center; gap:10px; min-height:var(--art-size); border-radius:7px; }
 .listening-history li .listening-artwork,.listening-history .listening-song > span { animation:listening-text-in 650ms cubic-bezier(.4,0,.2,1) both; animation-delay:var(--history-delay,0ms); }

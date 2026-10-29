@@ -44,6 +44,9 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(projected.right - projected.left).toBeGreaterThan(375);
   expect(projected.right - projected.left).toBeLessThan(430);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
+  const footerBounds = await page.locator(".collection-footer").boundingBox();
+  expect(Math.abs(footerBounds.x - intro.x)).toBeLessThan(2);
+  expect(Math.abs(footerBounds.x + footerBounds.width - stage.x - projected.right)).toBeLessThan(20);
   expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
   const rightGutter = page.viewportSize().width - stage.x - projected.right;
   expect(Math.abs(intro.x - rightGutter)).toBeLessThan(20);
@@ -505,7 +508,11 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const panel=await dialog.boundingBox(), current=await page.locator(".listening-current").boundingBox();expect(panel.y+panel.height).toBeLessThanOrEqual(current.y+1);
   await expect(toggle).toBeFocused();
   expect(await dialog.evaluate(el=>getComputedStyle(el).position)).toBe("absolute");
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain("255, 255, 255");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe(await page.locator("html").evaluate(el=>getComputedStyle(el).backgroundColor));
+  expect(await dialog.evaluate(el=>getComputedStyle(el).paddingTop)).toBe("16px");
+  expect(await dialog.evaluate(el=>getComputedStyle(el).borderRadius)).toBe("20px");
+  expect(await dialog.locator("li").first().evaluate(el=>el.style.getPropertyValue("--history-delay"))).toBe("260ms");
+  expect(await dialog.locator("li").last().evaluate(el=>el.style.getPropertyValue("--history-delay"))).toBe("0ms");
   const after=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
   expect(after).toEqual(before);
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
