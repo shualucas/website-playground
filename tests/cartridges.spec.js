@@ -712,6 +712,8 @@ test("recent projects use one column with native reader links and restore focus 
   }
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
+  const textGap=await links.first().evaluate(el=>el.querySelector('.recent-project-summary').getBoundingClientRect().left-el.querySelector('.recent-project-name').getBoundingClientRect().right);
+  expect(textGap).toBeGreaterThan(0);expect(textGap).toBeLessThan(10);
   for(let i=0;i<titles.length;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).toHaveText(descriptions[i]);
@@ -720,11 +722,11 @@ test("recent projects use one column with native reader links and restore focus 
   }
   await page.emulateMedia({reducedMotion:'no-preference'});
   const before=await navigation.boundingBox();await links.first().hover();
-  await expect(links.first().locator('.recent-project-echo')).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 0)');
-  await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
+  await expect(links.first().locator('.recent-project-copy')).toHaveCSS('transform','matrix(1, 0, 0, 1, 18, 0)');
+  await expect(links.first().locator('.recent-project-marker')).toHaveCSS('opacity','1');
   const after=await navigation.boundingBox();expect(after.height).toBe(before.height);expect(after.y).toBe(before.y);
   await page.emulateMedia({reducedMotion:'reduce'});
-  await expect(links.first().locator('.recent-project-name')).toHaveCSS('transform','none');
+  await expect(links.first().locator('.recent-project-copy')).toHaveCSS('transform','none');
   await page.setViewportSize({width:390,height:844}); await navigation.scrollIntoViewIfNeeded();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
