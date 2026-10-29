@@ -217,10 +217,12 @@ test("the camera sits left of the centered X link, floats only in view, and resp
   await expect(camera).toBeVisible(); await expect(camera.locator("canvas")).toHaveCount(1);
   expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
   const footer = await page.locator(".collection-footer").boundingBox(), bounds = await camera.boundingBox();
-  expect(bounds.y).toBeGreaterThanOrEqual(footer.y);
-  expect(Math.abs(bounds.x-footer.x)).toBeLessThan(1);
+  const caption=await page.locator('.footer-camera figcaption').boundingBox();
+  expect(bounds.x+bounds.width/2).toBeLessThan(caption.x);
+  expect(Math.abs(bounds.y+bounds.height/2-caption.y-caption.height/2)).toBeLessThan(1);
   const social=await page.locator('.social-link').boundingBox();
   expect(Math.abs(social.x+social.width/2-footer.x-footer.width/2)).toBeLessThan(1);
+  expect(Math.abs(social.y+social.height/2-caption.y-caption.height/2)).toBeLessThan(1);
   await expect(page.locator(".footer-camera figcaption")).toHaveText("say cheese");
   expect(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => r.name.includes("BookScene")))).toBe(false);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -620,8 +622,47 @@ test("the page entrance continues from the hero into the footer on one timeline"
     const starts=['.footer-camera figcaption','.social-link','.listening-current'].map(selector=>{
       const animation=document.querySelector(selector).getAnimations()[0];return animation.startTime+Number(animation.effect.getTiming().delay);
     });
-    return {heroEnd,starts};
+    const projectsEnd=Math.max(...[...document.querySelectorAll('.recent-projects [data-reveal]')].map(el=>{
+      const animation=el.getAnimations()[0],timing=animation.effect.getTiming();return animation.startTime+Number(timing.delay)+Number(timing.duration);
+    }));
+    return {heroEnd,starts,projectsEnd};
   });
   expect(timing.starts[0]).toBeGreaterThanOrEqual(timing.heroEnd);
+  expect(timing.starts[0]).toBeGreaterThanOrEqual(timing.projectsEnd);
   expect(timing.starts[1]).toBeGreaterThan(timing.starts[0]);expect(timing.starts[2]).toBeGreaterThan(timing.starts[1]);
+});
+
+test("recent projects use one column with native reader links and restore focus on Back", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.goto("/");
+  const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.getByRole("link");
+  await expect(links).toHaveCount(3);
+  await expect(navigation.locator('.recent-project-name')).toHaveText(['Search','Stadia','Gmail']);
+  await expect(navigation.locator('.recent-project-year')).toHaveText(['2022–Now','2020–2022','Summer 2019']);
+  await expect(links.first()).toHaveAttribute('href','/?project=search&view=case-study');
+  const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
+  expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
+  await links.first().click(); await expect(page.getByRole('heading',{name:'Search',exact:true})).toBeFocused();
+  await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.first()).toBeFocused();
+  await page.setViewportSize({width:390,height:844}); await navigation.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
+});
+
+test("song changes crossfade without shifting the footer or replaying on unchanged polls", async ({ page }) => {
+  const initial=new Date('2026-10-29T19:00:00Z');await page.clock.install({time:initial});await page.clock.pauseAt(new Date(initial.getTime()+1000));
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  let calls=0;await page.route('**/api/listening',route=>{calls++;const title=calls===1?'First song':calls<4?'Second song':'Third song';return route.fulfill({contentType:'application/json',body:JSON.stringify({track:{title,artist:'Fixture artist',url:`https://www.last.fm/music/${calls===1?'first':calls<4?'second':'third'}`,playing:true,artwork:''},recent:[]})});});
+  await page.goto('/');const link=page.locator('.now-playing');await expect(link).toHaveAttribute('data-track','First song');await link.scrollIntoViewIfNeeded();
+  const before=await page.locator('.listening-current').boundingBox();
+  await page.clock.fastForward(20000);await expect(link).toHaveAttribute('data-track','Second song');
+  const outgoing=link.locator('.now-playing-outgoing');await expect(outgoing).toHaveAttribute('aria-hidden','true');await expect(outgoing).toContainText('First song');
+  await expect(link.locator('.now-playing-track.is-entering')).toHaveCSS('animation-name','track-enter');
+  await expect(link).toHaveAttribute('href','https://www.last.fm/music/second');
+  const during=await page.locator('.listening-current').boundingBox();expect(during.height).toBe(before.height);expect(during.y).toBe(before.y);
+  await page.clock.fastForward(401);await expect(outgoing).toHaveCount(0);
+  await page.clock.fastForward(20000);await expect(link.locator('.now-playing-transition')).toHaveAttribute('data-changing','false');
+  await page.emulateMedia({reducedMotion:'reduce'});await page.clock.fastForward(20000);await expect(link).toHaveAttribute('data-track','Third song');await expect(outgoing).toHaveCount(0);
 });

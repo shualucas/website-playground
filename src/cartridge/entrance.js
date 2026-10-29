@@ -3,8 +3,9 @@ export const entrance = {
   introSpread: 390,
   duration: 700,
 };
-// The footer follows the final hero word, using the same page clock.
-entrance.footerStart = entrance.introStart + entrance.introSpread + entrance.duration + 60;
+// Continue the same page clock through the project index, then the footer.
+entrance.projectsStart = entrance.introStart + entrance.introSpread + entrance.duration + 60;
+entrance.footerStart = entrance.projectsStart + 180 + entrance.duration + 60;
 
 export function remainingEntranceDelay(element, at) {
   const page = element.closest('[data-reveal-flow="page"]');

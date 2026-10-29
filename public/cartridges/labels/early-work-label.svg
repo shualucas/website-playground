@@ -15,8 +15,7 @@
 </g>
 <g stroke="#9e4238" fill="none" stroke-width="4" stroke-linecap="round"><path d="M755 386q67-36 165 2t226-3"/><path d="m1130 368 24 14-23 15"/><path d="m711 80 11 18m-36-1 19 9m-1-38 7 19"/></g>
 <path d="M58 459H1202" stroke="#596257" opacity=".5"/>
-<text x="58" y="516" font-family="Arial, Helvetica, sans-serif" font-size="33" font-weight="700" letter-spacing="-0.3" fill="#303a31" >Student projects &amp; experiments</text>
-<text x="58" y="557" font-family="Courier New, monospace" font-size="25" font-weight="400" letter-spacing="0.4" fill="#54614f" >DESIGN / GAMES</text>
+<text x="58" y="529" font-family="Courier New, monospace" font-size="25" font-weight="400" letter-spacing="0.4" fill="#54614f" >DESIGN / GAMES</text>
 <text x="1202" y="529" font-family="Courier New, monospace" font-size="38" font-weight="400" letter-spacing="0.4" fill="#303a31" text-anchor="end">BEFORE 2017</text>
 <rect width="1260" height="600" filter="url(#paper-grain)" opacity=".045" style="mix-blend-mode:soft-light"/>
 </svg>

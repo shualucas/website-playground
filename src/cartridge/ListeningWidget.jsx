@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useListening } from "./useListening";
 import { entrance } from "./entrance";
 import "./listening.css";
@@ -10,6 +10,35 @@ function TrackArtwork({ track, className = "" }) {
   useEffect(() => setFailed(false), [track?.artwork]);
   return <span className={`listening-artwork ${className}`}>
     {track?.artwork && !failed ? <img src={track.artwork} alt="" width="52" height="52" loading="lazy" onError={() => setFailed(true)} /> : <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="7" fill="currentColor" opacity=".08" /><circle cx="20" cy="20" r="13" stroke="currentColor" opacity=".4" /><circle cx="20" cy="20" r="10" stroke="currentColor" opacity=".16" /><circle cx="20" cy="20" r="3" fill="currentColor" opacity=".5" /></svg>}
+  </span>;
+}
+
+function TrackView({ track, playing, label, emptyTitle, entering = false }) {
+  return <span className={`now-playing-track${entering ? " is-entering" : ""}`}>
+    <TrackArtwork track={track} />
+    <span className="now-playing-copy">
+      <span className="listening-status">{playing && <span className="listening-indicator" aria-hidden="true" />}{label}</span>
+      <span className="now-playing-title">{track?.title || emptyTitle}</span>
+      {track && <span className="now-playing-artist">{track.artist}</span>}
+    </span>
+  </span>;
+}
+
+function TrackTransition(view) {
+  const identity = view.track ? JSON.stringify([view.track.title, view.track.artist, view.track.url]) : "";
+  const previous = useRef(null);
+  const [outgoing, setOutgoing] = useState(null);
+  useLayoutEffect(() => {
+    const old = previous.current;
+    if (!old?.track || old.identity === identity || !view.track || matchMedia("(prefers-reduced-motion: reduce)").matches) { setOutgoing(null); return; }
+    setOutgoing(old);
+    const timer = setTimeout(() => setOutgoing(null), 400);
+    return () => clearTimeout(timer);
+  }, [identity]);
+  useLayoutEffect(() => { previous.current = { ...view, identity }; });
+  return <span className="now-playing-transition" data-changing={Boolean(outgoing)}>
+    <TrackView key={identity} {...view} entering={Boolean(outgoing)} />
+    {outgoing && <span className="now-playing-outgoing" aria-hidden="true"><TrackView {...outgoing} /></span>}
   </span>;
 }
 
@@ -32,12 +61,7 @@ export function ListeningWidget() {
       <a className="now-playing" href={track?.url || profile} target="_blank" rel="noopener noreferrer"
         aria-label={track ? `${playing ? "Currently listening" : "Last listened"}: ${track.title} by ${track.artist} on Last.fm` : "Open my listening history on Last.fm"}
         title={stale && track ? "Last.fm is temporarily unavailable. Showing the last known track." : undefined} data-track={track?.title || ""}>
-        <TrackArtwork track={track} />
-        <span className="now-playing-copy">
-          <span className="listening-status">{playing && <span className="listening-indicator" aria-hidden="true" />}{label}</span>
-          <span className="now-playing-title">{track?.title || emptyTitle}</span>
-          {track && <span className="now-playing-artist">{track.artist}</span>}
-        </span>
+        <TrackTransition track={track} playing={playing} label={label} emptyTitle={emptyTitle} />
       </a>
       <button ref={toggle} className="listening-history-toggle" aria-label="Show last five songs" aria-expanded={open} aria-controls="recent-listening" onClick={() => setOpen(value => !value)}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg>
