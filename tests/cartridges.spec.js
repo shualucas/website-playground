@@ -44,6 +44,9 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(projected.right - projected.left).toBeGreaterThan(375);
   expect(projected.right - projected.left).toBeLessThan(430);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
+  const hero = await page.locator(".collection-hero").boundingBox();
+  expect(hero.width).toBe(920);
+  expect(await page.locator(".collection-hero").evaluate(el=>getComputedStyle(el).columnGap)).toBe("100px");
   const footerBounds = await page.locator(".collection-footer").boundingBox();
   expect(Math.abs(footerBounds.x - intro.x)).toBeLessThan(2);
   expect(Math.abs(footerBounds.x + footerBounds.width - stage.x - projected.right)).toBeLessThan(20);
@@ -516,6 +519,8 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const after=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
   expect(after).toEqual(before);
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
+  const pastArt=await dialog.locator(".listening-artwork").first().boundingBox(),pastCopy=await dialog.locator(".listening-song").first().boundingBox();
+  expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x).toBeCloseTo(copy.x,1);
   expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeGreaterThanOrEqual(copy.height);
   const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));
   expect(green[1]).toBeGreaterThan(green[0]);expect(green[1]).toBeGreaterThan(green[2]);
