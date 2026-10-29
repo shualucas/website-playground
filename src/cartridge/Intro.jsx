@@ -19,7 +19,7 @@ function RevealWords({ text, start }) {
 export function Intro({ active }) {
   const [fact] = useState(pickFunFact);
   return <div className="collection-intro">
-    <h1 className="intro-title"><span className="portfolio-name intro-word" style={delay(0)}>Josh Lucas</span>{" "}<RotatingRole active={active} /></h1>
+    <h1 className="intro-title"><span className="portfolio-name intro-word" style={delay(0)}>I'm Josh, a</span>{" "}<RotatingRole active={active} /></h1>
     <p className="bio-details"><RevealWords text={BODY} start={bodyStart} /></p>
     <p className="random-fact"><RevealWords text={fact} start={factStart} /></p>
   </div>;

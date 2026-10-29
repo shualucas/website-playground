@@ -23,7 +23,7 @@ const ROLLS = [.008, -.012, .013, -.006, .01];
 const YAWS = [-.019, .025, -.014, .018, -.015];
 const SHIFTS = [-.035, .025, -.02, .035, -.01];
 const COMPONENTS = ["x", "y", "z"] as const;
-const REST_CENTER_Y = .35;
+const REST_CENTER_Y = 0;
 
 /** Tilted, top-edge-first stack; rigid shells, interruptible springs, one clock. */
 export class CartridgeScene {
@@ -188,15 +188,18 @@ export class CartridgeScene {
   private layout() {
     this.host.dataset.settled = "false";
     const active = this.items.findIndex((item) => item.id === this.selected);
-    const heights = this.items.map((item, i) => i === active
-      // A sphere-sized slot lets inspection rotate through 360° without touching
-      // either neighbor; the bottom of the slot also reserves the HTML caption.
-      ? 2 * (item.half.length() + item.center.length()) + .65
-      : (this.stackExtent(item, i) + .12) / Math.abs(AXIS.y));
+    const heights = this.items.map((item, i) => {
+      if (i !== active) return (this.stackExtent(item, i) + .12) / Math.abs(AXIS.y);
+      // Fit the selected orientation instead of reserving an entire sphere.
+      // The lower allowance holds the caption; rotation can widen the slot.
+      this.extentRotation.makeRotationFromEuler(item.angle.set(item.spin.x, YAWS[i] + item.spin.y, ROLLS[i]));
+      const e = this.extentRotation.elements, h = item.half;
+      return 2 * (Math.abs(e[1]) * h.x + Math.abs(e[5]) * h.y + Math.abs(e[9]) * h.z + item.center.length()) + .78;
+    });
     let cursor = heights.reduce((sum, h) => sum + h, 0) / 2 + (active < 0 ? REST_CENTER_Y : 0);
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-      const y = cursor - heights[i] / 2; cursor -= heights[i];
+      const y = cursor - heights[i] / 2 + (i === active ? .21 : 0); cursor -= heights[i];
       const centeredY = y - (active < 0 ? REST_CENTER_Y : 0);
       item.target.set(SHIFTS[i], y, i === active ? 1.8 : -.3 + centeredY * AXIS.z / AXIS.y);
       item.targetAngle.set(i === active ? 0 : PITCH, YAWS[i], ROLLS[i]);
@@ -233,10 +236,10 @@ export class CartridgeScene {
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight; if (!width || !height) return;
     this.mobile = innerWidth < 880; this.camera.aspect = width / height;
-    // Double the previous desktop magnification, capped by the available width
+    // Reduce the established magnification by 25%, capped by available width
     // on narrow displays. Selection/drag never alters the camera or its zoom.
     const span = 17.2;
-    this.camera.zoom = Math.min(4, span * this.camera.aspect / 3.2);
+    this.camera.zoom = .75 * Math.min(4, span * this.camera.aspect / 3.2);
     const distance = span / (2 * Math.tan(7 * Math.PI / 180));
     this.camera.position.set(0, 0, distance);
     // Preserve depth precision for the recessed paper and shell seam. A near

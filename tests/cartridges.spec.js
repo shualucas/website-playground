@@ -34,7 +34,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   await load(page);
   const loading = await page.evaluate(() => ({ models: window.loaderModels, duration: window.loaderFinished - window.loaderStarted }));
   expect(loading.models).toEqual(["camera", "cdj", "zine", "bulb"]); expect(loading.duration).toBeGreaterThanOrEqual(3000);
-  await expect(page.locator(".portfolio-name")).toHaveText("Josh Lucas");
+  await expect(page.locator(".portfolio-name")).toHaveText("I'm Josh, a");
   await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "Brand developer");
   await expect(page.locator(".bio-details")).toHaveText(body);
   expect(funFacts).toContain(await page.locator(".random-fact").textContent());
@@ -42,13 +42,16 @@ test("career collection uses exact bio and five individually visible, tilted top
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
   await expect(page.locator(".cartridge-keyboard")).toHaveCount(5);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "tilted-top-edge");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "4");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "3");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "80");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-silhouette");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-model", "external-glb");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-order", "search,stadia,gmail,blizzard,early-work");
   const projected = JSON.parse(await page.locator(".cartridge-stage").getAttribute("data-frame-bounds"));
-  expect(projected.right - projected.left).toBeGreaterThan(500);
+  expect(projected.right - projected.left).toBeGreaterThan(375);
+  expect(projected.right - projected.left).toBeLessThan(430);
+  const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
+  expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
   expect(await page.locator(".bio-details").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
   for (let i = 0; i < 5; i++) {
@@ -290,6 +293,8 @@ test("opening poses remain separated through interrupted selection and full rota
   const positions = await stage.evaluate((el) => [0,1,2,3,4].map(i => el.dataset[`position${i}`].split(",").map(Number)));
   expect(positions[0][1]).toBeGreaterThan(positions[1][1]);
   expect(positions[2][1]).toBeLessThan(positions[1][1]);
+  expect(positions[0][1] - positions[1][1]).toBeLessThan(1.6);
+  expect(positions[1][1] - positions[2][1]).toBeLessThan(1.9);
   const p = await point(page, 1);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 220, p.y + 45, { steps: 8 }); await page.mouse.up();
   await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
