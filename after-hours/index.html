@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Josh's zine and film photographs." />
+    <title>After-hours — Josh</title>
+    <script>
+      try {
+        document.documentElement.dataset.colorMode = localStorage.getItem("cartridge-color-mode") === "dark" ? "dark" : "light";
+        const entered = Number(sessionStorage.getItem("camera-entry"));
+        sessionStorage.removeItem("camera-entry");
+        if (Date.now() - entered < 10000 && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.dataset.cameraEntry = "true";
+      } catch {}
+    </script>
+    <style>html[data-camera-entry="true"]::after{content:"";position:fixed;inset:0;background:white;z-index:100;pointer-events:none;opacity:1}html[data-camera-entry="true"][data-page-ready="true"]::after{animation:flash-reveal 320ms ease-out both}@keyframes flash-reveal{from{opacity:1}to{opacity:0}}@media(prefers-reduced-motion:reduce){html::after{display:none}}</style>
+  </head>
+  <body><div id="root"></div><script type="module" src="/src/after-hours/main.jsx"></script></body>
+</html>

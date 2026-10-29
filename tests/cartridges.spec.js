@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { funFacts } from "../src/cartridge/fun-facts.js";
 const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment", "Early work"];
 const dates = ["2022 – now", "2020 – 2022", "2019", "2017", ""];
-const body = "I'm a systems thinker with a knack for micro interactions and finer details. I like figuring out what should exist, what it should feel like, and how to make it happen.";
+const body = "based in beautiful California, building fun things at Google.";
 async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
   await expect(page.locator(".collection")).toHaveAttribute("data-status", "ready", { timeout: 60000 });
@@ -36,7 +36,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(loading.models).toEqual(["camera", "cdj", "zine", "bulb"]); expect(loading.duration).toBeGreaterThanOrEqual(3000);
   await expect(page.locator(".portfolio-name")).toHaveText("I'm Josh, a");
   await expect(page.locator(".role-rotator")).toHaveAttribute("data-role", "Brand developer");
-  await expect(page.locator(".bio-details")).toHaveText(body);
+  await expect(page.locator(".bio-continuation")).toHaveText(body);
   expect(funFacts).toContain(await page.locator(".random-fact").textContent());
   await expect(page.locator(".collection-header").getByRole("button", { name: "About", exact: true })).toHaveCount(0);
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
@@ -52,7 +52,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(projected.right - projected.left).toBeLessThan(430);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
   expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
-  expect(await page.locator(".bio-details").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
+  expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
   for (let i = 0; i < 5; i++) {
     const facing = Number(await page.locator(".cartridge-stage").getAttribute(`data-front-facing${i}`));
@@ -331,15 +331,23 @@ test("roles cycle with four distinct effects and pause/resume on click", async (
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
   });
+  const initial = new Date("2026-10-29T12:00:00Z");
+  await page.clock.install({ time: initial }); await page.clock.pauseAt(initial);
   await page.goto("/");
-  await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
-  await page.clock.install();
+  await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
+  await expect(page.locator(".miniature-loader")).toHaveAttribute("data-backend", "fallback");
+  await page.clock.runFor(3000);
+  await expect(page.locator(".miniature-loader")).toHaveAttribute("data-minimum", "true");
+  await page.clock.runFor(241);
+  await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true");
   const role = page.locator(".role-rotator");
   await expect(role).toHaveAttribute("data-role", "Brand developer");
   await expect(role).toHaveAttribute("data-effect", "letters");
   await expect(role.locator(".role-first")).toHaveText("Brand");
   await expect(role.locator(".role-suffix")).toHaveText("developer");
-  await page.clock.fastForward(3481);
+  await page.clock.fastForward(2001);
+  await expect(role.locator(".role-first")).toHaveClass(/is-leaving/);
+  await page.clock.fastForward(280);
   await expect(role).toHaveAttribute("data-role", "Merch maker");
   await expect(role).toHaveAttribute("data-effect", "stamp");
   await expect(role.locator(".role-first")).toHaveText("Merch");
@@ -350,14 +358,14 @@ test("roles cycle with four distinct effects and pause/resume on click", async (
   await role.click(); await expect(role).toHaveAttribute("data-paused", "true");
   await page.clock.fastForward(10000); await expect(role).toHaveAttribute("data-role", "Merch maker");
   await role.click();
-  await page.clock.fastForward(3481); await expect(role).toHaveAttribute("data-role", "Product designer");
+  await page.clock.fastForward(2281); await expect(role).toHaveAttribute("data-role", "Product designer");
   await expect(role).toHaveAttribute("data-effect", "slide");
   await expect(role.locator(".role-suffix")).toHaveText("designer");
-  await page.clock.fastForward(3481); await expect(role).toHaveAttribute("data-role", "Visionary");
+  await page.clock.fastForward(2281); await expect(role).toHaveAttribute("data-role", "Visionary");
   await expect(role).toHaveAttribute("data-effect", "focus");
   await expect(role.locator(".role-first")).toHaveText("Visionary");
   await expect(role.locator(".role-suffix")).toHaveCount(0);
-  await page.clock.fastForward(3481); await expect(role).toHaveAttribute("data-role", "Brand developer");
+  await page.clock.fastForward(2281); await expect(role).toHaveAttribute("data-role", "Brand developer");
 });
 
 test("the upstream GLB decodes locally with wide proportions and per-team shell/label materials", async ({ page }) => {
@@ -439,4 +447,43 @@ test("translucent shells retain opaque labels and team-specific finishes", async
   expect(finishes.blizzard.shells.every((m) => m.transmission > 0 && m.transmission < .3)).toBe(true);
   expect(finishes.gmail.shells.every((m) => m.transmission === 0 && m.color === "b8af98")).toBe(true);
   expect(finishes.stadia.shells.every((m) => m.transmission === 0 && m.color === "34383a")).toBe(true);
+});
+
+test("camera drag rotates without navigation; keyboard entry opens the new photo and zine page", async ({ page }) => {
+  test.setTimeout(120000);
+  await load(page);
+  const link = page.getByRole("link", { name: "Explore zine and film photographs" }), camera = page.locator(".film-camera-dock");
+  await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
+  const bounds = await link.boundingBox(), before = await camera.getAttribute("data-rotation");
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 2 + 85, bounds.y + bounds.height / 2 + 35, { steps: 5 }); await page.mouse.up();
+  await expect(camera).not.toHaveAttribute("data-rotation", before ?? "");
+  await expect(page).not.toHaveURL(/after-hours/);
+  const rotated = await camera.getAttribute("data-rotation");
+  await link.focus(); await page.keyboard.press("ArrowLeft"); await expect(camera).not.toHaveAttribute("data-rotation", rotated);
+  await page.keyboard.press("r"); await expect(camera).toHaveAttribute("data-rotation", "0,0,0");
+  await page.keyboard.press("Enter"); await expect(page).toHaveURL(/\/after-hours\/$/);
+  await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open the interactive zine" })).toHaveAttribute("href", "/zine/");
+  await expect(page.getByRole("heading", { name: "Film photographs", exact: true })).toBeVisible();
+  await page.reload(); await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
+  await page.goBack(); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
+  await expect(page.locator(".camera-page-flash")).toHaveCount(0);
+});
+
+test("camera click uses a single flash, with an accessible fallback and mobile destination", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
+    window.cameraFlashed = false;
+    new MutationObserver(() => { if (document.querySelector('.camera-page-flash')) { window.cameraFlashed = true; sessionStorage.setItem('camera-flash-tested','yes'); } }).observe(document,{childList:true,subtree:true});
+  });
+  await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 15000 });
+  await page.getByRole("link", { name: "Explore zine and film photographs" }).click();
+  await expect(page).toHaveURL(/\/after-hours\/$/);
+  expect(await page.evaluate(() => sessionStorage.getItem('camera-flash-tested'))).toBe('yes');
+  await expect(page.locator("html")).toHaveAttribute("data-camera-entry", "true");
+  await expect(page.getByRole("heading", { name: "Zines & film photographs." })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

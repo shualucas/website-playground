@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
   }] : [],
   build: {
     rollupOptions: {
-      input: { cartridges: resolve(import.meta.dirname, "index.html"), zine: resolve(import.meta.dirname, "zine/index.html") },
+      input: { afterHours: resolve(import.meta.dirname, "after-hours/index.html"), cartridges: resolve(import.meta.dirname, "index.html"), zine: resolve(import.meta.dirname, "zine/index.html") },
     },
   },
 }));

@@ -14,6 +14,7 @@ export class FilmCameraScene {
   private observer: ResizeObserver;
   private motion = matchMedia("(prefers-reduced-motion: reduce)");
   private rig = new THREE.Group();
+  private inspection = new THREE.Group();
   private inView = false;
   private raf = 0;
   private last = 0;
@@ -35,7 +36,7 @@ export class FilmCameraScene {
       ...params, roughness: .88, metalness: 0, clearcoat: 0, transmission: 0,
       specularIntensity: .15, normalMap: this.grain.normal, normalScale: new THREE.Vector2(.14, .14), roughnessMap: this.grain.roughness,
     }), () => {}, true).camera;
-    model.rotation.set(.18, -.35, -.13); this.rig.add(model); this.scene.add(this.rig);
+    model.rotation.set(.18, -.35, -.13); this.rig.add(model); this.inspection.add(this.rig); this.scene.add(this.inspection);
     const bounds = new THREE.Box3().setFromObject(model);
     model.position.sub(bounds.getCenter(new THREE.Vector3())); bounds.getSize(this.size);
     this.scene.add(this.fill);
@@ -48,10 +49,15 @@ export class FilmCameraScene {
     this.resize();
   }
   setTheme(dark: boolean) { this.fill.intensity = dark ? 1.1 : .8; this.draw(); }
+  rotateBy(dx: number, dy: number) {
+    this.inspection.rotation.y += dx * .018; this.inspection.rotation.x += dy * .018;
+    this.host.dataset.rotation = this.inspection.rotation.toArray().slice(0, 3).join(","); this.draw();
+  }
+  resetRotation() { this.inspection.rotation.set(0, 0, 0); this.host.dataset.rotation = "0,0,0"; this.draw(); }
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight;
     if (!width || !height) { this.sync(); return; }
-    const aspect = width / height, halfHeight = Math.max(this.size.y / 2, this.size.x / (2 * aspect)) * 1.2;
+    const aspect = width / height, halfHeight = this.size.length() * .54 / Math.min(aspect, 1);
     this.camera.left = -halfHeight * aspect; this.camera.right = halfHeight * aspect;
     this.camera.top = halfHeight; this.camera.bottom = -halfHeight; this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false); this.draw(); this.sync();

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { pickMusic } from "../content/music";
-import { FilmCamera } from "./FilmCamera";
+import { CameraLink } from "./CameraLink";
 
 function RecordArtwork() {
   return <svg className="record-artwork" viewBox="0 0 40 40" fill="none" aria-hidden="true">
@@ -33,15 +33,16 @@ export function PortfolioFooter({ dark, ready, hidden }) {
       <span>shualucas on</span>{" "}<span className="social-platform">X</span>
     </a>
     <figure className="footer-camera">
-      {ready ? <FilmCamera dark={dark} hidden={hidden} /> : <FlatCamera />}
+      <CameraLink dark={dark} hidden={hidden} ready={ready} fallback={<FlatCamera />} />
       <figcaption>say cheese</figcaption>
     </figure>
     <a className="now-playing" href={track?.url ?? playlist.url} target="_blank" rel="noopener noreferrer"
       aria-label={track ? `Listen to ${track.title} by ${track.artist} on Spotify` : "Open one of my playlists on Spotify"}
       title={track ? `${track.title} — ${track.artist}` : "My rotation on Spotify"} data-track={track?.title ?? ""}>
-      <span className="now-playing-copy"><span>Now-ish playing</span><span className="now-playing-title">{track?.title ?? "my rotation"}</span></span>
+      <span className="now-playing-row"><span className="now-playing-copy"><span>Now-ish playing</span><span className="now-playing-title">{track?.title ?? "my rotation"}</span></span>
       <span className="now-playing-artwork">
         {track && !artworkFailed ? <img src={track.artwork} alt={`${track.title} album artwork`} width="36" height="36" loading="lazy" onError={() => setArtworkFailed(true)} /> : <RecordArtwork />}
+      </span>
       </span>
     </a>
   </footer>;

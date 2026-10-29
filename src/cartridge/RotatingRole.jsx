@@ -20,8 +20,8 @@ export function RotatingRole({ active = true }) {
   useEffect(() => {
     setLeaving(false);
     if (!active || paused || reduced || !visible) return;
-    const exit = setTimeout(() => setLeaving(true), 3200);
-    const next = setTimeout(() => { setIndex((value) => (value + 1) % roles.length); setLeaving(false); }, 3480);
+    const exit = setTimeout(() => setLeaving(true), 2000);
+    const next = setTimeout(() => { setIndex((value) => (value + 1) % roles.length); setLeaving(false); }, 2280);
     return () => { clearTimeout(exit); clearTimeout(next); };
   }, [index, active, paused, reduced, visible]);
   const role = roles[index];
@@ -33,7 +33,8 @@ export function RotatingRole({ active = true }) {
     {roles.map((item) => <span className="role-measure" aria-hidden="true" key={item.label}>{item.label}</span>)}
     <span className="role-label" aria-hidden="true">
       <span key={role.label} className={`role-first role-${role.effect}${leaving ? " is-leaving" : ""}`}>
-        {role.effect === "letters" ? Array.from(first).map((letter, i) => <span className="role-letter" style={{ "--letter-delay": `${i * 22}ms` }} key={i}>{letter}</span>) : first}
+        {role.effect === "letters" ? Array.from(first).map((letter, i) => <span className="role-letter" style={{ "--letter-delay": `${i * 110 + 180}ms` }} data-upper={letter.toUpperCase()} key={i}><span>{letter}</span></span>) : <span className="role-word-ink">{first}</span>}
+        {role.effect === "focus" && <span className="role-particles" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ left: `${i * 100 / 18}%`, "--dx": `${(i * 17 % 41) - 20}px`, "--dy": `${(i * 13 % 29) - 14}px`, "--particle-delay": `${i * 13}ms` }} />)}</span>}
       </span>
       {rest.length > 0 && <span className="role-suffix">{rest.join(" ")}</span>}
     </span>
