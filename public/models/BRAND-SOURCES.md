@@ -11,3 +11,5 @@ Retrieved unchanged from the `simple-icons@8.0.0` npm package. The vector collec
 - `gmail-wordmark.svg`: wordmark path extracted from https://github.com/VectorLogoZone/vectorlogozone/blob/7442420d3dc3ae97476fc57a64edfbfd7be95e24/src/content/logos/gmail/gmail-ar21.svg . The surrounding envelope icon and whitespace are omitted; the lettering's geometry is unchanged and the red label uses cream ink. This is the lettering from the Gmail identity in use during the 2019 internship.
 
 Wordmarks remain their respective owners' trademarks. The CC0 license above applies to the Simple Icons files, not these additional mirrored wordmark sources.
+
+The existing Blizzard SVG and its embedded cartridge-label copy use the even-odd fill rule so the B, A, R and D counters remain open. The path geometry is unchanged.

@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { projectTheme } from "./book/themes";
+import { useContentReveal } from "./useContentReveal";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
+  const content = useRef(null);
+  useContentReveal(content, project.id);
   const heading = useRef(null),
     theme = projectTheme(project.theme);
   useEffect(() => {
@@ -15,6 +18,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   }, [project.id, identity]);
   return (
     <section
+      ref={content}
       className="case-study"
       aria-label={`${project.label} case study`}
       style={{
@@ -24,7 +28,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       }}
     >
       <header className="case-study-nav">
-        <button onClick={onBack} className="back-to-zine">
+        <button data-reveal onClick={onBack} className="back-to-zine">
           <svg
             viewBox="0 0 24 24"
             width="20"
@@ -38,18 +42,18 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           </svg>
           {backLabel}
         </button>
-        {identity && <span>{identity.toUpperCase()}</span>}
+        {identity && <span data-reveal>{identity.toUpperCase()}</span>}
       </header>
       <article className="case-study-content">
         <header className="case-study-hero">
-          <p className="eyebrow">
+          <p data-reveal className="eyebrow">
             SELECTED WORK / {project.label.toUpperCase()}
           </p>
-          <h1 ref={heading} tabIndex={-1}>
+          <h1 data-reveal ref={heading} tabIndex={-1}>
             {project.title.replace("\n", " ")}
           </h1>
-          {project.subtitle && <p className="case-study-deck">{project.subtitle}</p>}
-          <dl className="case-study-facts">
+          {project.subtitle && <p data-reveal className="case-study-deck">{project.subtitle}</p>}
+          <dl data-reveal className="case-study-facts">
             <div>
               <dt>ROLE & TEAM</dt>
               <dd>
@@ -66,12 +70,12 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             </div>
           </dl>
         </header>
-        <div className="case-study-preview">
+        <div data-reveal className="case-study-preview">
           <Media project={project} controls />
         </div>
         <div className="case-study-story">
           {project.chapters.map(([title, copy], i) => (
-            <section className="case-chapter" key={title}>
+            <section data-reveal className="case-chapter" key={title}>
               <span>{String(i + 1).padStart(2, "0")}</span>
               <div>
                 <h2>{title}</h2>
@@ -87,17 +91,17 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           ))}
         </div>
         {project.caseStudyUrl && (
-          <a className="case-study-link" href={project.caseStudyUrl}>
+          <a data-reveal className="case-study-link" href={project.caseStudyUrl}>
             View full project ↗
           </a>
         )}
         {project.sample && (
-          <p className="case-study-note">
+          <p data-reveal className="case-study-note">
             Case study in progress. Story, imagery, and verified outcomes to
             come.
           </p>
         )}
-        <footer>
+        <footer data-reveal>
           <button className="back-to-zine" onClick={onBack}>
             ← {backLabel}
           </button>

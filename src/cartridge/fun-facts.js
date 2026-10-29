@@ -3,7 +3,7 @@ export const funFacts = [
   "A random thing about me: I have an ongoing obsession with orange wine.",
   "A random fact about me: I became a designer because I couldn't draw, but still wanted to make things.",
   "A random thing about my life: The first celebrity I met was Akon when I was working my high-school movie theater job.",
-  "A random fact about me: I played percussion for 5 years which has caused a need for me to paradiddle on the surfaces regularly.",
+  "A random fact about me: I played percussion for 5 years which has caused a need for me to paradiddle on surfaces constantly.",
   "A random fact about me: I've won numerous fantasy football championships.",
   "A random fact about me: My first concert was seeing Kaskade.",
 ];

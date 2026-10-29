@@ -7,7 +7,7 @@
   overscroll-behavior: contain;
   background: var(--scene-bg);
   color: var(--ui-text);
-  animation: case-arrive 320ms ease both;
+  animation: none;
 }
 .case-study-nav {
   position: sticky;
@@ -167,7 +167,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .case-study {
-    animation: case-arrive 120ms ease both;
+    animation: none;
   }
   .book-navigation,
   .scene-tools {

@@ -1,0 +1,4 @@
+[data-reveal-state="waiting"] { opacity:0; filter:blur(1.5px); }
+[data-reveal-state="visible"] { animation:content-reveal 700ms cubic-bezier(.4,0,.2,1) both; animation-delay:var(--content-delay,0ms); }
+@keyframes content-reveal { from { opacity:0; filter:blur(1.5px); } to { opacity:1; filter:none; } }
+@media(prefers-reduced-motion:reduce) { [data-reveal] { opacity:1; filter:none; animation:none !important; } }

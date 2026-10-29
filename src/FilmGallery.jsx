@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { filmPhotos } from "./content/film-photos";
+import { useContentReveal } from "./useContentReveal";
 
 export function FilmGallery({ onClose, emptyCopy = "A collection in the making." }) {
   const dialog = useRef(null),
     viewer = useRef(null),
     [selected, setSelected] = useState(null);
+  useContentReveal(dialog, selected);
   useEffect(() => {
     const element = dialog.current;
     element.showModal();
@@ -40,7 +42,7 @@ export function FilmGallery({ onClose, emptyCopy = "A collection in the making."
       }}
     >
       <div className="film-gallery-paper">
-        <header className="film-gallery-header">
+        <header data-reveal className="film-gallery-header">
           <div>
             <p className="eyebrow">AFTER-HOURS</p>
             <h2>Film photographs</h2>
@@ -54,12 +56,13 @@ export function FilmGallery({ onClose, emptyCopy = "A collection in the making."
           </button>
         </header>
         {!filmPhotos.length ? (
-          <div className="film-gallery-empty">
+          <div data-reveal className="film-gallery-empty">
             <span aria-hidden="true">▧</span>
             <p>{emptyCopy}</p>
           </div>
         ) : photo ? (
           <div
+            data-reveal
             className="film-viewer"
             ref={viewer}
             tabIndex={-1}
@@ -105,6 +108,7 @@ export function FilmGallery({ onClose, emptyCopy = "A collection in the making."
           <div className="film-photo-grid">
             {filmPhotos.map((item, i) => (
               <button
+                data-reveal
                 key={item.src}
                 onClick={() => setSelected(i)}
                 aria-label={`View ${item.alt}`}

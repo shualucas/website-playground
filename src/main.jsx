@@ -16,6 +16,7 @@ import "./style.css";
 import { CaseStudy } from "./CaseStudy";
 import { CRTLoader } from "./CRTLoader";
 import { PageTurnSound } from "./book/page-sound";
+import { useContentReveal } from "./useContentReveal";
 const pad = (n) => String(n).padStart(2, "0");
 
 function Metadata({ project, index, onPrevious, canPrevious }) {
@@ -194,6 +195,7 @@ function PreviewPage({
   );
 }
 function App() {
+  const content = useRef(null);
   const host = useRef(null),
     engine = useRef(null),
     sound = useRef(null),
@@ -243,6 +245,7 @@ function App() {
         ? index
         : null;
     });
+  useContentReveal(content, presentation, presentation === "ready");
   const changeView = (value) => {
     viewRef.current = value;
     setView(value);
@@ -649,6 +652,7 @@ function App() {
   );
   return (
     <main
+      ref={content}
       className={`spellbook ${fallback ? "is-fallback" : ""}`}
       data-presentation={presentation}
       data-view={view}
@@ -674,13 +678,13 @@ function App() {
         aria-label="Scene controls"
         inert={view !== "book" ? true : undefined}
       >
-        <a className="zine-source-link" href="/versions/portfolio-zine-v1-source.zip" download aria-label="Download zine source">
+        <a data-reveal className="zine-source-link" href="/versions/portfolio-zine-v1-source.zip" download aria-label="Download zine source">
           Download source
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v16m-6-6 6 6 6-6M4 21h16" /></svg>
         </a>
         <button
           type="button"
-          className="icon-button"
+          data-reveal className="icon-button"
           onClick={() => setColorMode(colorMode === "light" ? "dark" : "light")}
           aria-label={
             colorMode === "light"
@@ -712,7 +716,7 @@ function App() {
         </button>
         <button
           type="button"
-          className="icon-button"
+          data-reveal className="icon-button"
           onClick={() => setSoundMuted(!soundMuted)}
           aria-label={soundMuted ? "Unmute page sounds" : "Mute page sounds"}
           aria-pressed={soundMuted}
@@ -742,7 +746,7 @@ function App() {
         </button>
         <button
           type="button"
-          className="icon-button"
+          data-reveal className="icon-button"
           onClick={restart}
           aria-label="Restart zine"
           title="Restart (R)"
@@ -834,6 +838,7 @@ function App() {
         <div className="book-navigation-scroll" ref={navigation}>
           {[-1, ...projects.map((_, i) => i), projects.length].map((page) => (
             <button
+              data-reveal
               key={page}
               aria-current={requestedPage === page ? "page" : undefined}
               onClick={() => navigate(page)}

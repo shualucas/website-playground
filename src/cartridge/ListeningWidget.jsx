@@ -27,7 +27,7 @@ export function ListeningWidget() {
     {open && <section className="listening-history" id="recent-listening" role="region" aria-label="Recently listened">
       {recent.length ? <><ol>{recent.map((song, i) => <li key={`${song.playedAt ?? i}-${song.title}`} style={{ "--history-delay": `${(recent.length - 1 - i) * 65}ms` }}><a href={song.url || profile} target="_blank" rel="noopener noreferrer"><TrackArtwork track={song} /><span className="listening-song"><span>{song.title}</span><span>{song.artist}</span></span></a></li>)}</ol>{stale && <p className="listening-history-note">Showing your last available history.</p>}</> : <p className="listening-empty">{status === "loading" ? "Loading your recent songs…" : status === "unavailable" ? "Listening history is temporarily unavailable. Try again shortly." : status === "unconfigured" ? "Listening history will appear here once connected." : "Your first scrobbles will appear here."}</p>}
     </section>}
-    <div className="listening-current">
+    <div className="listening-current" data-reveal>
       <a className="now-playing" href={track?.url || profile} target="_blank" rel="noopener noreferrer"
         aria-label={track ? `${playing ? "Currently listening" : "Last listened"}: ${track.title} by ${track.artist} on Last.fm` : "Open my listening history on Last.fm"}
         title={stale && track ? "Last.fm is temporarily unavailable. Showing the last known track." : undefined} data-track={track?.title || ""}>

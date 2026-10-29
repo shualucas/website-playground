@@ -2,7 +2,10 @@ import { test, expect } from "@playwright/test";
 import { funFacts } from "../src/cartridge/fun-facts.js";
 
 // Keep UI checks independent of the private local API key and live listening.
-test.beforeEach(async ({ page }) => { await page.route("**/api/listening", route => route.fulfill({ status:204 })); });
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/listening", route => route.fulfill({ status:204 }));
+  await page.route("**/api/weather", route => route.fulfill({ contentType:"application/json", body:JSON.stringify({ temperature:58, condition:"Fog", city:"San Francisco" }) }));
+});
 const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment", "Early work"];
 const dates = ["2022 – now", "2020 – 2022", "2019", "2017", "Before 2017"];
 const body = "based in beautiful California, building fun things at Google.";
@@ -45,8 +48,8 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(projected.right - projected.left).toBeLessThan(430);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
   const hero = await page.locator(".collection-hero").boundingBox();
-  expect(hero.width).toBe(920);
-  expect(await page.locator(".collection-hero").evaluate(el=>getComputedStyle(el).columnGap)).toBe("100px");
+  expect(hero.width).toBe(960);
+  expect(await page.locator(".collection-hero").evaluate(el=>getComputedStyle(el).columnGap)).toBe("140px");
   const footerBounds = await page.locator(".collection-footer").boundingBox();
   expect(Math.abs(footerBounds.x - intro.x)).toBeLessThan(2);
   expect(Math.abs(footerBounds.x + footerBounds.width - stage.x - projected.right)).toBeLessThan(20);
@@ -560,4 +563,36 @@ test("an unconfigured deployment has a quiet client fallback and does not preten
   await expect(page.locator(".listening-indicator")).toHaveCount(0);
   await page.getByRole("button",{name:"Show last five songs"}).click();
   await expect(page.getByRole("region",{name:"Recently listened"})).toContainText("once connected");
+});
+
+test("gray SF metadata keeps Pacific time, updates each minute and survives weather failure", async ({ page }) => {
+  await page.clock.install({time:new Date("2026-10-29T19:10:00Z")});
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.setViewportSize({width:390,height:844}); await page.goto("/");
+  const meta=page.getByLabel("San Francisco local time and weather");
+  await expect(meta.locator("time")).toHaveText("12:10 PM PDT"); await expect(meta).toContainText("58°F · Fog");
+  expect(await meta.evaluate(el=>getComputedStyle(el).color)).toBe("rgb(98, 98, 106)");
+  await page.clock.fastForward(60050); await expect(meta.locator("time")).toHaveText("12:11 PM PDT");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.route("**/api/weather",route=>route.fulfill({status:502,contentType:"application/json",body:'{"error":"Unavailable"}'}));
+  await page.reload(); await expect(meta.locator("time")).toBeVisible(); await expect(meta.getByRole("link")).toHaveCount(0);
+});
+
+test("footer and reader content reveal on entry and stay immediate for reduced motion", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:"no-preference"});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-status","fallback");
+  await expect(page.locator(".footer-camera figcaption")).toHaveAttribute("data-reveal-state","waiting");
+  await page.locator(".social-link").scrollIntoViewIfNeeded();
+  for(const selector of [".social-link",".footer-camera figcaption",".listening-current"]) {
+    const item=page.locator(selector); await expect(item).toHaveAttribute("data-reveal-state","visible");
+    expect(await item.evaluate(el=>getComputedStyle(el).animationName)).toBe("content-reveal");
+  }
+  await page.getByRole("button",{name:"Open Stadia cartridge",exact:true}).click();
+  const reader=page.getByRole("region",{name:"Stadia case study"});
+  await expect(reader.locator("h1")).toHaveAttribute("data-reveal-state","visible");
+  await reader.locator("footer").scrollIntoViewIfNeeded(); await expect(reader.locator("footer")).toHaveAttribute("data-reveal-state","visible");
+  await page.emulateMedia({reducedMotion:"reduce"});
+  expect(await reader.locator("footer").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
 });

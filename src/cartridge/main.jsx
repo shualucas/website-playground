@@ -10,6 +10,8 @@ import { Intro } from "./Intro";
 import { PortfolioFooter } from "./PortfolioFooter";
 import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
+import { useContentReveal } from "../useContentReveal";
+import { LocationMeta } from "./LocationMeta";
 import "./style.css";
 import "./reader.css";
 
@@ -30,8 +32,10 @@ function ProjectMedia({ project, controls }) {
   return <div className="collection-media-placeholder">Project preview</div>;
 }
 function App() {
+  const content = useRef(null);
   const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);
   const [selected, setSelected] = useState(null), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
+  useContentReveal(content, `${status}:${selected || ""}`);
   const [reading, setReading] = useState(readRoute);
   const currentSelection = useRef(null); currentSelection.current = selected;
   const presented = true;
@@ -113,16 +117,16 @@ function App() {
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
   return <>
-    <main className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
-      <header className="collection-header"><button className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
+    <main ref={content} className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
+      <header className="collection-header"><LocationMeta /><button data-reveal className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
           <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false">
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}
-            {active && status === "ready" && <button className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
+            {active && status === "ready" && <button data-reveal className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
           </div>
-          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
+          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button data-reveal key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
       {presented && <PortfolioFooter dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />}
