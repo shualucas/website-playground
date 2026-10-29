@@ -117,7 +117,7 @@ function App() {
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
   return <>
-    <main ref={content} className="collection" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
+    <main ref={content} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
       <header className="collection-header"><LocationMeta /><button data-reveal className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />

@@ -22,6 +22,10 @@ export class FilmCameraScene {
   private wobble = 0;
   private wobbleVelocity = 0;
   private readyLight = new THREE.Mesh(new THREE.SphereGeometry(.019, 12, 8), new THREE.MeshBasicMaterial({ color: "#3b0808", toneMapped: false }));
+  private hovered = false;
+  private armed = false;
+  private readyWorld = new THREE.Vector3();
+  private readyNormal = new THREE.Vector3();
   private flashStart = -Infinity;
   private flashPoint = new THREE.Group();
   private flashLight = new THREE.PointLight("white", 0, 3);
@@ -68,6 +72,15 @@ export class FilmCameraScene {
     this.resize();
   }
   setTheme(dark: boolean) { this.fill.intensity = dark ? 1.1 : .8; this.draw(); }
+  setHovered(value: boolean) {
+    this.hovered = value; this.updateReadyLight(performance.now() - this.flashStart < 180); this.draw();
+  }
+  private updateReadyLight(suppress = false) {
+    const on = !suppress && (this.hovered || this.armed);
+    this.readyLight.material.color.set(on ? "#ff2525" : "#3b0808");
+    this.readyLight.scale.setScalar(on ? this.armed ? 1.6 : 1.35 : 1);
+    this.host.dataset.readyLight = on ? "on" : "off";
+  }
   rotateBy(dx: number, dy: number) {
     this.inspection.rotation.y += dx * .018; this.inspection.rotation.x += dy * .018;
     if (this.dragging) {
@@ -93,7 +106,7 @@ export class FilmCameraScene {
     this.readyLight.getWorldPosition(this.flashProjection).project(this.camera);
     link.style.setProperty("--ready-x", `${(this.flashProjection.x + 1) * 50}%`);
     link.style.setProperty("--ready-y", `${(1 - this.flashProjection.y) * 50}%`);
-    this.readyLight.material.color.set("#ff2525"); this.readyLight.scale.setScalar(1.6); this.draw();
+    this.armed = true; this.updateReadyLight(); this.draw();
     return { x: rect.left + x * rect.width, y: rect.top + y * rect.height };
   }
   flash() {
@@ -102,7 +115,7 @@ export class FilmCameraScene {
     const link = this.host.parentElement!;
     link.style.setProperty("--flash-x", `${(this.flashProjection.x + 1) * 50}%`);
     link.style.setProperty("--flash-y", `${(1 - this.flashProjection.y) * 50}%`);
-    this.readyLight.material.color.set("#3b0808"); this.readyLight.scale.setScalar(1);
+    this.armed = false; this.updateReadyLight(true);
     this.flashStart = performance.now(); this.flare.visible = true; this.flare.scale.setScalar(.15); this.flashLight.intensity = 6; this.draw(); this.sync();
   }
   private resize() {
@@ -113,7 +126,18 @@ export class FilmCameraScene {
     this.camera.top = halfHeight; this.camera.bottom = -halfHeight; this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false); this.draw(); this.sync();
   }
-  private draw() { if (this.host.clientWidth && this.host.clientHeight) this.renderer.render(this.scene, this.camera); }
+  private draw() {
+    if (!this.host.clientWidth || !this.host.clientHeight) return;
+    this.renderer.render(this.scene, this.camera);
+    // Keep the small DOM glow attached to the modeled LED during float/drag,
+    // and hide it when that face turns away from the viewer.
+    const link = this.host.parentElement!;
+    this.readyLight.getWorldPosition(this.readyWorld); this.readyLight.getWorldDirection(this.readyNormal);
+    link.dataset.readyVisible = String(this.readyNormal.dot(this.flashProjection.copy(this.camera.position).sub(this.readyWorld)) > 0);
+    this.readyWorld.project(this.camera);
+    link.style.setProperty("--ready-x", `${(this.readyWorld.x + 1) * 50}%`);
+    link.style.setProperty("--ready-y", `${(1 - this.readyWorld.y) * 50}%`);
+  }
   private sync = () => {
     // Read the current viewport on scroll/resize. IntersectionObserver can keep
     // stale root bounds across viewport changes in embedded browser previews.
@@ -140,6 +164,7 @@ export class FilmCameraScene {
     const stretch = 1 + THREE.MathUtils.clamp(this.wobble, -.035, .035); this.rig.scale.set(stretch, 1 / stretch, 1);
     const flash = (now - this.flashStart) / 180, strength = flash >= 0 && flash < 1 ? Math.sin(Math.PI * flash) : 0;
     this.flare.visible = strength > 0; this.flare.material.opacity = strength; this.flare.scale.setScalar(strength > 0 ? .15 + flash * .8 : .15); this.flashLight.intensity = strength * 6;
+    this.updateReadyLight(strength > 0);
     this.rig.position.y = Math.sin(this.time * 1.05) * .09;
     this.rig.rotation.set(Math.sin(this.time * .67) * .04, Math.sin(this.time * .81) * .09, Math.sin(this.time * .63) * .065);
     this.host.dataset.float = [this.rig.position.y, this.rig.rotation.y, this.rig.rotation.z].map((v) => v.toFixed(5)).join(",");

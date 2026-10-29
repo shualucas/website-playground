@@ -1,10 +1,16 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 import "./reveal.css";
 
 /** Reveal each content block once, including content below the initial fold. */
 export function useContentReveal(scope, version, enabled = true) {
+  const pageStart = useRef(null);
   useLayoutEffect(() => {
     if (!enabled) return;
+    const pageFlow = scope.current?.dataset.revealFlow === "page";
+    if (pageFlow) {
+      pageStart.current ??= performance.now();
+      scope.current.dataset.revealStart = String(pageStart.current);
+    }
     const elements = [...(scope.current?.querySelectorAll("[data-reveal]") || [])]
       .filter(element => element.dataset.revealState !== "visible");
     if (!elements.length) return;
@@ -16,7 +22,9 @@ export function useContentReveal(scope, version, enabled = true) {
       let order = 0;
       for (const { target, isIntersecting } of entries) {
         if (!isIntersecting) continue;
-        target.style.setProperty("--content-delay", `${Math.min(order++ * 45, 180)}ms`);
+        const at = Number(target.dataset.revealAt);
+        const remaining = pageFlow && Number.isFinite(at) ? Math.max(0, pageStart.current + at - performance.now()) : 0;
+        target.style.setProperty("--content-delay", `${remaining + Math.min(order++ * 45, 180)}ms`);
         target.dataset.revealState = "visible";
         observer.unobserve(target);
       }

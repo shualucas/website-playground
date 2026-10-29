@@ -5,10 +5,11 @@ import { FilmCamera } from "./FilmCamera";
 export function CameraLink({ dark, hidden, ready }) {
   const controller = useRef(null), gesture = useRef(null), suppress = useRef(false), timer = useRef(null);
   const [flashing, setFlashing] = useState(false), [arming, setArming] = useState(false);
+  const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false);
   const origin = useRef({ x: 0, y: 0 });
   const busy = useRef(false), flashTimer = useRef(null);
   useEffect(() => {
-    const restore = () => { setFlashing(false); setArming(false); busy.current = false; suppress.current = false; gesture.current = null; };
+    const restore = () => { setFlashing(false); setArming(false); setHovered(false); setFocused(false); controller.current?.setHovered(false); busy.current = false; suppress.current = false; gesture.current = null; };
     window.addEventListener("pageshow", restore);
     return () => { clearTimeout(timer.current); clearTimeout(flashTimer.current); window.removeEventListener("pageshow", restore); };
   }, []);
@@ -19,7 +20,9 @@ export function CameraLink({ dark, hidden, ready }) {
   };
   return <>
     <a id="film-camera-link" className="camera-link" href="/after-hours/" aria-label="Explore zine and film photographs" aria-describedby="camera-help"
-      data-flashing={flashing} data-arming={arming} onDragStart={(event) => event.preventDefault()}
+      data-flashing={flashing} data-arming={arming} data-hovered={hovered || focused} onDragStart={(event) => event.preventDefault()}
+      onPointerEnter={event => { if (event.pointerType !== "touch") setHovered(true); }} onPointerLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       onPointerDown={(event) => {
         if (event.button !== 0 || !event.isPrimary) return;
         suppress.current = false; controller.current?.beginDrag();
@@ -55,7 +58,7 @@ export function CameraLink({ dark, hidden, ready }) {
           timer.current = setTimeout(() => location.assign(destination), 500);
         }, 180);
       }}>
-      {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} /> : null}
+      {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} highlighted={hovered || focused} /> : null}
       <span className="camera-ready-light" aria-hidden="true" />
       <span className="camera-lens-flash" aria-hidden="true" />
     </a>

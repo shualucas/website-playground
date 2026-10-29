@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
+import { entrance, remainingEntranceDelay } from "./entrance";
 
-export function FilmCamera({ dark, hidden, controller }) {
+export function FilmCamera({ dark, hidden, controller, highlighted = false }) {
   const host = useRef(null), scene = useRef(null), currentDark = useRef(dark);
+  const currentHighlight = useRef(highlighted); currentHighlight.current = highlighted;
   const [status, setStatus] = useState("loading");
   currentDark.current = dark;
   useEffect(() => {
@@ -12,7 +14,9 @@ export function FilmCamera({ dark, hidden, controller }) {
         if (!active) return;
         try {
           scene.current = new FilmCameraScene(host.current);
-          scene.current.setTheme(currentDark.current); if (controller) controller.current = scene.current; setStatus("ready");
+          scene.current.setTheme(currentDark.current); scene.current.setHovered(currentHighlight.current);
+          host.current.style.setProperty("--camera-reveal-delay", `${remainingEntranceDelay(host.current, entrance.footerStart + 45)}ms`);
+          if (controller) controller.current = scene.current; setStatus("ready");
         } catch { setStatus("unavailable"); }
       }).catch(() => { if (active) setStatus("unavailable"); });
     };
@@ -25,5 +29,6 @@ export function FilmCamera({ dark, hidden, controller }) {
     return () => { active = false; window.removeEventListener("scroll", check); window.removeEventListener("resize", check); scene.current?.dispose(); scene.current = null; if (controller) controller.current = null; };
   }, []);
   useEffect(() => { scene.current?.setTheme(dark); }, [dark]);
+  useEffect(() => { scene.current?.setHovered(highlighted); }, [highlighted]);
   return <div className="film-camera-dock" hidden={hidden || status === "unavailable"} data-status={status} role="img" aria-label="Point-and-shoot film camera miniature" ref={host} />;
 }

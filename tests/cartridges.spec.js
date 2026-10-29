@@ -441,6 +441,12 @@ test("camera drag rotates without navigation; keyboard entry opens the new photo
   await load(page);
   const link = page.getByRole("link", { name: "Explore zine and film photographs" }), camera = page.locator(".film-camera-dock");
   await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
+  await link.hover(); await expect(camera).toHaveAttribute("data-ready-light","on");
+  await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","1");
+  await expect(page.locator(".camera-page-flash")).toHaveCount(0);
+  await page.mouse.move(8,8); await expect(camera).toHaveAttribute("data-ready-light","off");
+  await link.focus(); await expect(camera).toHaveAttribute("data-ready-light","on");
+  await link.evaluate(el=>el.blur()); await expect(camera).toHaveAttribute("data-ready-light","off");
   const bounds = await link.boundingBox(), before = await camera.getAttribute("data-rotation");
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width / 2 + 85, bounds.y + bounds.height / 2 + 35, { steps: 5 }); await page.mouse.up();
@@ -450,6 +456,7 @@ test("camera drag rotates without navigation; keyboard entry opens the new photo
   await link.focus(); await page.keyboard.press("ArrowLeft"); await expect(camera).not.toHaveAttribute("data-rotation", rotated);
   await page.keyboard.press("r"); await expect(camera).toHaveAttribute("data-rotation", "0,0,0");
   await page.keyboard.press("Enter"); await expect(page).toHaveURL(/\/after-hours\/$/);
+  await expect(page).toHaveTitle("josh lucas - product designer");
   await expect(page.getByRole("region", { name: "Interactive cover-only zine" })).toBeVisible();
   await expect(page.locator(".after-hours-film,.after-hours-zine")).toHaveCount(0);
   await expect(page.locator(".after-hours-book")).toHaveAttribute("data-phase","ready",{timeout:90000});
@@ -595,4 +602,24 @@ test("footer and reader content reveal on entry and stay immediate for reduced m
   await reader.locator("footer").scrollIntoViewIfNeeded(); await expect(reader.locator("footer")).toHaveAttribute("data-reveal-state","visible");
   await page.emulateMedia({reducedMotion:"reduce"});
   expect(await reader.locator("footer").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
+});
+
+test("the page entrance continues from the hero into the footer on one timeline", async ({ page }) => {
+  await page.setViewportSize({width:1280,height:1400});
+  await page.emulateMedia({reducedMotion:"no-preference"});
+  await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
+  await page.goto("/"); await expect(page).toHaveTitle("josh lucas - product designer");
+  await expect(page.locator(".social-link")).toHaveAttribute("data-reveal-state","visible");
+  const timing=await page.evaluate(()=>{
+    const origin=Number(document.querySelector('.collection').dataset.revealStart);
+    const heroEnd=Math.max(...[...document.querySelectorAll('.intro-word')].map(el=>{
+      const style=getComputedStyle(el);return origin+parseFloat(style.animationDelay)*1000+parseFloat(style.animationDuration)*1000;
+    }));
+    const starts=['.social-link','.footer-camera figcaption','.listening-current'].map(selector=>{
+      const animation=document.querySelector(selector).getAnimations()[0];return animation.startTime+Number(animation.effect.getTiming().delay);
+    });
+    return {heroEnd,starts};
+  });
+  expect(timing.starts[0]).toBeGreaterThanOrEqual(timing.heroEnd);
+  expect(timing.starts[1]).toBeGreaterThan(timing.starts[0]);expect(timing.starts[2]).toBeGreaterThan(timing.starts[1]);
 });
