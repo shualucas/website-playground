@@ -789,6 +789,9 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   test.setTimeout(120000);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/after-hours/');
   const book=page.getByRole('region',{name:'Interactive flyer zine'});
   await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(book).toHaveAttribute('data-flyer-count','5');await expect(book).toHaveAttribute('data-page-count','8');
+  await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Back to work'})).toHaveAttribute('href','/');
+  await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(4);
   expect(Number(await book.getAttribute('data-page-aspect'))).toBeCloseTo(1110/1280,8);
   await book.focus();
   const faces=[['wavform','metronome'],['ghosts-n-stuff','jornada-coffee'],['picnic','']];
@@ -798,4 +801,21 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   expect([await book.getAttribute('data-left-artwork'),await book.getAttribute('data-right-artwork')]).toEqual(maps[1]);
   await page.setViewportSize({width:390,height:844});await expect(book).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.keyboard.press('r');await expect(book).toHaveAttribute('data-view','cover');
+  await book.evaluate(el=>el.blur());
+  await page.getByRole('button',{name:'Next spread',exact:true}).click();await expect(book).toHaveAttribute('data-left-print','wavform');
+  await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(book).toHaveAttribute('data-left-print','wavform');
+  await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
+});
+
+test("flyer cover typography uses a bounded clock and freezes cleanly for reduced motion", async ({ page }) => {
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+    const {prepareFlyerCovers}=await import('/src/after-hours/covers.js');
+    const cover=await prepareFlyerCovers(), back=cover.back.toDataURL(), initial=cover.front.toDataURL();
+    const sameBucket=cover.update(.01,false,false), animated=cover.update(4,false,false), moved=cover.front.toDataURL()!==initial;
+    const backIgnored=cover.update(5,true,false), reset=cover.update(5,false,true), staticFrame=cover.front.toDataURL()===initial;
+    const frozen=cover.update(15,false,true);
+    return {size:[cover.front.width,cover.front.height],sameBucket,animated,moved,backIgnored,reset,staticFrame,frozen,backPreserved:cover.back.toDataURL()===back};
+  });
+  expect(result).toEqual({size:[1110,1280],sameBucket:false,animated:true,moved:true,backIgnored:false,reset:true,staticFrame:true,frozen:false,backPreserved:true});
 });

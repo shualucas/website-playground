@@ -52,8 +52,15 @@ type Phase =
 type Callbacks = {
   projects: Project[];
   blankInterior?: boolean;
+  arrivalMotion?: boolean;
+  stageInsets?: { top: number; bottom: number };
   pageWidth?: number;
   pageArtwork?: { left: HTMLCanvasElement; right: HTMLCanvasElement }[];
+  coverArtwork?: {
+    front: HTMLCanvasElement;
+    back: HTMLCanvasElement;
+    update?: (time: number, back: boolean, reducedMotion: boolean) => boolean;
+  };
   onPhase: (phase: Phase) => void;
   onIndex: (index: number) => void;
   onSpread: (left: number, right: number) => void;
@@ -337,8 +344,8 @@ export class BookScene {
     return material;
   }
   private buildLeaves() {
-    const front = this.keep(coverTexture()),
-      back = this.keep(coverTexture(true)),
+    const front = this.keep(this.callbacks.coverArtwork ? artworkTexture(this.callbacks.coverArtwork.front) : coverTexture()),
+      back = this.keep(this.callbacks.coverArtwork ? artworkTexture(this.callbacks.coverArtwork.back) : coverTexture(true)),
       detail = surfaceDetail("paper"),
       paper = this.keep(paperTexture());
     Object.values(detail).forEach((map) => this.keep(map));
@@ -354,11 +361,12 @@ export class BookScene {
       }));
     const makeFace = (map: THREE.Texture, cover = false) => {
       const printedFlyer = Boolean(this.callbacks.pageArtwork && (map.image as HTMLCanvasElement).dataset?.flyerId);
+      const printedCover = cover && Boolean(this.callbacks.coverArtwork);
       return this.surface({
         map,
-        roughness: printedFlyer ? 0.95 : cover ? 0.39 : 0.58,
+        roughness: printedFlyer || printedCover ? 0.95 : cover ? 0.39 : 0.58,
         roughnessMap: detail.roughness,
-        clearcoat: printedFlyer ? 0 : cover ? 0.28 : 0.12,
+        clearcoat: printedFlyer || printedCover ? 0 : cover ? 0.28 : 0.12,
         clearcoatRoughness: 0.38,
         normalMap: detail.normal,
         normalScale: new THREE.Vector2(0.035, 0.035),
@@ -459,6 +467,18 @@ export class BookScene {
       this.rightTextures[i].needsUpdate = true;
     });
   }
+  private updateCoverArtwork() {
+    const cover = this.callbacks.coverArtwork;
+    if (!cover?.update) return;
+    for (let i = 0; i < 2; i++) {
+      const leaf = this.leaves[i === 0 ? 0 : this.leaves.length - 1];
+      const exposed = i === 0 ? leaf.progress < 0.99 : leaf.progress > 0.01;
+      if (exposed && cover.update(this.portalTime, i === 1, this.motion.matches)) {
+        this.coverTextures[i].needsUpdate = true;
+        if (i === 0) this.host.dataset.coverFrame = cover.front.dataset.frame ?? "static";
+      }
+    }
+  }
   setDarkMode(dark: boolean) {
     this.dark = dark;
     this.host.dataset.colorMode = dark ? "dark" : "light";
@@ -474,7 +494,7 @@ export class BookScene {
       target.needsUpdate = true;
       source.dispose();
     };
-    this.coverTextures.forEach((texture, i) =>
+    if (!this.callbacks.coverArtwork) this.coverTextures.forEach((texture, i) =>
       replace(texture, coverTexture(i === 1, dark)),
     );
     if (!this.callbacks.pageArtwork) this.leftTextures.forEach((texture, i) =>
@@ -518,10 +538,11 @@ export class BookScene {
     this.host.dataset.firstRevealAt ??= performance.now().toFixed(1);
     this.entered = true;
     this.elapsed = 0;
-    this.intro = !this.motion.matches;
+    this.intro = !this.motion.matches && this.callbacks.arrivalMotion !== false;
     if (!this.intro) this.finishArrival();
     this.updateRig();
     this.updatePhase();
+    this.updateCoverArtwork();
     this.renderer.shadowMap.needsUpdate = true;
     this.render();
     this.last = 0;
@@ -786,6 +807,7 @@ export class BookScene {
         this.scheduler.committed < this.leaves.length,
     );
     this.renderer.shadowMap.needsUpdate = true;
+    this.updateCoverArtwork();
     this.render();
     this.schedule();
   };
@@ -1068,8 +1090,8 @@ export class BookScene {
     const desktop = matchMedia("(min-width: 761px)").matches;
     // Retain the original composition/scale, while drawing into the former UI margins.
     // This gives raised pages clearance without zooming the book during a turn.
-    const top = desktop ? 48 : 0,
-      bottom = desktop ? 90 : 0,
+    const top = this.callbacks.stageInsets?.top ?? (desktop ? 48 : 0),
+      bottom = this.callbacks.stageInsets?.bottom ?? (desktop ? 90 : 0),
       viewHeight = Math.max(1, rect.height - top - bottom);
     if (this.dive) this.camera.copy(this.dive.book);
     this.camera.clearViewOffset();
@@ -1219,6 +1241,8 @@ export class BookScene {
     this.updateHighlight(dt);
     if (!this.motion.matches) this.portalTime += dt;
     this.updateArtwork(this.portalTime);
+    // Printed cover animation shares the scene clock and sleeps inside the book.
+    this.updateCoverArtwork();
     this.updatePhones(dt);
     this.render();
     this.schedule();
@@ -1323,6 +1347,7 @@ export class BookScene {
     data.turnDirection = active ? (active.target ? "1" : "-1") : "0";
     data.capturedPages = String(this.callbacks.printPages?.length ?? 0);
     data.pageCount = String(this.leaves.length * 2);
+    if (this.callbacks.coverArtwork) data.coverFrame = this.callbacks.coverArtwork.front.dataset.frame ?? "static";
     data.persistentLeaves = String(this.leaves.length);
     data.activeLeafCount = String(this.scheduler.active);
     data.maxConcurrent = String(this.scheduler.maxConcurrent);
