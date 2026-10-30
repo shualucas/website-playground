@@ -102,6 +102,9 @@ svg { display:block; flex-shrink:0; }
  .collection-intro h1 { font-size:23px; line-height:1.3; }
  .collection-display { width:100%; height:760px; margin-top:24px; }
  .cartridge-stage { position:relative; top:0; height:100%; }
+ /* Crop only the empty upper canvas; retain the camera, scale and lower fade. */
+ .collection:not([data-status="fallback"]) .collection-display { --scene-crop:clamp(192px,calc(370px - 29.3vw),276px); height:calc(760px - var(--scene-crop)); overflow:hidden; }
+ .collection:not([data-status="fallback"]) .cartridge-stage { height:760px; top:calc(-1 * var(--scene-crop)); }
  .collection-footer { padding-top:28px; }
  .cartridge-caption { font-size:13px; }
 }

@@ -8,6 +8,8 @@ import "./style.css";
 import { useContentReveal } from "../useContentReveal";
 import { flyers, flyerPage, flyerSpreads, prepareFlyerPages } from "./flyers";
 import { prepareFlyerCovers } from "./covers";
+import { zineNotes } from "../content/zine-notes";
+import { NoteDialog } from "./NoteDialog";
 
 function ThemeIcon({ dark }) {
   return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" />}</svg>;
@@ -17,7 +19,11 @@ function AfterHours() {
   const content = useRef(null);
   const host = useRef(null), engine = useRef(null);
   const entranceTimer = useRef(null);
-  const finishEntrance = () => { clearTimeout(entranceTimer.current); engine.current?.setOverlayOpen(false); };
+  const noteOpen = useRef(false);
+  const [activeNote, setActiveNote] = useState(null);
+  const finishEntrance = () => { clearTimeout(entranceTimer.current); engine.current?.setOverlayOpen(noteOpen.current); };
+  const openNote = id => { noteOpen.current = true; finishEntrance(); setActiveNote(id); };
+  const closeNote = () => { noteOpen.current = false; setActiveNote(null); engine.current?.setOverlayOpen(false); };
   const [fallback, setFallback] = useState(false), [spread, setSpread] = useState(-1), [ready, setReady] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
   useContentReveal(content, `${ready}:${fallback}`, ready);
@@ -29,7 +35,7 @@ function AfterHours() {
   }, [dark]);
   useEffect(() => {
     const onKey = event => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (noteOpen.current || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input,textarea,select,[role="textbox"],[role="slider"]'))) return;
       const book = engine.current;
@@ -51,6 +57,7 @@ function AfterHours() {
         book = new BookScene(host.current, { projects: flyerSpreads, blankInterior: true, paperInserts: true, arrivalMotion: false, stageInsets: { top: 0, bottom: 0 }, pageArtwork, coverArtwork, pageWidth: 4.7 * flyerPage.width / flyerPage.height,
           google: { parts: [], blizzard: [], texture },
           onPhase: phase => { host.current.dataset.phase = phase; }, onIndex: () => {}, onSpread: () => {}, onOpen: () => {}, onView: setSpread,
+          onNoteOpen: openNote,
           onPresented: () => {}, onRequest: () => {},
         });
         engine.current = book; book.setDarkMode(dark); book.appear();
@@ -73,11 +80,13 @@ function AfterHours() {
       <button className="tool-button" type="button" onClick={() => setDark(value => !value)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><ThemeIcon dark={dark} /></button>
     </nav></header>
     <h1 className="sr-only">Extracurriculars</h1>
-    <p id="zine-help" className="sr-only">Five original flyers, one per page. Drag to rotate. Click the pages to turn them. Use the left and right arrows to turn pages, or R to restart.</p>
+    <p id="zine-help" className="sr-only">Five original flyers, one per page. Drag to rotate. Click the pages to turn them, or tap a sticky note to read it. Use the left and right arrows to turn pages, or R to restart.</p>
     <p className="sr-only" role="status">{spread >= 0 && spread < 3 ? `Spread ${spread + 1} of 3: ${flyers.slice(spread * 2, spread * 2 + 2).map(flyer => flyer.title).join(" and ")}` : spread < 0 ? "Front cover" : "Back cover"}</p>
     <ol className="sr-only" aria-label="Flyers in page order">{flyers.map(flyer => <li key={flyer.id}>{flyer.title}</li>)}</ol>
     <div data-reveal data-reveal-at="180" className="after-hours-book" ref={host} hidden={fallback} data-flyer-count={flyers.length} tabIndex={0} role="region" aria-label="Interactive zine of extracurriculars" aria-describedby="zine-help" onAnimationEnd={event => { if (event.target === event.currentTarget && event.animationName === "content-reveal") finishEntrance(); }} />
-    {fallback && <div className="flyer-gallery" aria-label="Flyer pages">{flyers.map(flyer => <figure data-reveal key={flyer.id} style={{ "--flyer-background": flyer.background }}><img src={flyer.src} alt={flyer.alt} width="1110" height="1280" /><figcaption>{flyer.title}</figcaption></figure>)}</div>}
+    {!fallback && ready && <div className="zine-note-shortcuts" role="group" aria-label="Print notes">{flyers.map(flyer => <button key={flyer.id} type="button" aria-haspopup="dialog" aria-controls="zine-note-dialog" onClick={() => openNote(flyer.id)}>Read note for {flyer.title}</button>)}</div>}
+    {fallback && <div className="flyer-gallery" aria-label="Flyer pages">{flyers.map(flyer => <figure data-reveal key={flyer.id} style={{ "--flyer-background": flyer.background }}><img src={flyer.src} alt={flyer.alt} width="1110" height="1280" /><figcaption>{flyer.title}<button type="button" className="fallback-note-link" aria-label={`Read note for ${flyer.title}`} aria-haspopup="dialog" onClick={() => openNote(flyer.id)}>Read note</button></figcaption></figure>)}</div>}
+    {activeNote && <NoteDialog flyer={flyers.find(flyer => flyer.id === activeNote)} note={zineNotes.find(note => note.id === activeNote)} onClose={closeNote} />}
   </main>;
 }
 createRoot(document.getElementById("root")).render(<AfterHours />);

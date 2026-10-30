@@ -72,6 +72,7 @@ type Callbacks = {
     item: { id: string; x: number; y: number } | null,
   ) => void;
   onMiniatureOpen?: (id: string, x: number, y: number) => void;
+  onNoteOpen?: (id: string) => void;
   onPresented: () => void;
   onRequest: (page: number) => void;
   onTurn?: (forward: boolean, cover: boolean) => void;
@@ -901,18 +902,19 @@ export class BookScene {
       : null;
   }
   private onMove = (event: PointerEvent) => {
-    if (this.dive) return;
+    if (this.dive || this.overlayOpen) return;
     const grip = this.grip;
     if (!grip) {
       const hit = this.bookHit(event);
       const id = hit?.object.userData.miniature;
+      const note = hit?.object.userData.paperInsert;
       this.callbacks.onMiniatureHover?.(
         id && !this.scheduler.moving
           ? { id, x: event.clientX, y: event.clientY }
           : null,
       );
-      this.setHover(id ? null : hit ? Number(hit.object.userData.leaf) : null);
-      if (id) this.host.style.cursor = "pointer";
+      this.setHover(id || note ? null : hit ? Number(hit.object.userData.leaf) : null);
+      if (id || note) this.host.style.cursor = "pointer";
       return;
     }
     if (event.pointerId !== grip.id) return;
@@ -964,7 +966,7 @@ export class BookScene {
     this.callbacks.onMiniatureHover?.(null);
     this.suppressClick = false;
     if (
-      this.dive ||
+      this.dive || this.overlayOpen ||
       event.button !== 0 ||
       this.scheduler.moving ||
       this.intro ||
@@ -996,7 +998,7 @@ export class BookScene {
   };
   private onCancel = (event: PointerEvent) => {
     if (this.grip?.id !== event.pointerId) return;
-    this.suppressClick = this.grip.moved;
+    this.suppressClick = true;
     this.releaseCapture();
     if (this.pendingPage !== null) {
       const page = this.pendingPage;
@@ -1037,7 +1039,7 @@ export class BookScene {
   };
   private onBlur = () => this.setHover(null);
   private onClick = (event: MouseEvent) => {
-    if (this.dive) return;
+    if (this.dive || this.overlayOpen) return;
     if (this.suppressClick) {
       event.preventDefault();
       event.stopPropagation();
@@ -1053,6 +1055,10 @@ export class BookScene {
       boundary = this.scheduler.committed;
     if (!hit) return;
     const id = Number(hit.object.userData.leaf);
+    if (hit.object.userData.paperInsert && this.callbacks.onNoteOpen) {
+      if (!this.scheduler.moving) this.callbacks.onNoteOpen(hit.object.userData.flyerId);
+      return;
+    }
     if (hit.object.userData.miniature && !this.scheduler.moving) {
       this.callbacks.onMiniatureOpen?.(
         hit.object.userData.miniature,
@@ -1349,6 +1355,13 @@ export class BookScene {
     data.capturedPages = String(this.callbacks.printPages?.length ?? 0);
     data.pageCount = String(this.leaves.length * 2);
     data.paperInserts = String(this.paperInserts.length);
+    if (this.paperInserts.length) {
+      const rect=this.host.getBoundingClientRect();
+      data.noteHits=JSON.stringify(this.paperInserts.map(mesh=>{
+        mesh.getVertexPosition(49,this.scratch);this.scratch.applyMatrix4(mesh.matrixWorld).project(this.camera);
+        return {id:mesh.userData.flyerId,x:rect.left+(this.scratch.x+1)*rect.width/2,y:rect.top+(1-this.scratch.y)*rect.height/2};
+      }));
+    }
     if (this.callbacks.coverArtwork) data.coverFrame = this.callbacks.coverArtwork.front.dataset.frame ?? "static";
     data.persistentLeaves = String(this.leaves.length);
     data.activeLeafCount = String(this.scheduler.active);

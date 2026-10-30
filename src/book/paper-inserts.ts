@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { PAGE_HEIGHT as H } from "./materials";
 import { LEAF_SEGMENTS, type SkinnedLeaf, type PaperMaterial } from "./leaf";
+import { zineNotes } from "../content/zine-notes";
 
 export const INSERT_SAMPLES = [0,8,45,49,53,90,98];
 const NOTE_SIZE=1.05;
@@ -31,16 +32,17 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     const id=(leaf.faces[face].image as HTMLCanvasElement)?.dataset?.flyerId;
     return id?[{leaf,face,id}]:[];
   }));
-  // Edge, position along that edge, exposed length, skew, stock, graph paper.
-  const placements:["top"|"right"|"bottom",number,number,number,string,boolean][]=[
-    ["top",W*.28,.48,-.06,"#efda7d",true],
-    ["right",-1.05,.66,.05,"#e9a096",false],
-    ["bottom",W*.63,.36,-.06,"#c9b5e2",false],
-    ["right",1.05,.54,-.05,"#abcbb4",true],
-    ["top",W*.75,.28,.06,"#b8cadf",false],
+  // Edge, position along that edge, exposed length, skew, graph paper.
+  const placements:["top"|"right"|"bottom",number,number,number,boolean][]=[
+    ["top",W*.57,.48,-.06,true],
+    ["right",.26,.66,.05,false],
+    ["bottom",W*.63,.36,-.06,false],
+    ["right",.52,.54,-.05,true],
+    ["top",W*.62,.28,.06,false],
   ];
   return prints.map(({leaf,face,id},index)=>{
-    const [edge,along,peek,angle,color,grid]=placements[index%placements.length];
+    const [edge,along,peek,angle,grid]=placements[index%placements.length];
+    const color=zineNotes.find(note=>note.id===id)?.color??"#efda7d";
     const width=NOTE_SIZE,height=NOTE_SIZE;
     const cx=edge==="right"?W-width/2+peek:along;
     const cz=edge==="top"?-H/2+height/2-peek:edge==="bottom"?H/2-height/2+peek:along;
@@ -50,9 +52,7 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     const cosine=Math.cos(angle),sine=Math.sin(angle);
     const surfaceOffset=leaf.cover ? 0.0075 : 0.0045;
     for(let i=0;i<p.count;i++){
-      let px=p.getX(i),pz=p.getZ(i);
-      // Clip the tiny corners, with a slightly uneven free edge like cut paper.
-      if(Math.abs(px)>width/2-.015&&Math.abs(pz)>height/2-.015){px-=Math.sign(px)*.018;pz-=Math.sign(pz)*.018}
+      const px=p.getX(i),pz=p.getZ(i);
       const x=cx+px*cosine-pz*sine,z=cz+px*sine+pz*cosine;
       const exposed=Math.max(0,x-W,Math.abs(z)-H/2);
       // Put the adhesive area just above its own printed face, never on the reverse.

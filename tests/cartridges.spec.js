@@ -835,6 +835,45 @@ test("uploaded covers shuffle without repeats, pause while reading, and stay sta
   expect(result.faithful).toEqual([true,true,true]);expect(result.readingStable).toBe(true);expect(result.reducedStable).toBe(true);expect(result.noImmediateReloadRepeat).toBe(true);
 });
 
+test("sticky notes open their own readable notes without turning or dragging the page", async ({page})=>{
+  test.setTimeout(120000);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/after-hours/');
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  const book=page.getByRole('region',{name:'Interactive zine of extracurriculars'});
+  await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
+  const hit=JSON.parse(await book.getAttribute('data-note-hits')).find(hit=>hit.id==='metronome');
+  await page.mouse.click(hit.x,hit.y);
+  const dialog=page.getByRole('dialog',{name:'Metronome'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('Placeholder:');await expect(dialog).toHaveCSS('border-radius','0px');
+  await expect(page.getByRole('button',{name:'Close note',exact:true})).toBeFocused();
+  await page.keyboard.press('ArrowRight');await page.keyboard.press('r');await expect(book).toHaveAttribute('data-settled-boundary','1');
+  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+  const shortcut=page.getByRole('button',{name:'Read note for Wavform',exact:true});await shortcut.focus();await expect(shortcut).toBeVisible();await shortcut.press('Enter');
+  await expect(page.getByRole('dialog',{name:'Wavform',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close note',exact:true}).click();await expect(shortcut).toBeFocused();
+  const before=await book.getAttribute('data-orientation'),grab=JSON.parse(await book.getAttribute('data-note-hits')).find(hit=>hit.id==='metronome');
+  await page.mouse.move(grab.x,grab.y);await page.mouse.down();await page.mouse.move(grab.x-70,grab.y+35,{steps:8});await page.mouse.up();
+  await expect(page.locator('.zine-note-dialog')).toHaveCount(0);await expect(book).not.toHaveAttribute('data-orientation',before);await expect(book).toHaveAttribute('data-settled-boundary','1');
+  expect(errors).toEqual([]);
+});
+
+test("mobile cartridges start close to the hero while selection keeps its framing",async({page})=>{
+  await page.setViewportSize({width:390,height:844});await load(page);
+  for(const width of [375,390,768]){
+    await page.setViewportSize({width,height:844});
+    await expect.poll(()=>page.evaluate(()=>{
+      const intro=document.querySelector('.collection-intro').getBoundingClientRect(),s=document.querySelector('.cartridge-stage'),r=s.getBoundingClientRect(),frame=JSON.parse(s.dataset.frameBounds);
+      return r.top+frame.top-intro.bottom;
+    })).toBeLessThan(80);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+  await page.setViewportSize({width:390,height:844});await choose(page,'Search');
+  const zoom=await page.locator('.cartridge-stage').getAttribute('data-magnification');
+  const visible=await page.evaluate(()=>{
+    const s=document.querySelector('.cartridge-stage'),stage=s.getBoundingClientRect(),display=document.querySelector('.collection-display').getBoundingClientRect(),f=JSON.parse(s.dataset.selectedFrame);
+    return stage.top+f.top>=display.top-1&&stage.top+f.bottom<=display.bottom+1;
+  });expect(visible).toBe(true);
+  await expect(page.getByRole('button',{name:'Open Search, 2022 – now',exact:true})).toBeVisible();
+  await page.keyboard.press('Escape');await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-selected','');await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-magnification',zoom);
+});
+
 test("tucked paper inserts stay attached to their leaf through opening and resetting",async({page})=>{
   await page.goto('/tests/fixtures/blank.html');
   const result=await page.evaluate(async()=>{
@@ -854,11 +893,12 @@ test("tucked paper inserts stay attached to their leaf through opening and reset
     leaves.forEach(leaf=>{leaf.snap(1);leaf.updateWorld()});const opened=meshes.map(sample);
     leaves.forEach(leaf=>{leaf.snap(0);leaf.updateWorld()});const restored=meshes.map(sample);
     const onSurface=meshes.every(mesh=>{const p=mesh.geometry.attributes.position,side=mesh.userData.printFace===0?1:-1,min=leaves[mesh.userData.leaf].cover?.007:.004;for(let i=0;i<p.count;i++)if(p.getX(i)<=leaves[0].width&&Math.abs(p.getZ(i))<=2.35&&side*p.getY(i)<min)return false;return true});
-    return {count:meshes.length,onSurface,ids:meshes.map(mesh=>mesh.userData.flyerId),sizes:meshes.map(mesh=>[mesh.geometry.parameters.width,mesh.geometry.parameters.height]),shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
+    const square=meshes.every(mesh=>{const p=mesh.geometry.attributes.position;return Math.abs(Math.hypot(p.getX(0)-p.getX(98),p.getZ(0)-p.getZ(98))-1.05*Math.SQRT2)<.00001});
+    return {count:meshes.length,onSurface,square,ids:meshes.map(mesh=>mesh.userData.flyerId),sizes:meshes.map(mesh=>[mesh.geometry.parameters.width,mesh.geometry.parameters.height]),shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
       crossesSpine:before.every((v,i)=>v.x>0&&opened[i].x<0),resetError:Math.max(...before.map((v,i)=>v.distanceTo(restored[i]))),
       finite:[...before,...opened,...restored].every(v=>v.toArray().every(Number.isFinite))};
   });
-  expect(result.count).toBe(5);expect(result.onSurface).toBe(true);expect(result.ids).toEqual(['wavform','metronome','ghosts-n-stuff','jornada-coffee','picnic']);expect(result.sizes).toEqual(Array(5).fill([1.05,1.05]));expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
+  expect(result.count).toBe(5);expect(result.onSurface).toBe(true);expect(result.square).toBe(true);expect(result.ids).toEqual(['wavform','metronome','ghosts-n-stuff','jornada-coffee','picnic']);expect(result.sizes).toEqual(Array(5).fill([1.05,1.05]));expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
 });
 
 test("printed ink preserves source colors under bright light and can still darken in shadow",async({page})=>{
