@@ -44,7 +44,7 @@ The earlier linked Sketchfab model remains unused: this environment's connection
 ## Cartridge content and artwork
 
 - `src/cartridge/config.ts` — cartridge names, shell colors, label image URLs, optional external GLB configuration.
-- `public/cartridges/labels/*-label.svg` — five active, editable printed labels. Older `*-tonal.svg` panels remain unused. Replace configured URLs with SVG, PNG, or JPG as needed.
+- `public/cartridges/labels/` — Gmail, Stadia, and Search use Josh's uploaded `*-label.jpg` artwork (1280 × 609), mapped edge-to-edge to the existing label surface. Blizzard and Early work retain their `*-label.svg` artwork. Previous SVG designs and older `*-tonal.svg` panels remain available but unused for those replaced labels. Replace configured URLs with SVG, PNG, or JPG as needed.
 - `src/cartridge/projects.js` — career readers, supplied dates, and scaffolding. `src/book/projects.js` retains the zine content and supplies existing Stadia/AI Mode media. Unverified project details remain explicit placeholders.
 - `src/content/film-photos.js` and `public/photos/` — After-hours photograph collection.
 - `src/cartridge/CartridgeScene.ts` — renderer, lighting, framing, input, animation, lifecycle.
