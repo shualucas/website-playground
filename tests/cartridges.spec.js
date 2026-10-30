@@ -208,25 +208,16 @@ test("zine snapshot is downloadable and preserved edition remains runnable", asy
 });
 
 
-test("Josh stays plain text at medium weight and reduced-motion readers can explore each role by keyboard", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-  await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
-  expect(await page.locator(".portfolio-name").evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBe(500);
-  await expect(page.locator(".intro-name")).toHaveText("Josh");
-  await expect(page.getByRole("button", { name: /Josh/ })).toHaveCount(0);
-  const role = page.locator(".role-rotator"); await role.focus();
-  expect(await role.evaluate(el => getComputedStyle(el).fontWeight)).toBe("500");
-  for (const label of ["product designer", "merch maker", "brand developer", "prototyper", "systems thinker", "storyteller", "community builder", "riso artist"]) {
-    await expect(role).toHaveAttribute("data-role", label);
-    await expect(role).toHaveAttribute("data-paused", "true");
-    await page.keyboard.press("Enter");
-  }
-  await expect(role).toHaveAttribute("data-role", "product designer");
-  expect(await page.locator(".collection-intro").evaluate((el) => {
-    const bio = getComputedStyle(el.querySelector("h1")), fact = getComputedStyle(el.querySelector(".random-fact"));
-    return { size: bio.fontSize === fact.fontSize, lineHeight: bio.lineHeight === fact.lineHeight };
-  })).toEqual({ size: true, lineHeight: true });
+test("Josh and roles are passive medium-weight text with a stable reduced-motion label", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/');const role=page.locator('.role-rotator');
+  await expect(page.locator('.intro-name')).toHaveText('Josh');expect(await role.evaluate(el=>el.tagName)).toBe('SPAN');
+  await expect(role).not.toHaveAttribute('tabindex',/.+/);await expect(role).not.toHaveAttribute('aria-pressed',/.+/);
+  await expect(role).toHaveAttribute('data-role','product designer');await expect(role).toHaveCSS('font-weight','500');
+  await role.hover();await expect(role).toHaveCSS('opacity','1');await role.click();await expect(role).toHaveAttribute('data-role','product designer');
+  expect(await role.evaluate(el=>getComputedStyle(el).cursor)).not.toBe('pointer');
+  expect(await page.locator('.portfolio-name').evaluate(el=>getComputedStyle(el).fontWeight)).toBe('500');
 });
 
 test("each load chooses a supplied fact without immediate repeats; interactions keep the current one", async ({ page }) => {
@@ -243,7 +234,7 @@ test("each load chooses a supplied fact without immediate repeats; interactions 
     if (i < 3) await page.reload();
   }
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
-  await page.getByRole("button", { name: /next role/i }).click();
+  await page.locator(".role-rotator").click();
   expect(await page.locator(".random-fact").textContent()).toBe(previous);
 });
 
@@ -383,7 +374,7 @@ test("intro words still sweep in reading order", async ({ page }) => {
 });
 
 
-test("all eight lowercase roles cycle, with a shared entrance and pause/resume", async ({ page }) => {
+test("all eight lowercase roles cycle with a shared entrance and no hover or click behavior", async ({ page }) => {
   const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({time:initial}); await page.clock.pauseAt(initial);
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/"); const role=page.locator(".role-rotator");
@@ -396,8 +387,9 @@ test("all eight lowercase roles cycle, with a shared entrance and pause/resume",
     if(label.includes(" ")) expect(await role.locator(".role-suffix").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
     await page.clock.fastForward(2001); await expect(role.locator(".role-label")).toHaveClass(/is-leaving/); await page.clock.fastForward(280);
   }
-  await expect(role).toHaveAttribute("data-role",labels[0]); await role.click();await page.clock.fastForward(10000);await expect(role).toHaveAttribute("data-role",labels[0]);
-  await role.click();await page.clock.fastForward(2281);await expect(role).toHaveAttribute("data-role",labels[1]);
+  await expect(role).toHaveAttribute("data-role",labels[0]); await role.click();await expect(role).toHaveAttribute("data-paused","false");
+  await page.clock.fastForward(2281);await expect(role).toHaveAttribute("data-role",labels[1]);
+  await role.hover();await expect(role).toHaveCSS("opacity","1");await page.clock.fastForward(2281);await expect(role).toHaveAttribute("data-role",labels[2]);
 });
 
 test("the upstream GLB decodes locally with wide proportions and per-team shell/label materials", async ({ page }) => {
@@ -883,7 +875,7 @@ test("resume page preserves original artwork and downloads its one-page PDF with
   await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
   await expect(page.locator('.resume-sheet')).toHaveCount(1);
   await expect(page.locator('.resume-artwork img')).toBeVisible();
-  const size=await sheet.boundingBox();expect(size.width).toBeGreaterThan(800);expect(size.width/size.height).toBeCloseTo(595/842,2);
+  const size=await sheet.boundingBox();expect(size.width).toBeGreaterThan(200);expect(size.y).toBeGreaterThan(140);expect(size.y+size.height).toBeLessThanOrEqual(await page.evaluate(()=>innerHeight));expect(size.width/size.height).toBeCloseTo(595/842,2);
   await expect(page.locator('.paper-contact[aria-label="LinkedIn"]')).toHaveAttribute('href','https://www.linkedin.com/in/joshglucas/');
   await expect(page.locator('.paper-contact[aria-label="joshglucas@gmail.com"]')).toHaveAttribute('href','mailto:joshglucas@gmail.com');
   await expect(page.getByRole('link',{name:'shualucas on X'})).toHaveAttribute('href','https://x.com/shualucas');
@@ -902,7 +894,7 @@ test("resume page preserves original artwork and downloads its one-page PDF with
   await expect(page.locator('.resume-skills li')).toHaveCount(8);await expect(page.locator('.resume-tools li')).toHaveText(['Figma','Adobe Suite','GIFSKI','Principle']);
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect(await page.locator('.resume-job li').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
-  await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveCSS('background-color','rgb(27, 28, 27)');
+  await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('.resume-gradient')).toHaveAttribute('data-active','true');
 });
 
 test("floating resume tilts on drag, settles without resizing, and resets with R", async ({ page }) => {
@@ -911,7 +903,7 @@ test("floating resume tilts on drag, settles without resizing, and resets with R
   await page.mouse.move(box.x+box.width*.45,box.y+150);await page.mouse.down();await page.mouse.move(box.x+box.width*.45+150,box.y+220,{steps:8});
   await expect(sheet).toHaveAttribute('data-dragging','true');await expect(sheet).not.toHaveAttribute('data-orientation',initial);
   await page.mouse.up();await expect(sheet).toHaveAttribute('data-dragging','false');
-  await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+1.6)<.6&&Math.abs(y-.7)<.6}).toBe(true);
+  await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+1.6)<1.4&&Math.abs(y-.7)<1.5}).toBe(true);
   expect(await sheet.evaluate(el=>el.clientWidth)).toBe(width);await expect(page).toHaveURL(/\/resume\/$/);
   await page.keyboard.press('r');await page.emulateMedia({reducedMotion:'reduce'});await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
 });
@@ -923,4 +915,54 @@ test("mobile resume defaults to readable text and an unavailable preview falls b
   await page.route('**/resume/resume-art-*.png',route=>route.abort());await page.getByRole('button',{name:'Page',exact:true}).click();
   await expect(page.getByRole('button',{name:'Page',exact:true})).toBeDisabled();await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("resume Page stays fully inside desktop, phone and landscape viewports", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/resume/');await page.getByRole('button',{name:'Page',exact:true}).click();
+  await expect(page.locator('.resume-sheet')).toHaveAttribute('data-art-ready','true');
+  for(const [width,height] of [[1440,1000],[1280,720],[390,844],[844,390]]){
+    await page.setViewportSize({width,height});
+    await expect.poll(async()=>{const r=await page.locator('.resume-sheet').boundingBox();return r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1}).toBe(true);
+    expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+});
+
+test("Read is full-page text with responsive gradients and a static reduced-motion background", async ({ page }) => {
+  await page.goto('/resume/');await page.getByRole('button',{name:'Read',exact:true}).click();
+  const gradient=page.locator('.resume-gradient'),pink=page.locator('.resume-wash-pink');
+  await expect(gradient).toHaveAttribute('data-motion','ambient');await expect(page.locator('.resume-sheet')).toHaveCSS('box-shadow','none');
+  await expect(page.locator('html')).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await expect(page.locator('.resume-document:not(.sr-only)')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  const before=await pink.evaluate(el=>el.style.transform);await page.mouse.move(1100,600);
+  await expect.poll(()=>pink.evaluate(el=>el.style.transform)).not.toBe(before);
+  await page.emulateMedia({reducedMotion:'reduce'});await expect(gradient).toHaveAttribute('data-motion','reduced');
+  const stopped=await pink.evaluate(el=>el.style.transform);await page.mouse.move(20,20);await page.waitForTimeout(180);expect(await pink.evaluate(el=>el.style.transform)).toBe(stopped);
+  await page.getByRole('button',{name:'Page',exact:true}).click();await expect(gradient).toHaveAttribute('data-active','false');
+});
+
+test("download starts immediately while a decorative duplicate flies away without reflow", async ({ page }) => {
+  await page.goto('/resume/');await expect(page.locator('.resume-sheet')).toHaveAttribute('data-art-ready','true');
+  const button=page.getByRole('link',{name:'Download PDF'}),before=await page.evaluate(()=>({height:document.documentElement.scrollHeight,y:scrollY}));
+  const pending=page.waitForEvent('download');await button.click();const download=await pending;expect(download.suggestedFilename()).toBe('Josh-Lucas-Resume.pdf');
+  await expect(page.locator('.resume-download-copy')).toHaveCount(1);await expect(page.locator('.resume-download-copy')).toHaveAttribute('aria-hidden','true');
+  expect(await page.evaluate(()=>({height:document.documentElement.scrollHeight,y:scrollY}))).toEqual(before);
+  await expect(page.locator('.resume-download-copy')).toHaveCount(0);
+  await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
+  // Read from the settled view; locator clicks can auto-scroll a moving sticky toolbar.
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().some(animation=>animation.effect?.pseudoElement))).toBe(true);
+  await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(animation=>animation.effect?.pseudoElement).map(animation=>animation.finished.catch(()=>{})))});
+  await page.evaluate(()=>scrollTo(0,500));const readingPosition=await page.evaluate(()=>({y:scrollY,height:document.documentElement.scrollHeight}));
+  const readingDownload=page.waitForEvent('download');await button.click();await readingDownload;await expect(page.locator('.resume-download-copy')).toHaveCount(1);
+  expect(await page.evaluate(()=>({y:scrollY,height:document.documentElement.scrollHeight}))).toEqual(readingPosition);
+  const repeat=page.waitForEvent('download');await button.click();await repeat;await expect(page.locator('.resume-download-copy')).toHaveCount(1);await expect(page.locator('.resume-download-copy')).toHaveCount(0);
+  await page.emulateMedia({reducedMotion:'reduce'});const second=page.waitForEvent('download');await button.click();await second;await expect(page.locator('.resume-download-copy')).toHaveCount(0);
+});
+
+test("rapid resume view changes honor the final requested mode", async ({ page }) => {
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/resume/');await expect(page.locator('.resume-sheet')).toHaveAttribute('data-art-ready','true');
+  await page.locator('.resume-view-switch').evaluate(group=>{group.children[1].click();group.children[0].click()});
+  await page.waitForTimeout(650);await expect(page.locator('.resume-page')).toHaveAttribute('data-view','page');
+  await page.locator('.resume-view-switch').evaluate(group=>{group.children[1].click();group.children[0].click();group.children[1].click()});
+  await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });

@@ -1,4 +1,7 @@
-.resume-page { padding-bottom:40px; }
+.resume-page { --resume-read-base:#fff; --resume-print-ink:#101010; --resume-body:#505050; --resume-accent:#e00000; --resume-pink:#ff9fa8; --resume-warm:#ffe2a0; position:relative; isolation:isolate; padding-bottom:40px; }
+:root[data-resume-view="read"] { background:#fff; }
+:root[data-color-mode="dark"][data-resume-view="read"] { background:#1c191b; }
+:root[data-color-mode="dark"] .resume-page { --resume-read-base:#1c191b; --resume-print-ink:#f4eeee; --resume-body:#d8d0d4; --resume-accent:#ff9c98; --resume-pink:#773947; --resume-warm:#6c522d; }
 .resume-nav { justify-content:space-between; color:var(--ui-muted); font-size:13px; }
 .resume-nav > a { display:inline-flex; align-items:center; gap:9px; min-height:44px; }
 .resume-toolbar { position:sticky; top:8px; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; width:100%; max-width:1000px; margin:12px auto 0; padding:8px 0; background:color-mix(in srgb,var(--scene-bg) 94%,transparent); backdrop-filter:blur(12px); border-radius:28px; }
@@ -7,8 +10,8 @@
 .resume-view-switch button[aria-pressed="true"] { background:var(--ui-text); color:var(--scene-bg); }
 .resume-download { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:46px; padding:10px 18px; border:1px solid var(--line); border-radius:24px; font-size:13px; color:var(--ui-text); }
 .resume-download:hover { background:var(--ui-fill); color:var(--ui-text); }
-.resume-paper-stage { position:relative; max-width:1000px; margin:42px auto 56px; perspective:2400px; }
-.resume-sheet { position:relative; background:white; border-radius:1px; box-shadow:0 34px 65px -27px #0003,0 3px 8px #0000000b,1px 2px 0 #d5d3d0; transform:translate3d(0,var(--paper-lift,0px),0) rotateX(var(--paper-pitch,0deg)) rotateY(var(--paper-yaw,0deg)) rotateZ(var(--paper-roll,0deg)); transform-origin:50% 25%; transform-style:preserve-3d; }
+.resume-paper-stage { position:relative; max-width:1000px; margin:48px auto 56px; perspective:2400px; }
+.resume-sheet { position:relative; background:white; border-radius:1px; box-shadow:0 34px 65px -27px #0003,0 3px 8px #0000000b,1px 2px 0 #d5d3d0; transform:translate3d(0,var(--paper-lift,0px),0) rotateX(var(--paper-pitch,0deg)) rotateY(var(--paper-yaw,0deg)) rotateZ(var(--paper-roll,0deg)); transform-origin:50% 50%; transform-style:preserve-3d; view-transition-name:resume-paper; }
 .resume-sheet[data-mode="page"] { cursor:grab; touch-action:pan-y pinch-zoom; user-select:none; }
 .resume-sheet[data-dragging="true"] { cursor:grabbing; }
 .resume-artwork { position:relative; width:100%; }
@@ -18,31 +21,49 @@
 .paper-contact { position:absolute; display:block; min-height:44px; min-width:44px; transform:translateY(-50%); border-radius:5px; cursor:pointer; }
 .paper-contact:hover { background:#ff000008; }
 .paper-contact:focus-visible { outline-color:#ef2929; outline-offset:2px; }
-.resume-document:not(.sr-only) { color:#101010; padding:5.8% 6.1% 4.7%; background:radial-gradient(ellipse 80% 32% at 100% 0,#ffc3c3 0%,#fff0 82%),radial-gradient(ellipse 65% 24% at 0 100%,#fff1d3 0%,#fff0 85%),white; border-radius:1px; }
+/* Page is an object inside a fixed stage. Its base size changes only with the viewport. */
+.resume-page[data-view="page"] { height:100svh; min-height:0; display:grid; grid-template-rows:64px 66px minmax(0,1fr) 44px; padding-block:24px; overflow:clip; }
+.resume-page[data-view="page"] .resume-toolbar { position:relative; top:auto; margin:0 auto; }
+.resume-page[data-view="page"] .resume-paper-stage { display:grid; place-items:center; container-type:size; width:100%; height:100%; min-height:0; max-width:none; margin:0; }
+.resume-page[data-view="page"] .resume-sheet { width:min(calc(100cqw - 56px),calc((100cqh - 56px) * .7066508314)); max-width:100%; }
+.resume-page[data-view="page"] .resume-site-footer { width:100%; }
+/* Read is the page itself; no paper frame or shadow. The wash covers the viewport. */
+.resume-sheet[data-mode="read"] { background:none; border-radius:0; box-shadow:none; transform:none; }
+.resume-page[data-view="read"] .resume-toolbar { background:none; backdrop-filter:none; }
+.resume-page[data-view="read"] .resume-view-switch,.resume-page[data-view="read"] .resume-download { background:color-mix(in srgb,var(--resume-read-base) 88%,transparent); backdrop-filter:blur(12px); }
+.resume-gradient { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; background:var(--resume-read-base); opacity:0; transition:opacity 500ms ease; }
+.resume-gradient[data-active="true"] { opacity:1; }
+.resume-wash-pink,.resume-wash-warm { position:absolute; pointer-events:none; will-change:transform; }
+.resume-wash-pink { width:clamp(540px,85vw,1300px); height:clamp(400px,72vh,900px); right:-22%; top:-26%; background:radial-gradient(ellipse,var(--resume-pink),transparent 69%); opacity:.62; }
+.resume-wash-warm { width:clamp(500px,75vw,1150px); height:clamp(400px,68vh,850px); left:-22%; bottom:-25%; background:radial-gradient(ellipse,var(--resume-warm),transparent 70%); opacity:.55; }
+.resume-document:not(.sr-only) { color:var(--resume-print-ink); padding:0; background:none; }
 .resume-print-heading h1 { font:700 italic clamp(42px,5.4vw,68px)/1.05 Georgia,"Times New Roman",serif; letter-spacing:-.055em; margin:0; }
-.resume-print-heading > p { margin:16px 0 70px; font:400 16px/1.4 ui-monospace,"Courier New",monospace; text-transform:uppercase; color:#f00000; }
+.resume-print-heading > p { margin:16px 0 70px; font:400 16px/1.4 ui-monospace,"Courier New",monospace; text-transform:uppercase; color:var(--resume-accent); }
 .resume-print-columns { display:grid; grid-template-columns:24% minmax(0,1fr); gap:5%; }
 .resume-document h2 { font-size:19px; font-weight:500; margin:0 0 37px; }
-.resume-print-sidebar ul { padding:0; margin:0; list-style:none; color:#f00000; text-transform:lowercase; font-size:17px; line-height:1.55; }
+.resume-print-sidebar ul { padding:0; margin:0; list-style:none; color:var(--resume-accent); text-transform:lowercase; font-size:17px; line-height:1.55; }
 .resume-skills { margin-top:66px; }
 .resume-job { margin:0 0 42px; }
 .resume-job:last-child { margin-bottom:0; }
 .resume-job h3 { font:700 30px/1.2 Georgia,"Times New Roman",serif; letter-spacing:-.025em; margin:0 0 14px; }
 .resume-job-meta { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:17px; line-height:1.5; }
-.resume-job ul { color:#505050; padding-left:23px; margin:17px 0 0; font-size:17px; line-height:1.55; }
+.resume-job ul { color:var(--resume-body); padding-left:23px; margin:17px 0 0; font-size:17px; line-height:1.55; }
 .resume-job li { padding-left:1px; }
 .resume-job li + li { margin-top:17px; }
 .resume-job li::marker { font-size:.72em; }
 .resume-print-contacts { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px 18px; margin-top:65px; font-size:14px; font-weight:500; }
-.resume-print-contacts a { display:inline-flex; min-height:44px; align-items:center; color:#111; text-decoration:underline; text-underline-offset:3px; }
+.resume-print-contacts a { display:inline-flex; min-height:44px; align-items:center; color:var(--resume-print-ink); text-decoration:underline; text-underline-offset:3px; }
 .resume-site-footer { display:flex; justify-content:space-between; align-items:center; max-width:1000px; margin:auto; gap:20px; color:var(--ui-muted); }
 .resume-site-footer > span { font:11px/1.5 ui-monospace,"Courier New",monospace; }
-@media(max-width:879px) { .resume-print-heading > p { margin-bottom:44px; } .resume-document h2 { font-size:17px; margin-bottom:24px; } .resume-job h3 { font-size:27px; } .resume-job-meta,.resume-job ul,.resume-print-sidebar ul { font-size:15px; } .resume-skills { margin-top:42px; } }
+.resume-download-copy { position:fixed; z-index:100; pointer-events:none; background:white; box-shadow:0 24px 45px #0002; transform-origin:center; border-radius:1px; }
+.resume-download-copy img { display:block; width:100%; height:100%; }
+::view-transition { pointer-events:none; }
+::view-transition-group(resume-paper) { animation-duration:550ms; animation-timing-function:cubic-bezier(.22,1,.36,1); }
+::view-transition-old(resume-paper),::view-transition-new(resume-paper) { animation-duration:400ms; }
+@media(max-width:879px) { .resume-print-heading > p { margin-bottom:44px; } .resume-document h2 { font-size:17px; margin-bottom:24px; } .resume-job h3 { font-size:27px; } .resume-job-meta,.resume-job ul,.resume-print-sidebar ul { font-size:16px; } .resume-skills { margin-top:42px; } }
 @media(max-width:700px) {
  .resume-toolbar { top:4px; margin-top:8px; }
- .resume-paper-stage { margin-top:22px; margin-bottom:32px; }
- .resume-document:not(.sr-only) { padding:30px 24px 24px; }
- .resume-document:not(.sr-only) { background:radial-gradient(ellipse 300px 260px at 100% 0,#ffc3c3 0%,#fff0 82%),radial-gradient(ellipse 300px 300px at 0 100%,#fff1d3 0%,#fff0 85%),white; }
+ .resume-paper-stage { margin-top:30px; margin-bottom:32px; }
  .resume-print-heading h1 { font-size:clamp(34px,8vw,48px); }
  .resume-print-heading > p { font-size:11px; margin:13px 0 38px; }
  .resume-print-columns { grid-template-columns:1fr; gap:38px; }
@@ -58,6 +79,12 @@
  .resume-site-footer > span { font-size:10px; }
  .resume-view-switch button { min-width:55px; padding-inline:12px; }
  .resume-download { padding-inline:13px; font-size:12px; }
+ .resume-page[data-view="page"] .resume-site-footer > span { display:none; }
+ .resume-page[data-view="page"] .resume-sheet { width:min(calc(100cqw - 26px),calc((100cqh - 56px) * .7066508314)); }
+ .resume-wash-pink { right:-65%; top:-16%; opacity:.5; }
+ .resume-wash-warm { left:-65%; bottom:-15%; opacity:.45; }
 }
-@media(max-width:360px) { .resume-document:not(.sr-only) { padding:26px 19px 20px; } .resume-print-heading > p { font-size:10px; } .resume-print-sidebar { grid-template-columns:1fr; } }
-@media print { .resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.paper-contact { display:none!important; } .resume-page { padding:0; } .resume-paper-stage { margin:0; perspective:none; max-width:none; } .resume-sheet { transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }
+@media(max-height:600px) and (min-width:701px) { .resume-page[data-view="page"] { grid-template-rows:48px 60px minmax(0,1fr) 44px; padding-block:12px; } .resume-page[data-view="page"] .resume-nav { height:48px; } }
+@media(max-width:360px) { .resume-print-heading > p { font-size:10px; } .resume-print-sidebar { grid-template-columns:1fr; } }
+@media(prefers-reduced-motion:reduce) { .resume-gradient { transition:none; } .resume-download-copy { display:none; } ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*) { animation:none!important; } }
+@media print { .resume-gradient,.resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.paper-contact,.resume-download-copy { display:none!important; } .resume-page,.resume-page[data-view="page"] { padding:0; height:auto; display:block; overflow:visible; --resume-print-ink:#111; --resume-body:#505050; --resume-accent:#e00000; } .resume-paper-stage,.resume-page[data-view="page"] .resume-paper-stage { margin:0; height:auto; container-type:normal; perspective:none; max-width:none; display:block; } .resume-sheet,.resume-page[data-view="page"] .resume-sheet { width:100%; transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }

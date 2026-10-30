@@ -109,12 +109,12 @@ export class FloatingPaper {
     const moving = !this.motion.matches && !this.grip;
     // A queued frame can observe the new preference before its change event.
     const reducedRest = this.motion.matches && !this.grip;
-    const pitch = reducedRest ? 0 : this.pitch + (moving ? Math.sin(this.time * 0.6) * 0.2 : 0);
-    const yaw = reducedRest ? 0 : this.yaw + (moving ? Math.sin(this.time * 0.43) * 0.25 : 0);
+    const pitch = reducedRest ? 0 : this.pitch + (moving ? Math.sin(this.time * 0.6) * 0.9 : 0);
+    const yaw = reducedRest ? 0 : this.yaw + (moving ? Math.sin(this.time * 0.43) * 1.1 : 0);
     this.host.style.setProperty("--paper-pitch", `${pitch.toFixed(3)}deg`);
     this.host.style.setProperty("--paper-yaw", `${yaw.toFixed(3)}deg`);
-    this.host.style.setProperty("--paper-roll", this.motion.matches ? "0deg" : `${(-0.3 + Math.sin(this.time * 0.37) * 0.12).toFixed(3)}deg`);
-    this.host.style.setProperty("--paper-lift", `${moving ? (Math.sin(this.time * 0.85) * 3).toFixed(2) : 0}px`);
+    this.host.style.setProperty("--paper-roll", this.motion.matches ? "0deg" : `${(-0.3 + Math.sin(this.time * 0.37) * 0.28).toFixed(3)}deg`);
+    this.host.style.setProperty("--paper-lift", `${moving ? (Math.sin(this.time * 0.85) * 5).toFixed(2) : 0}px`);
     this.host.dataset.orientation = `${pitch.toFixed(3)},${yaw.toFixed(3)}`;
     this.host.dataset.motion = this.motion.matches ? "reduced" : "floating";
   }
