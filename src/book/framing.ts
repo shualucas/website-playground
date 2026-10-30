@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { ConvexHull } from "three/addons/math/ConvexHull.js";
 import { SkinnedLeaf } from "./leaf";
 import { TurnScheduler } from "./turn-scheduler";
+import { INSERT_SAMPLES } from "./paper-inserts";
 
 export const FRAME_MARGIN = 0.92;
 
@@ -10,6 +11,7 @@ export function measureTurnEnvelope(
   leaves: SkinnedLeaf[],
   samples: number[],
   props: THREE.Vector3[],
+  inserts: readonly THREE.SkinnedMesh[] = [],
 ) {
   const rig = new THREE.Group();
   const copies = leaves.map(
@@ -24,6 +26,10 @@ export function measureTurnEnvelope(
       ),
   );
   copies.forEach((leaf) => rig.add(leaf.group));
+  const extra=inserts.map(original=>{
+    const mesh=new THREE.SkinnedMesh(original.geometry,original.material),leaf=copies[original.userData.leaf];
+    leaf.group.add(mesh);mesh.bind(leaf.mesh.skeleton,leaf.mesh.bindMatrix);return mesh;
+  });
   const scheduler = new TurnScheduler(copies),
     points = [...props];
   const destinations = new Map([
@@ -49,6 +55,7 @@ export function measureTurnEnvelope(
             .applyMatrix4(leaf.mesh.matrixWorld),
         );
     }
+    for(const mesh of extra)for(const index of INSERT_SAMPLES)points.push(mesh.getVertexPosition(index,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld));
   }
   copies.forEach((leaf) => leaf.dispose());
   // Perspective frustum constraints are linear in world coordinates. A compact

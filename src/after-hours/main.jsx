@@ -48,7 +48,7 @@ function AfterHours() {
       const dark = document.documentElement.dataset.colorMode === "dark";
       try {
         texture = new THREE.CanvasTexture(document.createElement("canvas"));
-        book = new BookScene(host.current, { projects: flyerSpreads, blankInterior: true, arrivalMotion: false, stageInsets: { top: 0, bottom: 0 }, pageArtwork, coverArtwork, pageWidth: 4.7 * flyerPage.width / flyerPage.height,
+        book = new BookScene(host.current, { projects: flyerSpreads, blankInterior: true, paperInserts: true, arrivalMotion: false, stageInsets: { top: 0, bottom: 0 }, pageArtwork, coverArtwork, pageWidth: 4.7 * flyerPage.width / flyerPage.height,
           google: { parts: [], blizzard: [], texture },
           onPhase: phase => { host.current.dataset.phase = phase; }, onIndex: () => {}, onSpread: () => {}, onOpen: () => {}, onView: setSpread,
           onPresented: () => {}, onRequest: () => {},
@@ -72,7 +72,7 @@ function AfterHours() {
       <a className="after-hours-back" href="/" aria-label="Back to Josh Lucas"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</a>
       <button className="tool-button" type="button" onClick={() => setDark(value => !value)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><ThemeIcon dark={dark} /></button>
     </nav></header>
-    <div data-reveal data-reveal-at="90" className="zine-heading"><h1><span>Zine of</span> Extracurriculars</h1></div>
+    <h1 className="sr-only">Extracurriculars</h1>
     <p id="zine-help" className="sr-only">Five original flyers, one per page. Drag to rotate. Click the pages to turn them. Use the left and right arrows to turn pages, or R to restart.</p>
     <p className="sr-only" role="status">{spread >= 0 && spread < 3 ? `Spread ${spread + 1} of 3: ${flyers.slice(spread * 2, spread * 2 + 2).map(flyer => flyer.title).join(" and ")}` : spread < 0 ? "Front cover" : "Back cover"}</p>
     <ol className="sr-only" aria-label="Flyers in page order">{flyers.map(flyer => <li key={flyer.id}>{flyer.title}</li>)}</ol>

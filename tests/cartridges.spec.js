@@ -787,10 +787,10 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(book).toHaveAttribute('data-flyer-count','5');await expect(book).toHaveAttribute('data-page-count','8');
   await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
   await expect(page.getByRole('link',{name:'Back to Josh Lucas'})).toHaveAttribute('href','/');
-  await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(3);
+  await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(2);
   await expect(page.locator('.zine-footer,.zine-pagination,.zine-current')).toHaveCount(0);
-  await expect(page.getByRole('heading',{name:'Zine of Extracurriculars'})).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Zine of Extracurriculars'})).toHaveCSS('font-family','Staatliches, sans-serif');
+  await expect(page.locator('.zine-heading')).toHaveCount(0);
+  await expect(book).toHaveAttribute('data-paper-inserts','9');
   await expect(page.getByText('Vol. 01',{exact:true})).toHaveCount(0);
   await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(240, 240, 240)');
   expect(Number(await book.getAttribute('data-page-aspect'))).toBeCloseTo(1110/1280,8);
@@ -822,6 +822,27 @@ test("flyer cover typography uses a bounded clock and freezes cleanly for reduce
     return {size:[cover.front.width,cover.front.height],sameBucket,animated,moved,backIgnored,reset,staticFrame,frozen,backPreserved:cover.back.toDataURL()===back};
   });
   expect(result).toEqual({size:[1110,1280],sameBucket:false,animated:true,moved:true,backIgnored:false,reset:true,staticFrame:true,frozen:false,backPreserved:true});
+});
+
+test("tucked paper inserts stay attached to their leaf through opening and resetting",async({page})=>{
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+    const THREE=await import('/node_modules/three/build/three.module.js');
+    const {SkinnedLeaf,createLeafGeometry}=await import('/src/book/leaf.ts');
+    const {createPaperInserts}=await import('/src/book/paper-inserts.ts');
+    const geometry=createLeafGeometry(.006,4.7*1110/1280),map=new THREE.Texture();
+    const materials=Array.from({length:6},()=>new THREE.MeshStandardMaterial({map}));
+    const leaves=Array.from({length:4},(_,i)=>new SkinnedLeaf(i,i===0||i===3,4,geometry,materials,4.7*1110/1280));
+    const meshes=createPaperInserts(leaves,params=>new THREE.MeshStandardMaterial(params),map=>map);
+    const sample=mesh=>mesh.getVertexPosition(49,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld);
+    leaves.forEach(leaf=>leaf.updateWorld());const before=meshes.map(sample);
+    leaves.forEach(leaf=>{leaf.snap(1);leaf.updateWorld()});const opened=meshes.map(sample);
+    leaves.forEach(leaf=>{leaf.snap(0);leaf.updateWorld()});const restored=meshes.map(sample);
+    return {count:meshes.length,shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
+      crossesSpine:before.every((v,i)=>v.x>0&&opened[i].x<0),resetError:Math.max(...before.map((v,i)=>v.distanceTo(restored[i]))),
+      finite:[...before,...opened,...restored].every(v=>v.toArray().every(Number.isFinite))};
+  });
+  expect(result.count).toBe(9);expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
 });
 
 test("binding follows cover hinges and stays below opened cover surfaces through reversals", async ({ page }) => {

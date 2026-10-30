@@ -13,6 +13,7 @@ import { PagePopups } from "./popups";
 import { projectTheme } from "./themes";
 import { measureTurnEnvelope, fitTurnEnvelope } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
+import { createPaperInserts, INSERT_SAMPLES } from "./paper-inserts";
 import {
   createLeafGeometry,
   LEAF_GAP,
@@ -55,6 +56,7 @@ type Callbacks = {
   arrivalMotion?: boolean;
   stageInsets?: { top: number; bottom: number };
   pageWidth?: number;
+  paperInserts?: boolean;
   pageArtwork?: { left: HTMLCanvasElement; right: HTMLCanvasElement }[];
   coverArtwork?: {
     front: HTMLCanvasElement;
@@ -129,6 +131,7 @@ export class BookScene {
   private paperFlex = 0;
   private flexVelocity = 0;
   private leaves: SkinnedLeaf[] = [];
+  private paperInserts: THREE.SkinnedMesh[] = [];
   private scheduler!: TurnScheduler;
   private binding!: ReturnType<typeof createBinding>;
   private portals: AsciiPortal[] = [];
@@ -240,6 +243,7 @@ export class BookScene {
       this.leaves,
       this.samples,
       this.popups.restEnvelope(this.rig),
+      this.paperInserts,
     );
     this.buildPrinting();
     this.scheduler = new TurnScheduler(this.leaves, (forward, cover) =>
@@ -406,6 +410,7 @@ export class BookScene {
       this.leaves.push(leaf);
       this.rig.add(leaf.group);
     }
+    if(this.callbacks.paperInserts)this.paperInserts=createPaperInserts(this.leaves,params=>this.surface(params),texture=>this.keep(texture));
     this.popups = new PagePopups(
       this.callbacks.projects,
       this.leaves,
@@ -868,6 +873,7 @@ export class BookScene {
       this.ray.intersectObjects(
         [
           ...this.leaves.map((leaf) => leaf.mesh),
+          ...this.paperInserts,
           ...this.popups.hitMeshes,
           ...this.phones.hitMeshes,
         ],
@@ -1294,6 +1300,10 @@ export class BookScene {
         b.top = Math.min(b.top, this.scratch.y);
         b.bottom = Math.max(b.bottom, this.scratch.y);
       }
+    for(const mesh of this.paperInserts)for(const i of INSERT_SAMPLES){
+      mesh.getVertexPosition(i,this.scratch);this.scratch.applyMatrix4(mesh.matrixWorld).project(this.camera);
+      b.left=Math.min(b.left,this.scratch.x);b.right=Math.max(b.right,this.scratch.x);b.top=Math.min(b.top,this.scratch.y);b.bottom=Math.max(b.bottom,this.scratch.y);
+    }
     this.popups.bounds(this.camera, (p) => {
       b.left = Math.min(b.left, p.x);
       b.right = Math.max(b.right, p.x);
@@ -1334,6 +1344,7 @@ export class BookScene {
     data.turnDirection = active ? (active.target ? "1" : "-1") : "0";
     data.capturedPages = String(this.callbacks.printPages?.length ?? 0);
     data.pageCount = String(this.leaves.length * 2);
+    data.paperInserts = String(this.paperInserts.length);
     if (this.callbacks.coverArtwork) data.coverFrame = this.callbacks.coverArtwork.front.dataset.frame ?? "static";
     data.persistentLeaves = String(this.leaves.length);
     data.activeLeafCount = String(this.scheduler.active);

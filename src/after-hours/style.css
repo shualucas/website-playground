@@ -6,14 +6,11 @@
 .zine-header { height:64px; width:100%; max-width:calc(772px + var(--hero-gap)); margin-inline:auto; display:flex; align-items:flex-start; gap:24px; font-size:13px; color:var(--ui-muted); }
 .after-hours-back { min-height:44px; display:inline-flex; align-items:center; gap:9px; margin-right:auto; }
 .after-hours-back:hover { color:var(--ui-text); }
-.zine-heading { position:absolute; left:50%; top:103px; transform:translateX(-50%); z-index:2; white-space:nowrap; pointer-events:none; }
-.zine-heading h1 { font:400 clamp(20px,2vw,27px)/1.1 "Staatliches",sans-serif; color:var(--zine-ink); text-transform:uppercase; margin:0; }
-.zine-heading h1 span { font-size:.6em; margin-right:5px; }
-.after-hours-book { position:absolute; inset:137px 20px 56px; touch-action:none; outline:none; }
+.after-hours-book { position:absolute; inset:108px 20px 56px; touch-action:none; outline:none; }
 .after-hours-book[hidden] { display:none; }
 .after-hours-book .book-webgl,.after-hours-book .book-printing { position:absolute; inset:0; }
 .after-hours-book .book-printing,.after-hours-book .book-printing * { pointer-events:none !important; }
-.after-hours.is-fallback { position:relative; min-height:100svh; padding:180px 24px 40px; }
+.after-hours.is-fallback { position:relative; min-height:100svh; padding:128px 24px 40px; }
 .flyer-gallery { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:32px; max-width:1100px; margin:auto; }
 .flyer-gallery figure { margin:0; }
 .flyer-gallery img { display:block; width:100%; height:auto; aspect-ratio:1110/1280; object-fit:contain; background:var(--flyer-background); }
@@ -21,9 +18,8 @@
 @media(min-width:880px) and (max-width:1100px) { .zine-header-shell { padding-inline:36px; } }
 @media(max-width:879px) {
   .zine-header-shell { padding-inline:24px; }
-  .after-hours-book { inset:139px 4px max(32px,env(safe-area-inset-bottom)); }
-  .zine-heading { top:100px; }
+  .after-hours-book { inset:108px 4px max(32px,env(safe-area-inset-bottom)); }
   .zine-header { gap:18px; }
 }
 @media(min-width:640px) and (max-width:879px) { .zine-header-shell { padding-inline:60px; } }
-@media(max-height:600px) and (min-width:640px) { .zine-heading { display:none; } .after-hours-book { inset:78px 20px 24px; } }
+@media(max-height:600px) and (min-width:640px) { .after-hours-book { inset:78px 20px 24px; } }
