@@ -92,6 +92,7 @@ svg { display:block; flex-shrink:0; }
 .cartridge-fallback button > span:not(.fallback-shell) { font-weight:700; }
 .fallback-shell { display:block; width:100%; aspect-ratio:2.4/1.6; background:var(--shell); padding:26px 12px 16px; border-radius:6px; box-shadow:2px 4px 0 color-mix(in srgb,var(--shell) 75%,#000),5px 10px 16px #0002; margin-bottom:8px; }
 .cartridge-fallback img { width:100%; display:block; border-radius:4px; }
+.cartridge-fallback [data-cartridge="gmail"] img { filter:saturate(.9) brightness(.9); }
 
 @media(max-width:879px) {
  .collection { padding:24px 24px 28px; }
