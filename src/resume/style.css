@@ -18,10 +18,12 @@
 .resume-sheet[data-surface="webgl"] { z-index:1; background:none; box-shadow:none; transform:none; }
 .resume-sheet[data-surface="webgl"] .resume-artwork picture { opacity:0; }
 .resume-artwork { position:relative; width:100%; }
+.resume-read-target { position:absolute; inset:0; z-index:1; width:100%; height:100%; border:0; padding:0; border-radius:0; background:none; cursor:inherit; }
+.resume-read-target:focus-visible { outline:2px solid var(--ui-text); outline-offset:6px; }
 .resume-artwork img { display:block; width:100%; height:auto; border-radius:1px; opacity:0; }
 .resume-sheet[data-art-ready="true"] .resume-artwork img { opacity:1; transition:opacity 400ms ease; }
 .resume-art-loading { position:absolute; inset:0; display:grid; place-items:center; margin:0; color:#686868; font-size:14px; }
-.paper-contact { position:absolute; display:block; min-height:44px; min-width:44px; transform:translateY(-50%); border-radius:5px; cursor:pointer; }
+.paper-contact { position:absolute; z-index:2; display:block; min-height:44px; min-width:44px; transform:translateY(-50%); border-radius:5px; cursor:pointer; }
 .paper-contact:hover { background:#ff000008; }
 .paper-contact:focus-visible { outline-color:#ef2929; outline-offset:2px; }
 /* Page is an object inside a fixed stage. Its base size changes only with the viewport. */
@@ -85,4 +87,4 @@
 @media(max-height:600px) and (min-width:701px) { .resume-page[data-view="page"] { grid-template-rows:48px 60px minmax(0,1fr) 24px; padding-block:12px; } .resume-page[data-view="page"] .resume-nav { height:48px; } }
 @media(max-width:360px) { .resume-print-heading > p { font-size:10px; } .resume-print-sidebar { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { .resume-gradient { transition:none; } .resume-download-copy { display:none; } ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*) { animation:none!important; } }
-@media print { .resume-gradient,.resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.paper-contact,.resume-download-copy { display:none!important; } .resume-page,.resume-page[data-view="page"] { padding:0; height:auto; display:block; overflow:visible; --resume-print-ink:#111; --resume-body:#505050; --resume-accent:#e00000; } .resume-paper-stage,.resume-page[data-view="page"] .resume-paper-stage { margin:0; height:auto; container-type:normal; perspective:none; max-width:none; display:block; } .resume-sheet,.resume-page[data-view="page"] .resume-sheet { width:100%; transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }
+@media print { .resume-gradient,.resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.resume-read-target,.paper-contact,.resume-download-copy { display:none!important; } .resume-page,.resume-page[data-view="page"] { padding:0; height:auto; display:block; overflow:visible; --resume-print-ink:#111; --resume-body:#505050; --resume-accent:#e00000; } .resume-paper-stage,.resume-page[data-view="page"] .resume-paper-stage { margin:0; height:auto; container-type:normal; perspective:none; max-width:none; display:block; } .resume-sheet,.resume-page[data-view="page"] .resume-sheet { width:100%; transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }

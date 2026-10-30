@@ -33,6 +33,7 @@ function ResumeDocument({ hidden = false }) {
 
 function Resume() {
   const content = useRef(null), sheet = useRef(null), controller = useRef(null), explicitView = useRef(false);
+  const openRead = useRef(null);
   const wash = useRef(null), downloadButton = useRef(null), downloadMotion = useRef(null), viewTransition = useRef(null);
   const [view, setView] = useState(() => matchMedia("(max-width: 700px)").matches ? "read" : "page");
   const requestedView = useRef(view);
@@ -45,7 +46,10 @@ function Resume() {
   useContentReveal(content, "resume-paper");
   useEffect(() => {
     const motion = new DownloadMotion(sheet.current, downloadButton.current); downloadMotion.current = motion;
-    return () => { motion.dispose(); downloadMotion.current = null; viewTransition.current?.skipTransition(); };
+    const preference = matchMedia("(prefers-reduced-motion: reduce)");
+    const stopTransition = () => { if (preference.matches) viewTransition.current?.skipTransition(); };
+    preference.addEventListener("change", stopTransition);
+    return () => { preference.removeEventListener("change", stopTransition); motion.dispose(); downloadMotion.current = null; viewTransition.current?.skipTransition(); };
   }, []);
   useEffect(() => {
     if (!reading) return;
@@ -58,13 +62,20 @@ function Resume() {
   }, []);
   useEffect(() => {
     if (reading || !artReady) return;
-    const paperScene = new FloatingPaper(sheet.current); controller.current = paperScene;
+    let cancelled = false, paperScene = null;
+    const start = () => {
+      if (cancelled) return;
+      paperScene = new FloatingPaper(sheet.current, () => openRead.current?.()); controller.current = paperScene;
+    };
+    // Let the browser capture the DOM paper before creating its WebGL surface.
+    const transition = viewTransition.current;
+    if (transition) transition.finished.catch(() => {}).then(start); else start();
     const reset = event => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.target?.isContentEditable || event.target?.closest?.("input,textarea,select")) return;
-      if (event.key.toLowerCase() === "r") paperScene.reset();
+      if (event.key.toLowerCase() === "r") paperScene?.reset();
     };
     window.addEventListener("keydown", reset);
-    return () => { window.removeEventListener("keydown", reset); paperScene.dispose(); controller.current = null; };
+    return () => { cancelled = true; window.removeEventListener("keydown", reset); paperScene?.dispose(); controller.current = null; };
   }, [reading, artReady]);
   const chooseView = next => {
     explicitView.current = true;
@@ -80,6 +91,7 @@ function Resume() {
       transition.finished.catch(() => {}).finally(() => { if (viewTransition.current === transition) viewTransition.current = null; });
     } else commit();
   };
+  openRead.current = () => chooseView("read");
   return <main ref={content} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"}>
     <div className="resume-gradient" ref={wash} data-active={reading} aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
     <header className="collection-header resume-nav" data-reveal data-reveal-at="0">
@@ -89,10 +101,11 @@ function Resume() {
       <div className="resume-view-switch" role="group" aria-label="Résumé view"><button type="button" aria-pressed={!reading} onClick={() => chooseView("page")} disabled={artFailed}>Page</button><button type="button" aria-pressed={reading} onClick={() => chooseView("read")}>Read</button></div>
       <a className="resume-download" ref={downloadButton} href={resume.links.pdf} download="Josh-Lucas-Resume.pdf" onPointerEnter={() => downloadMotion.current?.preload()} onFocus={() => downloadMotion.current?.preload()} onClick={event => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) downloadMotion.current?.play(); }}>Download PDF<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 18v3h14v-3" /></svg></a>
     </div>
-    <p className="sr-only" role="status">{reading ? "Reading view. Text is selectable and arranged for your screen." : "Floating page view. Use Read for selectable text."}</p>
+    <p className="sr-only" role="status">{reading ? "Reading view. Text is selectable and arranged for your screen." : "Floating page view. Click the paper to read, or drag to tilt."}</p>
     <div className="resume-paper-stage" data-reveal data-reveal-at="180">
       <div className="resume-sheet" ref={sheet} data-art-ready={artReady} data-mode={reading ? "read" : "page"}>
         {!reading && <div className="resume-artwork" style={{ aspectRatio: `${paper.width} / ${paper.height}` }}>
+          <button className="resume-read-target" type="button" aria-label="Open résumé in reading view" disabled={!artReady} onClick={() => chooseView("read")} />
           <picture><source media="(min-width: 701px)" srcSet="/resume/resume-art-2400.png" /><img src="/resume/resume-art-1200.png" alt="" aria-hidden="true" width={paper.width} height={paper.height} draggable="false" fetchPriority="high" decoding="async" onLoad={() => setArtReady(true)} onError={() => setArtFailed(true)} /></picture>
           {!artReady && <p className="resume-art-loading" role="status">Loading your résumé…</p>}
           {artReady && paperContacts.map(contact => <a className="paper-contact" key={contact.label} href={contact.href} aria-label={contact.label} target={contact.href.startsWith("https:") ? "_blank" : undefined} rel={contact.href.startsWith("https:") ? "noopener noreferrer" : undefined} style={{ left:`${contact.x / paper.width * 100}%`, top:`${(contact.y + contact.height / 2) / paper.height * 100}%`, width:`${contact.width / paper.width * 100}%`, height:`${contact.height / paper.height * 100}%` }} />)}

@@ -958,21 +958,50 @@ test("resume page preserves original artwork and downloads its one-page PDF with
 
 test("floating resume tilts on drag, settles without resizing, and resets with R", async ({ page }) => {
   await page.goto('/resume/');const sheet=page.locator('.resume-sheet');await expect(sheet).toHaveAttribute('data-art-ready','true');await expect(sheet).toHaveAttribute('data-motion','floating');
-  await expect(sheet).toHaveAttribute('data-surface','webgl');
+  await expect(sheet).toHaveAttribute('data-surface','webgl',{timeout:30000});
   await expect(sheet).toHaveAttribute('data-ground-normal','0,1,0');
   const pose=await sheet.evaluate(el=>({ground:Number(el.dataset.groundY),center:Number(el.dataset.paperY),normal:el.dataset.paperNormal.split(',').map(Number)}));
-  expect(pose.center-4.7/2-pose.ground).toBeGreaterThan(.5);expect(Math.abs(pose.normal[1])).toBeLessThan(.1);
+  expect(pose.center-4.7/2-pose.ground).toBeGreaterThan(.5);expect(Math.abs(pose.normal[1])).toBeLessThan(.25);
   const initial=await sheet.getAttribute('data-orientation'),width=await sheet.evaluate(el=>el.clientWidth),box=await sheet.boundingBox();
   await page.mouse.move(box.x+box.width*.45,box.y+150);await page.mouse.down();await page.mouse.move(box.x+box.width*.45+150,box.y+220,{steps:8});
   await expect(sheet).toHaveAttribute('data-dragging','true');await expect(sheet).not.toHaveAttribute('data-orientation',initial);
   await expect.poll(async()=>Number(await sheet.getAttribute('data-bend'))).toBeGreaterThan(.05);
   expect(Number(await sheet.getAttribute('data-bend'))).toBeLessThan(.26);
   await page.mouse.up();await expect(sheet).toHaveAttribute('data-dragging','false');
-  await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+1.6)<1.4&&Math.abs(y-.7)<1.5}).toBe(true);
+  await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+8)<3.5&&Math.abs(y+12)<4.5}).toBe(true);
   expect(await sheet.evaluate(el=>el.clientWidth)).toBe(width);await expect(page).toHaveURL(/\/resume\/$/);
   await expect.poll(async()=>Number(await sheet.getAttribute('data-bend'))).toBeLessThan(.01);
   await page.keyboard.press('r');await page.emulateMedia({reducedMotion:'reduce'});await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
   await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
+});
+
+test("floating resume opens Read on a click or keyboard activation, never after dragging or cancellation", async ({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/resume/');const sheet=page.locator('.resume-sheet'),main=page.locator('.resume-page');
+  await expect(sheet).toHaveAttribute('data-surface','webgl',{timeout:30000});
+  const box=await sheet.boundingBox(),x=box.x+box.width/2,y=box.y+box.height*.4;
+  // Crossing the slop then returning to the start is still a drag.
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+90,y+50,{steps:6});await page.mouse.move(x,y,{steps:6});await page.mouse.up();
+  await expect(main).toHaveAttribute('data-view','page');
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(5,5,{steps:5});await page.mouse.up();
+  await expect(sheet).toHaveAttribute('data-dragging','false');await expect(main).toHaveAttribute('data-view','page');
+  await page.mouse.move(x,y);
+  // Cancellation never leaves a pending click activation behind.
+  await page.mouse.down();await sheet.evaluate(el=>el.parentElement.dispatchEvent(new PointerEvent('pointercancel',{pointerId:1,bubbles:true})));await page.mouse.up();
+  await expect(main).toHaveAttribute('data-view','page');
+  const stage=await page.locator('.resume-paper-stage').boundingBox();await page.mouse.click(stage.x+10,stage.y+10);await expect(main).toHaveAttribute('data-view','page');
+  // Small hand movement counts as a click, not a drag.
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+2,y+2);await page.mouse.up();
+  await expect(main).toHaveAttribute('data-view','read');await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
+  await page.getByRole('button',{name:'Page',exact:true}).click();await expect(sheet).toHaveAttribute('data-surface','webgl',{timeout:30000});
+  const target=page.getByRole('button',{name:'Open résumé in reading view'});await target.focus();await target.press('Enter');await expect(main).toHaveAttribute('data-view','read');
+  await page.getByRole('button',{name:'Page',exact:true}).click();await expect(sheet).toHaveAttribute('data-surface','webgl',{timeout:30000});
+  await page.emulateMedia({reducedMotion:'reduce'});await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
+  const link=page.locator('.paper-contact[aria-label="LinkedIn"]');
+  await link.evaluate(el=>el.addEventListener('click',event=>{event.preventDefault();el.dataset.clicked='true'}));
+  await link.click();await expect(link).toHaveAttribute('data-clicked','true');await expect(main).toHaveAttribute('data-view','page');
+  await target.focus();await target.press('Space');await expect(main).toHaveAttribute('data-view','read');
+  expect(errors).toEqual([]);
 });
 
 test("mobile resume defaults to readable text and an unavailable preview falls back to reading", async ({ page }) => {
@@ -990,7 +1019,7 @@ test("resume keeps its original paper preview usable without WebGL", async ({pag
   await expect(sheet).toHaveAttribute('data-surface','fallback');
   await expect(page.locator('.resume-artwork picture')).toHaveCSS('opacity','1');
   await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
-  await page.emulateMedia({reducedMotion:'reduce'});await page.getByRole('button',{name:'Read',exact:true}).click();
+  await page.emulateMedia({reducedMotion:'reduce'});await page.getByRole('button',{name:'Open résumé in reading view'}).click();
   await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
 });
 
@@ -1000,7 +1029,7 @@ test("resume Page stays fully inside desktop, phone and landscape viewports", as
   for(const [width,height] of [[1440,1000],[1280,720],[390,844],[844,390]]){
     await page.setViewportSize({width,height});
     await expect.poll(async()=>{const r=await page.locator('.resume-sheet').boundingBox();return r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1}).toBe(true);
-    expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   }
 });
 

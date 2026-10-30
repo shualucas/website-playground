@@ -29,6 +29,8 @@ export class PaperSurface {
   private scale = 1;
   private disposed = false;
   private vector = new THREE.Vector3();
+  private pointer = new THREE.Vector2();
+  private raycaster = new THREE.Raycaster();
   private rotation = new THREE.Euler(0,0,0,"XYZ");
   private lastFlex = [NaN,NaN,NaN,NaN];
   private contacts: {element:HTMLAnchorElement; x:number; y:number; style:string|null}[];
@@ -98,6 +100,14 @@ export class PaperSurface {
     const edge=.06+.94*Math.pow(Math.max(Math.abs(pose.grabX),Math.abs(pose.grabY)),4);
     // Firm stock: only the grabbed edge yields; the body stays nearly planar.
     return edge*influence*(Math.hypot(pose.bendX,pose.bendY)*.65+pose.bendX*dx*.25+pose.bendY*dy*.25);
+  }
+  containsPoint(clientX:number,clientY:number) {
+    if(this.disposed)return false;
+    const bounds=this.renderer.domElement.getBoundingClientRect();
+    if(!bounds.width||!bounds.height)return false;
+    this.pointer.set((clientX-bounds.left)/bounds.width*2-1,1-(clientY-bounds.top)/bounds.height*2);
+    this.raycaster.setFromCamera(this.pointer,this.camera);
+    return this.raycaster.intersectObject(this.front,false).length>0;
   }
   render(pose:PaperPose) {
     if(this.disposed||!this.scale)return;
