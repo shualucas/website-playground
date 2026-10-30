@@ -52,8 +52,6 @@ export class CartridgeScene {
   private captionY = 0;
   private captionWidth = 260;
   private captionHeight = 48;
-  private captionEntered = false;
-  private captionClearTime = 0;
   private ambientTime = 0;
   private inView = true;
   private mobile = false;
@@ -269,7 +267,6 @@ export class CartridgeScene {
   setSelected(id: CartridgeId | null) {
     if (id !== this.selected) {
       this.host.dataset.captionReady = "false";
-      this.captionEntered = false; this.captionClearTime = 0;
       // Early input takes over from the exact current entry pose, without a snap.
       if (this.host.dataset.ready === "true") this.entranceTime = Math.max(2, this.entranceTime);
       const active = this.items.findIndex((item) => item.id === id);
@@ -410,7 +407,7 @@ export class CartridgeScene {
     const frameBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
     const captionLeft = (this.host.clientWidth - this.captionWidth) / 2 - 6;
     const captionRight = (this.host.clientWidth + this.captionWidth) / 2 + 6;
-    let captionClear = Boolean(this.selected), captionArrived = false;
+    let captionClear = Boolean(this.selected);
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       let itemBottom = -Infinity;
@@ -430,10 +427,9 @@ export class CartridgeScene {
         frameBounds.top = Math.min(frameBounds.top, py); frameBounds.bottom = Math.max(frameBounds.bottom, py);
       }
       this.host.dataset[`frame${i}`] = JSON.stringify({ left: itemLeft, top: itemTop, right: itemRight, bottom: itemBottom });
-      // The fixed caption waits for the same opening motion as its cartridge.
-      // Test every shell, including neighbors sweeping through this space.
+      // Reveal as soon as the fixed text area clears, while the stack is still moving.
+      // Neighbors may sweep through this space during interrupted selections.
       if (itemRight > captionLeft && itemLeft < captionRight && itemBottom > this.captionY - 2 && itemTop < this.captionY + this.captionHeight + 6) captionClear = false;
-      if (item.id === this.selected) captionArrived = Math.abs(itemBottom - (this.captionY - 12)) < 18 && Math.abs(item.root.rotation.x - item.targetAngle.x) < .18;
       // The exposed top edge is the click target for a closed stack member.
       this.projected.set(0, item.id !== this.selected ? item.half.y - .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
       const point = { x: (this.projected.x + 1) * this.host.clientWidth / 2, y: (1 - this.projected.y) * this.host.clientHeight / 2 };
@@ -444,9 +440,7 @@ export class CartridgeScene {
         this.host.dataset.selectedFrame = JSON.stringify({ left: itemLeft, top: itemTop, right: itemRight, bottom: itemBottom });
       }
     }
-    this.captionClearTime = captionClear ? this.captionClearTime + dt : 0;
-    const captionReady = captionClear && (reduced || this.captionClearTime >= .045) && (reduced || this.captionEntered || captionArrived);
-    if (captionReady) this.captionEntered = true;
+    const captionReady = captionClear;
     if (this.host.dataset.captionReady !== String(captionReady)) this.host.dataset.captionReady = String(captionReady);
     if (!this.selected) delete this.host.dataset.selectedFrame;
     this.host.dataset.frameBounds = JSON.stringify(frameBounds);

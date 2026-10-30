@@ -113,7 +113,7 @@ test("captions enter with their cartridge and stay clear of every shell during i
   });
   const select=async name=>page.getByRole('button',{name:`View ${name} cartridge`,exact:true}).evaluate(el=>el.click());
   await select('Blizzard Entertainment');await expect(stage).toHaveAttribute('data-caption-ready','true',{timeout:60000});await expect(caption).toBeVisible();
-  await expect(caption).toHaveCSS('animation-name','cartridge-caption-in');await expect(caption).toHaveCSS('animation-duration','0.16s');
+  await expect(caption).toHaveCSS('animation-name','cartridge-caption-in');await expect(caption).toHaveCSS('animation-duration','0.32s');
   await select('Search');await expect(stage).toHaveAttribute('data-caption-ready','false');await expect(caption).toBeHidden();
   // Interrupt the moving stack with another selection; only its caption may enter.
   await select('Gmail');await expect(caption.locator(':scope > span').first()).toHaveText('Gmail');

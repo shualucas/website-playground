@@ -39,8 +39,8 @@ svg { display:block; flex-shrink:0; }
 .cartridge-keyboard:focus-visible { outline:2px solid var(--ui-text); outline-offset:3px; border-radius:3px; }
 .cartridge-caption { position:absolute; left:50%; top:var(--caption-y,65%); transform:translate(-50%,0); text-align:center; display:flex; flex-direction:column; align-items:center; white-space:nowrap; font-size:14px; font-weight:700; line-height:1.3; }
 .cartridge-caption { min-height:44px; padding:4px 8px; justify-content:center; gap:3px; visibility:hidden; opacity:0; pointer-events:none; }
-.cartridge-stage[data-caption-ready="true"] .cartridge-caption { visibility:visible; pointer-events:auto; animation:cartridge-caption-in 160ms cubic-bezier(.22,1,.36,1) both; }
-@keyframes cartridge-caption-in { from { opacity:0; filter:blur(1.5px); transform:translate(-50%,5px); } to { opacity:1; filter:none; transform:translate(-50%,0); } }
+.cartridge-stage[data-caption-ready="true"] .cartridge-caption { visibility:visible; pointer-events:auto; animation:cartridge-caption-in 320ms cubic-bezier(.2,.65,.3,1) both; }
+@keyframes cartridge-caption-in { from { opacity:0; filter:blur(3px); } to { opacity:1; filter:none; } }
 @media(prefers-reduced-motion:reduce) { .cartridge-stage[data-caption-ready="true"] .cartridge-caption { animation:none; opacity:1; } }
 .cartridge-years { display:block; font-size:13px; font-weight:700; line-height:1.4; color:var(--ui-muted); }
 .cartridge-caption > span:first-child { position:relative; }
