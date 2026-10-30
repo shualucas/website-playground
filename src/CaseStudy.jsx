@@ -28,6 +28,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
     <section
       ref={content}
       className={`case-study${study ? " case-study-editorial" : ""}`}
+      data-case-theme={project.theme}
       aria-label={`${project.label} case study`}
       style={{
         "--case-accent": theme.accent,

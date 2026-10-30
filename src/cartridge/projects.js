@@ -1,6 +1,8 @@
 import { projects as zineProjects } from "../book/projects";
 import { cartridges } from "./config";
 import { aiModeCaseStudy } from "../content/ai-mode-case-study";
+import { searchLabsCaseStudy } from "../content/search-labs-case-study";
+import { stadiaCaseStudy } from "../content/stadia-case-study";
 
 const careerDetails = {
   blizzard: { role: "UX Designer · Internship", team: "Team 1 · Heroes of the Storm & Starcraft II", period: "Summer 2017", location: "Irvine, CA" },
@@ -39,21 +41,30 @@ export const careerProjects = cartridges.map((cartridge) => {
   };
 });
 
-/** Project-specific destinations, ready for the user's case-study content. */
+const caseStudies = {
+  "ai-mode-nudges": aiModeCaseStudy,
+  "search-labs": searchLabsCaseStudy,
+  "stadia-store-redesign": stadiaCaseStudy,
+};
+
+/** Project-specific destinations; case-study stories remain separate from career pages. */
 export const recentProjects = [
   { id: "ai-mode-nudges", label: "AI Mode Nudges", description: "Helping users continue their journey's and clarify intent", cartridgeId: "search", theme: "ai" },
   { id: "search-labs", label: "Search Labs", description: "A creative playground for features on Search", cartridgeId: "search", theme: "ai" },
   { id: "stadia-store-redesign", label: "Stadia Store Redesign", description: "Guiding users towards making the right purchase", cartridgeId: "stadia", theme: "stadia" },
   { id: "rave-flyer-zine", label: "Zine of Extracurriculars", description: "Guilty pleasure creative outlet", href: "/after-hours/", cartridgeId: null, theme: "after-hours" },
-].map(project => ({
+].map(project => {
+  const study = caseStudies[project.id];
+  return {
   ...project, kind: "project", title: project.label, subtitle: project.description,
   role: "", team: "", year: "", disciplines: [], chapters: [], sample: true,
   previewImage: "", imageAlt: `${project.label} preview`, caseStudyUrl: "",
-  ...(project.id === "ai-mode-nudges" ? {
-    subtitle: aiModeCaseStudy.subtitle, role: aiModeCaseStudy.role,
-    disciplines: [aiModeCaseStudy.scope], sample: false, caseStudy: aiModeCaseStudy,
+  ...(study ? {
+    subtitle: study.subtitle, role: study.role,
+    disciplines: [study.scope], sample: false, caseStudy: study,
   } : {}),
-}));
+  };
+});
 
 export const portfolioProjects = [...careerProjects, ...recentProjects];
 export const cartridgeForProject = id => cartridges.some(cartridge => cartridge.id === id)

@@ -319,6 +319,7 @@
 .case-study-editorial .case-study-hero { max-width:none; }
 .case-study-editorial .eyebrow { display:flex; align-items:center; gap:10px; margin:0; color:var(--ui-muted); font-size:12px; line-height:1.5; letter-spacing:.015em; }
 .case-study-editorial .eyebrow::before { content:""; width:24px; height:4px; border-radius:4px; background:linear-gradient(90deg,#4285f4 25%,#ea4335 25% 50%,#fbbc05 50% 75%,#34a853 75%); }
+.case-study-editorial[data-case-theme="stadia"] .eyebrow::before { background:var(--case-gradient); }
 .case-study-editorial .case-study-hero h1 { font-size:clamp(52px,7vw,80px); line-height:1.03; letter-spacing:-.045em; margin:20px 0 18px; }
 .case-study-editorial .case-study-deck { font-size:clamp(22px,2.6vw,28px); line-height:1.35; letter-spacing:-.025em; max-width:720px; margin:0 0 14px; }
 .case-study-summary { max-width:650px; margin:0; font-size:17px; line-height:1.65; color:var(--ui-muted); text-wrap:pretty; }
@@ -344,8 +345,10 @@
 .case-visuals-heading { display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
 .case-visuals-heading > p { color:var(--ui-muted); font-size:12px; margin:0; }
 .case-visual-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; margin-top:24px; }
+.case-visual-grid:has(> figure:only-child) { grid-template-columns:minmax(0,1fr); }
 .case-visual-grid figure { min-width:0; margin:0; }
 .case-visual-placeholder { aspect-ratio:1.8; display:grid; place-items:center; border-radius:12px; background:color-mix(in srgb,var(--ui-text) 4%,var(--scene-bg)); color:var(--ui-muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.case-visual-grid > figure:only-child .case-visual-placeholder { aspect-ratio:3.2; }
 .case-visual-grid figcaption { margin-top:14px; display:grid; gap:6px; }
 .case-visual-grid figcaption strong { font-size:14px; font-weight:500; line-height:1.4; }
 .case-visual-grid figcaption > span { font-size:13px; line-height:1.5; color:var(--ui-muted); }
@@ -367,4 +370,5 @@
   .case-visuals-heading { align-items:flex-start; flex-direction:column; gap:10px; }
   .case-visual-grid { grid-template-columns:1fr; gap:24px; }
   .case-visual-placeholder { aspect-ratio:2.4; }
+  .case-visual-grid > figure:only-child .case-visual-placeholder { aspect-ratio:2; }
 }

@@ -704,6 +704,7 @@ test("recent projects use one column with native reader links and restore focus 
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
   const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
   const descriptions=["Helping users continue their journey's and clarify intent",'A creative playground for features on Search','Guiding users towards making the right purchase','Guilty pleasure creative outlet'];
+  const subtitles=['Helping people find their next question.','From a waitlist to a global AI playground.','Helping players choose their next game.'];
   await expect(links).toHaveCount(4);
   await expect(links.locator('.recent-project-name')).toHaveText(titles);
   await expect(navigation.getByRole('link')).toHaveCount(5);
@@ -720,8 +721,12 @@ test("recent projects use one column with native reader links and restore focus 
   expect(textGap).toBeGreaterThan(0);expect(textGap).toBeLessThan(10);
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-study-deck')).toHaveText(i===0?'Helping people find their next question.':descriptions[i]);
-    await expect(page.locator('.case-study-facts')).toHaveCount(i===0?1:0);
+    await expect(page.locator('.case-study-deck')).toHaveText(subtitles[i]);
+    await expect(page.locator('.case-study-facts')).toHaveCount(1);
+    if(i===1){
+      await expect(page.locator('.case-visual-grid figure')).toHaveCount(1);
+      const visual=await page.locator('.case-visual-grid figure').boundingBox(),measure=await page.locator('.case-study-measure').boundingBox();expect(visual.width).toBeCloseTo(measure.width,0);
+    }
     await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -1291,7 +1296,10 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-visual-grid figure')).toHaveCount(3);
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>study.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
-  const metricBounds=await study.locator('.case-outcome-grid dd').evaluateAll(elements=>elements.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));expect(metricBounds.every(r=>r.scroll<=r.width+1)).toBe(true);
+  await expect.poll(async()=>{
+    const bounds=await study.locator('.case-outcome-grid dd').evaluateAll(elements=>elements.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));
+    return bounds.every(r=>r.scroll<=r.width+1);
+  }).toBe(true);
   await study.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(study).toHaveCount(0);
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
