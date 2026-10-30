@@ -37,20 +37,28 @@ text(resume.name,left,739,30,bold);
 text(resume.title,left,714,13,regular,muted);
 text(resume.location,left,695,10,regular,muted);
 let contactX=left;
+contactX=link(resume.email,`mailto:${resume.email}`,contactX,674);
 for(const url of [resume.links.portfolio,resume.links.linkedin,resume.links.x]) contactX=link(url.replace(/^https:\/\//,""),url,contactX,674);
+if(contactX-19>right) throw new Error("Résumé contact links exceed the page width.");
 page.drawLine({ start:{x:left,y:655},end:{x:right,y:655},thickness:.6,color:rule });
 text("PROFILE",left,633,9,bold,muted);
-let y=lines(resume.summary,left,612,right-left,11,16)-4;
-text(resume.focus.join(" / "),left,y,9.5,regular,muted); y-=39;
+let y=lines(resume.summary,left,612,right-left,11,16)-25;
 text("EXPERIENCE",left,y,9,bold,muted);y-=25;
 for(const job of resume.experience) {
   text(job.role,left,y,12.5,bold);
   text(job.period,right-regular.widthOfTextAtSize(job.period,9.5),y,9.5,regular,muted);y-=18;
   text(job.company,left,y,10.5);
   text(job.location,right-regular.widthOfTextAtSize(job.location,9.5),y,9.5,regular,muted);y-=22;
-  for(const work of job.work) y=lines(work,left,y,right-left,10.5,15);
+  for(const work of job.work) {
+    text("•",left,y,10.2,regular,muted);
+    y=lines(work,left+12,y,right-left-12,10.2,14)-5;
+  }
   y-=23;
 }
+text("SKILLS",left,y,9,bold,muted);y-=20;
+y=lines(resume.skills.join(" / "),left,y,right-left,9.5,14)-12;
+text("TOOLS",left,y,9,bold,muted);y-=20;
+y=lines(resume.tools.join(" / "),left,y,right-left,9.5,14);
 if(y<62) throw new Error("Résumé content needs another PDF page; do not clip the final role.");
 page.drawLine({ start:{x:left,y:56},end:{x:right,y:56},thickness:.6,color:rule });
 text("Portfolio and selected work",left,39,9,regular,muted);

@@ -876,8 +876,14 @@ test("binding follows cover hinges and stays below opened cover surfaces through
 
 test("resume page shares the profile links and downloads a one-page PDF with clickable contacts", async ({ page }) => {
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/resume/');
-  await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();
-  await expect(page.locator('.resume-job')).toHaveCount(4);
+  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
+  await expect(page.locator('.resume-job')).toHaveCount(2);
+  await expect(page.locator('.resume-job').first()).toContainText('May 2019 — present');
+  await expect(page.locator('.resume-job').last()).toContainText('May — Sept 2017');
+  await expect(page.getByText('12%',{exact:true})).toBeVisible();
+  await expect(page.locator('.resume-summary li')).toHaveCount(8);
+  await expect(page.locator('.resume-tools li')).toHaveText(['Figma','Adobe Suite','GIFSKI','Principle']);
+  await expect(page.getByRole('link',{name:'joshglucas@gmail.com'})).toHaveAttribute('href','mailto:joshglucas@gmail.com');
   await expect(page.getByRole('link',{name:'LinkedIn',exact:true})).toHaveAttribute('href','https://www.linkedin.com/in/joshglucas/');
   await expect(page.getByRole('link',{name:'shualucas on X'})).toHaveAttribute('href','https://x.com/shualucas');
   await expect(page.getByRole('link',{name:'Résumé',exact:true})).toHaveAttribute('href','/resume/');
@@ -888,6 +894,7 @@ test("resume page shares the profile links and downloads a one-page PDF with cli
   const pdf=await PDFDocument.load(await readFile(await download.path()));expect(pdf.getPageCount()).toBe(1);
   const links=pdf.getPage(0).node.lookup(PDFName.of('Annots'),PDFArray).asArray().map(ref=>pdf.context.lookup(ref,PDFDict).lookup(PDFName.of('A'),PDFDict).get(PDFName.of('URI')).decodeText());
   expect(links).toContain('https://www.linkedin.com/in/joshglucas/');expect(links).toContain('https://x.com/shualucas');
+  expect(links).toContain('mailto:joshglucas@gmail.com');
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveCSS('background-color','rgb(27, 28, 27)');
 });
