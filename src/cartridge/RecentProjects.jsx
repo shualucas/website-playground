@@ -1,8 +1,9 @@
 import React from "react";
 import { recentProjects } from "./projects";
 import { entrance } from "./entrance";
+import { CameraLink } from "./CameraLink";
 
-export function RecentProjects({ onOpen }) {
+export function RecentProjects({ onOpen, dark, ready, hidden }) {
   return <nav className="recent-projects" aria-labelledby="recent-projects-title">
     <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>
     <ul className="recent-project-list">
@@ -15,6 +16,9 @@ export function RecentProjects({ onOpen }) {
           <span className="recent-project-copy"><span className="recent-project-name">{project.label}</span>{" "}<span className="recent-project-summary">{project.description}</span></span>
         </a>
       </li>)}
+      <li className="recent-camera-row" data-reveal data-reveal-at={entrance.projectsStart + (recentProjects.length + 1) * 60}>
+        <CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" entranceAt={entrance.projectsStart + (recentProjects.length + 1) * 60} />
+      </li>
     </ul>
   </nav>;
 }

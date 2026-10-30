@@ -8,8 +8,9 @@ function preloadPhotos() {
   const link=document.createElement('link');link.rel='prefetch';link.href='/photos/';link.as='document';document.head.appendChild(link);
 }
 
-export function CameraLink({ dark, hidden, ready }) {
+export function CameraLink({ dark, hidden, ready, rowTitle, entranceAt }) {
   const controller = useRef(null), gesture = useRef(null), suppress = useRef(false), timer = useRef(null);
+  const model = useRef(null);
   const [flashing, setFlashing] = useState(false), [arming, setArming] = useState(false);
   const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -27,14 +28,16 @@ export function CameraLink({ dark, hidden, ready }) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
   return <>
-    <a id="film-camera-link" className="camera-link" href="/photos/" aria-label="Explore film photographs" aria-describedby="camera-help"
+    <a id="film-camera-link" className={`camera-link${rowTitle ? " recent-project-link recent-camera-link" : ""}`} href="/photos/" aria-label={rowTitle ? `${rowTitle} Explore film photographs` : "Explore film photographs"} aria-describedby="camera-help"
       data-flashing={flashing} data-arming={arming} data-dragging={dragging} data-hovered={!dragging && (hovered || focused)} onDragStart={(event) => event.preventDefault()}
       onPointerEnter={event => { preloadPhotos();if (event.pointerType !== "touch" && !gesture.current && !busy.current) setHovered(true); }} onPointerLeave={() => setHovered(false)}
       onFocus={event => {preloadPhotos();setFocused(!gesture.current && event.currentTarget.matches(":focus-visible"))}} onBlur={() => setFocused(false)}
       onPointerDown={(event) => {
         if (event.button !== 0 || !event.isPrimary || busy.current) return;
         preloadPhotos();
-        suppress.current = false; setDragging(true); setFocused(false); setHovered(false); controller.current?.setHovered(false); controller.current?.beginDrag();
+        suppress.current = false;
+        if(rowTitle && !model.current?.contains(event.target))return;
+        setDragging(true); setFocused(false); setHovered(false); controller.current?.setHovered(false); controller.current?.beginDrag();
         gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -59,21 +62,27 @@ export function CameraLink({ dark, hidden, ready }) {
         event.preventDefault();
         if ((event.detail > 0 && suppress.current) || busy.current) return;
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) { location.assign(event.currentTarget.href); return; }
-        const destination = event.currentTarget.href, rect = event.currentTarget.getBoundingClientRect();
+        const destination = event.currentTarget.href, rect = (model.current ?? event.currentTarget).getBoundingClientRect();
         origin.current = controller.current?.prepareFlash() ?? { x: rect.left + rect.width * .3, y: rect.top + rect.height * .4 };
         busy.current = true; setArming(true);
         flashTimer.current = setTimeout(() => {
           // Re-sample at the flash, after the camera has finished any coasting.
           origin.current=controller.current?.prepareFlash()??origin.current;
           controller.current?.flash(); setArming(false); setFlashing(true);
-          try { sessionStorage.setItem("camera-entry", JSON.stringify({at:Date.now(),origin:{x:origin.current.x/innerWidth,y:origin.current.y/innerHeight},camera:{x:(rect.left+rect.width/2)/innerWidth,y:(rect.top+rect.height/2)/innerHeight}})); } catch {}
+          const cameraRect=model.current?.getBoundingClientRect()??rect;
+          try { sessionStorage.setItem("camera-entry", JSON.stringify({at:Date.now(),origin:{x:origin.current.x/innerWidth,y:origin.current.y/innerHeight},camera:{x:(cameraRect.left+cameraRect.width/2)/innerWidth,y:(cameraRect.top+cameraRect.height/2)/innerHeight}})); } catch {}
           timer.current = setTimeout(() => location.assign(destination), 500);
         }, 180);
       }}>
-      {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} highlighted={!dragging && (hovered || focused)} /> : null}
+      {rowTitle && <span className="recent-project-marker" aria-hidden="true" />}
+      <span className={rowTitle ? "recent-project-copy recent-camera-copy" : undefined}>
+      {rowTitle && <span className="recent-project-name">{rowTitle}</span>}
+      <span className="camera-model" ref={model}>
+      {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} highlighted={!dragging && (hovered || focused)} entranceAt={entranceAt} /> : null}
       <span className="camera-ready-light" aria-hidden="true" />
       <span className="camera-lens-flash" aria-hidden="true" />
       {flashing&&<span className="camera-say-cheese" aria-hidden="true">say cheese</span>}
+      </span></span>
     </a>
     <span id="camera-help" className="sr-only">Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore.</span>
     {flashing && createPortal(<div className="camera-page-flash" style={{ "--origin-x": `${origin.current.x}px`, "--origin-y": `${origin.current.y}px` }} aria-hidden="true" />, document.body)}

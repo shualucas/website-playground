@@ -138,8 +138,8 @@ function App() {
           {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button data-reveal data-cartridge={item.id} key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
-      <RecentProjects onOpen={open} />
-      {presented && <PortfolioFooter dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />}
+      <RecentProjects onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
+      {presented && <PortfolioFooter hidden={Boolean(reading)} />}
     </main>
     {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
   </>;

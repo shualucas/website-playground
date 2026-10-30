@@ -238,7 +238,7 @@ test("each load chooses a supplied fact without immediate repeats; interactions 
   expect(await page.locator(".random-fact").textContent()).toBe(previous);
 });
 
-test("the camera sits left of the centered X link, floats only in view, and respects reduced motion", async ({ page }) => {
+test("the camera lives in the Say cheese row, floats only in view, and respects reduced motion", async ({ page }) => {
   test.setTimeout(120000);
   await page.setViewportSize({ width: 1440, height: 1000 }); await load(page);
   const camera = page.locator(".film-camera-dock");
@@ -246,10 +246,11 @@ test("the camera sits left of the centered X link, floats only in view, and resp
   await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
   await expect(camera).toBeVisible(); await expect(camera.locator("canvas")).toHaveCount(1);
   expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
-  const footer = await page.locator(".collection-footer").boundingBox(), bounds = await camera.boundingBox();
+  const footer = await page.locator(".collection-footer").boundingBox(), bounds = await camera.boundingBox(),row=await page.locator('.recent-camera-row').boundingBox();
   const social=await page.locator('.footer-links').boundingBox();
-  expect(Math.abs(social.x+social.width/2-footer.x-footer.width/2)).toBeLessThan(1);
-  expect(Math.abs(social.y+social.height/2-bounds.y-bounds.height/2)).toBeLessThan(1);
+  expect(Math.abs(social.x-footer.x)).toBeLessThan(1);
+  expect(bounds.y).toBeGreaterThanOrEqual(row.y);expect(bounds.y+bounds.height).toBeLessThanOrEqual(row.y+row.height);
+  await expect(page.locator('.recent-camera-row .recent-project-name')).toHaveText('Say cheese!');await expect(page.locator('.collection-footer .camera-link')).toHaveCount(0);
   await expect(page.locator(".footer-camera figcaption,.camera-say-cheese")).toHaveCount(0);
   expect(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => r.name.includes("BookScene")))).toBe(false);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -468,7 +469,7 @@ test("translucent shells retain opaque labels and team-specific finishes", async
 test("camera drag rotates without navigation; keyboard entry opens the separate photos page", async ({ page }) => {
   test.setTimeout(120000);
   await load(page);
-  const link = page.getByRole("link", { name: "Explore film photographs" }), camera = page.locator(".film-camera-dock");
+  const link = page.getByRole("link", { name: /Explore film photographs/ }), camera = page.locator(".film-camera-dock");
   await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
   await link.hover(); await expect(camera).toHaveAttribute("data-ready-light","on");
   await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","1");
@@ -476,7 +477,7 @@ test("camera drag rotates without navigation; keyboard entry opens the separate 
   await page.mouse.move(8,8); await expect(camera).toHaveAttribute("data-ready-light","off");
   await page.getByRole("link",{name:/Zine of Extracurriculars/}).focus(); await page.keyboard.press("Tab"); await expect(link).toBeFocused(); await expect(camera).toHaveAttribute("data-ready-light","on");
   await link.evaluate(el=>el.blur()); await expect(camera).toHaveAttribute("data-ready-light","off");
-  const bounds = await link.boundingBox(), before = await camera.getAttribute("data-rotation");
+  const bounds = await camera.boundingBox(), before = await camera.getAttribute("data-rotation");
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
   await expect(camera).toHaveAttribute("data-ready-light","off"); await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","0");
   await page.mouse.move(bounds.x + bounds.width / 2 + 85, bounds.y + bounds.height / 2 + 35, { steps: 5 }); await page.mouse.up();
@@ -508,7 +509,7 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
     }).observe(document,{childList:true,subtree:true});
   });
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 15000 });
-  await page.getByRole("link", { name: "Explore film photographs" }).click();
+  await page.getByRole("link", { name: /Explore film photographs/ }).click();
   await expect(page).toHaveURL(/\/photos\/$/);
   expect(await page.evaluate(() => sessionStorage.getItem('camera-flash-tested'))).toBe('yes');
   await expect(page.locator("html")).toHaveAttribute("data-camera-entry", "true");
@@ -523,9 +524,9 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
 test("camera coasts after release, and selected cartridges drift without changing heading", async ({ page }) => {
   test.setTimeout(120000);
   await load(page); await page.emulateMedia({ reducedMotion: "no-preference" });
-  const link = page.getByRole("link", { name: "Explore film photographs" }), camera = page.locator(".film-camera-dock");
+  const link = page.getByRole("link", { name: /Explore film photographs/ }), camera = page.locator(".film-camera-dock");
   await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
-  const b = await link.boundingBox(); await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();
+  const b = await camera.boundingBox(); await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();
   await page.mouse.move(b.x+b.width/2+45,b.y+b.height/2+15,{steps:6});await page.mouse.up();
   const released = await camera.getAttribute("data-rotation");
   await expect.poll(() => camera.getAttribute("data-rotation")).not.toBe(released);
@@ -700,16 +701,18 @@ test("recent projects use one column with native reader links and restore focus 
   await page.emulateMedia({reducedMotion:"reduce"});
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/");
-  const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.getByRole("link");
+  const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
   const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
   const descriptions=["Helping users continue their journey's and clarify intent",'A creative playground for features on Search','Guiding users towards making the right purchase','Guilty pleasure creative outlet'];
   await expect(links).toHaveCount(4);
-  await expect(navigation.locator('.recent-project-name')).toHaveText(titles);
+  await expect(links.locator('.recent-project-name')).toHaveText(titles);
+  await expect(navigation.getByRole('link')).toHaveCount(5);
+  await expect(navigation.getByRole('link',{name:'Say cheese! Explore film photographs'})).toHaveAttribute('href','/photos/');
   await expect(navigation.locator('.recent-project-summary')).toHaveText(descriptions);
   await expect(navigation.locator('.recent-project-year')).toHaveCount(0);
   await expect(links.first()).toHaveAttribute('href','/?project=ai-mode-nudges&view=case-study');
   for(const selector of ['.recent-project-name','.recent-project-summary']) {
-    expect(await navigation.locator(selector).first().evaluate(el=>getComputedStyle(el).fontWeight)).toBe('400');
+    expect(await links.locator(selector).first().evaluate(el=>getComputedStyle(el).fontWeight)).toBe('400');
   }
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
@@ -1249,7 +1252,7 @@ test('project exits fade, blur and move the whole page left before navigating',a
   await page.goto('/');const main=page.locator('main.collection');await expect(main).toHaveAttribute('data-status','fallback');
   // Pause only the outgoing animation, so the handoff can be inspected reliably.
   await page.evaluate(()=>{const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){const a=animate.call(this,frames,options);if(this.matches('main.collection')){a.pause();a.currentTime=150}return a}});
-  const links=page.getByRole('navigation',{name:'Recent projects'}).getByRole('link');
+  const links=page.getByRole('navigation',{name:'Recent projects'}).locator('.recent-project-list > li:not(.recent-camera-row) > a');
   await links.first().scrollIntoViewIfNeeded();
   await expect(page.locator('.recent-project-list li').first()).toHaveAttribute('data-reveal-state','visible');
   await page.locator('.recent-project-list li').first().evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished))});

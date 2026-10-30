@@ -5,7 +5,7 @@ export const entrance = {
 };
 // Continue the same page clock through the project index, then the footer.
 entrance.projectsStart = entrance.introStart + entrance.introSpread + entrance.duration + 60;
-entrance.footerStart = entrance.projectsStart + 240 + entrance.duration + 60;
+entrance.footerStart = entrance.projectsStart + 300 + entrance.duration + 60;
 
 export function remainingEntranceDelay(element, at) {
   const page = element.closest('[data-reveal-flow="page"]');
