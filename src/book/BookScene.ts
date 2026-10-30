@@ -62,7 +62,7 @@ type Callbacks = {
   coverArtwork?: {
     front: HTMLCanvasElement;
     back: HTMLCanvasElement;
-    update?: (time: number, back: boolean, reducedMotion: boolean) => boolean;
+    update?: (time: number, back: boolean, reducedMotion: boolean, closed?: boolean) => boolean;
   };
   onPhase: (phase: Phase) => void;
   onIndex: (index: number) => void;
@@ -377,7 +377,7 @@ export class BookScene {
         emissive: new THREE.Color("#ffc28a"),
         emissiveIntensity: 0,
       });
-      return printedFlyer ? preservePrintColors(face) : face;
+      return printedFlyer || (printedCover && (map.image as HTMLCanvasElement).dataset.sourceCover === "true") ? preservePrintColors(face) : face;
     };
     const inside = this.callbacks.projects.map((project, i) =>
       this.keep(
@@ -480,10 +480,12 @@ export class BookScene {
     for (let i = 0; i < 2; i++) {
       const leaf = this.leaves[i === 0 ? 0 : this.leaves.length - 1];
       const exposed = i === 0 ? leaf.progress < 0.99 : leaf.progress > 0.01;
-      if (exposed && cover.update(this.portalTime, i === 1, this.motion.matches)) {
+      const closed = !this.intro && !this.grip?.moved && !this.scheduler.moving && (i === 0 ? leaf.progress === 0 : leaf.progress === 1);
+      if (exposed && cover.update(this.portalTime, i === 1, this.motion.matches, closed)) {
         this.coverTextures[i].needsUpdate = true;
         if (i === 0) this.host.dataset.coverFrame = cover.front.dataset.frame ?? "static";
       }
+      if (cover.front.dataset.coverId) this.host.dataset.coverDesign = cover.front.dataset.coverId;
     }
   }
   setDarkMode(dark: boolean) {

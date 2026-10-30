@@ -1,127 +1,52 @@
-import { flyers, flyerPage } from "./flyers";
-import "@fontsource/staatliches/latin-400.css";
+import { flyerPage } from "./flyers";
 
-const paper = "#f5f1e6", ink = "#4134bf", rust = "#85513e";
+export const coverDesigns = [
+  { id:"blue-ink", src:"/zines/covers/extracurriculars-blue-ink.jpg", stock:"#709de0" },
+  { id:"blue-pink", src:"/zines/covers/extracurriculars-blue-pink.jpg", stock:"#709de0" },
+  { id:"red-pink", src:"/zines/covers/extracurriculars-red-pink.jpg", stock:"#f03838" },
+];
+const HOLD=8, FADE=.4, LAST_KEY="extracurricular-cover";
+function canvas(){const c=document.createElement("canvas");c.width=flyerPage.width;c.height=flyerPage.height;c.dataset.sourceCover="true";return c}
 
-function canvas() {
-  const element = document.createElement("canvas");
-  element.width = flyerPage.width; element.height = flyerPage.height;
-  return element;
-}
-
-function text(ctx, value, x, y, size = 26, font = "monospace", color = rust, weight = 400) {
-  ctx.fillStyle = color; ctx.font = `${weight} ${size}px ${font}`;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(value, x, y);
-}
-
-function badge(ctx, x, y, width, height, lines, shape = "cut") {
-  ctx.save(); ctx.translate(x, y); ctx.strokeStyle = rust; ctx.lineWidth = 3;
-  ctx.beginPath();
-  if (shape === "oval") ctx.ellipse(0, 0, width / 2, height / 2, 0, 0, Math.PI * 2);
-  else if (shape === "cloud") {
-    // An original four-lobed colophon, drawn as one continuous outline.
-    const w = width / 2, h = height / 2;
-    ctx.moveTo(-w, 0);
-    ctx.bezierCurveTo(-w * 1.08, -h, -w * .3, -h * 1.4, 0, -h * .7);
-    ctx.bezierCurveTo(w * .3, -h * 1.4, w * 1.08, -h, w, 0);
-    ctx.bezierCurveTo(w * 1.08, h, w * .3, h * 1.4, 0, h * .7);
-    ctx.bezierCurveTo(-w * .3, h * 1.4, -w * 1.08, h, -w, 0);
-  } else {
-    const w = width / 2, h = height / 2, cut = Math.min(16, height / 3);
-    ctx.moveTo(-w + cut, -h); ctx.lineTo(w - cut, -h); ctx.lineTo(w, -h + cut);
-    ctx.lineTo(w, h - cut); ctx.lineTo(w - cut, h); ctx.lineTo(-w + cut, h);
-    ctx.lineTo(-w, h - cut); ctx.lineTo(-w, -h + cut); ctx.closePath();
+/** Shuffled original artwork, sharing the book clock; reading and turning pause changes. */
+export async function prepareFlyerCovers(random=Math.random) {
+  const images=await Promise.all(coverDesigns.map(async design=>{const image=new Image();image.src=design.src;await image.decode();return image}));
+  const front=canvas(),back=canvas(),ctx=front.getContext("2d"),reverse=back.getContext("2d");
+  let previous;try{previous=sessionStorage.getItem(LAST_KEY)}catch{}
+  const shuffle=()=>{
+    const deck=coverDesigns.map((_,i)=>i);
+    for(let i=deck.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
+    if(coverDesigns[deck[0]].id===previous)[deck[0],deck[1]]=[deck[1],deck[0]];
+    return deck;
+  };
+  let deck=shuffle(),selected=deck.shift(),from=selected,elapsed=0,blend=1,lastTime=null,lastBucket=-1,dirtyFront=false,dirtyBack=false;
+  const remember=()=>{previous=coverDesigns[selected].id;try{sessionStorage.setItem(LAST_KEY,previous)}catch{}};
+  function draw(amount=1){
+    ctx.globalAlpha=1;ctx.drawImage(images[from],0,0,front.width,front.height);
+    if(amount>0){ctx.globalAlpha=amount;ctx.drawImage(images[selected],0,0,front.width,front.height);ctx.globalAlpha=1}
+    reverse.globalAlpha=1;reverse.fillStyle=coverDesigns[from].stock;reverse.fillRect(0,0,back.width,back.height);
+    reverse.globalAlpha=amount;reverse.fillStyle=coverDesigns[selected].stock;reverse.fillRect(0,0,back.width,back.height);reverse.globalAlpha=1;
+    front.dataset.coverId=back.dataset.coverId=coverDesigns[selected].id;
+    front.dataset.frame=String(Math.round(amount*12));dirtyFront=dirtyBack=true;
   }
-  ctx.stroke();
-  lines.forEach((line, index) => text(ctx, line, 0, (index - (lines.length - 1) / 2) * 32, 28));
-  ctx.restore();
-}
-
-function makePaper() {
-  const base = canvas(), ctx = base.getContext("2d");
-  ctx.fillStyle = paper; ctx.fillRect(0, 0, base.width, base.height);
-  // A fixed print grain: never regenerated on animation frames.
-  let seed = 7026;
-  for (let i = 0; i < 24000; i++) {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    const x = seed % base.width;
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    ctx.fillStyle = i % 2 ? "#85513e09" : "#ffffff50";
-    ctx.fillRect(x, seed % base.height, 1, 1);
-  }
-  return base;
-}
-
-/** Two original print covers. Only the exposed front redraws, at most 12 fps. */
-export async function prepareFlyerCovers() {
-  await document.fonts.load('400 200px "Staatliches"');
-  const front = canvas(), back = canvas(), base = makePaper();
-  const lettering = canvas(), letters = lettering.getContext("2d");
-  const frontContext = front.getContext("2d");
-  let lastFrame = -1;
-
-  function drawFront(time = 0, reduced = false) {
-    const frame = reduced ? 0 : Math.floor(time * 12);
-    if (frame === lastFrame) return false;
-    lastFrame = frame;
-    const ctx = frontContext;
-    ctx.drawImage(base, 0, 0);
-    badge(ctx, 555, 144, 350, 112, ["Collected & designed", "by Josh Lucas"], "oval");
-    badge(ctx, 555, 302, 110, 49, ["San"]);
-    badge(ctx, 555, 358, 230, 49, ["Francisco"]);
-
-    letters.clearRect(0, 0, lettering.width, lettering.height);
-    // A calm, readable hold followed by a short rolling, sliced-type passage.
-    const cycle = (frame / 12) % 5.6;
-    const activity = reduced || cycle < 2.8 ? 0 : Math.sin((cycle - 2.8) / 2.8 * Math.PI) ** 2;
-    const rows = [{ value: "ZINE OF", y: 510, size: 80 }, { value: "EXTRACURRICULARS", y: 675, size: 240 }];
-    for (const { value, y, size } of rows) {
-      letters.save();
-      letters.translate(555, y);
-      letters.font = `400 ${size}px "Staatliches", sans-serif`;
-      // Fit the whole word by font size, preserving the font's natural proportions.
-      const fittedSize = size * Math.min(1, 940 / letters.measureText(value).width);
-      letters.font = `400 ${fittedSize}px "Staatliches", sans-serif`;
-      letters.fillStyle = ink; letters.textAlign = "center"; letters.textBaseline = "middle";
-      letters.fillText(value, 0, 0);
-      letters.restore();
-    }
-    for (let y = 385; y < 843; y += 7) {
-      const offset = Math.sin(y * .085 + cycle * 3.5) * activity * 20;
-      ctx.drawImage(lettering, 0, y, lettering.width, 7, offset, y, lettering.width, 7);
-      if (activity > .15 && Math.floor(y / 7) % 3 === 0) {
-        ctx.fillStyle = paper; ctx.globalAlpha = activity * .8;
-        ctx.fillRect(80, y + 5, 950, 2); ctx.globalAlpha = 1;
+  remember();draw();dirtyFront=dirtyBack=false;
+  return {front,back,update(time,isBack,reduced,closed=true){
+    const delta=lastTime===null||time<lastTime?0:Math.min(.25,time-lastTime);lastTime=time;
+    if(reduced||!closed){
+      elapsed=0;
+      // Finish an interrupted crossfade before the printed cover begins turning.
+      if(blend<1){blend=1;draw()}
+    }else{
+      elapsed+=delta;
+      if(blend<1){
+        blend=Math.min(1,blend+delta/FADE);const bucket=Math.round(blend*12);
+        if(bucket!==lastBucket){lastBucket=bucket;draw(bucket/12)}
+      }else if(elapsed>=HOLD){
+        elapsed=0;from=selected;if(!deck.length)deck=shuffle();selected=deck.shift();remember();blend=0;lastBucket=0;draw(0);
       }
     }
-    badge(ctx, 555, 945, 290, 118, ["A collection", "of flyers"], "cloud");
-    ctx.save(); ctx.translate(58, 632); ctx.rotate(-Math.PI / 2);
-    text(ctx, "MUSIC / COMMUNITY / PRINT", 0, 0, 20); ctx.restore();
-    ctx.save(); ctx.translate(1052, 632); ctx.rotate(Math.PI / 2);
-    text(ctx, "FIVE ORIGINAL FLYERS", 0, 0, 20); ctx.restore();
-    for (const [index, value] of [..."2026"].entries()) {
-      const x = 894 + (index % 2) * 48, y = 1096 + Math.floor(index / 2) * 48;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.strokeStyle = rust;
-      ctx.strokeRect(-17, -17, 34, 34); ctx.restore(); text(ctx, value, x, y, 20);
-    }
-    front.dataset.frame = String(frame);
-    return true;
-  }
-  drawFront();
-
-  const ctx = back.getContext("2d");
-  ctx.drawImage(base, 0, 0);
-  badge(ctx, 555, 150, 390, 100, ["Zine of", "extracurriculars"], "oval");
-  text(ctx, "CONTENTS", 555, 475, 172, '"Staatliches", sans-serif', ink);
-  ctx.strokeStyle = rust; ctx.lineWidth = 2.5;
-  flyers.forEach((flyer, index) => {
-    const y = 740 + index * 62;
-    ctx.beginPath(); ctx.moveTo(170, y + 30); ctx.lineTo(940, y + 30); ctx.stroke();
-    ctx.textAlign = "left"; ctx.fillStyle = rust; ctx.font = "24px monospace";
-    ctx.fillText(`${String(index + 1).padStart(2, "0")}   ${flyer.title}`, 170, y);
-  });
-  badge(ctx, 555, 1155, 340, 65, ["Josh Lucas / 2026"]);
-
-  return { front, back, update: (time, isBack, reduced) => !isBack && drawFront(time, reduced) };
+    const changed=isBack?dirtyBack:dirtyFront;
+    if(isBack)dirtyBack=false;else dirtyFront=false;
+    return changed;
+  }};
 }

@@ -811,17 +811,28 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
 });
 
-test("flyer cover typography uses a bounded clock and freezes cleanly for reduced motion", async ({ page }) => {
+test("uploaded covers shuffle without repeats, pause while reading, and stay static for reduced motion", async ({ page }) => {
   await page.goto('/tests/fixtures/blank.html');
   const result=await page.evaluate(async()=>{
-    const {prepareFlyerCovers}=await import('/src/after-hours/covers.js');
-    const cover=await prepareFlyerCovers(), back=cover.back.toDataURL(), initial=cover.front.toDataURL();
-    const sameBucket=cover.update(.01,false,false), animated=cover.update(4,false,false), moved=cover.front.toDataURL()!==initial;
-    const backIgnored=cover.update(5,true,false), reset=cover.update(5,false,true), staticFrame=cover.front.toDataURL()===initial;
-    const frozen=cover.update(15,false,true);
-    return {size:[cover.front.width,cover.front.height],sameBucket,animated,moved,backIgnored,reset,staticFrame,frozen,backPreserved:cover.back.toDataURL()===back};
+    const {prepareFlyerCovers,coverDesigns}=await import('/src/after-hours/covers.js');
+    const cover=await prepareFlyerCovers(()=>.37),initial=cover.front.dataset.coverId,seen=[initial];
+    const exact=async()=>{
+      const design=coverDesigns.find(d=>d.id===cover.front.dataset.coverId),image=new Image();image.src=design.src;await image.decode();
+      const reference=document.createElement('canvas');reference.width=1110;reference.height=1280;reference.getContext('2d').drawImage(image,0,0);
+      return reference.toDataURL()===cover.front.toDataURL();
+    };
+    const faithful=[await exact()];cover.update(0,false,false,true);
+    for(let tick=1;tick<=180;tick++){cover.update(tick/10,false,false,true);const id=cover.front.dataset.coverId;if(id!==seen.at(-1))seen.push(id);if(tick===90||tick===180)faithful.push(await exact());}
+    const readingId=cover.front.dataset.coverId,readingPixels=cover.front.toDataURL();
+    for(let tick=181;tick<=400;tick++)cover.update(tick/10,false,false,false);
+    const readingStable=cover.front.dataset.coverId===readingId&&cover.front.toDataURL()===readingPixels;
+    for(let tick=401;tick<=600;tick++)cover.update(tick/10,false,true,true);
+    const reducedStable=cover.front.dataset.coverId===readingId&&cover.front.toDataURL()===readingPixels;
+    const next=await prepareFlyerCovers(()=>.37);
+    return {size:[cover.front.width,cover.front.height],seen,faithful,readingStable,reducedStable,noImmediateReloadRepeat:next.front.dataset.coverId!==readingId};
   });
-  expect(result).toEqual({size:[1110,1280],sameBucket:false,animated:true,moved:true,backIgnored:false,reset:true,staticFrame:true,frozen:false,backPreserved:true});
+  expect(result.size).toEqual([1110,1280]);expect(result.seen).toHaveLength(3);expect(new Set(result.seen).size).toBe(3);
+  expect(result.faithful).toEqual([true,true,true]);expect(result.readingStable).toBe(true);expect(result.reducedStable).toBe(true);expect(result.noImmediateReloadRepeat).toBe(true);
 });
 
 test("tucked paper inserts stay attached to their leaf through opening and resetting",async({page})=>{
@@ -842,12 +853,12 @@ test("tucked paper inserts stay attached to their leaf through opening and reset
     leaves.forEach(leaf=>leaf.updateWorld());const before=meshes.map(sample);
     leaves.forEach(leaf=>{leaf.snap(1);leaf.updateWorld()});const opened=meshes.map(sample);
     leaves.forEach(leaf=>{leaf.snap(0);leaf.updateWorld()});const restored=meshes.map(sample);
-    const embedded=meshes.every(mesh=>{const p=mesh.geometry.attributes.position;for(let i=0;i<p.count;i++)if(p.getX(i)<=leaves[0].width&&Math.abs(p.getZ(i))<=2.35&&Math.abs(p.getY(i))>.00001)return false;return true});
-    return {count:meshes.length,embedded,ids:meshes.map(mesh=>mesh.userData.flyerId),sizes:meshes.map(mesh=>[mesh.geometry.parameters.width,mesh.geometry.parameters.height]),shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
+    const onSurface=meshes.every(mesh=>{const p=mesh.geometry.attributes.position,side=mesh.userData.printFace===0?1:-1,min=leaves[mesh.userData.leaf].cover?.007:.004;for(let i=0;i<p.count;i++)if(p.getX(i)<=leaves[0].width&&Math.abs(p.getZ(i))<=2.35&&side*p.getY(i)<min)return false;return true});
+    return {count:meshes.length,onSurface,ids:meshes.map(mesh=>mesh.userData.flyerId),sizes:meshes.map(mesh=>[mesh.geometry.parameters.width,mesh.geometry.parameters.height]),shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
       crossesSpine:before.every((v,i)=>v.x>0&&opened[i].x<0),resetError:Math.max(...before.map((v,i)=>v.distanceTo(restored[i]))),
       finite:[...before,...opened,...restored].every(v=>v.toArray().every(Number.isFinite))};
   });
-  expect(result.count).toBe(5);expect(result.embedded).toBe(true);expect(result.ids).toEqual(['wavform','metronome','ghosts-n-stuff','jornada-coffee','picnic']);expect(result.sizes).toEqual(Array(5).fill([1.05,1.05]));expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
+  expect(result.count).toBe(5);expect(result.onSurface).toBe(true);expect(result.ids).toEqual(['wavform','metronome','ghosts-n-stuff','jornada-coffee','picnic']);expect(result.sizes).toEqual(Array(5).fill([1.05,1.05]));expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
 });
 
 test("printed ink preserves source colors under bright light and can still darken in shadow",async({page})=>{

@@ -23,7 +23,7 @@ function noteTexture(color:string,grid:boolean) {
   return map;
 }
 
-/** Tucked-in sheets share their host leaf's skeleton and animation clock. */
+/** Notes rest on their printed face and extend beyond it, sharing the page skeleton. */
 export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface,keep:(texture:THREE.Texture)=>THREE.Texture) {
   const W=leaves[0].width;
   // Discover the printed faces in reading order; covers and the blank page get no note.
@@ -48,14 +48,15 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     const geometry=new THREE.PlaneGeometry(width,height,8,10);geometry.rotateX(-Math.PI/2);
     const p=geometry.attributes.position,indices:number[]=[],weights:number[]=[];
     const cosine=Math.cos(angle),sine=Math.sin(angle);
+    const surfaceOffset=leaf.cover ? 0.0075 : 0.0045;
     for(let i=0;i<p.count;i++){
       let px=p.getX(i),pz=p.getZ(i);
       // Clip the tiny corners, with a slightly uneven free edge like cut paper.
       if(Math.abs(px)>width/2-.015&&Math.abs(pz)>height/2-.015){px-=Math.sign(px)*.018;pz-=Math.sign(pz)*.018}
       const x=cx+px*cosine-pz*sine,z=cz+px*sine+pz*cosine;
       const exposed=Math.max(0,x-W,Math.abs(z)-H/2);
-      // The hidden portion sits inside the leaf thickness, not on its opposite face.
-      p.setXYZ(i,x,side*exposed*exposed*.24,z);
+      // Put the adhesive area just above its own printed face, never on the reverse.
+      p.setXYZ(i,x,side*(surfaceOffset+exposed*exposed*.24),z);
       const along=THREE.MathUtils.clamp(x/W,0,1),joint=Math.min(LEAF_SEGMENTS-1,Math.floor(along*LEAF_SEGMENTS)),blend=along*LEAF_SEGMENTS-joint;
       indices.push(joint,joint+1,0,0);weights.push(1-blend,blend,0,0);
     }
@@ -63,7 +64,7 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     geometry.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));geometry.computeVertexNormals();
     const material=surface({map:keep(noteTexture(color,grid)),roughness:.97,metalness:0,side:THREE.DoubleSide});
     const mesh=new THREE.SkinnedMesh(geometry,material);
-    mesh.name=`tucked-paper-${id}`;mesh.userData.leaf=leaf.id;mesh.userData.paperInsert=true;mesh.userData.flyerId=id;
+    mesh.name=`tucked-paper-${id}`;mesh.userData.leaf=leaf.id;mesh.userData.paperInsert=true;mesh.userData.flyerId=id;mesh.userData.printFace=face;
     mesh.castShadow=mesh.receiveShadow=true;
     mesh.boundingSphere=new THREE.Sphere(new THREE.Vector3(),Math.hypot(W+.8,H/2+.8)+.4);
     leaf.group.add(mesh);mesh.bind(leaf.mesh.skeleton,leaf.mesh.bindMatrix);
