@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
+import "@fontsource/caveat/latin-400.css";
 import "../cartridge/style.css";
 import "./style.css";
 import { useContentReveal } from "../useContentReveal";
@@ -49,7 +50,8 @@ function AfterHours() {
   }, []);
   useEffect(() => {
     let alive = true, book, texture;
-    Promise.all([import("../book/BookScene"), import("three"), prepareFlyerPages(), prepareFlyerCovers()]).then(([{ BookScene }, THREE, pageArtwork, coverArtwork]) => {
+    const handwriting = document.fonts.load('400 26px "Caveat"').catch(() => []);
+    Promise.all([import("../book/BookScene"), import("three"), prepareFlyerPages(), prepareFlyerCovers(), handwriting]).then(([{ BookScene }, THREE, pageArtwork, coverArtwork]) => {
       if (!alive) return;
       const dark = document.documentElement.dataset.colorMode === "dark";
       try {

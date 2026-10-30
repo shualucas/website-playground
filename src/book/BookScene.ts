@@ -13,7 +13,7 @@ import { PagePopups } from "./popups";
 import { projectTheme } from "./themes";
 import { measureTurnEnvelope, fitTurnEnvelope } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
-import { createPaperInserts, INSERT_SAMPLES } from "./paper-inserts";
+import { createPaperInserts, hoverPaperInsert, INSERT_SAMPLES } from "./paper-inserts";
 import { preservePrintColors } from "./printed-paper";
 import {
   createLeafGeometry,
@@ -134,6 +134,7 @@ export class BookScene {
   private flexVelocity = 0;
   private leaves: SkinnedLeaf[] = [];
   private paperInserts: THREE.SkinnedMesh[] = [];
+  private hoveredNote: THREE.SkinnedMesh | null = null;
   private scheduler!: TurnScheduler;
   private binding!: ReturnType<typeof createBinding>;
   private portals: AsciiPortal[] = [];
@@ -840,12 +841,13 @@ export class BookScene {
     this.elapsed += dt;
     if (this.elapsed >= INTRO_DURATION) this.finishArrival();
   }
-  private setHover(id: number | null) {
+  private setHover(id: number | null, note:THREE.SkinnedMesh|null=null) {
     this.hovered =
       this.grip?.moved || this.scheduler.moving || this.intro ? null : id;
+    this.hoveredNote=this.grip?.moved || this.scheduler.moving || this.intro ? null : note;
     this.host.style.cursor = this.grip?.moved
       ? "grabbing"
-      : id !== null
+      : id !== null || this.hoveredNote !== null
         ? "pointer"
         : "default";
     if (this.motion.matches) {
@@ -862,6 +864,14 @@ export class BookScene {
           ? target
           : THREE.MathUtils.damp(material.emissiveIntensity, target, 12, dt);
       }
+    for(const mesh of this.paperInserts){
+      const target=mesh===this.hoveredNote?1:0;
+      let strength=this.motion.matches?target:THREE.MathUtils.damp(mesh.userData.hoverStrength,target,12,dt);
+      if(Math.abs(strength-target)<.001)strength=target;
+      // Reduced motion uses a static ink/paper highlight instead of deformation.
+      if(hoverPaperInsert(mesh,this.motion.matches?0:strength))this.renderer.shadowMap.needsUpdate=true;
+      (mesh.material as PaperMaterial).emissiveIntensity=strength*.12;
+    }
   }
   private bookHit(event: { clientX: number; clientY: number }) {
     const rect = this.host.getBoundingClientRect();
@@ -913,7 +923,7 @@ export class BookScene {
           ? { id, x: event.clientX, y: event.clientY }
           : null,
       );
-      this.setHover(id || note ? null : hit ? Number(hit.object.userData.leaf) : null);
+      this.setHover(id || note ? null : hit ? Number(hit.object.userData.leaf) : null,note?hit!.object as THREE.SkinnedMesh:null);
       if (id || note) this.host.style.cursor = "pointer";
       return;
     }
@@ -981,6 +991,7 @@ export class BookScene {
       lastY: event.clientY,
       moved: false,
     };
+    this.setHover(null);
   };
   private onUp = (event: PointerEvent) => {
     if (this.grip?.id !== event.pointerId) return;
@@ -1355,6 +1366,7 @@ export class BookScene {
     data.capturedPages = String(this.callbacks.printPages?.length ?? 0);
     data.pageCount = String(this.leaves.length * 2);
     data.paperInserts = String(this.paperInserts.length);
+    data.hoveredNote=this.hoveredNote?.userData.flyerId??"";
     if (this.paperInserts.length) {
       const rect=this.host.getBoundingClientRect();
       data.noteHits=JSON.stringify(this.paperInserts.map(mesh=>{

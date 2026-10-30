@@ -7,17 +7,22 @@ export const INSERT_SAMPLES = [0,8,45,49,53,90,98];
 const NOTE_SIZE=1.05;
 type Surface = (params:THREE.MeshPhysicalMaterialParameters)=>PaperMaterial;
 
-function noteTexture(color:string,grid:boolean) {
+function noteTexture(color:string,grid:boolean,text:string) {
   const canvas=document.createElement("canvas");canvas.width=canvas.height=256;
   const ctx=canvas.getContext("2d")!;
   ctx.fillStyle=color;ctx.fillRect(0,0,256,256);
   ctx.strokeStyle="#52515a24";ctx.lineWidth=1;
   if(grid){
     for(let n=24;n<256;n+=24){ctx.beginPath();ctx.moveTo(n,0);ctx.lineTo(n,256);ctx.moveTo(0,n);ctx.lineTo(256,n);ctx.stroke()}
-  }else{
-    ctx.strokeStyle="#55505c45";ctx.lineWidth=2;ctx.lineCap="round";
-    for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(28,70+i*30);ctx.bezierCurveTo(65,65+i*30,110,76+i*30,174-i*18,69+i*30);ctx.stroke()}
   }
+  ctx.fillStyle="#39312b";ctx.font='400 22px "Caveat",cursive';
+  const lines:string[]=[];let line="";
+  for(const word of text.split(" ")){
+    const next=line?`${line} ${word}`:word;
+    if(line&&ctx.measureText(next).width>208){lines.push(line);line=word}else line=next;
+  }
+  if(line)lines.push(line);
+  lines.forEach((line,index)=>ctx.fillText(line,24,38+index*24));
   let seed=701;
   for(let i=0;i<1600;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const x=seed%256;seed=(Math.imul(seed,1664525)+1013904223)>>>0;ctx.fillStyle=i%2?"#ffffff18":"#39312b0c";ctx.fillRect(x,seed%256,1,1)}
   const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=4;
@@ -42,12 +47,14 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
   ];
   return prints.map(({leaf,face,id},index)=>{
     const [edge,along,peek,angle,grid]=placements[index%placements.length];
-    const color=zineNotes.find(note=>note.id===id)?.color??"#efda7d";
+    const note=zineNotes.find(note=>note.id===id),color=note?.color??"#efda7d";
     const width=NOTE_SIZE,height=NOTE_SIZE;
     const cx=edge==="right"?W-width/2+peek:along;
     const cz=edge==="top"?-H/2+height/2-peek:edge==="bottom"?H/2-height/2+peek:along;
     const side=face===0?1:-1;
     const geometry=new THREE.PlaneGeometry(width,height,8,10);geometry.rotateX(-Math.PI/2);
+    // A reverse-face note is read after its page turns over, so mirror its UVs.
+    if(face===1){const uv=geometry.attributes.uv;for(let i=0;i<uv.count;i++)uv.setX(i,1-uv.getX(i))}
     const p=geometry.attributes.position,indices:number[]=[],weights:number[]=[];
     const cosine=Math.cos(angle),sine=Math.sin(angle);
     const surfaceOffset=leaf.cover ? 0.0075 : 0.0045;
@@ -62,12 +69,26 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     }
     geometry.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
     geometry.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));geometry.computeVertexNormals();
-    const material=surface({map:keep(noteTexture(color,grid)),roughness:.97,metalness:0,side:THREE.DoubleSide});
+    const material=surface({map:keep(noteTexture(color,grid,note?.text??"")),roughness:.97,metalness:0,side:THREE.DoubleSide,emissive:"#f7e4a7",emissiveIntensity:0});
     const mesh=new THREE.SkinnedMesh(geometry,material);
     mesh.name=`tucked-paper-${id}`;mesh.userData.leaf=leaf.id;mesh.userData.paperInsert=true;mesh.userData.flyerId=id;mesh.userData.printFace=face;
+    mesh.userData.restPositions=new Float32Array(p.array);mesh.userData.pageWidth=W;mesh.userData.hoverStrength=0;
     mesh.castShadow=mesh.receiveShadow=true;
     mesh.boundingSphere=new THREE.Sphere(new THREE.Vector3(),Math.hypot(W+.8,H/2+.8)+.4);
     leaf.group.add(mesh);mesh.bind(leaf.mesh.skeleton,leaf.mesh.bindMatrix);
     return mesh;
   });
+}
+
+/** Only the free edge peels up. The adhesive area and square corners stay fixed. */
+export function hoverPaperInsert(mesh:THREE.SkinnedMesh,strength:number) {
+  if(Math.abs(mesh.userData.hoverStrength-strength)<.0001)return false;
+  mesh.userData.hoverStrength=strength;
+  const rest=mesh.userData.restPositions as Float32Array,p=mesh.geometry.attributes.position;
+  const side=mesh.userData.printFace===0?1:-1,W=mesh.userData.pageWidth as number;
+  for(let i=0;i<p.count;i++){
+    const exposed=Math.max(0,rest[i*3]-W,Math.abs(rest[i*3+2])-H/2);
+    p.setY(i,rest[i*3+1]+side*.18*Math.pow(Math.min(1,exposed/.6),2)*strength);
+  }
+  p.needsUpdate=true;mesh.geometry.computeVertexNormals();return true;
 }
