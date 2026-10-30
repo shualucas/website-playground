@@ -3,6 +3,7 @@ import { PAGE_HEIGHT as H } from "./materials";
 import { LEAF_SEGMENTS, type SkinnedLeaf, type PaperMaterial } from "./leaf";
 
 export const INSERT_SAMPLES = [0,8,45,49,53,90,98];
+const NOTE_SIZE=1.05;
 type Surface = (params:THREE.MeshPhysicalMaterialParameters)=>PaperMaterial;
 
 function noteTexture(color:string,grid:boolean) {
@@ -25,20 +26,25 @@ function noteTexture(color:string,grid:boolean) {
 /** Tucked-in sheets share their host leaf's skeleton and animation clock. */
 export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface,keep:(texture:THREE.Texture)=>THREE.Texture) {
   const W=leaves[0].width;
-  // x/z centers, width, height, in-plane angle, leaf index, stock, graph paper.
-  const pieces:[number,number,number,number,number,number,string,boolean][]=[
-    [W*.27,-H/2-.17,.76,.78,-.09,1,"#faf5df",true],
-    [W*.65,-H/2-.13,.56,.58,.08,2,"#edcf6a",false],
-    [W*.88,-H/2-.12,.46,.54,-.14,1,"#b9cdda",true],
-    [W+.12,-1.30,.58,.40,.07,2,"#c5b2df",false],
-    [W+.15,-.30,.64,.47,-.10,1,"#ebcd69",false],
-    [W+.10,.75,.57,.44,.12,2,"#e8a89c",false],
-    [W+.12,1.66,.57,.46,-.08,1,"#f8f3e6",true],
-    [W*.33,H/2+.14,.84,.67,.10,2,"#faf5e9",true],
-    [W*.73,H/2+.12,.60,.58,-.11,1,"#b9cbbb",false],
+  // Discover the printed faces in reading order; covers and the blank page get no note.
+  const prints=leaves.flatMap(leaf=>[0,1].flatMap(face=>{
+    const id=(leaf.faces[face].image as HTMLCanvasElement)?.dataset?.flyerId;
+    return id?[{leaf,face,id}]:[];
+  }));
+  // Edge, position along that edge, exposed length, skew, stock, graph paper.
+  const placements:["top"|"right"|"bottom",number,number,number,string,boolean][]=[
+    ["top",W*.28,.48,-.06,"#efda7d",true],
+    ["right",-1.05,.66,.05,"#e9a096",false],
+    ["bottom",W*.63,.36,-.06,"#c9b5e2",false],
+    ["right",1.05,.54,-.05,"#abcbb4",true],
+    ["top",W*.75,.28,.06,"#b8cadf",false],
   ];
-  return pieces.map(([cx,cz,width,height,angle,index,color,grid],id)=>{
-    const leaf=leaves[Math.min(index,leaves.length-2)];
+  return prints.map(({leaf,face,id},index)=>{
+    const [edge,along,peek,angle,color,grid]=placements[index%placements.length];
+    const width=NOTE_SIZE,height=NOTE_SIZE;
+    const cx=edge==="right"?W-width/2+peek:along;
+    const cz=edge==="top"?-H/2+height/2-peek:edge==="bottom"?H/2-height/2+peek:along;
+    const side=face===0?1:-1;
     const geometry=new THREE.PlaneGeometry(width,height,8,10);geometry.rotateX(-Math.PI/2);
     const p=geometry.attributes.position,indices:number[]=[],weights:number[]=[];
     const cosine=Math.cos(angle),sine=Math.sin(angle);
@@ -48,7 +54,8 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
       if(Math.abs(px)>width/2-.015&&Math.abs(pz)>height/2-.015){px-=Math.sign(px)*.018;pz-=Math.sign(pz)*.018}
       const x=cx+px*cosine-pz*sine,z=cz+px*sine+pz*cosine;
       const exposed=Math.max(0,x-W,Math.abs(z)-H/2);
-      p.setXYZ(i,x,-.004+exposed*exposed*.24,z);
+      // The hidden portion sits inside the leaf thickness, not on its opposite face.
+      p.setXYZ(i,x,side*exposed*exposed*.24,z);
       const along=THREE.MathUtils.clamp(x/W,0,1),joint=Math.min(LEAF_SEGMENTS-1,Math.floor(along*LEAF_SEGMENTS)),blend=along*LEAF_SEGMENTS-joint;
       indices.push(joint,joint+1,0,0);weights.push(1-blend,blend,0,0);
     }
@@ -56,7 +63,7 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     geometry.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));geometry.computeVertexNormals();
     const material=surface({map:keep(noteTexture(color,grid)),roughness:.97,metalness:0,side:THREE.DoubleSide});
     const mesh=new THREE.SkinnedMesh(geometry,material);
-    mesh.name=`tucked-paper-${id}`;mesh.userData.leaf=leaf.id;mesh.userData.paperInsert=true;
+    mesh.name=`tucked-paper-${id}`;mesh.userData.leaf=leaf.id;mesh.userData.paperInsert=true;mesh.userData.flyerId=id;
     mesh.castShadow=mesh.receiveShadow=true;
     mesh.boundingSphere=new THREE.Sphere(new THREE.Vector3(),Math.hypot(W+.8,H/2+.8)+.4);
     leaf.group.add(mesh);mesh.bind(leaf.mesh.skeleton,leaf.mesh.bindMatrix);

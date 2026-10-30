@@ -14,6 +14,7 @@ import { projectTheme } from "./themes";
 import { measureTurnEnvelope, fitTurnEnvelope } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
 import { createPaperInserts, INSERT_SAMPLES } from "./paper-inserts";
+import { preservePrintColors } from "./printed-paper";
 import {
   createLeafGeometry,
   LEAF_GAP,
@@ -365,7 +366,7 @@ export class BookScene {
     const makeFace = (map: THREE.Texture, cover = false) => {
       const printedFlyer = Boolean(this.callbacks.pageArtwork && (map.image as HTMLCanvasElement).dataset?.flyerId);
       const printedCover = cover && Boolean(this.callbacks.coverArtwork);
-      return this.surface({
+      const face = this.surface({
         map,
         roughness: printedFlyer || printedCover ? 0.95 : cover ? 0.39 : 0.58,
         roughnessMap: detail.roughness,
@@ -376,6 +377,7 @@ export class BookScene {
         emissive: new THREE.Color("#ffc28a"),
         emissiveIntensity: 0,
       });
+      return printedFlyer ? preservePrintColors(face) : face;
     };
     const inside = this.callbacks.projects.map((project, i) =>
       this.keep(

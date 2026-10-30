@@ -790,7 +790,7 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(2);
   await expect(page.locator('.zine-footer,.zine-pagination,.zine-current')).toHaveCount(0);
   await expect(page.locator('.zine-heading')).toHaveCount(0);
-  await expect(book).toHaveAttribute('data-paper-inserts','9');
+  await expect(book).toHaveAttribute('data-paper-inserts','5');
   await expect(page.getByText('Vol. 01',{exact:true})).toHaveCount(0);
   await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(240, 240, 240)');
   expect(Number(await book.getAttribute('data-page-aspect'))).toBeCloseTo(1110/1280,8);
@@ -830,19 +830,45 @@ test("tucked paper inserts stay attached to their leaf through opening and reset
     const THREE=await import('/node_modules/three/build/three.module.js');
     const {SkinnedLeaf,createLeafGeometry}=await import('/src/book/leaf.ts');
     const {createPaperInserts}=await import('/src/book/paper-inserts.ts');
-    const geometry=createLeafGeometry(.006,4.7*1110/1280),map=new THREE.Texture();
-    const materials=Array.from({length:6},()=>new THREE.MeshStandardMaterial({map}));
-    const leaves=Array.from({length:4},(_,i)=>new SkinnedLeaf(i,i===0||i===3,4,geometry,materials,4.7*1110/1280));
+    const geometry=createLeafGeometry(.006,4.7*1110/1280);
+    const ids=[['','wavform'],['metronome','ghosts-n-stuff'],['jornada-coffee','picnic'],['','']];
+    const leaves=Array.from({length:4},(_,i)=>{
+      const materials=Array.from({length:6},()=>new THREE.MeshStandardMaterial({map:new THREE.Texture()}));
+      ids[i].forEach((id,face)=>{const canvas=document.createElement('canvas');if(id)canvas.dataset.flyerId=id;materials[face+2].map=new THREE.CanvasTexture(canvas)});
+      return new SkinnedLeaf(i,i===0||i===3,4,geometry,materials,4.7*1110/1280);
+    });
     const meshes=createPaperInserts(leaves,params=>new THREE.MeshStandardMaterial(params),map=>map);
     const sample=mesh=>mesh.getVertexPosition(49,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld);
     leaves.forEach(leaf=>leaf.updateWorld());const before=meshes.map(sample);
     leaves.forEach(leaf=>{leaf.snap(1);leaf.updateWorld()});const opened=meshes.map(sample);
     leaves.forEach(leaf=>{leaf.snap(0);leaf.updateWorld()});const restored=meshes.map(sample);
-    return {count:meshes.length,shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
+    const embedded=meshes.every(mesh=>{const p=mesh.geometry.attributes.position;for(let i=0;i<p.count;i++)if(p.getX(i)<=leaves[0].width&&Math.abs(p.getZ(i))<=2.35&&Math.abs(p.getY(i))>.00001)return false;return true});
+    return {count:meshes.length,embedded,ids:meshes.map(mesh=>mesh.userData.flyerId),sizes:meshes.map(mesh=>[mesh.geometry.parameters.width,mesh.geometry.parameters.height]),shared:meshes.every(mesh=>mesh.skeleton===leaves[mesh.userData.leaf].mesh.skeleton),
       crossesSpine:before.every((v,i)=>v.x>0&&opened[i].x<0),resetError:Math.max(...before.map((v,i)=>v.distanceTo(restored[i]))),
       finite:[...before,...opened,...restored].every(v=>v.toArray().every(Number.isFinite))};
   });
-  expect(result.count).toBe(9);expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
+  expect(result.count).toBe(5);expect(result.embedded).toBe(true);expect(result.ids).toEqual(['wavform','metronome','ghosts-n-stuff','jornada-coffee','picnic']);expect(result.sizes).toEqual(Array(5).fill([1.05,1.05]));expect(result.shared).toBe(true);expect(result.crossesSpine).toBe(true);expect(result.finite).toBe(true);expect(result.resetError).toBeLessThan(.00001);
+});
+
+test("printed ink preserves source colors under bright light and can still darken in shadow",async({page})=>{
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+    const THREE=await import('/node_modules/three/build/three.module.js');
+    const {preservePrintColors}=await import('/src/book/printed-paper.ts');
+    const renderer=new THREE.WebGLRenderer({antialias:false});renderer.setSize(8,8);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.04;
+    const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-1,1,1,-1,.1,10);camera.position.z=2;
+    const light=new THREE.AmbientLight('#ffffff',10);scene.add(light);
+    const geometry=new THREE.PlaneGeometry(2,2),pixels=new Uint8Array([32,154,69,255]);
+    const map=new THREE.DataTexture(pixels,1,1);map.colorSpace=THREE.SRGBColorSpace;map.needsUpdate=true;
+    const swatches=[[32,154,69],[55,126,240],[239,82,35],[36,36,36]],samples=[];
+    const read=()=>{renderer.render(scene,camera);const out=new Uint8Array(4),gl=renderer.getContext();gl.readPixels(4,4,1,1,gl.RGBA,gl.UNSIGNED_BYTE,out);return [...out].slice(0,3)};
+    for(const Material of [THREE.MeshPhongMaterial,THREE.MeshPhysicalMaterial]){
+      const material=preservePrintColors(new Material({map})),mesh=new THREE.Mesh(geometry,material);scene.add(mesh);light.intensity=10;
+      const bright=swatches.map(rgb=>{pixels.set(rgb);map.needsUpdate=true;return read()});light.intensity=.05;const dark=read();samples.push({bright,dark});scene.remove(mesh);material.dispose();
+    }
+    map.dispose();geometry.dispose();renderer.dispose();renderer.forceContextLoss();return {swatches,samples};
+  });
+  for(const sample of result.samples){sample.bright.forEach((rgb,i)=>rgb.forEach((value,channel)=>expect(Math.abs(value-result.swatches[i][channel])).toBeLessThanOrEqual(2)));expect(sample.dark.every(value=>value<30)).toBe(true);}
 });
 
 test("binding follows cover hinges and stays below opened cover surfaces through reversals", async ({ page }) => {
