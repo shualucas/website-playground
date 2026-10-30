@@ -1093,6 +1093,10 @@ test("resume Page stays fully inside desktop, phone and landscape viewports", as
     await page.setViewportSize({width,height});
     await expect.poll(async()=>{const r=await page.locator('.resume-sheet').boundingBox();return r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1}).toBe(true);
     await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    const controls=await page.locator('.resume-toolbar').boundingBox(),header=await page.locator('.resume-nav').boundingBox(),paper=await page.locator('.resume-sheet').boundingBox();
+    expect(controls.y).toBeGreaterThan(height*.7);expect(controls.y+controls.height).toBeLessThanOrEqual(height-11);
+    expect(paper.y+paper.height).toBeLessThan(controls.y);expect(header.y).toBe(24);expect(header.x).toBeGreaterThanOrEqual(24);
+    expect(await page.getByRole('link',{name:'Download PDF'}).evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})).toBe(true);
   }
 });
 
@@ -1182,18 +1186,25 @@ test('photos use a loose Polaroid spread and retain the zine at its own address'
 
 test('resume keeps its rendered sheet ready and controls fixed through both view transitions',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{if(message.type()==='error'&&/WebGLProgram|shader error/i.test(message.text()))errors.push(message.text())});
   await page.setViewportSize({width:1440,height:1000});await page.goto('/resume/');
   const main=page.locator('.resume-page'),sheet=page.locator('.resume-sheet'),canvas=page.locator('.resume-paper-canvas');
   await expect(sheet).toHaveAttribute('data-surface','webgl',{timeout:30000});await canvas.evaluate(el=>el.dataset.testIdentity='same-surface');
   await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();
   const controls=()=>page.locator('.resume-toolbar').boundingBox(),before=await controls();
+  expect(before.y).toBe(910);
+  const headerBefore=await page.locator('.resume-nav').boundingBox();expect(headerBefore.y).toBe(24);
+  await sheet.evaluate(el=>{window.__hoverSampling=true;window.__hoverPeak=1;const sample=()=>{window.__hoverPeak=Math.max(window.__hoverPeak,Number(el.dataset.hoverScale));if(window.__hoverSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
   const box=await sheet.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height*.45);
-  await expect.poll(async()=>Number(await sheet.getAttribute('data-hover-scale'))).toBeGreaterThan(1.025);
+  await expect.poll(()=>page.evaluate(()=>window.__hoverPeak)).toBeGreaterThan(1.065);
+  await expect.poll(async()=>Math.abs(Number(await sheet.getAttribute('data-hover-scale'))-1.06)).toBeLessThan(.001);
+  await page.evaluate(()=>window.__hoverSampling=false);
   const stableWidth=await sheet.evaluate(el=>el.clientWidth);
-  await page.mouse.move(8,8);await expect.poll(async()=>Number(await sheet.getAttribute('data-hover-scale'))).toBeLessThan(1.002);
+  await page.mouse.move(8,8);await expect.poll(async()=>Math.abs(Number(await sheet.getAttribute('data-hover-scale'))-1)).toBeLessThan(.002);
   expect(await sheet.evaluate(el=>el.clientWidth)).toBe(stableWidth);
   await page.getByRole('button',{name:'Read',exact:true}).click();await expect(main).toHaveAttribute('data-view','read');
   expect(await controls()).toEqual(before);await expect(canvas).toHaveAttribute('data-test-identity','same-surface');await expect(canvas).toBeHidden();await expect(sheet).toHaveAttribute('data-motion','paused');
+  expect(await page.locator('.resume-nav').boundingBox()).toEqual(headerBefore);
   await page.evaluate(()=>scrollTo(0,450));expect(await controls()).toEqual(before);
   await page.getByRole('button',{name:'Page',exact:true}).click();await expect(main).toHaveAttribute('data-transitioning','true');
   await expect(page.locator('.resume-morph-layer')).toHaveCount(3);

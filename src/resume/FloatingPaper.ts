@@ -7,6 +7,7 @@ export class FloatingPaper {
   private active=true;
   private hovered=false;
   private scale=1;
+  private velocityScale=0;
   private frame = 0;
   private last = 0;
   private time = 0;
@@ -55,7 +56,7 @@ export class FloatingPaper {
       this.surface=new PaperSurface(host,()=>this.paint());this.paint();return true;
     }).catch(()=>{if(!this.disposed)host.dataset.surface="fallback";return true});
   }
-  setActive(active:boolean){this.active=active;this.hovered=false;this.tapEligible=false;if(this.grip)this.release();this.paint();this.sync()}
+  setActive(active:boolean){this.active=active;this.hovered=false;this.velocityScale=0;this.tapEligible=false;if(this.grip)this.release();this.paint();this.sync()}
   capture(){this.paint();return this.surface?.capture()??null}
   private onLeave=()=>{this.hovered=false;this.schedule()};
   private isContact(event: Event) {
@@ -133,6 +134,7 @@ export class FloatingPaper {
   private onMotion = () => {
     if (this.grip) this.release();
     this.velocityPitch = this.velocityYaw = 0;
+    this.scale=1;this.velocityScale=0;
     this.bendX=this.bendY=this.targetBendX=this.targetBendY=this.velocityBendX=this.velocityBendY=0;
     this.targetPitch = this.pitch = this.motion.matches ? 0 : REST_PITCH;
     this.targetYaw = this.yaw = this.motion.matches ? 0 : REST_YAW;
@@ -163,9 +165,11 @@ export class FloatingPaper {
       this.velocityBendX+=((this.targetBendX-this.bendX)*150-this.velocityBendX*25)*step;
       this.velocityBendY+=((this.targetBendY-this.bendY)*150-this.velocityBendY*25)*step;
       this.bendX+=this.velocityBendX*step;this.bendY+=this.velocityBendY*step;
+      const targetScale=this.hovered&&!this.grip?1.06:1;
+      this.velocityScale+=((targetScale-this.scale)*420-this.velocityScale*20)*step;
+      this.scale+=this.velocityScale*step;
       remaining -= step;
     }
-    this.scale+=(this.hovered&&!this.grip?1.03-this.scale:1-this.scale)*(1-Math.exp(-24*dt));
     this.paint(); this.schedule();
   };
   private paint() {
@@ -198,7 +202,8 @@ export class FloatingPaper {
     this.input.removeEventListener("pointercancel", this.onCancel);
     this.input.removeEventListener("lostpointercapture", this.onCancel);
     this.input.removeEventListener("click", this.onClick, true);
-    for (const property of ["pitch", "yaw", "roll", "lift"]) this.host.style.removeProperty(`--paper-${property}`);
+    for (const property of ["pitch", "yaw", "roll", "lift", "scale"]) this.host.style.removeProperty(`--paper-${property}`);
+    delete this.host.dataset.hoverScale;
     delete this.host.dataset.orientation; delete this.host.dataset.motion;
   }
 }

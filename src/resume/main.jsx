@@ -106,9 +106,9 @@ function Resume() {
   openRead.current = () => chooseView("read");
   return <main ref={content} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"} data-transitioning={transitioning}>
     <div className="resume-gradient" ref={wash} data-active="true" aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
-    <header className="collection-header resume-nav" data-reveal data-reveal-at="0">
+    <div className="resume-header-shell"><header className="collection-header resume-nav" data-reveal data-reveal-at="0">
       <a href="/" aria-label="Home"><span className="link-copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Home</span></a><ThemeToggle />
-    </header>
+    </header></div>
     <div className="resume-toolbar" data-reveal data-reveal-at="90">
       <div className="resume-view-switch" role="group" aria-label="Résumé view"><button type="button" aria-pressed={selectedView === "page"} onClick={() => chooseView("page")} disabled={artFailed}>Page</button><button type="button" aria-pressed={selectedView === "read"} onClick={() => chooseView("read")}>Read</button></div>
       <a className="resume-download" ref={downloadButton} href={resume.links.pdf} download="Josh-Lucas-Resume.pdf" onPointerEnter={() => downloadMotion.current?.preload()} onFocus={() => downloadMotion.current?.preload()} onClick={event => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) downloadMotion.current?.play(); }}>Download PDF<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 18v3h14v-3" /></svg></a>

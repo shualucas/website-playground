@@ -4,6 +4,7 @@ import { studioEnvironment, surfaceDetail } from "../book/surfaces";
 
 export type PaperPose = { scale:number; pitch:number; yaw:number; roll:number; lift:number; bendX:number; bendY:number; grabX:number; grabY:number };
 const H = 4.7, W = H * 595 / 842, FLOAT_GAP = .75, FOCUS_Y = -.38;
+const HALO_MARGIN=.22;
 
 /** A thin, locally flexible sheet. FloatingPaper owns the only animation clock. */
 export class PaperSurface {
@@ -15,6 +16,29 @@ export class PaperSurface {
   private rest = new Float32Array(this.positions.array);
   private front: THREE.Mesh;
   private back: THREE.Mesh;
+  private halo: THREE.Mesh;
+  // A local, depth-tested halo follows the same deformed surface. No full-screen bloom pass.
+  private haloMaterial=new THREE.ShaderMaterial({
+    uniforms:{tint:{value:new THREE.Color("#edc7b9")},strength:{value:.23}},
+    vertexShader:`varying vec2 vHaloPoint;
+      void main(){
+        vec3 p=position;
+        p.xy*=vec2(${1+HALO_MARGIN*2/W},${1+HALO_MARGIN*2/H});
+        p.z-=.012;
+        vHaloPoint=(uv-.5)*vec2(${W+HALO_MARGIN*2},${H+HALO_MARGIN*2});
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
+      }`,
+    fragmentShader:`uniform vec3 tint;uniform float strength;varying vec2 vHaloPoint;
+      void main(){
+        vec2 q=abs(vHaloPoint)-(vec2(${W},${H})*.5-.065);
+        float d=length(max(q,0.))+min(max(q.x,q.y),0.)-.065;
+        float glow=exp(-pow(max(d,0.)/.09,1.5));
+        float fade=1.-smoothstep(.15,${HALO_MARGIN},d);
+        gl_FragColor=vec4(tint,glow*fade*strength);
+        #include <colorspace_fragment>
+      }`,
+    transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
+  });
   private material: THREE.MeshPhysicalMaterial;
   private depth:THREE.MeshDepthMaterial;
   private backMaterial = new THREE.MeshStandardMaterial({color:"#fffdf8",roughness:.9,side:THREE.BackSide});
@@ -55,25 +79,40 @@ export class PaperSurface {
     this.texture.anisotropy = Math.min(8,this.renderer.capabilities.getMaxAnisotropy());
     this.detail=surfaceDetail("paper");
     // Normalize studio illumination without filmic tone mapping lifting the printed blacks.
-    this.material = new THREE.MeshPhysicalMaterial({map:this.texture,roughness:.5,normalMap:this.detail.normal,normalScale:new THREE.Vector2(.055,.055),roughnessMap:this.detail.roughness,clearcoat:.35,clearcoatRoughness:.36,metalness:0,toneMapped:false,shadowSide:THREE.DoubleSide});
+    this.material = new THREE.MeshPhysicalMaterial({map:this.texture,roughness:.42,normalMap:this.detail.normal,normalScale:new THREE.Vector2(.055,.055),roughnessMap:this.detail.roughness,clearcoat:.6,clearcoatRoughness:.3,sheen:.2,sheenColor:new THREE.Color("#fff4e7"),sheenRoughness:.55,metalness:0,toneMapped:false,shadowSide:THREE.DoubleSide});
     this.depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,side:THREE.DoubleSide});
     for(const material of [this.material,this.backMaterial,this.depth]){
       material.onBeforeCompile=shader=>{
         shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec2 vPaperUv;').replace('#include <uv_vertex>','#include <uv_vertex>\nvPaperUv=uv;');
         shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vPaperUv;').replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
           vec2 paperQ=abs((vPaperUv-.5)*vec2(${W},${H}))-(vec2(${W},${H})*.5-.065);
-          if(length(max(paperQ,0.0))+min(max(paperQ.x,paperQ.y),0.0)>.065)discard;`);
-        if(material===this.material)shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
-          // Satin highlights stay restrained over the original printed ink.
-          float inkLuma=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
-          outgoingLight=min(outgoingLight,diffuseColor.rgb+vec3(.018+.07*smoothstep(.25,.8,inkLuma)));
-          #include <opaque_fragment>`);
+          float paperDistance=length(max(paperQ,0.0))+min(max(paperQ.x,paperQ.y),0.0)-.065;
+          if(paperDistance>0.)discard;`);
+        if(material!==this.depth){
+          shader.uniforms.paperEdge={value:new THREE.Color("#a59b91")};
+          shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 paperEdge;');
+          shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+            ${material===this.material?`
+            // Let the broad satin response move across the stock without lifting printed blacks.
+            float inkLuma=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+            float cleanStock=smoothstep(.25,.85,inkLuma);
+            outgoingLight=min(outgoingLight,diffuseColor.rgb+vec3(.012+.11*cleanStock));
+            float rim=pow(1.-abs(dot(normalize(vViewPosition),normal)),3.);
+            outgoingLight+=vec3(.06,.045,.03)*rim*cleanStock;
+            `:''}
+            // Screen-space width keeps the stroke near one pixel at every viewport size.
+            float edgePixel=max(fwidth(paperDistance),.0001);
+            float paperStroke=1.-smoothstep(edgePixel*.35,edgePixel*1.4,-paperDistance);
+            outgoingLight=mix(outgoingLight,paperEdge,paperStroke);
+            #include <opaque_fragment>`);
+        }
       };
-      material.customProgramCacheKey=()=>`resume-rounded-satin-${material.type}-v1`;
+      material.customProgramCacheKey=()=>`resume-rounded-satin-edge-${material.type}-v2`;
     }
     this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;this.front.customDepthMaterial=this.depth;
     this.back = new THREE.Mesh(this.geometry,this.backMaterial);
-    this.scene.add(this.front,this.back);
+    this.halo=new THREE.Mesh(this.geometry,this.haloMaterial);this.halo.frustumCulled=false;
+    this.scene.add(this.front,this.back,this.halo);
     // Keep the zine's actual Y-up studio. The document is upright, above an XZ floor.
     const hemisphere=new THREE.HemisphereLight("#ffffff","#63635f",1.05);
     this.key.position.set(-1.5,15,-2);this.key.castShadow=true;
@@ -88,9 +127,10 @@ export class PaperSurface {
     this.scene.add(hemisphere,this.key,fill,bounce,this.floor);
     this.contacts=[...host.querySelectorAll<HTMLAnchorElement>(".paper-contact")].map(element=>({element,x:parseFloat(element.style.left)/100,y:parseFloat(element.style.top)/100,style:element.getAttribute("style")}));
     this.observer=new ResizeObserver(this.resize);this.observer.observe(host);this.observer.observe(host.parentElement!);
-    this.theme=new MutationObserver(()=>{this.floorMaterial.opacity=document.documentElement.dataset.colorMode==="dark"?.4:.18;this.invalidate()});
+    const updateTheme=()=>{const dark=document.documentElement.dataset.colorMode==="dark";this.floorMaterial.opacity=dark?.4:.18;this.haloMaterial.uniforms.strength.value=dark?.32:.23};
+    this.theme=new MutationObserver(()=>{updateTheme();this.invalidate()});
     this.theme.observe(document.documentElement,{attributes:true,attributeFilter:["data-color-mode"]});
-    this.floorMaterial.opacity=document.documentElement.dataset.colorMode==="dark"?.4:.18;
+    updateTheme();
     host.parentElement!.prepend(this.renderer.domElement);
     this.resize();host.dataset.surface="webgl";
     host.dataset.groundY=String(this.floor.position.y);
@@ -143,9 +183,7 @@ export class PaperSurface {
     // Fixed conservative bounds include the curl without recomputing them each frame.
     this.geometry.boundingSphere ??= new THREE.Sphere(new THREE.Vector3(),3.5);
     this.rotation.set(THREE.MathUtils.degToRad(pose.pitch),THREE.MathUtils.degToRad(pose.yaw),THREE.MathUtils.degToRad(pose.roll));
-    this.front.rotation.copy(this.rotation);this.back.rotation.copy(this.rotation);
-    this.front.scale.setScalar(pose.scale);this.back.scale.setScalar(pose.scale);
-    this.front.position.y=this.back.position.y=-pose.lift/this.scale;
+    for(const mesh of [this.front,this.back,this.halo]){mesh.rotation.copy(this.rotation);mesh.scale.setScalar(pose.scale);mesh.position.y=-pose.lift/this.scale}
     this.front.updateMatrixWorld();
     this.renderer.render(this.scene,this.camera);
     const originX=(this.width-this.host.clientWidth)/2,originY=(this.height-this.host.clientHeight)/2-this.host.clientHeight*.08;
@@ -166,7 +204,9 @@ export class PaperSurface {
     const bounds=this.renderer.domElement.getBoundingClientRect();
     const points=[];
     for(let i=0;i<this.positions.count;i++){
-      this.vector.fromBufferAttribute(this.positions,i).applyMatrix4(this.front.matrixWorld).project(this.camera);
+      this.vector.fromBufferAttribute(this.positions,i);
+      this.vector.x*=1+HALO_MARGIN*2/W;this.vector.y*=1+HALO_MARGIN*2/H;this.vector.z-=.012;
+      this.vector.applyMatrix4(this.front.matrixWorld).project(this.camera);
       points.push({x:(this.vector.x+1)*this.width/2,y:(1-this.vector.y)*this.height/2});
     }
     const left=Math.max(0,Math.floor(Math.min(...points.map(p=>p.x)))-2),top=Math.max(0,Math.floor(Math.min(...points.map(p=>p.y)))-2);
@@ -183,7 +223,7 @@ export class PaperSurface {
     this.observer.disconnect();this.theme.disconnect();
     this.renderer.domElement.removeEventListener("webglcontextlost",this.onLost);
     this.renderer.domElement.remove();
-    this.geometry.dispose();this.depth.dispose();this.material.dispose();this.backMaterial.dispose();this.texture.dispose();
+    this.geometry.dispose();this.depth.dispose();this.material.dispose();this.backMaterial.dispose();this.haloMaterial.dispose();this.texture.dispose();
     Object.values(this.detail).forEach(map=>map.dispose());
     this.environment.dispose();
     this.floor.geometry.dispose();this.floorMaterial.dispose();this.key.shadow.dispose();
