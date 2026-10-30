@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import "./reveal.css";
+import "./link-motion.css";
 
 /** Reveal each content block once, including content below the initial fold. */
 export function useContentReveal(scope, version, enabled = true) {

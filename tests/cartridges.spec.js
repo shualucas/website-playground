@@ -878,7 +878,8 @@ test("resume page preserves original artwork and downloads its one-page PDF with
   const size=await sheet.boundingBox();expect(size.width).toBeGreaterThan(200);expect(size.y).toBeGreaterThan(140);expect(size.y+size.height).toBeLessThanOrEqual(await page.evaluate(()=>innerHeight));expect(size.width/size.height).toBeCloseTo(595/842,2);
   await expect(page.locator('.paper-contact[aria-label="LinkedIn"]')).toHaveAttribute('href','https://www.linkedin.com/in/joshglucas/');
   await expect(page.locator('.paper-contact[aria-label="joshglucas@gmail.com"]')).toHaveAttribute('href','mailto:joshglucas@gmail.com');
-  await expect(page.getByRole('link',{name:'shualucas on X'})).toHaveAttribute('href','https://x.com/shualucas');
+  await expect(page.locator('.resume-page .profile-links')).toHaveCount(0);
+  await expect(page.getByText('Drag gently to tilt · R to reset',{exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(r=>/BookScene|CartridgeScene|FilmCameraScene/.test(r.name)))).toBe(false);
   const pending=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF'}).click();const download=await pending;
   expect(download.suggestedFilename()).toBe('Josh-Lucas-Resume.pdf');
@@ -899,13 +900,17 @@ test("resume page preserves original artwork and downloads its one-page PDF with
 
 test("floating resume tilts on drag, settles without resizing, and resets with R", async ({ page }) => {
   await page.goto('/resume/');const sheet=page.locator('.resume-sheet');await expect(sheet).toHaveAttribute('data-art-ready','true');await expect(sheet).toHaveAttribute('data-motion','floating');
+  await expect(sheet).toHaveAttribute('data-surface','webgl');
   const initial=await sheet.getAttribute('data-orientation'),width=await sheet.evaluate(el=>el.clientWidth),box=await sheet.boundingBox();
   await page.mouse.move(box.x+box.width*.45,box.y+150);await page.mouse.down();await page.mouse.move(box.x+box.width*.45+150,box.y+220,{steps:8});
   await expect(sheet).toHaveAttribute('data-dragging','true');await expect(sheet).not.toHaveAttribute('data-orientation',initial);
+  await expect.poll(async()=>Number(await sheet.getAttribute('data-bend'))).toBeGreaterThan(.05);
   await page.mouse.up();await expect(sheet).toHaveAttribute('data-dragging','false');
   await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+1.6)<1.4&&Math.abs(y-.7)<1.5}).toBe(true);
   expect(await sheet.evaluate(el=>el.clientWidth)).toBe(width);await expect(page).toHaveURL(/\/resume\/$/);
+  await expect.poll(async()=>Number(await sheet.getAttribute('data-bend'))).toBeLessThan(.01);
   await page.keyboard.press('r');await page.emulateMedia({reducedMotion:'reduce'});await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
+  await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
 });
 
 test("mobile resume defaults to readable text and an unavailable preview falls back to reading", async ({ page }) => {
@@ -915,6 +920,16 @@ test("mobile resume defaults to readable text and an unavailable preview falls b
   await page.route('**/resume/resume-art-*.png',route=>route.abort());await page.getByRole('button',{name:'Page',exact:true}).click();
   await expect(page.getByRole('button',{name:'Page',exact:true})).toBeDisabled();await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("resume keeps its original paper preview usable without WebGL", async ({page})=>{
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/resume/');const sheet=page.locator('.resume-sheet');
+  await expect(sheet).toHaveAttribute('data-surface','fallback');
+  await expect(page.locator('.resume-artwork picture')).toHaveCSS('opacity','1');
+  await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
+  await page.emulateMedia({reducedMotion:'reduce'});await page.getByRole('button',{name:'Read',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
 });
 
 test("resume Page stays fully inside desktop, phone and landscape viewports", async ({ page }) => {

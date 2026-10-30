@@ -6,7 +6,6 @@ import "@fontsource/dm-sans/latin-500.css";
 import "../cartridge/style.css";
 import "./style.css";
 import { useContentReveal } from "../useContentReveal";
-import { SocialLinks } from "../SocialLinks";
 import { ThemeToggle } from "../ThemeToggle";
 import { FloatingPaper } from "./FloatingPaper";
 import { AmbientGradient } from "./AmbientGradient";
@@ -90,7 +89,7 @@ function Resume() {
       <div className="resume-view-switch" role="group" aria-label="Résumé view"><button type="button" aria-pressed={!reading} onClick={() => chooseView("page")} disabled={artFailed}>Page</button><button type="button" aria-pressed={reading} onClick={() => chooseView("read")}>Read</button></div>
       <a className="resume-download" ref={downloadButton} href={resume.links.pdf} download="Josh-Lucas-Resume.pdf" onPointerEnter={() => downloadMotion.current?.preload()} onFocus={() => downloadMotion.current?.preload()} onClick={event => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) downloadMotion.current?.play(); }}>Download PDF<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 18v3h14v-3" /></svg></a>
     </div>
-    <p className="sr-only" role="status">{reading ? "Reading view. Text is selectable and arranged for your screen." : "Floating page view. Drag with a mouse to tilt the sheet. Press R to reset. Use Read for selectable text."}</p>
+    <p className="sr-only" role="status">{reading ? "Reading view. Text is selectable and arranged for your screen." : "Floating page view. Use Read for selectable text."}</p>
     <div className="resume-paper-stage" data-reveal data-reveal-at="180">
       <div className="resume-sheet" ref={sheet} data-art-ready={artReady} data-mode={reading ? "read" : "page"}>
         {!reading && <div className="resume-artwork" style={{ aspectRatio: `${paper.width} / ${paper.height}` }}>
@@ -101,7 +100,6 @@ function Resume() {
         <ResumeDocument hidden={!reading} />
       </div>
     </div>
-    <footer className="resume-site-footer" data-reveal data-reveal-at="300"><SocialLinks /><span>{reading ? "" : "Drag gently to tilt · R to reset"}</span></footer>
   </main>;
 }
 createRoot(document.getElementById("root")).render(<Resume />);

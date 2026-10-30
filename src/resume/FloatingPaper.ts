@@ -1,4 +1,5 @@
-/** DOM 3D keeps the original artwork sharp and avoids lighting changes to printed text. */
+import type { PaperSurface } from "./PaperSurface";
+/** One input/animation clock drives the flexible surface, with a DOM fallback. */
 export class FloatingPaper {
   private frame = 0;
   private last = 0;
@@ -15,6 +16,17 @@ export class FloatingPaper {
   private velocityPitch = 0;
   private velocityYaw = 0;
   private suppressClick = false;
+  private surface: PaperSurface | null = null;
+  private grabX = 0;
+  private grabY = 0;
+  private bendX = 0;
+  private bendY = 0;
+  private targetBendX = 0;
+  private targetBendY = 0;
+  private velocityBendX = 0;
+  private velocityBendY = 0;
+  private gripWidth = 1;
+  private gripHeight = 1;
 
   constructor(private host: HTMLElement) {
     host.addEventListener("pointerdown", this.onDown);
@@ -28,11 +40,18 @@ export class FloatingPaper {
     this.observer = new IntersectionObserver(([entry]) => { this.visible = entry.isIntersecting; this.sync(); });
     this.observer.observe(host);
     this.onMotion();
+    import("./PaperSurface").then(({PaperSurface})=>{
+      if(this.disposed)return;
+      this.surface=new PaperSurface(host,()=>this.paint());this.paint();
+    }).catch(()=>{if(!this.disposed)host.dataset.surface="fallback"});
   }
   private onDown = (event: PointerEvent) => {
     this.suppressClick = false;
     if (event.button !== 0 || !event.isPrimary || event.pointerType === "touch" || (event.target as HTMLElement).closest("a,button")) return;
     this.grip = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+    const box=this.host.getBoundingClientRect();this.gripWidth=box.width;this.gripHeight=box.height;
+    this.grabX=Math.max(-1,Math.min(1,(event.clientX-box.left)/box.width*2-1));
+    this.grabY=Math.max(-1,Math.min(1,1-(event.clientY-box.top)/box.height*2));
     this.suppressClick = false;
   };
   private onMove = (event: PointerEvent) => {
@@ -44,9 +63,11 @@ export class FloatingPaper {
     this.host.setPointerCapture(event.pointerId);
     this.host.dataset.dragging = "true";
     event.preventDefault();
-    this.targetYaw = Math.max(-14, Math.min(14, 0.7 + dx * 0.045));
-    this.targetPitch = Math.max(-10, Math.min(10, -1.6 - dy * 0.035));
-    if (this.motion.matches) { this.pitch = this.targetPitch; this.yaw = this.targetYaw; this.paint(); }
+    this.targetYaw = Math.max(-16.1, Math.min(16.1, 0.7 + dx * 0.05175));
+    this.targetPitch = Math.max(-11.5, Math.min(11.5, -1.6 - dy * 0.04025));
+    this.targetBendX=Math.max(-.65,Math.min(.65,dx/this.gripWidth*1.6));
+    this.targetBendY=Math.max(-.65,Math.min(.65,-dy/this.gripHeight*1.6));
+    if (this.motion.matches) { this.pitch = this.targetPitch; this.yaw = this.targetYaw; this.bendX=this.targetBendX;this.bendY=this.targetBendY;this.paint(); }
     this.schedule();
   };
   private release() {
@@ -55,7 +76,8 @@ export class FloatingPaper {
     if (grip && this.host.hasPointerCapture(grip.id)) this.host.releasePointerCapture(grip.id);
     this.targetPitch = this.motion.matches ? 0 : -1.6;
     this.targetYaw = this.motion.matches ? 0 : 0.7;
-    if (this.motion.matches) { this.pitch = this.yaw = 0; this.paint(); }
+    this.targetBendX=this.targetBendY=0;
+    if (this.motion.matches) { this.pitch = this.yaw = this.bendX = this.bendY = 0; this.paint(); }
     this.schedule();
   }
   private onUp = (event: PointerEvent) => {
@@ -71,12 +93,14 @@ export class FloatingPaper {
   };
   reset = () => {
     this.release(); this.velocityPitch = this.velocityYaw = 0;
+    this.bendX=this.bendY=this.velocityBendX=this.velocityBendY=0;
     this.pitch = this.targetPitch; this.yaw = this.targetYaw; this.time = 0;
     this.paint(); this.schedule();
   };
   private onMotion = () => {
     if (this.grip) this.release();
     this.velocityPitch = this.velocityYaw = 0;
+    this.bendX=this.bendY=this.targetBendX=this.targetBendY=this.velocityBendX=this.velocityBendY=0;
     this.targetPitch = this.pitch = this.motion.matches ? 0 : -1.6;
     this.targetYaw = this.yaw = this.motion.matches ? 0 : 0.7;
     this.host.dataset.dragging = "false"; this.paint(); this.sync();
@@ -101,6 +125,9 @@ export class FloatingPaper {
       this.velocityPitch += ((this.targetPitch - this.pitch) * 100 - this.velocityPitch * 16) * step;
       this.velocityYaw += ((this.targetYaw - this.yaw) * 100 - this.velocityYaw * 16) * step;
       this.pitch += this.velocityPitch * step; this.yaw += this.velocityYaw * step;
+      this.velocityBendX+=((this.targetBendX-this.bendX)*110-this.velocityBendX*17)*step;
+      this.velocityBendY+=((this.targetBendY-this.bendY)*110-this.velocityBendY*17)*step;
+      this.bendX+=this.velocityBendX*step;this.bendY+=this.velocityBendY*step;
       remaining -= step;
     }
     this.paint(); this.schedule();
@@ -117,9 +144,11 @@ export class FloatingPaper {
     this.host.style.setProperty("--paper-lift", `${moving ? (Math.sin(this.time * 0.85) * 5).toFixed(2) : 0}px`);
     this.host.dataset.orientation = `${pitch.toFixed(3)},${yaw.toFixed(3)}`;
     this.host.dataset.motion = this.motion.matches ? "reduced" : "floating";
+    this.surface?.render({pitch,yaw,roll:this.motion.matches?0:-.3+Math.sin(this.time*.37)*.28,lift:moving?Math.sin(this.time*.85)*5:0,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
   }
   dispose() {
     this.disposed = true; this.release(); cancelAnimationFrame(this.frame);
+    this.surface?.dispose();this.surface=null;
     this.observer.disconnect(); this.motion.removeEventListener("change", this.onMotion);
     document.removeEventListener("visibilitychange", this.sync);
     this.host.removeEventListener("pointerdown", this.onDown);

@@ -14,6 +14,9 @@
 .resume-sheet { position:relative; background:white; border-radius:1px; box-shadow:0 34px 65px -27px #0003,0 3px 8px #0000000b,1px 2px 0 #d5d3d0; transform:translate3d(0,var(--paper-lift,0px),0) rotateX(var(--paper-pitch,0deg)) rotateY(var(--paper-yaw,0deg)) rotateZ(var(--paper-roll,0deg)); transform-origin:50% 50%; transform-style:preserve-3d; view-transition-name:resume-paper; }
 .resume-sheet[data-mode="page"] { cursor:grab; touch-action:pan-y pinch-zoom; user-select:none; }
 .resume-sheet[data-dragging="true"] { cursor:grabbing; }
+.resume-paper-canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.resume-sheet[data-surface="webgl"] { z-index:1; background:none; box-shadow:none; transform:none; }
+.resume-sheet[data-surface="webgl"] .resume-artwork picture { opacity:0; }
 .resume-artwork { position:relative; width:100%; }
 .resume-artwork img { display:block; width:100%; height:auto; border-radius:1px; opacity:0; }
 .resume-sheet[data-art-ready="true"] .resume-artwork img { opacity:1; transition:opacity 400ms ease; }
@@ -22,11 +25,10 @@
 .paper-contact:hover { background:#ff000008; }
 .paper-contact:focus-visible { outline-color:#ef2929; outline-offset:2px; }
 /* Page is an object inside a fixed stage. Its base size changes only with the viewport. */
-.resume-page[data-view="page"] { height:100svh; min-height:0; display:grid; grid-template-rows:64px 66px minmax(0,1fr) 44px; padding-block:24px; overflow:clip; }
+.resume-page[data-view="page"] { height:100svh; min-height:0; display:grid; grid-template-rows:64px 66px minmax(0,1fr) 24px; padding-block:24px; overflow:clip; }
 .resume-page[data-view="page"] .resume-toolbar { position:relative; top:auto; margin:0 auto; }
 .resume-page[data-view="page"] .resume-paper-stage { display:grid; place-items:center; container-type:size; width:100%; height:100%; min-height:0; max-width:none; margin:0; }
 .resume-page[data-view="page"] .resume-sheet { width:min(calc(100cqw - 56px),calc((100cqh - 56px) * .7066508314)); max-width:100%; }
-.resume-page[data-view="page"] .resume-site-footer { width:100%; }
 /* Read is the page itself; no paper frame or shadow. The wash covers the viewport. */
 .resume-sheet[data-mode="read"] { background:none; border-radius:0; box-shadow:none; transform:none; }
 .resume-page[data-view="read"] .resume-toolbar { background:none; backdrop-filter:none; }
@@ -53,10 +55,9 @@
 .resume-job li::marker { font-size:.72em; }
 .resume-print-contacts { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px 18px; margin-top:65px; font-size:14px; font-weight:500; }
 .resume-print-contacts a { display:inline-flex; min-height:44px; align-items:center; color:var(--resume-print-ink); text-decoration:underline; text-underline-offset:3px; }
-.resume-site-footer { display:flex; justify-content:space-between; align-items:center; max-width:1000px; margin:auto; gap:20px; color:var(--ui-muted); }
-.resume-site-footer > span { font:11px/1.5 ui-monospace,"Courier New",monospace; }
 .resume-download-copy { position:fixed; z-index:100; pointer-events:none; background:white; box-shadow:0 24px 45px #0002; transform-origin:center; border-radius:1px; }
 .resume-download-copy img { display:block; width:100%; height:100%; }
+@media print { .resume-paper-canvas { display:none!important; } .resume-sheet[data-surface="webgl"] .resume-artwork picture { opacity:1!important; } }
 ::view-transition { pointer-events:none; }
 ::view-transition-group(resume-paper) { animation-duration:550ms; animation-timing-function:cubic-bezier(.22,1,.36,1); }
 ::view-transition-old(resume-paper),::view-transition-new(resume-paper) { animation-duration:400ms; }
@@ -75,16 +76,13 @@
  .resume-job { margin-bottom:34px; }
  .resume-document h2 { font-size:17px; margin-bottom:24px; }
  .resume-print-contacts { margin-top:30px; display:flex; flex-direction:column; gap:0; font-size:14px; }
- .resume-site-footer { flex-wrap:wrap; gap:0 14px; }
- .resume-site-footer > span { font-size:10px; }
  .resume-view-switch button { min-width:55px; padding-inline:12px; }
  .resume-download { padding-inline:13px; font-size:12px; }
- .resume-page[data-view="page"] .resume-site-footer > span { display:none; }
  .resume-page[data-view="page"] .resume-sheet { width:min(calc(100cqw - 26px),calc((100cqh - 56px) * .7066508314)); }
  .resume-wash-pink { right:-65%; top:-16%; opacity:.5; }
  .resume-wash-warm { left:-65%; bottom:-15%; opacity:.45; }
 }
-@media(max-height:600px) and (min-width:701px) { .resume-page[data-view="page"] { grid-template-rows:48px 60px minmax(0,1fr) 44px; padding-block:12px; } .resume-page[data-view="page"] .resume-nav { height:48px; } }
+@media(max-height:600px) and (min-width:701px) { .resume-page[data-view="page"] { grid-template-rows:48px 60px minmax(0,1fr) 24px; padding-block:12px; } .resume-page[data-view="page"] .resume-nav { height:48px; } }
 @media(max-width:360px) { .resume-print-heading > p { font-size:10px; } .resume-print-sidebar { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { .resume-gradient { transition:none; } .resume-download-copy { display:none; } ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*) { animation:none!important; } }
 @media print { .resume-gradient,.resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.paper-contact,.resume-download-copy { display:none!important; } .resume-page,.resume-page[data-view="page"] { padding:0; height:auto; display:block; overflow:visible; --resume-print-ink:#111; --resume-body:#505050; --resume-accent:#e00000; } .resume-paper-stage,.resume-page[data-view="page"] .resume-paper-stage { margin:0; height:auto; container-type:normal; perspective:none; max-width:none; display:block; } .resume-sheet,.resume-page[data-view="page"] .resume-sheet { width:100%; transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }
