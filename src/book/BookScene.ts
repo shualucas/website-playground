@@ -131,7 +131,6 @@ export class BookScene {
   private leaves: SkinnedLeaf[] = [];
   private scheduler!: TurnScheduler;
   private binding!: ReturnType<typeof createBinding>;
-  private bindingHeights = new THREE.Vector2(-1, -1);
   private portals: AsciiPortal[] = [];
   private popups!: PagePopups;
   private portalTime = 0;
@@ -420,6 +419,7 @@ export class BookScene {
       saddle,
       saddle,
       this.surface({ color: "#7f858b", metalness: 0.6, roughness: 0.55 }),
+      this.leaves,
     );
     this.rig.add(this.binding.spine, this.binding.fold, this.binding.seams);
     // Pose sampling is diagnostic only; rendering and shadows use GPU bone transforms.
@@ -611,20 +611,7 @@ export class BookScene {
     this.printFloatRoot.quaternion.copy(this.floatRoot.quaternion);
     this.orbit.quaternion.copy(this.orientation);
     this.printOrbit.quaternion.copy(this.orientation);
-    const boundary = this.scheduler?.committed ?? 1,
-      leftY = 0.025 + Math.max(0, boundary - 1) * LEAF_GAP,
-      rightY =
-        0.025 + Math.max(0, this.leaves.length - 1 - boundary) * LEAF_GAP;
-    if (
-      Math.abs(leftY - this.bindingHeights.x) +
-        Math.abs(rightY - this.bindingHeights.y) >
-      0.0001
-    ) {
-      this.binding.update(leftY, rightY, 1);
-      this.bindingHeights.set(leftY, rightY);
-    }
-    this.binding.fold.visible = this.binding.seams.visible =
-      first > 0.85 && last < 0.15;
+    this.binding.update();
     this.floatRoot.updateMatrixWorld(true);
     this.leaves.forEach((leaf) => leaf.updateWorld());
   }

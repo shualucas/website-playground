@@ -5,11 +5,12 @@ import "./role-effects.css";
 export const roles = [
   { label: "product designer", effect: "click" },
   { label: "merch maker", effect: "roller" },
-  { label: "brand builder", effect: "fonts" },
+  { label: "brand developer", effect: "fonts" },
   { label: "prototyper", effect: "prototype" },
   { label: "systems thinker", effect: "ascii" },
   { label: "storyteller", effect: "illustrate" },
-  { label: "community organizer", effect: "gather" },
+  { label: "community builder", effect: "gather" },
+  { label: "riso artist", effect: "riso" },
 ];
 
 export function RotatingRole({ active = true }) {

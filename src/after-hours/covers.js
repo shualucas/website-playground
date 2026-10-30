@@ -1,4 +1,5 @@
 import { flyers, flyerPage } from "./flyers";
+import "@fontsource/staatliches/latin-400.css";
 
 const paper = "#f5f1e6", ink = "#4134bf", rust = "#85513e";
 
@@ -54,7 +55,7 @@ function makePaper() {
 
 /** Two original print covers. Only the exposed front redraws, at most 12 fps. */
 export async function prepareFlyerCovers() {
-  await document.fonts.load('700 200px "DM Sans"');
+  await document.fonts.load('400 200px "Staatliches"');
   const front = canvas(), back = canvas(), base = makePaper();
   const lettering = canvas(), letters = lettering.getContext("2d");
   const frontContext = front.getContext("2d");
@@ -74,13 +75,14 @@ export async function prepareFlyerCovers() {
     // A calm, readable hold followed by a short rolling, sliced-type passage.
     const cycle = (frame / 12) % 5.6;
     const activity = reduced || cycle < 2.8 ? 0 : Math.sin((cycle - 2.8) / 2.8 * Math.PI) ** 2;
-    const rows = [{ value: "RAVE", y: 507, size: 235 }, { value: "FLYERS", y: 727, size: 211 }];
+    const rows = [{ value: "ZINE OF", y: 510, size: 80 }, { value: "EXTRACURRICULARS", y: 675, size: 240 }];
     for (const { value, y, size } of rows) {
       letters.save();
       letters.translate(555, y);
-      letters.font = `700 ${size}px "DM Sans", sans-serif`;
-      const scale = 915 / letters.measureText(value).width;
-      letters.scale(scale, 1);
+      letters.font = `400 ${size}px "Staatliches", sans-serif`;
+      // Fit the whole word by font size, preserving the font's natural proportions.
+      const fittedSize = size * Math.min(1, 940 / letters.measureText(value).width);
+      letters.font = `400 ${fittedSize}px "Staatliches", sans-serif`;
       letters.fillStyle = ink; letters.textAlign = "center"; letters.textBaseline = "middle";
       letters.fillText(value, 0, 0);
       letters.restore();
@@ -93,12 +95,11 @@ export async function prepareFlyerCovers() {
         ctx.fillRect(80, y + 5, 950, 2); ctx.globalAlpha = 1;
       }
     }
-    badge(ctx, 555, 945, 290, 118, ["An after-hours", "collection"], "cloud");
+    badge(ctx, 555, 945, 290, 118, ["A collection", "of flyers"], "cloud");
     ctx.save(); ctx.translate(58, 632); ctx.rotate(-Math.PI / 2);
     text(ctx, "MUSIC / COMMUNITY / PRINT", 0, 0, 20); ctx.restore();
     ctx.save(); ctx.translate(1052, 632); ctx.rotate(Math.PI / 2);
     text(ctx, "FIVE ORIGINAL FLYERS", 0, 0, 20); ctx.restore();
-    badge(ctx, 174, 1117, 125, 83, ["Vol.", "01"]);
     for (const [index, value] of [..."2026"].entries()) {
       const x = 894 + (index % 2) * 48, y = 1096 + Math.floor(index / 2) * 48;
       ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.strokeStyle = rust;
@@ -111,9 +112,8 @@ export async function prepareFlyerCovers() {
 
   const ctx = back.getContext("2d");
   ctx.drawImage(base, 0, 0);
-  badge(ctx, 555, 150, 300, 100, ["The other side", "of the day"], "oval");
-  text(ctx, "AFTER", 555, 388, 177, '"DM Sans", sans-serif', ink, 700);
-  text(ctx, "HOURS", 555, 558, 177, '"DM Sans", sans-serif', ink, 700);
+  badge(ctx, 555, 150, 390, 100, ["Zine of", "extracurriculars"], "oval");
+  text(ctx, "CONTENTS", 555, 475, 172, '"Staatliches", sans-serif', ink);
   ctx.strokeStyle = rust; ctx.lineWidth = 2.5;
   flyers.forEach((flyer, index) => {
     const y = 740 + index * 62;

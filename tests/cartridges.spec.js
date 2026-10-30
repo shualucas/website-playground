@@ -217,7 +217,7 @@ test("Josh stays plain text at medium weight and reduced-motion readers can expl
   await expect(page.getByRole("button", { name: /Josh/ })).toHaveCount(0);
   const role = page.locator(".role-rotator"); await role.focus();
   expect(await role.evaluate(el => getComputedStyle(el).fontWeight)).toBe("500");
-  for (const label of ["product designer", "merch maker", "brand builder", "prototyper", "systems thinker", "storyteller", "community organizer"]) {
+  for (const label of ["product designer", "merch maker", "brand developer", "prototyper", "systems thinker", "storyteller", "community builder", "riso artist"]) {
     await expect(role).toHaveAttribute("data-role", label);
     await expect(role).toHaveAttribute("data-paused", "true");
     await page.keyboard.press("Enter");
@@ -259,7 +259,7 @@ test("the camera sits left of the centered X link, floats only in view, and resp
   const caption=await page.locator('.footer-camera figcaption').boundingBox();
   expect(bounds.x+bounds.width/2).toBeLessThan(caption.x);
   expect(Math.abs(bounds.y+bounds.height/2-caption.y-caption.height/2)).toBeLessThan(1);
-  const social=await page.locator('.social-link').boundingBox();
+  const social=await page.locator('.footer-links').boundingBox();
   expect(Math.abs(social.x+social.width/2-footer.x-footer.width/2)).toBeLessThan(1);
   expect(Math.abs(social.y+social.height/2-caption.y-caption.height/2)).toBeLessThan(1);
   await expect(page.locator(".footer-camera figcaption")).toHaveText("say cheese");
@@ -300,6 +300,8 @@ test("footer links and music stay usable on small screens without WebGL", async 
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
   await expect(footer.locator(".now-playing")).toHaveAttribute("href", href);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const link of await footer.locator('.profile-links a').all()) { const box=await link.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44); }
+  await page.setViewportSize({width:320,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test("shell halves and their inset seam have separate surfaces", async ({ page }) => {
@@ -381,14 +383,14 @@ test("intro words still sweep in reading order", async ({ page }) => {
 });
 
 
-test("all seven lowercase roles cycle, with a shared entrance and pause/resume", async ({ page }) => {
+test("all eight lowercase roles cycle, with a shared entrance and pause/resume", async ({ page }) => {
   const initial = new Date("2026-10-29T12:00:00Z"); await page.clock.install({time:initial}); await page.clock.pauseAt(initial);
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/"); const role=page.locator(".role-rotator");
   await expect(role).toHaveAttribute("data-ready","false");
   expect(await page.locator(".role-entrance").evaluate(el=>getComputedStyle(el).animationName)).toBe("intro-reveal");
   await page.clock.runFor(1001); await expect(role).toHaveAttribute("data-ready","true");
-  const labels=["product designer","merch maker","brand builder","prototyper","systems thinker","storyteller","community organizer"];
+  const labels=["product designer","merch maker","brand developer","prototyper","systems thinker","storyteller","community builder", "riso artist"];
   for(const label of labels){
     await expect(role).toHaveAttribute("data-role",label);
     if(label.includes(" ")) expect(await role.locator(".role-suffix").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
@@ -482,22 +484,24 @@ test("camera drag rotates without navigation; keyboard entry opens the new photo
   await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","1");
   await expect(page.locator(".camera-page-flash")).toHaveCount(0);
   await page.mouse.move(8,8); await expect(camera).toHaveAttribute("data-ready-light","off");
-  await link.focus(); await expect(camera).toHaveAttribute("data-ready-light","on");
+  await page.getByRole("link",{name:/Zine of Extracurriculars/}).focus(); await page.keyboard.press("Tab"); await expect(link).toBeFocused(); await expect(camera).toHaveAttribute("data-ready-light","on");
   await link.evaluate(el=>el.blur()); await expect(camera).toHaveAttribute("data-ready-light","off");
   const bounds = await link.boundingBox(), before = await camera.getAttribute("data-rotation");
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
+  await expect(camera).toHaveAttribute("data-ready-light","off"); await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","0");
   await page.mouse.move(bounds.x + bounds.width / 2 + 85, bounds.y + bounds.height / 2 + 35, { steps: 5 }); await page.mouse.up();
   await expect(camera).not.toHaveAttribute("data-rotation", before ?? "");
+  await expect(camera).toHaveAttribute("data-ready-light","off"); await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","0");
   await expect(page).not.toHaveURL(/after-hours/);
   const rotated = await camera.getAttribute("data-rotation");
   await link.focus(); await page.keyboard.press("ArrowLeft"); await expect(camera).not.toHaveAttribute("data-rotation", rotated);
   await page.keyboard.press("r"); await expect(camera).toHaveAttribute("data-rotation", "0,0,0");
   await page.keyboard.press("Enter"); await expect(page).toHaveURL(/\/after-hours\/$/);
   await expect(page).toHaveTitle("josh lucas - product designer");
-  await expect(page.getByRole("region", { name: "Interactive flyer zine" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Interactive zine of extracurriculars" })).toBeVisible();
   await expect(page.locator(".after-hours-film,.after-hours-zine")).toHaveCount(0);
   await expect(page.locator(".after-hours-book")).toHaveAttribute("data-phase","ready",{timeout:90000});
-  await page.reload(); await expect(page.getByRole("region", { name: "Interactive flyer zine" })).toBeVisible();
+  await page.reload(); await expect(page.getByRole("region", { name: "Interactive zine of extracurriculars" })).toBeVisible();
   await page.goBack(); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   await expect(page.locator(".camera-page-flash")).toHaveCount(0);
 });
@@ -658,8 +662,8 @@ test("footer and reader content reveal on entry and stay immediate for reduced m
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-status","fallback");
   await expect(page.locator(".footer-camera figcaption")).toHaveAttribute("data-reveal-state","waiting");
-  await page.locator(".social-link").scrollIntoViewIfNeeded();
-  for(const selector of [".social-link",".footer-camera figcaption",".listening-current"]) {
+  await page.locator(".footer-links").scrollIntoViewIfNeeded();
+  for(const selector of [".footer-links",".footer-camera figcaption",".listening-current"]) {
     const item=page.locator(selector); await expect(item).toHaveAttribute("data-reveal-state","visible");
     expect(await item.evaluate(el=>getComputedStyle(el).animationName)).toBe("content-reveal");
   }
@@ -676,13 +680,13 @@ test("the page entrance continues from the hero into the footer on one timeline"
   await page.emulateMedia({reducedMotion:"no-preference"});
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/"); await expect(page).toHaveTitle("josh lucas - product designer");
-  await expect(page.locator(".social-link")).toHaveAttribute("data-reveal-state","visible");
+  await expect(page.locator(".footer-links")).toHaveAttribute("data-reveal-state","visible");
   const timing=await page.evaluate(()=>{
     const origin=Number(document.querySelector('.collection').dataset.revealStart);
     const heroEnd=Math.max(...[...document.querySelectorAll('.intro-word')].map(el=>{
       const style=getComputedStyle(el);return origin+parseFloat(style.animationDelay)*1000+parseFloat(style.animationDuration)*1000;
     }));
-    const starts=['.footer-camera figcaption','.social-link','.listening-current'].map(selector=>{
+    const starts=['.footer-camera figcaption','.footer-links','.listening-current'].map(selector=>{
       const animation=document.querySelector(selector).getAnimations()[0];return animation.startTime+Number(animation.effect.getTiming().delay);
     });
     const projectsEnd=Math.max(...[...document.querySelectorAll('.recent-projects [data-reveal]')].map(el=>{
@@ -700,7 +704,7 @@ test("recent projects use one column with native reader links and restore focus 
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/");
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.getByRole("link");
-  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Rave Flyer Zine'];
+  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
   const descriptions=["Helping users continue their journey's and clarify intent",'A creative playground for features on Search','Guiding users towards making the right purchase','Guilty pleasure creative outlet'];
   await expect(links).toHaveCount(4);
   await expect(navigation.locator('.recent-project-name')).toHaveText(titles);
@@ -732,7 +736,7 @@ test("recent projects use one column with native reader links and restore focus 
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
   await page.goto(await links.last().getAttribute('href'));
   await expect(page.locator('.flyer-gallery img')).toHaveCount(5);
-  await page.getByRole('link',{name:'Back to work',exact:true}).click();
+  await page.getByRole('link',{name:'Back to Josh Lucas',exact:true}).click();
   await expect(page.locator('.collection')).toBeVisible();
 });
 
@@ -787,13 +791,18 @@ test("camera flash clears the grip and the strap sags in world gravity after a c
 
 test("flyer zine prints one flyer per page through forward and reverse turns", async ({ page }) => {
   test.setTimeout(120000);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/after-hours/');
-  const book=page.getByRole('region',{name:'Interactive flyer zine'});
+  const book=page.getByRole('region',{name:'Interactive zine of extracurriculars'});
   await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(book).toHaveAttribute('data-flyer-count','5');await expect(book).toHaveAttribute('data-page-count','8');
   await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
-  await expect(page.getByRole('link',{name:'Back to work'})).toHaveAttribute('href','/');
-  await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(4);
+  await expect(page.getByRole('link',{name:'Back to Josh Lucas'})).toHaveAttribute('href','/');
+  await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(3);
+  await expect(page.locator('.zine-footer,.zine-pagination,.zine-current')).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'Zine of Extracurriculars'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Zine of Extracurriculars'})).toHaveCSS('font-family','Staatliches, sans-serif');
+  await expect(page.getByText('Vol. 01',{exact:true})).toHaveCount(0);
+  await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(240, 240, 240)');
   expect(Number(await book.getAttribute('data-page-aspect'))).toBeCloseTo(1110/1280,8);
-  await book.focus();
+  await page.getByRole('button',{name:'Switch to dark mode'}).focus();
   const faces=[['wavform','metronome'],['ghosts-n-stuff','jornada-coffee'],['picnic','']];
   const maps=[];
   for(let i=0;i<faces.length;i++){await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print',faces[i][0]);await expect(book).toHaveAttribute('data-right-print',faces[i][1]);maps.push([await book.getAttribute('data-left-artwork'),await book.getAttribute('data-right-artwork')]);}
@@ -802,9 +811,12 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   await page.setViewportSize({width:390,height:844});await expect(book).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.keyboard.press('r');await expect(book).toHaveAttribute('data-view','cover');
   await book.evaluate(el=>el.blur());
-  await page.getByRole('button',{name:'Next spread',exact:true}).click();await expect(book).toHaveAttribute('data-left-print','wavform');
+  await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(book).toHaveAttribute('data-left-print','wavform');
   await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
+  await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(27, 28, 27)');
+  await page.evaluate(()=>{const input=document.createElement('input');input.value='typing';document.body.append(input);input.focus();});
+  await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
 });
 
 test("flyer cover typography uses a bounded clock and freezes cleanly for reduced motion", async ({ page }) => {
@@ -818,4 +830,64 @@ test("flyer cover typography uses a bounded clock and freezes cleanly for reduce
     return {size:[cover.front.width,cover.front.height],sameBucket,animated,moved,backIgnored,reset,staticFrame,frozen,backPreserved:cover.back.toDataURL()===back};
   });
   expect(result).toEqual({size:[1110,1280],sameBucket:false,animated:true,moved:true,backIgnored:false,reset:true,staticFrame:true,frozen:false,backPreserved:true});
+});
+
+test("binding follows cover hinges and stays below opened cover surfaces through reversals", async ({ page }) => {
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+    const THREE=await import('/node_modules/three/build/three.module.js');
+    const {SkinnedLeaf,createLeafGeometry}=await import('/src/book/leaf.ts');
+    const {TurnScheduler}=await import('/src/book/turn-scheduler.ts');
+    const {createBinding}=await import('/src/book/binding.ts');
+    const material=new THREE.MeshPhongMaterial({map:new THREE.Texture()});
+    const leaves=Array.from({length:4},(_,i)=>new SkinnedLeaf(i,i===0||i===3,4,createLeafGeometry(i===0||i===3?.012:.006,4.0758),Array(6).fill(material),4.0758));
+    const binding=createBinding(material,material,material,leaves),scheduler=new TurnScheduler(leaves);
+    let maxJoinDistance=0, minFoldClearance=Infinity, penetrations=0, invalid=0, openStates=0;
+    const inspect=()=>{
+      binding.update();
+      const p=binding.spine.geometry.attributes.position,uv=binding.spine.geometry.attributes.uv;
+      for(let i=0;i<p.count;i++){
+        const x=p.getX(i),y=p.getY(i);if(!Number.isFinite(x+y))invalid++;
+        if(uv.getX(i)===0)maxJoinDistance=Math.max(maxJoinDistance,Math.hypot(x-leaves[0].group.position.x,y-leaves[0].group.position.y));
+        if(uv.getX(i)===1)maxJoinDistance=Math.max(maxJoinDistance,Math.hypot(x-leaves[3].group.position.x,y-leaves[3].group.position.y));
+        for(const cover of [leaves[0],leaves[3]]){
+          const a=cover.hingeAngle+cover.bones[0].rotation.z,dx=x-cover.group.position.x,dy=y-cover.group.position.y;
+          const along=dx*Math.cos(a)+dy*Math.sin(a),normal=-dx*Math.sin(a)+dy*Math.cos(a);
+          if(along>.026&&Math.abs(normal)<.006)penetrations++;
+        }
+      }
+      if(binding.fold.visible){
+        openStates++;const boundary=leaves.findIndex(l=>l.progress<.5),q=binding.fold.geometry.attributes.position;
+        const underside=Math.min(...[leaves[boundary-1],leaves[boundary]].map(l=>l.group.position.y-(l.cover?.006:.003)));
+        for(let i=0;i<q.count;i++)minFoldClearance=Math.min(minFoldClearance,underside-q.getY(i));
+      }
+    };
+    for(let boundary=0;boundary<=4;boundary++){scheduler.snap(boundary);inspect();}
+    scheduler.snap(0);
+    for(let frame=0;frame<720;frame++){
+      if(frame===0)scheduler.request(4);if(frame===45)scheduler.request(0);if(frame===100)scheduler.request(3);if(frame===240)scheduler.request(1);if(frame===400)scheduler.request(4);if(frame===560)scheduler.request(0);
+      scheduler.step(1/60,0);inspect();
+    }
+    return {maxJoinDistance,minFoldClearance,penetrations,invalid,openStates};
+  });
+  expect(result.maxJoinDistance).toBeLessThan(.021);expect(result.minFoldClearance).toBeGreaterThan(.0015);
+  expect(result.penetrations).toBe(0);expect(result.invalid).toBe(0);expect(result.openStates).toBeGreaterThan(2);
+});
+
+test("resume page shares the profile links and downloads a one-page PDF with clickable contacts", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/resume/');
+  await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();
+  await expect(page.locator('.resume-job')).toHaveCount(4);
+  await expect(page.getByRole('link',{name:'LinkedIn',exact:true})).toHaveAttribute('href','https://www.linkedin.com/in/joshglucas/');
+  await expect(page.getByRole('link',{name:'shualucas on X'})).toHaveAttribute('href','https://x.com/shualucas');
+  await expect(page.getByRole('link',{name:'Résumé',exact:true})).toHaveAttribute('href','/resume/');
+  expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(r=>/BookScene|CartridgeScene|FilmCameraScene/.test(r.name)))).toBe(false);
+  const pending=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF'}).click();const download=await pending;
+  expect(download.suggestedFilename()).toBe('Josh-Lucas-Resume.pdf');
+  const {readFile}=await import('node:fs/promises');const {PDFDocument,PDFArray,PDFDict,PDFName}=await import('pdf-lib');
+  const pdf=await PDFDocument.load(await readFile(await download.path()));expect(pdf.getPageCount()).toBe(1);
+  const links=pdf.getPage(0).node.lookup(PDFName.of('Annots'),PDFArray).asArray().map(ref=>pdf.context.lookup(ref,PDFDict).lookup(PDFName.of('A'),PDFDict).get(PDFName.of('URI')).decodeText());
+  expect(links).toContain('https://www.linkedin.com/in/joshglucas/');expect(links).toContain('https://x.com/shualucas');
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveCSS('background-color','rgb(27, 28, 27)');
 });

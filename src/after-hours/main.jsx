@@ -23,10 +23,24 @@ function AfterHours() {
   useContentReveal(content, `${ready}:${fallback}`, ready);
   useEffect(() => {
     document.documentElement.dataset.colorMode = dark ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#24221f" : "#f5f1e6");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#1b1c1b" : "#f0f0f0");
     try { localStorage.setItem("cartridge-color-mode", dark ? "dark" : "light"); } catch {}
     engine.current?.setDarkMode(dark);
   }, [dark]);
+  useEffect(() => {
+    const onKey = event => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input,textarea,select,[role="textbox"],[role="slider"]'))) return;
+      const book = engine.current;
+      if (!book) return;
+      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+        event.preventDefault(); finishEntrance(); book.stepPage(event.key === "ArrowRight" ? 1 : -1);
+      } else if (event.key.toLowerCase() === "r") { finishEntrance(); book.replay(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   useEffect(() => {
     let alive = true, book, texture;
     Promise.all([import("../book/BookScene"), import("three"), prepareFlyerPages(), prepareFlyerCovers()]).then(([{ BookScene }, THREE, pageArtwork, coverArtwork]) => {
@@ -53,23 +67,16 @@ function AfterHours() {
     }).catch(() => { if (alive) { setFallback(true); setReady(true); document.documentElement.dataset.pageReady = "true"; } });
     return () => { alive = false; clearTimeout(entranceTimer.current); book?.dispose(); engine.current = null; };
   }, []);
-  const view = spread < 0 ? "Front cover" : spread >= 3 ? "Back cover" : `Spread ${String(spread + 1).padStart(2, "0")} / 03`;
   return <main ref={content} data-reveal-flow="page" data-ready={ready} className={`after-hours${fallback ? " is-fallback" : ""}`}>
     <header className="zine-header-shell"><nav data-reveal data-reveal-at="0" className="zine-header" aria-label="Main navigation">
-      <a className="after-hours-back" href="/" aria-label="Back to work"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Work</a>
-      <a className="zine-current" href="/after-hours/" aria-current="page">After hours</a>
+      <a className="after-hours-back" href="/" aria-label="Back to Josh Lucas"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</a>
       <button className="tool-button" type="button" onClick={() => setDark(value => !value)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><ThemeIcon dark={dark} /></button>
     </nav></header>
-    <div data-reveal data-reveal-at="90" className="zine-heading"><h1>Rave flyer zine</h1><span>Vol. 01</span></div>
+    <div data-reveal data-reveal-at="90" className="zine-heading"><h1><span>Zine of</span> Extracurriculars</h1></div>
     <p id="zine-help" className="sr-only">Five original flyers, one per page. Drag to rotate. Click the pages to turn them. Use the left and right arrows to turn pages, or R to restart.</p>
-    <p className="sr-only" role="status">{spread >= 0 && spread < 3 ? `Spread ${spread + 1} of 3: ${flyers.slice(spread * 2, spread * 2 + 2).map(flyer => flyer.title).join(" and ")}` : "Zine cover"}</p>
+    <p className="sr-only" role="status">{spread >= 0 && spread < 3 ? `Spread ${spread + 1} of 3: ${flyers.slice(spread * 2, spread * 2 + 2).map(flyer => flyer.title).join(" and ")}` : spread < 0 ? "Front cover" : "Back cover"}</p>
     <ol className="sr-only" aria-label="Flyers in page order">{flyers.map(flyer => <li key={flyer.id}>{flyer.title}</li>)}</ol>
-    <div data-reveal data-reveal-at="180" className="after-hours-book" ref={host} hidden={fallback} data-flyer-count={flyers.length} tabIndex={0} role="region" aria-label="Interactive flyer zine" aria-describedby="zine-help" onKeyDown={event => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); engine.current?.stepPage(event.key === "ArrowRight" ? 1 : -1); }
-      if (event.key.toLowerCase() === "r") engine.current?.replay();
-    }} />
-    {!fallback && <footer data-reveal data-reveal-at="330" className="zine-footer" onAnimationEnd={event => { if (event.target === event.currentTarget && event.animationName === "content-reveal") finishEntrance(); }}><span>Drag to rotate · Click to turn</span><div className="zine-pagination"><button type="button" onClick={() => engine.current?.stepPage(-1)} disabled={spread < 0} aria-label="Previous spread">←</button><span>{view}</span><button type="button" onClick={() => engine.current?.stepPage(1)} disabled={spread >= 3} aria-label="Next spread">→</button></div><button className="zine-reset" type="button" onClick={() => engine.current?.replay()} aria-label="Restart zine">↺ <span>Restart</span></button></footer>}
+    <div data-reveal data-reveal-at="180" className="after-hours-book" ref={host} hidden={fallback} data-flyer-count={flyers.length} tabIndex={0} role="region" aria-label="Interactive zine of extracurriculars" aria-describedby="zine-help" onAnimationEnd={event => { if (event.target === event.currentTarget && event.animationName === "content-reveal") finishEntrance(); }} />
     {fallback && <div className="flyer-gallery" aria-label="Flyer pages">{flyers.map(flyer => <figure data-reveal key={flyer.id} style={{ "--flyer-background": flyer.background }}><img src={flyer.src} alt={flyer.alt} width="1110" height="1280" /><figcaption>{flyer.title}</figcaption></figure>)}</div>}
   </main>;
 }

@@ -79,7 +79,7 @@ export class FilmCameraScene {
     this.hovered = value; this.updateReadyLight(performance.now() - this.flashStart < 180); this.draw();
   }
   private updateReadyLight(suppress = false) {
-    const on = !suppress && (this.hovered || this.armed);
+    const on = !suppress && !this.dragging && (this.hovered || this.armed);
     this.readyLight.material.color.set(on ? "#ff2525" : "#3b0808");
     this.readyLight.scale.setScalar(on ? this.armed ? 1.6 : 1.35 : 1);
     this.host.dataset.readyLight = on ? "on" : "off";
@@ -93,7 +93,7 @@ export class FilmCameraScene {
     }
     this.publishRotation(); if (!this.raf) this.draw();
   }
-  beginDrag() { this.dragging = true; this.spinVelocity.set(0, 0); this.lastInput = performance.now(); }
+  beginDrag() { this.dragging = true; this.hovered = false; this.updateReadyLight(); this.spinVelocity.set(0, 0); this.lastInput = performance.now(); }
   endDrag(momentum = true) {
     this.dragging = false;
     if (!momentum || this.motion.matches || performance.now() - this.lastInput > 250) this.spinVelocity.set(0, 0);
