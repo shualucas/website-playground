@@ -1,5 +1,6 @@
 import { projects as zineProjects } from "../book/projects";
 import { cartridges } from "./config";
+import { aiModeCaseStudy } from "../content/ai-mode-case-study";
 
 const careerDetails = {
   blizzard: { role: "UX Designer · Internship", team: "Team 1 · Heroes of the Storm & Starcraft II", period: "Summer 2017", location: "Irvine, CA" },
@@ -48,6 +49,10 @@ export const recentProjects = [
   ...project, kind: "project", title: project.label, subtitle: project.description,
   role: "", team: "", year: "", disciplines: [], chapters: [], sample: true,
   previewImage: "", imageAlt: `${project.label} preview`, caseStudyUrl: "",
+  ...(project.id === "ai-mode-nudges" ? {
+    subtitle: aiModeCaseStudy.subtitle, role: aiModeCaseStudy.role,
+    disciplines: [aiModeCaseStudy.scope], sample: false, caseStudy: aiModeCaseStudy,
+  } : {}),
 }));
 
 export const portfolioProjects = [...careerProjects, ...recentProjects];

@@ -717,8 +717,8 @@ test("recent projects use one column with native reader links and restore focus 
   expect(textGap).toBeGreaterThan(0);expect(textGap).toBeLessThan(10);
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-study-deck')).toHaveText(descriptions[i]);
-    await expect(page.locator('.case-study-facts')).toHaveCount(0);
+    await expect(page.locator('.case-study-deck')).toHaveText(i===0?'Helping people find their next question.':descriptions[i]);
+    await expect(page.locator('.case-study-facts')).toHaveCount(i===0?1:0);
     await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -1270,4 +1270,25 @@ test('project exits fade, blur and move the whole page left before navigating',a
   await main.evaluate(el=>el.getAnimations()[0].finish());await expect(page).toHaveURL(/\/after-hours\/$/);
   await page.goBack();await expect(main).toHaveAttribute('data-exiting','false');await expect(main).toHaveCSS('opacity','1');
   expect(errors).toEqual([]);
+});
+
+test('AI Mode case study shows the supplied story and outcomes at the home project width',async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:1440,height:1000});await page.goto('/');
+  const navigation=page.getByRole('navigation',{name:'Recent projects'}),homeWidth=(await navigation.boundingBox()).width;
+  await navigation.getByRole('link',{name:/AI Mode Nudges/}).click();
+  const study=page.getByRole('region',{name:'AI Mode Nudges case study'});
+  await expect(study).toBeVisible();await expect(study.getByRole('heading',{name:'AI Mode Nudges',exact:true})).toBeFocused();
+  expect((await study.locator('.case-study-measure').boundingBox()).width).toBeCloseTo(homeWidth,0);
+  await expect(study.locator('.case-outcome-grid dd')).toHaveText(['+1.84%','+3.87%','10+']);
+  await expect(study.locator('.case-study-facts')).toContainText('Lead Product Designer');await expect(study.locator('.case-study-facts')).toContainText('Follow-ups & interactive questionnaires');
+  await expect(study.locator('.case-impact')).toContainText('Inline nudges launched globally');await expect(study.locator('.case-impact')).toContainText('web-result clicks healthy');
+  await expect(study.locator('.case-decisions li')).toHaveCount(3);await expect(study.locator('.case-decisions')).toContainText('“Something else”');await expect(study.locator('.case-decisions')).toContainText('live browser prototypes');
+  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-visual-grid figure')).toHaveCount(3);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>study.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+  const metricBounds=await study.locator('.case-outcome-grid dd').evaluateAll(elements=>elements.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));expect(metricBounds.every(r=>r.scroll<=r.width+1)).toBe(true);
+  await study.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(study).toHaveCount(0);
+  await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });

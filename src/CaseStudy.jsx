@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import { projectTheme } from "./book/themes";
 import { useContentReveal } from "./useContentReveal";
+import { CaseStudyNarrative } from "./CaseStudyNarrative";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
   const content = useRef(null);
+  const study = project.caseStudy;
   useContentReveal(content, project.id);
   const heading = useRef(null),
     theme = projectTheme(project.theme);
@@ -16,10 +18,16 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       document.title = previous;
     };
   }, [project.id, identity]);
+  const navigation = <>
+    <button data-reveal onClick={onBack} className="back-to-zine">
+      <span className="link-copy"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>{backLabel}</span>
+    </button>
+    {identity && <span data-reveal>{identity.toUpperCase()}</span>}
+  </>;
   return (
     <section
       ref={content}
-      className="case-study"
+      className={`case-study${study ? " case-study-editorial" : ""}`}
       aria-label={`${project.label} case study`}
       style={{
         "--case-accent": theme.accent,
@@ -28,36 +36,22 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       }}
     >
       <header className="case-study-nav">
-        <button data-reveal onClick={onBack} className="back-to-zine">
-          <span className="link-copy">
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            aria-hidden="true"
-          >
-            <path d="M20 12H4m6-6-6 6 6 6" />
-          </svg>
-          {backLabel}
-          </span>
-        </button>
-        {identity && <span data-reveal>{identity.toUpperCase()}</span>}
+        {study ? <div className="case-study-nav-inner">{navigation}</div> : navigation}
       </header>
       <article className="case-study-content">
+        <div className="case-study-measure">
         <header className="case-study-hero">
           <p data-reveal className="eyebrow">
-            SELECTED WORK / {project.label.toUpperCase()}
+            {study ? study.eyebrow : `SELECTED WORK / ${project.label.toUpperCase()}`}
           </p>
           <h1 data-reveal ref={heading} tabIndex={-1}>
             {project.title.replace("\n", " ")}
           </h1>
           {project.subtitle && <p data-reveal className="case-study-deck">{project.subtitle}</p>}
+          {study && <p data-reveal className="case-study-summary">{study.summary}</p>}
           {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
             {(project.role || project.team) && <div>
-              <dt>ROLE & TEAM</dt>
+              <dt>{study ? "ROLE" : "ROLE & TEAM"}</dt>
               <dd>
                 {[project.role, project.team].filter(Boolean).join(" · ")}
               </dd>
@@ -67,12 +61,12 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
               <dd>{project.year}</dd>
             </div>}
             {project.disciplines.length > 0 && <div>
-              <dt>FOCUS</dt>
+              <dt>{study ? "SCOPE" : "FOCUS"}</dt>
               <dd>{project.disciplines.join(" · ")}</dd>
             </div>}
           </dl>}
         </header>
-        <div data-reveal className="case-study-preview">
+        {study ? <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
           <Media project={project} controls />
         </div>
         <div className="case-study-story">
@@ -91,7 +85,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
               </div>
             </section>
           ))}
-        </div>
+        </div></>}
         {project.caseStudyUrl && (
           <a data-reveal className="case-study-link" href={project.caseStudyUrl}>
             <span className="link-copy">View full project ↗</span>
@@ -108,6 +102,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             ← {backLabel}
           </button>
         </footer>
+        </div>
       </article>
     </section>
   );
