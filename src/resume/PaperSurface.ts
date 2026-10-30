@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { softenShadowEdges } from "../book/effects";
 import { studioEnvironment, surfaceDetail } from "../book/surfaces";
 
-export type PaperPose = { scale:number; pitch:number; yaw:number; roll:number; lift:number; bendX:number; bendY:number; grabX:number; grabY:number };
+export type PaperPose = { scale:number; emphasis:number; pitch:number; yaw:number; roll:number; lift:number; bendX:number; bendY:number; grabX:number; grabY:number };
 const H = 4.7, W = H * 595 / 842, FLOAT_GAP = .75, FOCUS_Y = -.38;
 const HALO_MARGIN=.22;
 
@@ -17,9 +17,11 @@ export class PaperSurface {
   private front: THREE.Mesh;
   private back: THREE.Mesh;
   private halo: THREE.Mesh;
+  private edgeWidth={value:1};
+  private glowBase=.23;
   // A local, depth-tested halo follows the same deformed surface. No full-screen bloom pass.
   private haloMaterial=new THREE.ShaderMaterial({
-    uniforms:{tint:{value:new THREE.Color("#edc7b9")},strength:{value:.23}},
+    uniforms:{tint:{value:new THREE.Color("#edc7b9")},strength:{value:.23},spread:{value:1}},
     vertexShader:`varying vec2 vHaloPoint;
       void main(){
         vec3 p=position;
@@ -28,11 +30,11 @@ export class PaperSurface {
         vHaloPoint=(uv-.5)*vec2(${W+HALO_MARGIN*2},${H+HALO_MARGIN*2});
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
-    fragmentShader:`uniform vec3 tint;uniform float strength;varying vec2 vHaloPoint;
+    fragmentShader:`uniform vec3 tint;uniform float strength;uniform float spread;varying vec2 vHaloPoint;
       void main(){
         vec2 q=abs(vHaloPoint)-(vec2(${W},${H})*.5-.065);
         float d=length(max(q,0.))+min(max(q.x,q.y),0.)-.065;
-        float glow=exp(-pow(max(d,0.)/.09,1.5));
+        float glow=exp(-pow(max(d,0.)/(.09*spread),1.5));
         float fade=1.-smoothstep(.15,${HALO_MARGIN},d);
         gl_FragColor=vec4(tint,glow*fade*strength);
         #include <colorspace_fragment>
@@ -90,7 +92,8 @@ export class PaperSurface {
           if(paperDistance>0.)discard;`);
         if(material!==this.depth){
           shader.uniforms.paperEdge={value:new THREE.Color("#a59b91")};
-          shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 paperEdge;');
+          shader.uniforms.paperEdgeWidth=this.edgeWidth;
+          shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 paperEdge;uniform float paperEdgeWidth;');
           shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
             ${material===this.material?`
             // Let the broad satin response move across the stock without lifting printed blacks.
@@ -102,12 +105,12 @@ export class PaperSurface {
             `:''}
             // Screen-space width keeps the stroke near one pixel at every viewport size.
             float edgePixel=max(fwidth(paperDistance),.0001);
-            float paperStroke=1.-smoothstep(edgePixel*.35,edgePixel*1.4,-paperDistance);
+            float paperStroke=1.-smoothstep(edgePixel*.35*paperEdgeWidth,edgePixel*1.4*paperEdgeWidth,-paperDistance);
             outgoingLight=mix(outgoingLight,paperEdge,paperStroke);
             #include <opaque_fragment>`);
         }
       };
-      material.customProgramCacheKey=()=>`resume-rounded-satin-edge-${material.type}-v2`;
+      material.customProgramCacheKey=()=>`resume-rounded-satin-edge-${material.type}-v3`;
     }
     this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;this.front.customDepthMaterial=this.depth;
     this.back = new THREE.Mesh(this.geometry,this.backMaterial);
@@ -127,7 +130,7 @@ export class PaperSurface {
     this.scene.add(hemisphere,this.key,fill,bounce,this.floor);
     this.contacts=[...host.querySelectorAll<HTMLAnchorElement>(".paper-contact")].map(element=>({element,x:parseFloat(element.style.left)/100,y:parseFloat(element.style.top)/100,style:element.getAttribute("style")}));
     this.observer=new ResizeObserver(this.resize);this.observer.observe(host);this.observer.observe(host.parentElement!);
-    const updateTheme=()=>{const dark=document.documentElement.dataset.colorMode==="dark";this.floorMaterial.opacity=dark?.4:.18;this.haloMaterial.uniforms.strength.value=dark?.32:.23};
+    const updateTheme=()=>{const dark=document.documentElement.dataset.colorMode==="dark";this.floorMaterial.opacity=dark?.4:.18;this.glowBase=dark?.32:.23};
     this.theme=new MutationObserver(()=>{updateTheme();this.invalidate()});
     this.theme.observe(document.documentElement,{attributes:true,attributeFilter:["data-color-mode"]});
     updateTheme();
@@ -172,6 +175,9 @@ export class PaperSurface {
   }
   render(pose:PaperPose) {
     if(this.disposed||!this.scale)return;
+    this.edgeWidth.value=1+.5*pose.emphasis;
+    this.haloMaterial.uniforms.strength.value=this.glowBase*(1+.45*pose.emphasis);
+    this.haloMaterial.uniforms.spread.value=1+.2*pose.emphasis;
     if(pose.bendX!==this.lastFlex[0]||pose.bendY!==this.lastFlex[1]||pose.grabX!==this.lastFlex[2]||pose.grabY!==this.lastFlex[3]){
       for(let i=0;i<this.positions.count;i++){
         const x=this.rest[i*3],y=this.rest[i*3+1],z=this.flex(x,y,pose);

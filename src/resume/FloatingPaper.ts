@@ -58,7 +58,7 @@ export class FloatingPaper {
   }
   setActive(active:boolean){this.active=active;this.hovered=false;this.velocityScale=0;this.tapEligible=false;if(this.grip)this.release();this.paint();this.sync()}
   capture(){this.paint();return this.surface?.capture()??null}
-  private onLeave=()=>{this.hovered=false;this.schedule()};
+  private onLeave=()=>{this.hovered=false;if(this.motion.matches)this.paint();else this.schedule()};
   private isContact(event: Event) {
     return !!(event.target as Element).closest("a,button:not(.resume-read-target)");
   }
@@ -81,7 +81,7 @@ export class FloatingPaper {
   private onMove = (event: PointerEvent) => {
     const grip = this.grip;
     if(!this.active)return;
-    if (!grip) {if(event.pointerType!=="touch"){this.hovered=this.onPaper(event);this.schedule()}return;}
+    if (!grip) {if(event.pointerType!=="touch"){this.hovered=this.onPaper(event);if(this.motion.matches)this.paint();else this.schedule()}return;}
     if(event.pointerId !== grip.id)return;
     const dx = event.clientX - grip.x, dy = event.clientY - grip.y;
     if (!grip.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
@@ -109,12 +109,13 @@ export class FloatingPaper {
   }
   private onUp = (event: PointerEvent) => {
     if (this.grip?.id !== event.pointerId) return;
+    this.hovered=event.pointerType!=="touch"&&this.onPaper(event);
     this.tapEligible = !this.grip.moved && Math.hypot(event.clientX-this.grip.x,event.clientY-this.grip.y)<TAP_SLOP && this.onPaper(event);
     this.release();
   };
   private onCancel = (event: PointerEvent) => {
     if (this.grip?.id !== event.pointerId) return;
-    this.tapEligible = false; this.release();
+    this.hovered=false;this.tapEligible = false; this.release();
   };
   private onClick = (event: MouseEvent) => {
     if (!this.active || this.isContact(event)) return;
@@ -188,7 +189,9 @@ export class FloatingPaper {
     this.host.dataset.motion = !this.active ? "paused" : this.motion.matches ? "reduced" : "floating";
     this.host.dataset.hoverScale=this.scale.toFixed(4);
     this.host.style.setProperty("--paper-scale",String(this.scale));
-    this.surface?.render({pitch,yaw,roll,lift,scale:this.scale,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
+    const emphasis=this.motion.matches?Number(this.active&&this.hovered&&!this.grip):Math.max(0,Math.min(1.2,(this.scale-1)/.06));
+    this.host.style.setProperty("--paper-emphasis",emphasis.toFixed(4));
+    this.surface?.render({pitch,yaw,roll,lift,scale:this.scale,emphasis,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
   }
   dispose() {
     this.disposed = true; this.release(); cancelAnimationFrame(this.frame);
@@ -202,7 +205,7 @@ export class FloatingPaper {
     this.input.removeEventListener("pointercancel", this.onCancel);
     this.input.removeEventListener("lostpointercapture", this.onCancel);
     this.input.removeEventListener("click", this.onClick, true);
-    for (const property of ["pitch", "yaw", "roll", "lift", "scale"]) this.host.style.removeProperty(`--paper-${property}`);
+    for (const property of ["pitch", "yaw", "roll", "lift", "scale", "emphasis"]) this.host.style.removeProperty(`--paper-${property}`);
     delete this.host.dataset.hoverScale;
     delete this.host.dataset.orientation; delete this.host.dataset.motion;
   }
