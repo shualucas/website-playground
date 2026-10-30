@@ -8,17 +8,17 @@ export const resume = {
   location: "San Francisco, California",
   summary: "I'm a systems thinker with a knack for micro interactions and finer details. I like figuring out what should exist, what it should feel like, and how to make it happen.",
   email: "joshglucas@gmail.com",
-  skills: ["Interaction design", "Responsive design", "Information architecture", "Prototyping", "Product strategy", "Visual design", "Brand identity", "Design systems"],
+  skills: ["Interaction design", "Responsive design", "Info architecture", "Prototyping", "Product strategy", "Visual design", "Brand identity", "Design systems"],
   tools: ["Figma", "Adobe Suite", "GIFSKI", "Principle"],
   links: profileLinks,
   experience: [
-    { company: "Google", role: "Product Designer", period: "May 2019 — present", location: "San Francisco, CA", work: [
-      "Leading action strategies in AI Mode—encouraging deeper interaction, reducing the effort required to find more information or act on responses, and making AI Mode feel intuitive.",
-      "Led UX for Search Labs, a key part of Google's AI innovation in Search. Defined and launched a system for hosting and branding experiments, enabling teams across Google to test new ideas.",
-      "Led UX strategy and execution for a revamped Stadia storefront, increasing SKU sales by 12%. The work influenced platform-wide design enhancements and positioned the storefront as a key driver of the user experience.",
-      "Played a key role in the Google Workspace launch, focusing on interaction design frameworks for desktop. Collaborated with cross-functional teams across Drive, Chat, and Gmail to improve productivity and collaboration.",
-      "Collaborated with cross-functional partners to bring Dark Mode to Gmail, incorporating user feedback to create an accessible and visually appealing experience.",
+    { company: "Google", role: "Product Designer", period: "May 2019 - Present", location: "San Francisco, CA", work: [
+      "Leading action strategies in AI Mode, by encouraging deeper interaction, reducing the effort required for users to get more information or take action on parts of the response, and making AI mode feel intuitive.",
+      "Led UX for the Search Labs platform, a key piece in Google's AI innovation in Search. Defined and launched a new system for hosting and branding experiments within Google Search Labs, empowering teams across Google to seamlessly test innovations.",
+      "Led the UX strategy and execution for a revamped Stadia storefront, resulting in a 12% increase to SKU sales. The project's success influenced platform-wide design enhancements, positioning the storefront as a key driver of the user experience.",
+      "Played a key role in the Google Workspace launch, focusing on interaction design frameworks for desktop. Collaborated with cross-functional teams to deliver a user-centered design that streamlines productivity with Google Drive, Chat, and Gmail that enhances collaboration.",
+      "Collaborated with xFN partners to bring Dark Mode to Gmail. Incorporated user feedback throughout the design process to ensure an accessible and visually appealing experience.",
     ] },
-    { company: "Blizzard Entertainment", role: "UX Design Intern", period: "May — Sept 2017", location: "Irvine, CA", work: ["Led the onboarding experience for new Heroes of the Storm users."] },
+    { company: "Blizzard Entertainment", role: "UX Design Intern", period: "May - Sept 2017", location: "Irvine, CA", work: ["Led the onboarding experience for new Heroes of the Storm users."] },
   ],
 };

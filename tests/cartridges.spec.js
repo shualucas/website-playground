@@ -874,27 +874,53 @@ test("binding follows cover hinges and stays below opened cover surfaces through
   expect(result.penetrations).toBe(0);expect(result.invalid).toBe(0);expect(result.openStates).toBeGreaterThan(2);
 });
 
-test("resume page shares the profile links and downloads a one-page PDF with clickable contacts", async ({ page }) => {
+test("resume page preserves original artwork and downloads its one-page PDF with clickable contacts", async ({ page }) => {
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/resume/');
-  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
-  await expect(page.locator('.resume-job')).toHaveCount(2);
-  await expect(page.locator('.resume-job').first()).toContainText('May 2019 — present');
-  await expect(page.locator('.resume-job').last()).toContainText('May — Sept 2017');
-  await expect(page.getByText('12%',{exact:true})).toBeVisible();
-  await expect(page.locator('.resume-summary li')).toHaveCount(8);
-  await expect(page.locator('.resume-tools li')).toHaveText(['Figma','Adobe Suite','GIFSKI','Principle']);
-  await expect(page.getByRole('link',{name:'joshglucas@gmail.com'})).toHaveAttribute('href','mailto:joshglucas@gmail.com');
-  await expect(page.getByRole('link',{name:'LinkedIn',exact:true})).toHaveAttribute('href','https://www.linkedin.com/in/joshglucas/');
+  const sheet=page.locator('.resume-sheet');
+  await expect(page.locator('.resume-page')).toHaveAttribute('data-view','page');
+  await expect(sheet).toHaveAttribute('data-art-ready','true');
+  await expect(sheet).toHaveAttribute('data-motion','reduced');
+  await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
+  await expect(page.locator('.resume-sheet')).toHaveCount(1);
+  await expect(page.locator('.resume-artwork img')).toBeVisible();
+  const size=await sheet.boundingBox();expect(size.width).toBeGreaterThan(800);expect(size.width/size.height).toBeCloseTo(595/842,2);
+  await expect(page.locator('.paper-contact[aria-label="LinkedIn"]')).toHaveAttribute('href','https://www.linkedin.com/in/joshglucas/');
+  await expect(page.locator('.paper-contact[aria-label="joshglucas@gmail.com"]')).toHaveAttribute('href','mailto:joshglucas@gmail.com');
   await expect(page.getByRole('link',{name:'shualucas on X'})).toHaveAttribute('href','https://x.com/shualucas');
-  await expect(page.getByRole('link',{name:'Résumé',exact:true})).toHaveAttribute('href','/resume/');
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(r=>/BookScene|CartridgeScene|FilmCameraScene/.test(r.name)))).toBe(false);
   const pending=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF'}).click();const download=await pending;
   expect(download.suggestedFilename()).toBe('Josh-Lucas-Resume.pdf');
   const {readFile}=await import('node:fs/promises');const {PDFDocument,PDFArray,PDFDict,PDFName}=await import('pdf-lib');
-  const pdf=await PDFDocument.load(await readFile(await download.path()));expect(pdf.getPageCount()).toBe(1);
+  const pdf=await PDFDocument.load(await readFile(await download.path()));expect(pdf.getPageCount()).toBe(1);expect(pdf.getPage(0).getSize()).toEqual({width:595,height:842});
   const links=pdf.getPage(0).node.lookup(PDFName.of('Annots'),PDFArray).asArray().map(ref=>pdf.context.lookup(ref,PDFDict).lookup(PDFName.of('A'),PDFDict).get(PDFName.of('URI')).decodeText());
-  expect(links).toContain('https://www.linkedin.com/in/joshglucas/');expect(links).toContain('https://x.com/shualucas');
-  expect(links).toContain('mailto:joshglucas@gmail.com');
+  expect(links).toContain('https://www.linkedin.com/in/joshglucas/');expect(links).toContain('mailto:joshglucas@gmail.com');
+  await page.getByRole('button',{name:'Read',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
+  await expect(sheet).not.toHaveAttribute('data-motion',/.+/);
+  await expect(page.locator('.resume-job')).toHaveCount(2);await expect(page.locator('.resume-job').first()).toContainText('May 2019 - Present');
+  await expect(page.locator('.resume-job').last()).toContainText('May - Sept 2017');await expect(page.locator('.resume-job').first()).toContainText('12% increase');
+  await expect(page.locator('.resume-skills li')).toHaveCount(8);await expect(page.locator('.resume-tools li')).toHaveText(['Figma','Adobe Suite','GIFSKI','Principle']);
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect(await page.locator('.resume-job li').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveCSS('background-color','rgb(27, 28, 27)');
+});
+
+test("floating resume tilts on drag, settles without resizing, and resets with R", async ({ page }) => {
+  await page.goto('/resume/');const sheet=page.locator('.resume-sheet');await expect(sheet).toHaveAttribute('data-art-ready','true');await expect(sheet).toHaveAttribute('data-motion','floating');
+  const initial=await sheet.getAttribute('data-orientation'),width=await sheet.evaluate(el=>el.clientWidth),box=await sheet.boundingBox();
+  await page.mouse.move(box.x+box.width*.45,box.y+150);await page.mouse.down();await page.mouse.move(box.x+box.width*.45+150,box.y+220,{steps:8});
+  await expect(sheet).toHaveAttribute('data-dragging','true');await expect(sheet).not.toHaveAttribute('data-orientation',initial);
+  await page.mouse.up();await expect(sheet).toHaveAttribute('data-dragging','false');
+  await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+1.6)<.6&&Math.abs(y-.7)<.6}).toBe(true);
+  expect(await sheet.evaluate(el=>el.clientWidth)).toBe(width);await expect(page).toHaveURL(/\/resume\/$/);
+  await page.keyboard.press('r');await page.emulateMedia({reducedMotion:'reduce'});await expect(sheet).toHaveAttribute('data-orientation','0.000,0.000');
+});
+
+test("mobile resume defaults to readable text and an unavailable preview falls back to reading", async ({ page }) => {
+  await page.setViewportSize({width:390,height:844});await page.goto('/resume/');await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
+  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-artwork img')).toHaveCount(0);
+  expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(r=>r.name.includes('resume-art-')))).toBe(false);
+  await page.route('**/resume/resume-art-*.png',route=>route.abort());await page.getByRole('button',{name:'Page',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Page',exact:true})).toBeDisabled();await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
