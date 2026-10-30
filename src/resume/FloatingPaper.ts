@@ -1,8 +1,12 @@
 import type { PaperSurface } from "./PaperSurface";
-const REST_PITCH = -8, REST_YAW = -12, REST_ROLL = -3;
+const REST_PITCH = -20, REST_YAW = -12, REST_ROLL = -3;
 const TAP_SLOP = 6;
 /** One input/animation clock drives the flexible surface, with a DOM fallback. */
 export class FloatingPaper {
+  readonly ready:Promise<boolean>;
+  private active=true;
+  private hovered=false;
+  private scale=1;
   private frame = 0;
   private last = 0;
   private time = 0;
@@ -36,6 +40,7 @@ export class FloatingPaper {
     this.input = host.parentElement!;
     this.input.addEventListener("pointerdown", this.onDown);
     this.input.addEventListener("pointermove", this.onMove);
+    this.input.addEventListener("pointerleave",this.onLeave);
     this.input.addEventListener("pointerup", this.onUp);
     this.input.addEventListener("pointercancel", this.onCancel);
     this.input.addEventListener("lostpointercapture", this.onCancel);
@@ -45,21 +50,25 @@ export class FloatingPaper {
     this.observer = new IntersectionObserver(([entry]) => { this.visible = entry.isIntersecting; this.sync(); });
     this.observer.observe(host);
     this.onMotion();
-    import("./PaperSurface").then(({PaperSurface})=>{
-      if(this.disposed)return;
-      this.surface=new PaperSurface(host,()=>this.paint());this.paint();
-    }).catch(()=>{if(!this.disposed)host.dataset.surface="fallback"});
+    this.ready=import("./PaperSurface").then(({PaperSurface})=>{
+      if(this.disposed)return false;
+      this.surface=new PaperSurface(host,()=>this.paint());this.paint();return true;
+    }).catch(()=>{if(!this.disposed)host.dataset.surface="fallback";return true});
   }
+  setActive(active:boolean){this.active=active;this.hovered=false;this.tapEligible=false;if(this.grip)this.release();this.paint();this.sync()}
+  capture(){this.paint();return this.surface?.capture()??null}
+  private onLeave=()=>{this.hovered=false;this.schedule()};
   private isContact(event: Event) {
     return !!(event.target as Element).closest("a,button:not(.resume-read-target)");
   }
   private onPaper(event: MouseEvent) {
     return this.host.dataset.surface === "webgl"
       ? !!this.surface?.containsPoint(event.clientX, event.clientY)
-      : this.host.contains(event.target as Node);
+      : this.host.contains(document.elementFromPoint(event.clientX,event.clientY));
   }
   private onDown = (event: PointerEvent) => {
     this.tapEligible = false;
+    if(!this.active)return;
     if (this.grip) { this.grip.moved = true; return; }
     if (event.button !== 0 || !event.isPrimary || this.isContact(event) || !this.onPaper(event)) return;
     this.grip = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, touch: event.pointerType === "touch" };
@@ -70,7 +79,9 @@ export class FloatingPaper {
   };
   private onMove = (event: PointerEvent) => {
     const grip = this.grip;
-    if (!grip || event.pointerId !== grip.id) return;
+    if(!this.active)return;
+    if (!grip) {if(event.pointerType!=="touch"){this.hovered=this.onPaper(event);this.schedule()}return;}
+    if(event.pointerId !== grip.id)return;
     const dx = event.clientX - grip.x, dy = event.clientY - grip.y;
     if (!grip.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
     grip.moved = true;
@@ -105,7 +116,7 @@ export class FloatingPaper {
     this.tapEligible = false; this.release();
   };
   private onClick = (event: MouseEvent) => {
-    if (this.isContact(event)) return;
+    if (!this.active || this.isContact(event)) return;
     const keyboard = event.detail === 0 && !!(event.target as Element).closest(".resume-read-target");
     const activate = keyboard || (this.tapEligible && this.onPaper(event));
     this.tapEligible = false;
@@ -130,10 +141,10 @@ export class FloatingPaper {
   private sync = () => {
     if (document.hidden && this.grip) this.release();
     cancelAnimationFrame(this.frame); this.frame = 0; this.last = 0;
-    if (!document.hidden && this.visible) this.schedule();
+    if (this.active && !document.hidden && this.visible) this.schedule();
   };
   private schedule() {
-    if (this.frame || this.disposed || !this.visible || document.hidden || this.motion.matches) return;
+    if (!this.active || this.frame || this.disposed || !this.visible || document.hidden || this.motion.matches) return;
     this.frame = requestAnimationFrame(this.tick);
   }
   private tick = (now: number) => {
@@ -154,6 +165,7 @@ export class FloatingPaper {
       this.bendX+=this.velocityBendX*step;this.bendY+=this.velocityBendY*step;
       remaining -= step;
     }
+    this.scale+=(this.hovered&&!this.grip?1.03-this.scale:1-this.scale)*(1-Math.exp(-24*dt));
     this.paint(); this.schedule();
   };
   private paint() {
@@ -169,8 +181,10 @@ export class FloatingPaper {
     this.host.style.setProperty("--paper-roll", `${roll.toFixed(3)}deg`);
     this.host.style.setProperty("--paper-lift", `${lift.toFixed(2)}px`);
     this.host.dataset.orientation = `${pitch.toFixed(3)},${yaw.toFixed(3)}`;
-    this.host.dataset.motion = this.motion.matches ? "reduced" : "floating";
-    this.surface?.render({pitch,yaw,roll,lift,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
+    this.host.dataset.motion = !this.active ? "paused" : this.motion.matches ? "reduced" : "floating";
+    this.host.dataset.hoverScale=this.scale.toFixed(4);
+    this.host.style.setProperty("--paper-scale",String(this.scale));
+    this.surface?.render({pitch,yaw,roll,lift,scale:this.scale,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
   }
   dispose() {
     this.disposed = true; this.release(); cancelAnimationFrame(this.frame);
@@ -179,6 +193,7 @@ export class FloatingPaper {
     document.removeEventListener("visibilitychange", this.sync);
     this.input.removeEventListener("pointerdown", this.onDown);
     this.input.removeEventListener("pointermove", this.onMove);
+    this.input.removeEventListener("pointerleave",this.onLeave);
     this.input.removeEventListener("pointerup", this.onUp);
     this.input.removeEventListener("pointercancel", this.onCancel);
     this.input.removeEventListener("lostpointercapture", this.onCancel);

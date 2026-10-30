@@ -7,7 +7,7 @@ export class DownloadMotion {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   private motion = matchMedia("(prefers-reduced-motion: reduce)");
-  constructor(private sheet: HTMLElement, private button: HTMLAnchorElement) {
+  constructor(private sheet: ()=>HTMLElement, private button: HTMLAnchorElement) {
     this.motion.addEventListener("change", this.onMotion);
   }
   private onMotion = () => { if (this.motion.matches) this.clear(); };
@@ -27,7 +27,7 @@ export class DownloadMotion {
     this.clear();
     if (this.disposed || this.motion.matches) return;
     const token = this.pending;
-    const existing = this.sheet.querySelector<HTMLImageElement>(".resume-artwork img");
+    const existing = this.sheet().querySelector<HTMLImageElement>(".resume-artwork img");
     const image = new Image(); image.alt = ""; image.src = existing?.currentSrc || "/resume/resume-art-1200.png";
     // Slow/unavailable artwork skips the flourish, never the file download.
     this.timer = setTimeout(() => { if (this.pending === token) { this.pending++; this.timer = null; } }, 650);
@@ -38,9 +38,9 @@ export class DownloadMotion {
     }).catch(() => { if (token === this.pending) { if (this.timer !== null) clearTimeout(this.timer); this.timer = null; } });
   };
   private fly(image: HTMLImageElement) {
-    const source = this.sheet.getBoundingClientRect(), button = this.button.getBoundingClientRect();
+    const source = this.sheet().getBoundingClientRect(), button = this.button.getBoundingClientRect();
     const icon = this.button.querySelector("svg")?.getBoundingClientRect() || button;
-    const reading = this.sheet.dataset.mode === "read";
+    const reading = this.sheet().classList.contains("resume-read-sheet");
     const width = reading ? Math.min(142, innerWidth * .28) : source.width;
     const height = width * 842 / 595;
     const centerX = reading ? Math.max(width / 2 + 16, Math.min(innerWidth - width / 2 - 16, source.right - width / 2)) : source.left + width / 2;

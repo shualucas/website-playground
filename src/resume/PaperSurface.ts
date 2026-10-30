@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { softenShadowEdges } from "../book/effects";
-import { studioEnvironment } from "../book/surfaces";
+import { studioEnvironment, surfaceDetail } from "../book/surfaces";
 
-export type PaperPose = { pitch:number; yaw:number; roll:number; lift:number; bendX:number; bendY:number; grabX:number; grabY:number };
+export type PaperPose = { scale:number; pitch:number; yaw:number; roll:number; lift:number; bendX:number; bendY:number; grabX:number; grabY:number };
 const H = 4.7, W = H * 595 / 842, FLOAT_GAP = .75, FOCUS_Y = -.38;
 
 /** A thin, locally flexible sheet. FloatingPaper owns the only animation clock. */
@@ -15,9 +15,11 @@ export class PaperSurface {
   private rest = new Float32Array(this.positions.array);
   private front: THREE.Mesh;
   private back: THREE.Mesh;
-  private material: THREE.MeshStandardMaterial;
+  private material: THREE.MeshPhysicalMaterial;
+  private depth:THREE.MeshDepthMaterial;
   private backMaterial = new THREE.MeshStandardMaterial({color:"#fffdf8",roughness:.9,side:THREE.BackSide});
   private texture: THREE.Texture;
+  private detail:ReturnType<typeof surfaceDetail>;
   private environment: THREE.WebGLRenderTarget;
   private floorMaterial = softenShadowEdges(new THREE.ShadowMaterial({opacity:.18,depthWrite:false}));
   private floor = new THREE.Mesh(new THREE.PlaneGeometry(40,40),this.floorMaterial);
@@ -51,9 +53,25 @@ export class PaperSurface {
     this.renderer.domElement.setAttribute("aria-hidden","true");
     this.texture = new THREE.Texture(image);this.texture.colorSpace=THREE.SRGBColorSpace;this.texture.needsUpdate=true;
     this.texture.anisotropy = Math.min(8,this.renderer.capabilities.getMaxAnisotropy());
+    this.detail=surfaceDetail("paper");
     // Normalize studio illumination without filmic tone mapping lifting the printed blacks.
-    this.material = new THREE.MeshStandardMaterial({map:this.texture,roughness:.86,metalness:0,toneMapped:false,shadowSide:THREE.DoubleSide});
-    this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;
+    this.material = new THREE.MeshPhysicalMaterial({map:this.texture,roughness:.5,normalMap:this.detail.normal,normalScale:new THREE.Vector2(.055,.055),roughnessMap:this.detail.roughness,clearcoat:.35,clearcoatRoughness:.36,metalness:0,toneMapped:false,shadowSide:THREE.DoubleSide});
+    this.depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,side:THREE.DoubleSide});
+    for(const material of [this.material,this.backMaterial,this.depth]){
+      material.onBeforeCompile=shader=>{
+        shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec2 vPaperUv;').replace('#include <uv_vertex>','#include <uv_vertex>\nvPaperUv=uv;');
+        shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vPaperUv;').replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+          vec2 paperQ=abs((vPaperUv-.5)*vec2(${W},${H}))-(vec2(${W},${H})*.5-.065);
+          if(length(max(paperQ,0.0))+min(max(paperQ.x,paperQ.y),0.0)>.065)discard;`);
+        if(material===this.material)shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+          // Satin highlights stay restrained over the original printed ink.
+          float inkLuma=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+          outgoingLight=min(outgoingLight,diffuseColor.rgb+vec3(.018+.07*smoothstep(.25,.8,inkLuma)));
+          #include <opaque_fragment>`);
+      };
+      material.customProgramCacheKey=()=>`resume-rounded-satin-${material.type}-v1`;
+    }
+    this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;this.front.customDepthMaterial=this.depth;
     this.back = new THREE.Mesh(this.geometry,this.backMaterial);
     this.scene.add(this.front,this.back);
     // Keep the zine's actual Y-up studio. The document is upright, above an XZ floor.
@@ -107,7 +125,10 @@ export class PaperSurface {
     if(!bounds.width||!bounds.height)return false;
     this.pointer.set((clientX-bounds.left)/bounds.width*2-1,1-(clientY-bounds.top)/bounds.height*2);
     this.raycaster.setFromCamera(this.pointer,this.camera);
-    return this.raycaster.intersectObject(this.front,false).length>0;
+    const hit=this.raycaster.intersectObject(this.front,false)[0];
+    if(!hit?.uv)return false;
+    const x=Math.abs((hit.uv.x-.5)*W)-(W/2-.065),y=Math.abs((hit.uv.y-.5)*H)-(H/2-.065);
+    return Math.hypot(Math.max(x,0),Math.max(y,0))+Math.min(Math.max(x,y),0)<=.065;
   }
   render(pose:PaperPose) {
     if(this.disposed||!this.scale)return;
@@ -123,6 +144,7 @@ export class PaperSurface {
     this.geometry.boundingSphere ??= new THREE.Sphere(new THREE.Vector3(),3.5);
     this.rotation.set(THREE.MathUtils.degToRad(pose.pitch),THREE.MathUtils.degToRad(pose.yaw),THREE.MathUtils.degToRad(pose.roll));
     this.front.rotation.copy(this.rotation);this.back.rotation.copy(this.rotation);
+    this.front.scale.setScalar(pose.scale);this.back.scale.setScalar(pose.scale);
     this.front.position.y=this.back.position.y=-pose.lift/this.scale;
     this.front.updateMatrixWorld();
     this.renderer.render(this.scene,this.camera);
@@ -139,12 +161,30 @@ export class PaperSurface {
     this.host.dataset.paperY=String(this.front.position.y);
     this.host.dataset.paperNormal=this.vector.set(0,0,1).applyQuaternion(this.front.quaternion).toArray().map(n=>n.toFixed(3)).join(",");
   }
+  capture(){
+    if(this.disposed)return null;
+    const bounds=this.renderer.domElement.getBoundingClientRect();
+    const points=[];
+    for(let i=0;i<this.positions.count;i++){
+      this.vector.fromBufferAttribute(this.positions,i).applyMatrix4(this.front.matrixWorld).project(this.camera);
+      points.push({x:(this.vector.x+1)*this.width/2,y:(1-this.vector.y)*this.height/2});
+    }
+    const left=Math.max(0,Math.floor(Math.min(...points.map(p=>p.x)))-2),top=Math.max(0,Math.floor(Math.min(...points.map(p=>p.y)))-2);
+    const right=Math.min(this.width,Math.ceil(Math.max(...points.map(p=>p.x)))+2),bottom=Math.min(this.height,Math.ceil(Math.max(...points.map(p=>p.y)))+2);
+    const canvas=document.createElement('canvas'),ratio=this.renderer.getPixelRatio();canvas.width=Math.ceil((right-left)*ratio);canvas.height=Math.ceil((bottom-top)*ratio);
+    this.renderer.render(this.scene,this.camera);
+    canvas.getContext('2d')!.drawImage(this.renderer.domElement,left*ratio,top*ratio,(right-left)*ratio,(bottom-top)*ratio,0,0,canvas.width,canvas.height);
+    const shadow=document.createElement('canvas');shadow.width=this.renderer.domElement.width;shadow.height=this.renderer.domElement.height;
+    const ctx=shadow.getContext('2d')!;ctx.drawImage(this.renderer.domElement,0,0);ctx.clearRect(left*ratio,top*ratio,(right-left)*ratio,(bottom-top)*ratio);
+    return {canvas,rect:new DOMRect(bounds.left+left,bounds.top+top,right-left,bottom-top),shadow:{canvas:shadow,rect:bounds}};
+  }
   dispose(){
     if(this.disposed)return;this.disposed=true;
     this.observer.disconnect();this.theme.disconnect();
     this.renderer.domElement.removeEventListener("webglcontextlost",this.onLost);
     this.renderer.domElement.remove();
-    this.geometry.dispose();this.material.dispose();this.backMaterial.dispose();this.texture.dispose();
+    this.geometry.dispose();this.depth.dispose();this.material.dispose();this.backMaterial.dispose();this.texture.dispose();
+    Object.values(this.detail).forEach(map=>map.dispose());
     this.environment.dispose();
     this.floor.geometry.dispose();this.floorMaterial.dispose();this.key.shadow.dispose();
     this.renderer.dispose();this.renderer.forceContextLoss();

@@ -34,7 +34,9 @@ export class AmbientGradient {
   };
   private tick = (now: number) => {
     this.frame = 0;
-    if (this.disposed || document.hidden || this.motion.matches) return;
+    if (this.disposed || document.hidden) return;
+    // A frame can see the updated preference before its change event arrives.
+    if (this.motion.matches) { this.sync(); return; }
     const dt = this.last ? Math.min(.05, (now - this.last) / 1000) : 0;
     this.last = now; this.time += dt;
     const ease = 1 - Math.exp(-3 * dt);
