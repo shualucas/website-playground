@@ -2,27 +2,17 @@ import * as THREE from "three";
 import { PAGE_HEIGHT as H } from "./materials";
 import { LEAF_SEGMENTS, type SkinnedLeaf, type PaperMaterial } from "./leaf";
 import { zineNotes } from "../content/zine-notes";
+import { drawHandwrittenNote } from "../content/handwriting";
 
 export const INSERT_SAMPLES = [0,8,45,49,53,90,98];
 const NOTE_SIZE=1.05;
 type Surface = (params:THREE.MeshPhysicalMaterialParameters)=>PaperMaterial;
 
-function noteTexture(color:string,grid:boolean,text:string) {
+function noteTexture(color:string,text:string,id:string) {
   const canvas=document.createElement("canvas");canvas.width=canvas.height=256;
   const ctx=canvas.getContext("2d")!;
   ctx.fillStyle=color;ctx.fillRect(0,0,256,256);
-  ctx.strokeStyle="#52515a24";ctx.lineWidth=1;
-  if(grid){
-    for(let n=24;n<256;n+=24){ctx.beginPath();ctx.moveTo(n,0);ctx.lineTo(n,256);ctx.moveTo(0,n);ctx.lineTo(256,n);ctx.stroke()}
-  }
-  ctx.fillStyle="#39312b";ctx.font='400 22px "Caveat",cursive';
-  const lines:string[]=[];let line="";
-  for(const word of text.split(" ")){
-    const next=line?`${line} ${word}`:word;
-    if(line&&ctx.measureText(next).width>208){lines.push(line);line=word}else line=next;
-  }
-  if(line)lines.push(line);
-  lines.forEach((line,index)=>ctx.fillText(line,24,38+index*24));
+  drawHandwrittenNote(ctx,text,id);
   let seed=701;
   for(let i=0;i<1600;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const x=seed%256;seed=(Math.imul(seed,1664525)+1013904223)>>>0;ctx.fillStyle=i%2?"#ffffff18":"#39312b0c";ctx.fillRect(x,seed%256,1,1)}
   const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=4;
@@ -37,16 +27,16 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     const id=(leaf.faces[face].image as HTMLCanvasElement)?.dataset?.flyerId;
     return id?[{leaf,face,id}]:[];
   }));
-  // Edge, position along that edge, exposed length, skew, graph paper.
-  const placements:["top"|"right"|"bottom",number,number,number,boolean][]=[
-    ["top",W*.57,.48,-.06,true],
-    ["right",.26,.66,.05,false],
-    ["bottom",W*.63,.36,-.06,false],
-    ["right",.52,.54,-.05,true],
-    ["top",W*.62,.28,.06,false],
+  // Edge, position along that edge, exposed length, skew.
+  const placements:["top"|"right"|"bottom",number,number,number][]=[
+    ["top",W*.57,.48,-.06],
+    ["right",.26,.66,.05],
+    ["bottom",W*.63,.36,-.06],
+    ["right",.52,.54,-.05],
+    ["top",W*.62,.28,.06],
   ];
   return prints.map(({leaf,face,id},index)=>{
-    const [edge,along,peek,angle,grid]=placements[index%placements.length];
+    const [edge,along,peek,angle]=placements[index%placements.length];
     const note=zineNotes.find(note=>note.id===id),color=note?.color??"#efda7d";
     const width=NOTE_SIZE,height=NOTE_SIZE;
     const cx=edge==="right"?W-width/2+peek:along;
@@ -69,7 +59,7 @@ export function createPaperInserts(leaves:readonly SkinnedLeaf[],surface:Surface
     }
     geometry.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
     geometry.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));geometry.computeVertexNormals();
-    const material=surface({map:keep(noteTexture(color,grid,note?.text??"")),roughness:.97,metalness:0,side:THREE.DoubleSide,emissive:"#f7e4a7",emissiveIntensity:0});
+    const material=surface({map:keep(noteTexture(color,note?.text??"",id)),roughness:.97,metalness:0,side:THREE.DoubleSide,emissive:"#f7e4a7",emissiveIntensity:0});
     const mesh=new THREE.SkinnedMesh(geometry,material);
     mesh.name=`tucked-paper-${id}`;mesh.userData.leaf=leaf.id;mesh.userData.paperInsert=true;mesh.userData.flyerId=id;mesh.userData.printFace=face;
     mesh.userData.restPositions=new Float32Array(p.array);mesh.userData.pageWidth=W;mesh.userData.hoverStrength=0;

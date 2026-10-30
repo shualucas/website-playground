@@ -22,10 +22,11 @@
 .zine-note-dialog { border:0; border-radius:0; padding:0; width:min(400px,calc(100vw - 48px)); max-height:calc(100svh - 48px); overflow:auto; color:#242126; background:var(--note-stock); box-shadow:0 28px 80px #0003,0 2px 6px #0002; }
 .zine-note-dialog[open] { animation:note-unfold 240ms cubic-bezier(.22,1,.36,1) both; }
 .zine-note-dialog::backdrop { background:#15151b52; }
-.zine-note-paper { position:relative; min-height:300px; padding:48px 32px 36px; background-image:repeating-linear-gradient(0deg,transparent,transparent 33px,#24212609 33px,#24212609 34px); }
+.zine-note-paper { position:relative; min-height:300px; padding:48px 32px 36px; }
 .zine-note-close { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:44px; height:44px; }
 .zine-note-close:hover { background:#2421260a; }
-.zine-note-paper > p { margin:0; font:400 26px/1.3 "Caveat",cursive; letter-spacing:.005em; white-space:pre-line; }
+.zine-note-paper > p { position:relative; margin:0; font:400 26px/1.36 "Caveat",cursive; letter-spacing:.005em; white-space:pre-line; font-variant-ligatures:contextual; }
+.handwritten-word { display:inline-block; transition-property:none; transform-origin:0 75%; transform:translate(var(--line-indent,0px),calc(var(--word-drift) + var(--line-drift,0px))) rotate(calc(var(--word-angle) + var(--line-angle,0deg))) scaleX(var(--word-stretch)); }
 @keyframes note-unfold { from { opacity:0; transform:translateY(12px) scale(.96); filter:blur(2px); } to { opacity:1; transform:translateY(0) scale(1); filter:none; } }
 @media(prefers-reduced-motion:reduce) { .zine-note-dialog[open] { animation:none; } }
 @media(min-width:880px) and (max-width:1100px) { .zine-header-shell { padding-inline:36px; } }
