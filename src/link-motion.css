@@ -1,34 +1,37 @@
-/* Independent translate/scale leave the shared blur-and-fade entrance intact. */
+/* The same filled marker + springy text shift as the recent-project rows.
+   The hit area stays still, and the shared entrance keeps its own transform. */
 :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link) {
-  position:relative;
-  transition:color 180ms ease,translate 260ms cubic-bezier(.2,.8,.2,1),scale 160ms ease;
+  --link-active:0; --link-nudge:0px; position:relative;
+  transition:color 180ms ease,scale 160ms ease;
 }
+.link-copy { display:inline-flex; align-items:center; gap:inherit; transform:translateX(var(--link-nudge,0px)); transition:transform 360ms cubic-bezier(.2,1.35,.4,1); }
 :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link)::after {
-  content:""; position:absolute; left:0; right:0; bottom:7px; height:1px;
-  background:currentColor; opacity:.6; transform:scaleX(0); transform-origin:right;
-  transition:transform 280ms cubic-bezier(.22,1,.36,1); pointer-events:none;
+  content:""; position:absolute; left:0; top:50%; width:5px; height:5px;
+  background:currentColor; opacity:var(--link-active); transform:translateY(-50%) scaleX(var(--link-active)); transform-origin:left center;
+  transition:opacity 160ms ease,transform 220ms cubic-bezier(.22,1,.36,1); pointer-events:none;
 }
-:where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):focus-visible::after { transform:scaleX(1); transform-origin:left; }
-:where(.after-hours-back,.resume-nav > a,.back-to-zine,.zine-source-link) svg { transition:translate 280ms cubic-bezier(.22,1,.36,1); }
+:where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):focus-visible { --link-active:1; --link-nudge:12px; }
 button.tool-button,button.icon-button,.resume-view-switch button,.resume-download { transition:background 180ms ease,color 180ms ease,scale 200ms cubic-bezier(.2,.8,.2,1); }
 :where(.tool-button,.icon-button) svg { transition:rotate 320ms cubic-bezier(.22,1,.36,1),scale 240ms ease; }
 @media(hover:hover) {
-  :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):hover { translate:0 -2px; }
-  :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):hover::after { transform:scaleX(1); transform-origin:left; }
-  :where(.after-hours-back,.resume-nav > a,.back-to-zine):hover svg { translate:-3px 0; }
-  .zine-source-link:hover svg { translate:0 2px; }
+  :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):hover { --link-active:1; --link-nudge:12px; }
   :where(.tool-button,.icon-button):hover svg { rotate:-12deg; scale:1.08; }
 }
-:where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):active { translate:0 1px; scale:.97; }
+:where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):active { --link-active:1; --link-nudge:8px; scale:.98; }
+:where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link):active::after { transform:translateY(-50%) rotate(45deg) scale(.8); }
 :where(.tool-button,.icon-button,.resume-view-switch button,.resume-download):active { scale:.94; }
 .profile-links .social-link:hover .social-platform { text-decoration:none; }
+.profile-links .social-link::after { left:calc(50% - .35em); }
 .now-playing,.listening-history li a { transition:scale 200ms ease; }
 .now-playing .listening-artwork,.listening-history li a .listening-artwork { transition:scale 260ms cubic-bezier(.22,1,.36,1),rotate 260ms ease; }
+.now-playing:hover .now-playing-title,.listening-history li a:hover .listening-song > span:first-child { text-decoration:none; }
 @media(hover:hover) { .now-playing:hover .listening-artwork,.listening-history li a:hover .listening-artwork { scale:1.04; rotate:-2deg; } }
 .now-playing:active,.listening-history li a:active { scale:.98; }
 @media(prefers-reduced-motion:reduce) {
+  .link-copy { transform:none; transition:none; }
+  :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link)::after { left:-9px; transition:none; }
+  .profile-links .social-link::after { left:calc(50% - 1em); }
   :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link,.tool-button,.icon-button,.resume-view-switch button,.resume-download),
-  :where(.after-hours-back,.resume-nav > a,.back-to-zine,.zine-source-link,.tool-button,.icon-button) svg { transition:none!important; translate:none!important; scale:none!important; rotate:none!important; }
-  :where(.profile-links a,.resume-print-contacts a,.zine-source-link,.after-hours-back,.resume-nav > a,.back-to-zine,.case-study-link,.text-link)::after { transition:none; }
+  :where(.tool-button,.icon-button) svg { transition:none!important; scale:none!important; rotate:none!important; }
   .now-playing,.listening-history li a,.now-playing .listening-artwork,.listening-history li a .listening-artwork { transition:none; scale:none; rotate:none; }
 }

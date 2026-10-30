@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { softenShadowEdges } from "../book/effects";
+import { studioEnvironment } from "../book/surfaces";
 
 export type PaperPose = { pitch:number; yaw:number; roll:number; lift:number; bendX:number; bendY:number; grabX:number; grabY:number };
-const H = 4.7, W = H * 595 / 842;
+const H = 4.7, W = H * 595 / 842, FLOAT_GAP = .75, FOCUS_Y = -.38;
 
 /** A thin, locally flexible sheet. FloatingPaper owns the only animation clock. */
 export class PaperSurface {
@@ -17,6 +18,7 @@ export class PaperSurface {
   private material: THREE.MeshStandardMaterial;
   private backMaterial = new THREE.MeshStandardMaterial({color:"#fffdf8",roughness:.9,side:THREE.BackSide});
   private texture: THREE.Texture;
+  private environment: THREE.WebGLRenderTarget;
   private floorMaterial = softenShadowEdges(new THREE.ShadowMaterial({opacity:.18,depthWrite:false}));
   private floor = new THREE.Mesh(new THREE.PlaneGeometry(40,40),this.floorMaterial);
   private key = new THREE.DirectionalLight("#fffefa",2.5);
@@ -39,25 +41,31 @@ export class PaperSurface {
     this.renderer.toneMappingExposure = 1.04;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.VSMShadowMap;
+    const gl=this.renderer.getContext(),debug=gl.getExtension("WEBGL_debug_renderer_info");
+    const software=!!debug&&/swiftshader|llvmpipe/i.test(String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)));
+    this.environment=studioEnvironment(this.renderer,software);
+    this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.72;
     this.renderer.domElement.className = "resume-paper-canvas";
     this.renderer.domElement.setAttribute("aria-hidden","true");
     this.texture = new THREE.Texture(image);this.texture.colorSpace=THREE.SRGBColorSpace;this.texture.needsUpdate=true;
     this.texture.anisotropy = Math.min(8,this.renderer.capabilities.getMaxAnisotropy());
     // Normalize studio illumination without filmic tone mapping lifting the printed blacks.
-    this.material = new THREE.MeshStandardMaterial({map:this.texture,color:"#eeeeee",roughness:.86,metalness:0,toneMapped:false});
+    this.material = new THREE.MeshStandardMaterial({map:this.texture,roughness:.86,metalness:0,toneMapped:false,shadowSide:THREE.DoubleSide});
     this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;
     this.back = new THREE.Mesh(this.geometry,this.backMaterial);
     this.scene.add(this.front,this.back);
-    // Zine's overhead studio, rotated from its Y-up table into this XY sheet.
-    const hemisphere=new THREE.HemisphereLight("#ffffff","#63635f",1.05);hemisphere.position.set(0,0,1);
-    this.key.position.set(-1.5,2,15);this.key.castShadow=true;
-    this.key.shadow.mapSize.set(1024,1024);
-    Object.assign(this.key.shadow.camera,{left:-5,right:5,top:5,bottom:-5,near:1,far:40});
-    this.key.shadow.radius=14;this.key.shadow.blurSamples=12;
+    // Keep the zine's actual Y-up studio. The document is upright, above an XZ floor.
+    const hemisphere=new THREE.HemisphereLight("#ffffff","#63635f",1.05);
+    this.key.position.set(-1.5,15,-2);this.key.castShadow=true;
+    this.key.shadow.mapSize.set(software?512:2048,software?512:2048);
+    Object.assign(this.key.shadow.camera,{left:-8,right:8,top:8,bottom:-8,near:1,far:80});
+    this.key.shadow.radius=software?11:44;this.key.shadow.blurSamples=software?8:12;
     this.key.shadow.normalBias=.015;this.key.shadow.bias=-.0001;
-    const fill=new THREE.DirectionalLight("#ffffff",.18);fill.position.set(5,4,6);
-    this.floor.position.z=-2.4;this.floor.receiveShadow=true;
-    this.scene.add(hemisphere,this.key,fill,this.floor);
+    const fill=new THREE.DirectionalLight("#ffffff",.18);fill.position.set(5,6,-4);
+    // A broad unshadowed bounce keeps printed ink readable on the vertical face.
+    const bounce=new THREE.DirectionalLight("#ffffff",2.05);bounce.position.set(0,4,9);
+    this.floor.rotation.x=-Math.PI/2;this.floor.position.y=-H/2-FLOAT_GAP;this.floor.receiveShadow=true;
+    this.scene.add(hemisphere,this.key,fill,bounce,this.floor);
     this.contacts=[...host.querySelectorAll<HTMLAnchorElement>(".paper-contact")].map(element=>({element,x:parseFloat(element.style.left)/100,y:parseFloat(element.style.top)/100,style:element.getAttribute("style")}));
     this.observer=new ResizeObserver(this.resize);this.observer.observe(host);this.observer.observe(host.parentElement!);
     this.theme=new MutationObserver(()=>{this.floorMaterial.opacity=document.documentElement.dataset.colorMode==="dark"?.4:.18;this.invalidate()});
@@ -65,6 +73,8 @@ export class PaperSurface {
     this.floorMaterial.opacity=document.documentElement.dataset.colorMode==="dark"?.4:.18;
     host.parentElement!.prepend(this.renderer.domElement);
     this.resize();host.dataset.surface="webgl";
+    host.dataset.groundY=String(this.floor.position.y);
+    host.dataset.groundNormal="0,1,0";
     this.renderer.domElement.addEventListener("webglcontextlost",this.onLost);
   }
   private onLost=(event:Event)=>{event.preventDefault();this.dispose();this.invalidate()};
@@ -77,22 +87,24 @@ export class PaperSurface {
     const perspective=2400;
     this.camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(this.height/(2*perspective)));
     this.camera.aspect=this.width/this.height;this.camera.near=.1;this.camera.far=150;
-    this.camera.position.set(0,0,perspective/this.scale);this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld();
+    const distance=perspective/this.scale;
+    this.camera.position.set(0,FOCUS_Y+distance*.1,distance);this.camera.lookAt(0,FOCUS_Y,0);
+    this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld();
     this.invalidate();
   };
   private flex(x:number,y:number,pose:PaperPose) {
     const u=x/W*2,v=y/H*2,dx=u-pose.grabX,dy=v-pose.grabY;
-    const influence=Math.exp(-(dx*dx*1.5+dy*dy*1.2));
-    const edge=.25+.75*Math.pow(Math.max(Math.abs(pose.grabX),Math.abs(pose.grabY)),2);
-    // A broad curved fold near the grip, tapering continuously into the sheet.
-    return edge*influence*(Math.hypot(pose.bendX,pose.bendY)*1.35+pose.bendX*dx*.7+pose.bendY*dy*.7);
+    const influence=Math.exp(-(dx*dx*5+dy*dy*5));
+    const edge=.06+.94*Math.pow(Math.max(Math.abs(pose.grabX),Math.abs(pose.grabY)),4);
+    // Firm stock: only the grabbed edge yields; the body stays nearly planar.
+    return edge*influence*(Math.hypot(pose.bendX,pose.bendY)*.65+pose.bendX*dx*.25+pose.bendY*dy*.25);
   }
   render(pose:PaperPose) {
     if(this.disposed||!this.scale)return;
     if(pose.bendX!==this.lastFlex[0]||pose.bendY!==this.lastFlex[1]||pose.grabX!==this.lastFlex[2]||pose.grabY!==this.lastFlex[3]){
       for(let i=0;i<this.positions.count;i++){
         const x=this.rest[i*3],y=this.rest[i*3+1],z=this.flex(x,y,pose);
-        this.positions.setXYZ(i,x-pose.grabX*z*.4,y-pose.grabY*z*.4,z);
+        this.positions.setXYZ(i,x-pose.grabX*z*.15,y-pose.grabY*z*.15,z);
       }
       this.positions.needsUpdate=true;this.geometry.computeVertexNormals();
       this.lastFlex[0]=pose.bendX;this.lastFlex[1]=pose.bendY;this.lastFlex[2]=pose.grabX;this.lastFlex[3]=pose.grabY;
@@ -104,24 +116,29 @@ export class PaperSurface {
     this.front.position.y=this.back.position.y=-pose.lift/this.scale;
     this.front.updateMatrixWorld();
     this.renderer.render(this.scene,this.camera);
+    const originX=(this.width-this.host.clientWidth)/2,originY=(this.height-this.host.clientHeight)/2-this.host.clientHeight*.08;
     for(const contact of this.contacts){
       const x=(contact.x-.5)*W,y=(.5-contact.y)*H;
       const z=this.flex(x,y,pose);
-      this.vector.set(x-pose.grabX*z*.4,y-pose.grabY*z*.4,z).applyMatrix4(this.front.matrixWorld).project(this.camera);
-      contact.element.style.left=`${(this.vector.x*this.width/2+this.host.clientWidth/2).toFixed(2)}px`;
-      contact.element.style.top=`${(-this.vector.y*this.height/2+this.host.clientHeight/2).toFixed(2)}px`;
+      this.vector.set(x-pose.grabX*z*.15,y-pose.grabY*z*.15,z).applyMatrix4(this.front.matrixWorld).project(this.camera);
+      contact.element.style.left=`${((this.vector.x+1)*this.width/2-originX).toFixed(2)}px`;
+      contact.element.style.top=`${((1-this.vector.y)*this.height/2-originY).toFixed(2)}px`;
       contact.element.style.transform="translateY(-50%)";
     }
     this.host.dataset.bend=Math.hypot(pose.bendX,pose.bendY).toFixed(3);
+    this.host.dataset.paperY=String(this.front.position.y);
+    this.host.dataset.paperNormal=this.vector.set(0,0,1).applyQuaternion(this.front.quaternion).toArray().map(n=>n.toFixed(3)).join(",");
   }
   dispose(){
     if(this.disposed)return;this.disposed=true;
     this.observer.disconnect();this.theme.disconnect();
     this.renderer.domElement.removeEventListener("webglcontextlost",this.onLost);
-    this.renderer.domElement.remove();this.renderer.dispose();this.renderer.forceContextLoss();
+    this.renderer.domElement.remove();
     this.geometry.dispose();this.material.dispose();this.backMaterial.dispose();this.texture.dispose();
+    this.environment.dispose();
     this.floor.geometry.dispose();this.floorMaterial.dispose();this.key.shadow.dispose();
+    this.renderer.dispose();this.renderer.forceContextLoss();
     for(const {element,style} of this.contacts){if(style===null)element.removeAttribute("style");else element.setAttribute("style",style)}
-    delete this.host.dataset.surface;delete this.host.dataset.bend;
+    for(const name of ["surface","bend","paperY","paperNormal","groundY","groundNormal"])delete this.host.dataset[name];
   }
 }

@@ -29,6 +29,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
     >
       <header className="case-study-nav">
         <button data-reveal onClick={onBack} className="back-to-zine">
+          <span className="link-copy">
           <svg
             viewBox="0 0 24 24"
             width="20"
@@ -41,6 +42,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             <path d="M20 12H4m6-6-6 6 6 6" />
           </svg>
           {backLabel}
+          </span>
         </button>
         {identity && <span data-reveal>{identity.toUpperCase()}</span>}
       </header>
@@ -92,7 +94,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
         </div>
         {project.caseStudyUrl && (
           <a data-reveal className="case-study-link" href={project.caseStudyUrl}>
-            View full project ↗
+            <span className="link-copy">View full project ↗</span>
           </a>
         )}
         {project.sample && (

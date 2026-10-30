@@ -69,7 +69,7 @@ function AfterHours() {
   }, []);
   return <main ref={content} data-reveal-flow="page" data-ready={ready} className={`after-hours${fallback ? " is-fallback" : ""}`}>
     <header className="zine-header-shell"><nav data-reveal data-reveal-at="0" className="zine-header" aria-label="Main navigation">
-      <a className="after-hours-back" href="/" aria-label="Back to Josh Lucas"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</a>
+      <a className="after-hours-back" href="/" aria-label="Back to Josh Lucas"><span className="link-copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</span></a>
       <button className="tool-button" type="button" onClick={() => setDark(value => !value)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><ThemeIcon dark={dark} /></button>
     </nav></header>
     <h1 className="sr-only">Extracurriculars</h1>

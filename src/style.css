@@ -941,8 +941,9 @@ svg {
   max-width: 720px;
 }
 .case-study-link {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .case-study-content footer {
   margin-top: 64px;

@@ -922,10 +922,14 @@ test("resume page preserves original artwork and downloads its one-page PDF with
 test("floating resume tilts on drag, settles without resizing, and resets with R", async ({ page }) => {
   await page.goto('/resume/');const sheet=page.locator('.resume-sheet');await expect(sheet).toHaveAttribute('data-art-ready','true');await expect(sheet).toHaveAttribute('data-motion','floating');
   await expect(sheet).toHaveAttribute('data-surface','webgl');
+  await expect(sheet).toHaveAttribute('data-ground-normal','0,1,0');
+  const pose=await sheet.evaluate(el=>({ground:Number(el.dataset.groundY),center:Number(el.dataset.paperY),normal:el.dataset.paperNormal.split(',').map(Number)}));
+  expect(pose.center-4.7/2-pose.ground).toBeGreaterThan(.5);expect(Math.abs(pose.normal[1])).toBeLessThan(.1);
   const initial=await sheet.getAttribute('data-orientation'),width=await sheet.evaluate(el=>el.clientWidth),box=await sheet.boundingBox();
   await page.mouse.move(box.x+box.width*.45,box.y+150);await page.mouse.down();await page.mouse.move(box.x+box.width*.45+150,box.y+220,{steps:8});
   await expect(sheet).toHaveAttribute('data-dragging','true');await expect(sheet).not.toHaveAttribute('data-orientation',initial);
   await expect.poll(async()=>Number(await sheet.getAttribute('data-bend'))).toBeGreaterThan(.05);
+  expect(Number(await sheet.getAttribute('data-bend'))).toBeLessThan(.26);
   await page.mouse.up();await expect(sheet).toHaveAttribute('data-dragging','false');
   await expect.poll(async()=>{const [x,y]=(await sheet.getAttribute('data-orientation')).split(',').map(Number);return Math.abs(x+1.6)<1.4&&Math.abs(y-.7)<1.5}).toBe(true);
   expect(await sheet.evaluate(el=>el.clientWidth)).toBe(width);await expect(page).toHaveURL(/\/resume\/$/);

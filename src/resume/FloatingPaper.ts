@@ -65,8 +65,8 @@ export class FloatingPaper {
     event.preventDefault();
     this.targetYaw = Math.max(-16.1, Math.min(16.1, 0.7 + dx * 0.05175));
     this.targetPitch = Math.max(-11.5, Math.min(11.5, -1.6 - dy * 0.04025));
-    this.targetBendX=Math.max(-.65,Math.min(.65,dx/this.gripWidth*1.6));
-    this.targetBendY=Math.max(-.65,Math.min(.65,-dy/this.gripHeight*1.6));
+    this.targetBendX=Math.max(-.18,Math.min(.18,dx/this.gripWidth*.4));
+    this.targetBendY=Math.max(-.18,Math.min(.18,-dy/this.gripHeight*.4));
     if (this.motion.matches) { this.pitch = this.targetPitch; this.yaw = this.targetYaw; this.bendX=this.targetBendX;this.bendY=this.targetBendY;this.paint(); }
     this.schedule();
   };
@@ -125,8 +125,8 @@ export class FloatingPaper {
       this.velocityPitch += ((this.targetPitch - this.pitch) * 100 - this.velocityPitch * 16) * step;
       this.velocityYaw += ((this.targetYaw - this.yaw) * 100 - this.velocityYaw * 16) * step;
       this.pitch += this.velocityPitch * step; this.yaw += this.velocityYaw * step;
-      this.velocityBendX+=((this.targetBendX-this.bendX)*110-this.velocityBendX*17)*step;
-      this.velocityBendY+=((this.targetBendY-this.bendY)*110-this.velocityBendY*17)*step;
+      this.velocityBendX+=((this.targetBendX-this.bendX)*150-this.velocityBendX*25)*step;
+      this.velocityBendY+=((this.targetBendY-this.bendY)*150-this.velocityBendY*25)*step;
       this.bendX+=this.velocityBendX*step;this.bendY+=this.velocityBendY*step;
       remaining -= step;
     }

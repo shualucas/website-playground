@@ -26,7 +26,7 @@ function ResumeDocument({ hidden = false }) {
       </section>
     </div>
     {!hidden && <footer className="resume-print-contacts">
-      <a href={resume.links.portfolio}>joshglucas.com</a><a href={`mailto:${resume.email}`}>{resume.email}</a><a href={resume.links.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">/joshglucas</a>
+      <a href={resume.links.portfolio}><span className="link-copy">joshglucas.com</span></a><a href={`mailto:${resume.email}`}><span className="link-copy">{resume.email}</span></a><a href={resume.links.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><span className="link-copy">/joshglucas</span></a>
     </footer>}
   </article>;
 }
@@ -83,7 +83,7 @@ function Resume() {
   return <main ref={content} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"}>
     <div className="resume-gradient" ref={wash} data-active={reading} aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
     <header className="collection-header resume-nav" data-reveal data-reveal-at="0">
-      <a href="/" aria-label="Back to Josh Lucas"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</a><ThemeToggle />
+      <a href="/" aria-label="Back to Josh Lucas"><span className="link-copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</span></a><ThemeToggle />
     </header>
     <div className="resume-toolbar" data-reveal data-reveal-at="90">
       <div className="resume-view-switch" role="group" aria-label="Résumé view"><button type="button" aria-pressed={!reading} onClick={() => chooseView("page")} disabled={artFailed}>Page</button><button type="button" aria-pressed={reading} onClick={() => chooseView("read")}>Read</button></div>
