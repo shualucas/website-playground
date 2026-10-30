@@ -1203,3 +1203,32 @@ test('resume keeps its rendered sheet ready and controls fixed through both view
   await expect(page.locator('.resume-morph-layer')).toHaveCount(0);await expect(page.locator('.resume-gradient')).toHaveAttribute('data-active','true');
   await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
+
+test('project exits fade, blur and move the whole page left before navigating',async({page},testInfo)=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/');const main=page.locator('main.collection');await expect(main).toHaveAttribute('data-status','fallback');
+  // Pause only the outgoing animation, so the handoff can be inspected reliably.
+  await page.evaluate(()=>{const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){const a=animate.call(this,frames,options);if(this.matches('main.collection')){a.pause();a.currentTime=150}return a}});
+  const links=page.getByRole('navigation',{name:'Recent projects'}).getByRole('link');
+  await links.first().scrollIntoViewIfNeeded();
+  await expect(page.locator('.recent-project-list li').first()).toHaveAttribute('data-reveal-state','visible');
+  await page.locator('.recent-project-list li').first().evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished))});
+  await links.first().click();await expect(main).toHaveAttribute('data-exiting','true');
+  const exit=await main.evaluate(el=>{const s=getComputedStyle(el);return{opacity:Number(s.opacity),blur:parseFloat(s.filter.match(/[\d.]+/)[0]),x:new DOMMatrixReadOnly(s.transform).m41,inert:el.inert}});
+  expect(exit.opacity).toBeGreaterThan(0);expect(exit.opacity).toBeLessThan(1);expect(exit.blur).toBeGreaterThan(0);expect(exit.x).toBeLessThan(0);expect(exit.inert).toBe(true);
+  await expect(page.locator('.case-study')).toHaveCount(0);expect(new URL(page.url()).searchParams.get('view')).toBeNull();
+  expect(await main.locator('.collection-header,.collection-hero,.recent-projects,.collection-footer').count()).toBe(4);
+  await page.screenshot({path:testInfo.outputPath('project-exit-mid.png')});
+  await main.evaluate(el=>el.getAnimations()[0].finish());await expect(page.getByRole('heading',{name:'AI Mode Nudges',exact:true})).toBeFocused();
+  await expect(main).toHaveAttribute('data-exiting','false');await expect(main).toHaveCSS('transform','none');
+  await page.goBack();await expect(links.first()).toBeFocused();await expect(page.locator('.case-study')).toHaveCount(0);
+  // A cancelled exit restores the page without adding a history entry.
+  await page.getByRole('button',{name:'Open Stadia cartridge',exact:true}).click();await expect(main).toHaveAttribute('data-exiting','true');
+  await page.keyboard.press('Escape');await expect(main).toHaveAttribute('data-exiting','false');await expect(main).toHaveCSS('opacity','1');await expect(main).toHaveCSS('filter','none');await expect(page.locator('.case-study')).toHaveCount(0);
+  // The same exit also precedes the real zine page navigation.
+  await links.last().click();await expect(main).toHaveAttribute('data-exiting','true');expect(new URL(page.url()).pathname).toBe('/');
+  await main.evaluate(el=>el.getAnimations()[0].finish());await expect(page).toHaveURL(/\/after-hours\/$/);
+  await page.goBack();await expect(main).toHaveAttribute('data-exiting','false');await expect(main).toHaveCSS('opacity','1');
+  expect(errors).toEqual([]);
+});

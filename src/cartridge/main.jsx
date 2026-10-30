@@ -11,6 +11,7 @@ import { PortfolioFooter } from "./PortfolioFooter";
 import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
 import { useContentReveal } from "../useContentReveal";
+import { usePageExit } from "../usePageExit";
 import { LocationMeta } from "./LocationMeta";
 import { RecentProjects } from "./RecentProjects";
 import "./style.css";
@@ -34,6 +35,7 @@ function ProjectMedia({ project, controls }) {
 }
 function App() {
   const content = useRef(null);
+  const pageExit=usePageExit(content);
   const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);
   const [selected, setSelected] = useState(null), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
   useContentReveal(content, `${status}:${selected || ""}`);
@@ -56,9 +58,14 @@ function App() {
   const open = (id) => {
     if (readingRef.current) return;
     restoreFocus.current = document.activeElement;
-    setSelected(cartridgeForProject(id)); setHovered(null);
-    const url = new URL(location.href); url.searchParams.set("project", id); url.searchParams.set("view", "case-study");
-    history.pushState({ cartridgeReader: true }, "", url); setReading(id);
+    const destination=portfolioProjects.find(project=>project.id===id);
+    if(!destination)return;
+    if(destination.href){pageExit.run(()=>location.assign(destination.href),{navigation:true});return;}
+    pageExit.run(()=>{
+      setSelected(cartridgeForProject(id)); setHovered(null);
+      const url = new URL(location.href); url.searchParams.set("project", id); url.searchParams.set("view", "case-study");
+      history.pushState({ cartridgeReader: true }, "", url); setReading(id);
+    });
   };
   const close = () => {
     if (history.state?.cartridgeReader) history.back();
@@ -79,7 +86,7 @@ function App() {
           onError: () => { if (alive.current) { setStatus("fallback"); engine.current?.setPaused(true); } },
         });
         engine.current = scene; scene.setTheme(document.documentElement.dataset.colorMode === "dark");
-        scene.setSelected(currentSelection.current); scene.setPaused(Boolean(readingRef.current) || !presentedRef.current);
+        scene.setSelected(currentSelection.current); scene.setPaused(Boolean(readingRef.current) || !presentedRef.current || Boolean(host.current.closest("[data-exiting=\"true\"]")));
       } catch { setStatus("fallback"); }
     }).catch(() => { if (alive.current) setStatus("fallback"); });
     return () => { alive.current = false; scene?.dispose(); engine.current = null; };
@@ -99,15 +106,16 @@ function App() {
       const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current : buttons.current[selected];
       target?.focus({ preventScroll: true });
     }
-    engine.current?.setPaused(Boolean(reading) || !presented || status === "fallback");
+    engine.current?.setPaused(Boolean(reading) || pageExit.exiting || !presented || status === "fallback");
     previousReading.current = reading;
-  }, [reading, presented, status]);
+  }, [reading, presented, status, pageExit.exiting]);
   useEffect(() => {
-    const pop = () => { setReading(readRoute()); setSelected(selectedRoute()); };
+    const pop = () => { pageExit.cancel();setReading(readRoute()); setSelected(selectedRoute()); };
     const keyboard = (event) => {
       if (!presentedRef.current) return;
       if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "Escape") {
+        if(content.current?.dataset.exiting === "true"){pageExit.cancel();event.preventDefault();return;}
         if (readingRef.current) close();
         else selectRef.current(null);
         event.preventDefault();
@@ -118,7 +126,7 @@ function App() {
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
   return <>
-    <main ref={content} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} inert={reading || !presented ? true : undefined}>
+    <main ref={content} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
       <header className="collection-header"><LocationMeta /><button data-reveal className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />

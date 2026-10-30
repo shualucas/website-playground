@@ -8,7 +8,6 @@ export function RecentProjects({ onOpen }) {
     <ul className="recent-project-list">
       {recentProjects.map((project, index) => <li key={project.id} data-reveal data-reveal-at={entrance.projectsStart + (index + 1) * 60}>
         <a className="recent-project-link" href={project.href || `/?project=${project.id}&view=case-study`} onClick={event => {
-          if (project.href) return;
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
           event.preventDefault(); onOpen(project.id);
         }}>
