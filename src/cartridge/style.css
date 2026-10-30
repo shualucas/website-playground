@@ -161,5 +161,7 @@ svg { display:block; flex-shrink:0; }
 /* Keep connection links at one idle tone, including the X wordmark. */
 .profile-links { color:var(--ui-muted); }
 .profile-links .social-platform { color:inherit; }
-.camera-say-cheese { position:absolute; left:50%; bottom:78%; transform:translateX(-50%); color:var(--ui-muted); font-size:13px; white-space:nowrap; pointer-events:none; animation:camera-caption 620ms ease both; }
+.camera-say-cheese { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:var(--ui-muted); font-size:13px; white-space:nowrap; pointer-events:none; animation:camera-caption 620ms ease both; }
 @keyframes camera-caption { 0% { opacity:0; translate:0 5px; filter:blur(2px); } 30%,65% { opacity:1; translate:0 0; filter:none; } 100% { opacity:0; translate:0 -6px; filter:blur(2px); } }
+
+.camera-link[data-flashing="true"] .film-camera-dock { visibility:hidden; }

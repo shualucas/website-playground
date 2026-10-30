@@ -66,14 +66,14 @@ export function CameraLink({ dark, hidden, ready }) {
           // Re-sample at the flash, after the camera has finished any coasting.
           origin.current=controller.current?.prepareFlash()??origin.current;
           controller.current?.flash(); setArming(false); setFlashing(true);
-          try { sessionStorage.setItem("camera-entry", JSON.stringify({at:Date.now(),pose:controller.current?.getPose(),origin:{x:origin.current.x/innerWidth,y:origin.current.y/innerHeight},camera:{x:(rect.left+rect.width/2)/innerWidth,y:(rect.top+rect.height/2)/innerHeight}})); } catch {}
+          try { sessionStorage.setItem("camera-entry", JSON.stringify({at:Date.now(),origin:{x:origin.current.x/innerWidth,y:origin.current.y/innerHeight},camera:{x:(rect.left+rect.width/2)/innerWidth,y:(rect.top+rect.height/2)/innerHeight}})); } catch {}
           timer.current = setTimeout(() => location.assign(destination), 500);
         }, 180);
       }}>
       {ready ? <FilmCamera dark={dark} hidden={hidden} controller={controller} highlighted={!dragging && (hovered || focused)} /> : null}
       <span className="camera-ready-light" aria-hidden="true" />
       <span className="camera-lens-flash" aria-hidden="true" />
-      {(arming||flashing)&&<span className="camera-say-cheese" aria-hidden="true">say cheese</span>}
+      {flashing&&<span className="camera-say-cheese" aria-hidden="true">say cheese</span>}
     </a>
     <span id="camera-help" className="sr-only">Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore.</span>
     {flashing && createPortal(<div className="camera-page-flash" style={{ "--origin-x": `${origin.current.x}px`, "--origin-y": `${origin.current.y}px` }} aria-hidden="true" />, document.body)}

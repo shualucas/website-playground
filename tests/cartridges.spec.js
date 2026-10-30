@@ -502,6 +502,10 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
     HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
     window.cameraFlashed = false;
     new MutationObserver(() => { if (document.querySelector('.camera-page-flash')) { window.cameraFlashed = true; sessionStorage.setItem('camera-flash-tested','yes'); } }).observe(document,{childList:true,subtree:true});
+    new MutationObserver(()=>{
+      const caption=document.querySelector('.photo-entry-caption'),source=window.__cameraEntry?.camera;
+      if(caption&&source){const rect=caption.getBoundingClientRect();sessionStorage.setItem('camera-caption-tested',JSON.stringify({dx:rect.left+rect.width/2-source.x*innerWidth,dy:rect.top+rect.height/2-source.y*innerHeight,camera:!!document.querySelector('.film-camera-dock')}));}
+    }).observe(document,{childList:true,subtree:true});
   });
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 15000 });
   await page.getByRole("link", { name: "Explore film photographs" }).click();
@@ -511,6 +515,8 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
   await expect(page.locator(".polaroid")).toHaveCount(6);
   await expect(page.locator(".photos-page")).toHaveAttribute("data-arrived","true");
   await expect(page.locator(".photo-entry-camera")).toHaveCount(0);
+  const caption=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('camera-caption-tested')));
+  expect(Math.abs(caption.dx)).toBeLessThan(1);expect(Math.abs(caption.dy)).toBeLessThan(1);expect(caption.camera).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
