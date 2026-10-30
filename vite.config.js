@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => ({
   }] : [])],
   build: {
     rollupOptions: {
-      input: { resume: resolve(import.meta.dirname, "resume/index.html"), afterHours: resolve(import.meta.dirname, "after-hours/index.html"), cartridges: resolve(import.meta.dirname, "index.html"), zine: resolve(import.meta.dirname, "zine/index.html") },
+      input: { photos: resolve(import.meta.dirname, "photos/index.html"), resume: resolve(import.meta.dirname, "resume/index.html"), afterHours: resolve(import.meta.dirname, "after-hours/index.html"), cartridges: resolve(import.meta.dirname, "index.html"), zine: resolve(import.meta.dirname, "zine/index.html") },
     },
   },
 }));

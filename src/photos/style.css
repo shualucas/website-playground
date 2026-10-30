@@ -1,0 +1,19 @@
+.photos-page { --hero-gap:clamp(40px,calc(100vw - 900px),140px); min-height:100svh; padding:140px 60px 80px; background:var(--scene-bg); color:var(--ui-text); }
+.photos-page[data-ready="false"] [data-reveal] { opacity:0; }
+.photo-spread { width:min(960px,100%); min-height:calc(100svh - 240px); margin:auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-content:center; gap:18px 0; padding:20px 14px; }
+.photo-slot { min-width:0; }
+.photo-slot:nth-child(3n+2) { translate:0 18px; }
+.polaroid { position:relative; margin:0 -6px; padding:14px 14px 0; background:#faf8f1; color:#797366; transform:rotate(var(--photo-angle)); box-shadow:0 9px 20px #00000014,0 2px 3px #00000016; isolation:isolate; }
+.polaroid::after { content:""; position:absolute; z-index:2; inset:0; pointer-events:none; opacity:.08; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23736b5f' filter='url(%23n)' opacity='.6' d='M0 0h180v180H0z'/%3E%3C/svg%3E"); }
+.polaroid-image { display:block; width:100%; aspect-ratio:1; object-fit:cover; background:#dad9d4; box-shadow:inset 0 0 0 1px #0000000b; }
+.polaroid figcaption { min-height:55px; padding:18px 3px 12px; font:400 11px/1.5 "DM Sans",sans-serif; letter-spacing:.015em; }
+.photo-placeholder { position:relative; display:grid; place-items:center; background:linear-gradient(145deg,#d9dad4,#c2c7bf); }
+.photo-placeholder-1 { background:linear-gradient(135deg,#d6cfc7,#bcb4ab); }
+.photo-placeholder-2 { background:linear-gradient(145deg,#c7d0d1,#aebac0); }
+.photo-placeholder span { color:#48504e; font-size:11px; opacity:.7; }
+.photos-page[data-camera-entry="true"][data-ready="false"] .photo-slot { visibility:hidden; }
+.photo-entry-camera { position:absolute; z-index:4; width:164px; height:164px; left:calc(var(--camera-x) - 82px); top:calc(var(--camera-y) - 82px); pointer-events:none; }
+.photo-entry-camera .film-camera-dock[data-status="ready"] { opacity:1; animation:none; }
+@media(max-width:879px) { .photos-page { padding:128px 32px 64px; } .photo-spread { grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 4px; max-width:620px; } .polaroid { padding:10px 10px 0; margin:0 -3px; } .polaroid figcaption { min-height:44px; padding-top:14px; } .photo-entry-camera { width:152px; height:152px; left:calc(var(--camera-x) - 76px); top:calc(var(--camera-y) - 76px); } }
+@media(max-width:420px) { .photos-page { padding-inline:24px; } .photo-spread { gap:22px 2px; padding-inline:0; } .polaroid { padding:8px 8px 0; } .photo-placeholder span { font-size:9px; } }
+@media(prefers-reduced-motion:reduce) { .photo-entry-camera { display:none; } }

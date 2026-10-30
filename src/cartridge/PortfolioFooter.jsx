@@ -8,7 +8,6 @@ export function PortfolioFooter({ dark, ready, hidden }) {
   return <footer className="collection-footer" hidden={hidden}>
     <figure className="footer-camera">
       <CameraLink dark={dark} hidden={hidden} ready={ready} />
-      <figcaption data-reveal data-reveal-at={entrance.footerStart}>say cheese</figcaption>
     </figure>
     <SocialLinks data-reveal data-reveal-at={entrance.footerStart + 45} className="footer-links" />
     <ListeningWidget />

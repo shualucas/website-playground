@@ -652,6 +652,26 @@ export class BookScene {
     this.last = 0;
     if (!open) this.schedule();
   }
+  /** Project the actual skinned corners, ordered as the note's printed UVs. */
+  getNotePose(id: string) {
+    const mesh=this.paperInserts.find(mesh=>mesh.userData.flyerId===id);
+    if(!mesh)return null;
+    this.scene.updateMatrixWorld(true);
+    const rect=this.host.getBoundingClientRect();
+    const indices=mesh.userData.printFace===1?[8,0,90,98]:[0,8,98,90];
+    const corners=indices.map(index=>{
+      mesh.getVertexPosition(index,this.scratch);this.scratch.applyMatrix4(mesh.matrixWorld).project(this.camera);
+      const rest=mesh.userData.restPositions as Float32Array;
+      const free=Math.max(0,rest[index*3]-mesh.userData.pageWidth,Math.abs(rest[index*3+2])-H/2)>0;
+      return {x:rect.left+(this.scratch.x+1)*rect.width/2,y:rect.top+(1-this.scratch.y)*rect.height/2,free};
+    });
+    const material=mesh.material as THREE.MeshPhysicalMaterial;
+    return {corners,image:(material.map?.image as HTMLCanvasElement)?.toDataURL()};
+  }
+  setNoteDetached(id:string,detached:boolean) {
+    const mesh=this.paperInserts.find(mesh=>mesh.userData.flyerId===id);
+    if(mesh){mesh.visible=!detached;this.renderer.shadowMap.needsUpdate=true;this.render();}
+  }
   enterProject(index: number): Promise<void> {
     if (this.dive) {
       // Browser Forward can reverse an in-flight return without losing the saved pose.

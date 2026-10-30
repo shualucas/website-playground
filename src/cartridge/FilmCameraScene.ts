@@ -101,6 +101,12 @@ export class FilmCameraScene {
   }
   private publishRotation() { this.host.dataset.rotation = this.inspection.rotation.toArray().slice(0, 3).join(","); }
   resetRotation() { this.spinVelocity.set(0, 0); this.inspection.rotation.set(0, 0, 0); this.strap.reset(); this.publishRotation(); this.draw(); }
+  getPose() { return {rotation:this.inspection.rotation.toArray().slice(0,3),time:this.time}; }
+  setPose(pose:{rotation:number[];time:number}) {
+    if(!pose||pose.rotation?.length!==3||!pose.rotation.every(Number.isFinite)||!Number.isFinite(pose.time))return;
+    this.inspection.rotation.set(pose.rotation[0],pose.rotation[1],pose.rotation[2]);this.time=pose.time;
+    this.publishRotation();this.draw();
+  }
   prepareFlash() {
     this.scene.updateMatrixWorld(true); this.flashPoint.getWorldPosition(this.flashProjection).project(this.camera);
     const rect = this.host.getBoundingClientRect(), link = this.host.parentElement!;

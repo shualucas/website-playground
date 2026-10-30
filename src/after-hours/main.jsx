@@ -24,7 +24,7 @@ function AfterHours() {
   const [activeNote, setActiveNote] = useState(null);
   const finishEntrance = () => { clearTimeout(entranceTimer.current); engine.current?.setOverlayOpen(noteOpen.current); };
   const openNote = id => { noteOpen.current = true; finishEntrance(); setActiveNote(id); };
-  const closeNote = () => { noteOpen.current = false; setActiveNote(null); engine.current?.setOverlayOpen(false); };
+  const closeNote = () => { engine.current?.setNoteDetached(activeNote,false); noteOpen.current = false; setActiveNote(null); engine.current?.setOverlayOpen(false); };
   const [fallback, setFallback] = useState(false), [spread, setSpread] = useState(-1), [ready, setReady] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
   useContentReveal(content, `${ready}:${fallback}`, ready);
@@ -88,7 +88,7 @@ function AfterHours() {
     <div data-reveal data-reveal-at="180" className="after-hours-book" ref={host} hidden={fallback} data-flyer-count={flyers.length} tabIndex={0} role="region" aria-label="Interactive zine of extracurriculars" aria-describedby="zine-help" onAnimationEnd={event => { if (event.target === event.currentTarget && event.animationName === "content-reveal") finishEntrance(); }} />
     {!fallback && ready && <div className="zine-note-shortcuts" role="group" aria-label="Print notes">{flyers.map(flyer => <button key={flyer.id} type="button" aria-haspopup="dialog" aria-controls="zine-note-dialog" onClick={() => openNote(flyer.id)}>Read note for {flyer.title}</button>)}</div>}
     {fallback && <div className="flyer-gallery" aria-label="Flyer pages">{flyers.map(flyer => <figure data-reveal key={flyer.id} style={{ "--flyer-background": flyer.background }}><img src={flyer.src} alt={flyer.alt} width="1110" height="1280" /><figcaption>{flyer.title}<button type="button" className="fallback-note-link" aria-label={`Read note for ${flyer.title}`} aria-haspopup="dialog" onClick={() => openNote(flyer.id)}>Read note</button></figcaption></figure>)}</div>}
-    {activeNote && <NoteDialog flyer={flyers.find(flyer => flyer.id === activeNote)} note={zineNotes.find(note => note.id === activeNote)} onClose={closeNote} />}
+    {activeNote && <NoteDialog flyer={flyers.find(flyer => flyer.id === activeNote)} note={zineNotes.find(note => note.id === activeNote)} getPose={() => engine.current?.getNotePose(activeNote)} setDetached={value => engine.current?.setNoteDetached(activeNote,value)} onClose={closeNote} />}
   </main>;
 }
 createRoot(document.getElementById("root")).render(<AfterHours />);

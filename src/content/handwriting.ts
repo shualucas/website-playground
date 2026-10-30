@@ -5,21 +5,21 @@ function noise(id:string,index:number,salt:string) {
   return (hash>>>0)/4294967295;
 }
 
-export function handwrittenWord(id:string,index:number) {
+export function handwrittenWord(id:string,index:number,expressive=false) {
   return {
-    baseline:(noise(id,index,"baseline")-.5)*.12,
-    angle:(noise(id,index,"angle")-.5)*2.2,
-    stretch:.98+noise(id,index,"stretch")*.045,
-    gap:(noise(id,index,"gap")-.4)*.075,
-    ink:.9+noise(id,index,"ink")*.09,
+    baseline:(noise(id,index,"baseline")-.5)*(expressive ? .32 : .12),
+    angle:(noise(id,index,"angle")-.5)*(expressive ? 9 : 2.2),
+    stretch:expressive ? .88+noise(id,index,"stretch")*.22 : .98+noise(id,index,"stretch")*.045,
+    gap:(noise(id,index,"gap")-.4)*(expressive ? .23 : .075),
+    ink:(expressive ? .76 : .9)+noise(id,index,"ink")*(expressive ? .23 : .09),
   };
 }
 
-export function handwrittenLine(id:string,firstWord:number) {
+export function handwrittenLine(id:string,firstWord:number,expressive=false) {
   return {
-    slope:(noise(id,firstWord,"slope")-.5)*.025,
-    offset:(noise(id,firstWord,"offset")-.5)*.16,
-    indent:(noise(id,firstWord,"indent")-.5)*.12,
+    slope:(noise(id,firstWord,"slope")-.5)*(expressive ? .1 : .025),
+    offset:(noise(id,firstWord,"offset")-.5)*(expressive ? .4 : .16),
+    indent:(noise(id,firstWord,"indent")-.5)*(expressive ? .55 : .12),
     leading:1.22+(noise(id,firstWord,"leading")-.5)*.09,
   };
 }
