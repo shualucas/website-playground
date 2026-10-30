@@ -21,7 +21,7 @@
 .listening-history-toggle[aria-expanded="true"] svg { transform:rotate(180deg); }
 .listening-history { position:absolute; z-index:5; isolation:isolate; inset:auto 0 calc(100% + 12px); padding:0; opacity:1; filter:blur(0); transform:translateY(0); transition:opacity 220ms ease-out,filter 220ms ease-out,transform 220ms ease-out; }
 .listening-history::before { content:""; position:absolute; inset:-12px -10px -8px; z-index:-1; background:var(--scene-bg); filter:blur(12px); pointer-events:none; }
-.listening-history ol { list-style:none; margin:0; padding:0 46px 0 0; display:flex; flex-direction:column; gap:12px; max-height:min(360px,calc(100svh - 150px)); overflow-y:auto; overscroll-behavior:contain; }
+.listening-history ol { list-style:none; margin:0; padding:0 46px 0 0; display:flex; flex-direction:column; gap:6px; max-height:min(360px,calc(100svh - 150px)); overflow-y:auto; overscroll-behavior:contain; }
 .listening-history li a { display:flex; align-items:center; gap:10px; min-height:max(44px,var(--art-size)); border-radius:7px; }
 .listening-history li .listening-artwork,.listening-history .listening-song > span { animation:listening-text-in 650ms cubic-bezier(.4,0,.2,1) both; animation-delay:var(--history-delay,0ms); }
 .listening-history .listening-song > span:last-child { animation-delay:calc(var(--history-delay,0ms) + 45ms); }
