@@ -723,6 +723,9 @@ test("recent projects use one column with native reader links and restore focus 
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).not.toBeEmpty();
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
+    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',i===2?'stadia':'search');
+    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-status','fallback');
+    await expect(page.locator('.case-cartridge-fallback img')).toHaveAttribute('src',i===2?'/cartridges/labels/stadia-label.jpg':'/cartridges/labels/search-label.jpg');
     await expect(page.locator('.case-star-story > section > h2')).toHaveText(['Situation','Task','Action','Result']);
     await expect(page.locator('[data-story-stage="task"] > p')).not.toBeEmpty();
     const story=page.locator('.case-star-story');
@@ -1311,4 +1314,25 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   }).toBe(true);
   await study.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(study).toHaveCount(0);
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
+});
+
+test('case studies render the matching single cartridge and pause its drift while reading',async({page})=>{
+  test.setTimeout(120000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.emulateMedia({reducedMotion:'reduce'});
+  for(const [id,cartridge] of [['ai-mode-nudges','search'],['search-labs','search'],['stadia-store-redesign','stadia']]){
+    await page.goto(`/?project=${id}&view=case-study`);
+    const art=page.locator('.case-study-cartridge'),stage=art.locator('.case-cartridge-stage');
+    await expect(art).toHaveAttribute('data-cartridge',cartridge);await expect(art).toHaveAttribute('data-status','ready',{timeout:45000});
+    await expect(stage.locator('canvas')).toHaveCount(1);await expect(stage).toHaveAttribute('data-motion','reduced');
+    await expect(art.locator('.case-cartridge-fallback')).toHaveCount(0);
+    await page.emulateMedia({reducedMotion:'no-preference'});await expect(stage).toHaveAttribute('data-motion','ambient');
+    await page.locator('[data-story-stage="result"]').scrollIntoViewIfNeeded();await expect(stage).toHaveAttribute('data-motion','idle');
+    await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-motion','reduced');
+    await page.setViewportSize({width:390,height:844});await art.scrollIntoViewIfNeeded();
+    await expect.poll(()=>page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+    const r=await art.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366);
+    await page.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(art).toHaveCount(0);
+    await page.setViewportSize({width:1280,height:720});
+  }
+  expect(errors).toEqual([]);
 });

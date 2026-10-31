@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { projectTheme } from "./book/themes";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
+import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
@@ -42,6 +43,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       <article className="case-study-content">
         <div className="case-study-measure">
         <header className="case-study-hero">
+          <div className="case-study-intro">
           <p data-reveal className="eyebrow">
             {study ? study.eyebrow : `SELECTED WORK / ${project.label.toUpperCase()}`}
           </p>
@@ -49,6 +51,8 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             {project.title.replace("\n", " ")}
           </h1>
           {(study?.summary || project.subtitle) && <p data-reveal className="case-study-deck">{study?.summary || project.subtitle}</p>}
+          </div>
+          {study && project.cartridgeId && <CaseStudyCartridge id={project.cartridgeId} />}
           {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
             {(project.role || project.team) && <div>
               <dt>{study ? "Role" : "ROLE & TEAM"}</dt>
