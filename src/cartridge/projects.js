@@ -49,10 +49,10 @@ const caseStudies = {
 
 /** Project-specific destinations; case-study stories remain separate from career pages. */
 export const recentProjects = [
-  { id: "ai-mode-nudges", label: "AI Mode Nudges", description: "Helping users continue their journey's and clarify intent", cartridgeId: "search", theme: "ai" },
-  { id: "search-labs", label: "Search Labs", description: "A creative playground for features on Search", cartridgeId: "search", theme: "ai" },
-  { id: "stadia-store-redesign", label: "Stadia Store Redesign", description: "Guiding users towards making the right purchase", cartridgeId: "stadia", theme: "stadia" },
-  { id: "rave-flyer-zine", label: "Zine of Extracurriculars", description: "Guilty pleasure creative outlet", href: "/after-hours/", cartridgeId: null, theme: "after-hours" },
+  { id: "ai-mode-nudges", label: "AI Mode Nudges", description: "Guided follow-ups for clearer questions", cartridgeId: "search", theme: "ai" },
+  { id: "search-labs", label: "Search Labs", description: "Launching AI experiments to 48M+ users", cartridgeId: "search", theme: "ai" },
+  { id: "stadia-store-redesign", label: "Stadia Store Redesign", description: "Helping players explore and buy games", cartridgeId: "stadia", theme: "stadia" },
+  { id: "rave-flyer-zine", label: "Zine of Extracurriculars", description: "Flyers for music, coffee, and community", href: "/after-hours/", cartridgeId: null, theme: "after-hours" },
 ].map(project => {
   const study = caseStudies[project.id];
   return {

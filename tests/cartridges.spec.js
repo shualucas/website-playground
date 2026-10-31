@@ -703,8 +703,7 @@ test("recent projects use one column with native reader links and restore focus 
   await page.goto("/");
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
   const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
-  const descriptions=["Helping users continue their journey's and clarify intent",'A creative playground for features on Search','Guiding users towards making the right purchase','Guilty pleasure creative outlet'];
-  const subtitles=['Helping people find their next question.','From a waitlist to a global AI playground.','Helping players choose their next game.'];
+  const descriptions=['Guided follow-ups for clearer questions','Launching AI experiments to 48M+ users','Helping players explore and buy games','Flyers for music, coffee, and community'];
   await expect(links).toHaveCount(4);
   await expect(links.locator('.recent-project-name')).toHaveText(titles);
   await expect(navigation.getByRole('link')).toHaveCount(5);
@@ -717,16 +716,23 @@ test("recent projects use one column with native reader links and restore focus 
   }
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
+  const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));expect(Math.max(...heights)-Math.min(...heights)).toBeLessThan(1);
   const textGap=await links.first().evaluate(el=>el.querySelector('.recent-project-summary').getBoundingClientRect().left-el.querySelector('.recent-project-name').getBoundingClientRect().right);
   expect(textGap).toBeGreaterThan(0);expect(textGap).toBeLessThan(10);
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-study-deck')).toHaveText(subtitles[i]);
+    await expect(page.locator('.case-study-deck')).not.toBeEmpty();
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
-    if(i===1){
-      await expect(page.locator('.case-visual-grid figure')).toHaveCount(1);
-      const visual=await page.locator('.case-visual-grid figure').boundingBox(),measure=await page.locator('.case-study-measure').boundingBox();expect(visual.width).toBeCloseTo(measure.width,0);
-    }
+    await expect(page.locator('.case-star-story > section > h2')).toHaveText(['Situation','Task','Action','Result']);
+    await expect(page.locator('[data-story-stage="task"] > p')).not.toBeEmpty();
+    const story=page.locator('.case-star-story');
+    await expect(story.locator('.case-decisions > li')).toHaveCount(3);
+    await expect(story.locator('.case-story-media')).toHaveCount(i===1?1:3);
+    expect(await story.locator('.case-story-media').evaluateAll(elements=>elements.every(el=>!!el.closest('.case-decisions li')))).toBe(true);
+    const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
+      const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid dt')];
+      return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
+    });expect(sizes).toEqual(['16px']);
     await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -737,6 +743,7 @@ test("recent projects use one column with native reader links and restore focus 
   await page.emulateMedia({reducedMotion:'reduce'});
   await expect(links.first().locator('.recent-project-copy')).toHaveCSS('transform','none');
   await page.setViewportSize({width:390,height:844}); await navigation.scrollIntoViewIfNeeded();
+  await expect.poll(async()=>{const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));return Math.max(...heights)-Math.min(...heights)}).toBeLessThan(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
   await page.goto(await links.last().getAttribute('href'));
@@ -1293,7 +1300,9 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('.case-study-facts')).toContainText('Lead Product Designer');await expect(study.locator('.case-study-facts')).toContainText('Follow-ups & interactive questionnaires');
   await expect(study.locator('.case-impact')).toContainText('Inline nudges launched globally');await expect(study.locator('.case-impact')).toContainText('web-result clicks healthy');
   await expect(study.locator('.case-decisions li')).toHaveCount(3);await expect(study.locator('.case-decisions')).toContainText('“Something else”');await expect(study.locator('.case-decisions')).toContainText('live browser prototypes');
-  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-visual-grid figure')).toHaveCount(3);
+  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(3);
+  expect(await study.locator('.case-story-media').evaluateAll(elements=>elements.map(el=>el.dataset.mediaType))).toEqual(['image','image','video']);
+  await expect(study.locator('.case-story-media').nth(2)).toHaveAttribute('data-media-type','video');
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>study.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   await expect.poll(async()=>{

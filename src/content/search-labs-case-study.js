@@ -12,12 +12,13 @@ export const searchLabsCaseStudy = {
   ],
   impact: "Labs grew from a US waitlist of about 1M users to 120+ countries, with up to 52K opt-ins in a single day. It became a launchpad for AI Overviews and AI Mode.",
   challenge: "Google needed to test early AI in public while protecting Search trust and revenue. We started with a bare-bones US waitlist, three experiments, a small engineering team, and a tight deadline.",
+  task: "Turn the waitlist into a global platform where product teams can launch AI experiments without a custom engineering build each time.",
   decisions: [
     { title: "Build a repeatable foundation", copy: "I simplified ambitious early layouts into reusable experiment cards, landing pages, and an explicit opt-in flow that a small engineering team could ship." },
     { title: "Let teams launch on their own", copy: "I created self-serve brand guidelines and capped mobile assets at 500 KB for images and 1 MB for video, keeping experiments consistent and fast." },
     { title: "Connect experiments to Search", copy: "I ran live experiments on Search entry points and standardized the lab-beaker badge, then helped retire it when AI Mode graduated into core Search." },
   ],
   visuals: [
-    { title: "Early explorations → shipped system", caption: "The creative work we explored, what we simplified, and how a lean system let a small engineering team support 20+ teams." },
+    { title: "Early explorations → shipped system", caption: "Show what we simplified and how a lean system let a small engineering team support 20+ teams.", afterDecision: 0, type: "image", src: "" },
   ],
 };

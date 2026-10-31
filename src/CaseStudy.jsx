@@ -48,11 +48,10 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           <h1 data-reveal ref={heading} tabIndex={-1}>
             {project.title.replace("\n", " ")}
           </h1>
-          {project.subtitle && <p data-reveal className="case-study-deck">{project.subtitle}</p>}
-          {study && <p data-reveal className="case-study-summary">{study.summary}</p>}
+          {(study?.summary || project.subtitle) && <p data-reveal className="case-study-deck">{study?.summary || project.subtitle}</p>}
           {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
             {(project.role || project.team) && <div>
-              <dt>{study ? "ROLE" : "ROLE & TEAM"}</dt>
+              <dt>{study ? "Role" : "ROLE & TEAM"}</dt>
               <dd>
                 {[project.role, project.team].filter(Boolean).join(" · ")}
               </dd>
@@ -62,7 +61,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
               <dd>{project.year}</dd>
             </div>}
             {project.disciplines.length > 0 && <div>
-              <dt>{study ? "SCOPE" : "FOCUS"}</dt>
+              <dt>{study ? "Scope" : "FOCUS"}</dt>
               <dd>{project.disciplines.join(" · ")}</dd>
             </div>}
           </dl>}
