@@ -721,8 +721,8 @@ test("recent projects use one column with native reader links and restore focus 
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
   const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));expect(Math.max(...heights)-Math.min(...heights)).toBeLessThan(1);
-  const textGap=await links.first().evaluate(el=>el.querySelector('.recent-project-summary').getBoundingClientRect().left-el.querySelector('.recent-project-name').getBoundingClientRect().right);
-  expect(textGap).toBeGreaterThan(0);expect(textGap).toBeLessThan(10);
+  await expect(navigation.locator('.recent-project-index')).toHaveText(['01','02','03','04','05']);
+  await expect(links.locator('.recent-project-team')).toHaveText(['Google','Google','Stadia','Independent']);
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).not.toBeEmpty();
@@ -743,12 +743,29 @@ test("recent projects use one column with native reader links and restore focus 
     await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
   await page.emulateMedia({reducedMotion:'no-preference'});
-  const before=await navigation.boundingBox();await links.first().hover();
-  await expect(links.first().locator('.recent-project-copy')).toHaveCSS('transform','matrix(1, 0, 0, 1, 18, 0)');
-  await expect(links.first().locator('.recent-project-marker')).toHaveCSS('opacity','1');
-  const after=await navigation.boundingBox();expect(after.height).toBe(before.height);expect(after.y).toBe(before.y);
+  const before=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));await links.first().hover();
+  await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
+  await expect(navigation.locator('.recent-project-preview')).toHaveCSS('opacity','1');
+  await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
+  await expect(links.nth(1).locator('.recent-project-name')).toHaveCSS('color',await links.nth(1).locator('.recent-project-team').evaluate(el=>getComputedStyle(el).color));
+  const titleBefore=await links.first().locator('.recent-project-copy').boundingBox();
+  await links.nth(1).hover();await links.nth(2).hover();await links.last().hover();
+  await expect(navigation).toHaveAttribute('data-active-project','rave-flyer-zine');
+  await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
+  await expect(navigation.locator('.recent-preview-art img')).toHaveAttribute('src','/zines/rave-flyers/wavform.jpg');
+  await page.mouse.move(5,5);
+  await expect(navigation).toHaveAttribute('data-preview-active','false');
+  await expect(links.first()).toHaveCSS('opacity','1');
+  const titleAfter=await links.first().locator('.recent-project-copy').boundingBox();expect(titleAfter).toEqual(titleBefore);
+  await links.first().focus();await page.keyboard.press('Tab');
+  await expect(navigation).toHaveAttribute('data-active-project','search-labs');
+  await expect(links.nth(1)).toBeFocused();
+  await page.keyboard.press('Tab');await expect(navigation).toHaveAttribute('data-active-project','stadia-store-redesign');
+  await page.locator('.collection-header .tool-button').focus();
+  await expect(navigation).toHaveAttribute('data-preview-active','false');
+  const after=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));expect(after).toEqual(before);
   await page.emulateMedia({reducedMotion:'reduce'});
-  await expect(links.first().locator('.recent-project-copy')).toHaveCSS('transform','none');
+  await links.first().hover();await expect(navigation.locator('.recent-preview-content')).toHaveCSS('animation-name','none');
   await page.setViewportSize({width:390,height:844}); await navigation.scrollIntoViewIfNeeded();
   await expect.poll(async()=>{const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));return Math.max(...heights)-Math.min(...heights)}).toBeLessThan(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

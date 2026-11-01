@@ -8,7 +8,7 @@ function preloadPhotos() {
   const link=document.createElement('link');link.rel='prefetch';link.href='/photos/';link.as='document';document.head.appendChild(link);
 }
 
-export function CameraLink({ dark, hidden, ready, rowTitle, entranceAt }) {
+export function CameraLink({ dark, hidden, ready, rowTitle, rowIndex, rowTeam, entranceAt }) {
   const controller = useRef(null), gesture = useRef(null), suppress = useRef(false), timer = useRef(null);
   const model = useRef(null);
   const [flashing, setFlashing] = useState(false), [arming, setArming] = useState(false);
@@ -74,7 +74,7 @@ export function CameraLink({ dark, hidden, ready, rowTitle, entranceAt }) {
           timer.current = setTimeout(() => location.assign(destination), 500);
         }, 180);
       }}>
-      {rowTitle && <span className="recent-project-marker" aria-hidden="true" />}
+      {rowTitle && <span className="recent-project-index" aria-hidden="true">{String(rowIndex ?? 5).padStart(2, "0")}</span>}
       <span className={rowTitle ? "recent-project-copy recent-camera-copy" : undefined}>
       {rowTitle && <span className="recent-project-name">{rowTitle}</span>}
       <span className="camera-model" ref={model}>
@@ -83,6 +83,7 @@ export function CameraLink({ dark, hidden, ready, rowTitle, entranceAt }) {
       <span className="camera-lens-flash" aria-hidden="true" />
       {flashing&&<span className="camera-say-cheese" aria-hidden="true">say cheese</span>}
       </span></span>
+      {rowTitle && <><span className="recent-project-team">{rowTeam ?? "Film"}</span><svg className="recent-project-arrow" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></>}
     </a>
     <span id="camera-help" className="sr-only">Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore.</span>
     {flashing && createPortal(<div className="camera-page-flash" style={{ "--origin-x": `${origin.current.x}px`, "--origin-y": `${origin.current.y}px` }} aria-hidden="true" />, document.body)}
