@@ -38,23 +38,26 @@ test("career collection uses exact bio and five individually visible, tilted top
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
   await expect(page.locator(".cartridge-keyboard")).toHaveCount(5);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "tilted-top-edge");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "3");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2.7");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "80");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-silhouette");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-model", "external-glb");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-order", "search,stadia,gmail,blizzard,early-work");
   const projected = JSON.parse(await page.locator(".cartridge-stage").getAttribute("data-frame-bounds"));
-  expect(projected.right - projected.left).toBeGreaterThan(375);
-  expect(projected.right - projected.left).toBeLessThan(430);
+  expect(projected.right - projected.left).toBeGreaterThan(375*.9);
+  expect(projected.right - projected.left).toBeLessThan(430*.9);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
   const hero = await page.locator(".collection-hero").boundingBox();
   expect(hero.width).toBe(960);
   expect(await page.locator(".collection-hero").evaluate(el=>getComputedStyle(el).columnGap)).toBe("140px");
   const footerBounds = await page.locator(".collection-footer").boundingBox();
   expect(Math.abs(footerBounds.x - intro.x)).toBeLessThan(2);
-  expect(Math.abs(footerBounds.x + footerBounds.width - stage.x - projected.right)).toBeLessThan(20);
+  const headerBounds=await page.locator('.collection-header').boundingBox();
+  expect(Math.abs(footerBounds.x+footerBounds.width-headerBounds.x-headerBounds.width)).toBeLessThan(1);
   expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
-  const rightGutter = page.viewportSize().width - stage.x - projected.right;
+  // Recover the original column envelope: only the objects shrink, not the grid.
+  const columnRight=stage.x+stage.width/2+(projected.right-stage.width/2)/.9;
+  const rightGutter = page.viewportSize().width - columnRight;
   expect(Math.abs(intro.x - rightGutter)).toBeLessThan(20);
   expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
@@ -136,7 +139,8 @@ test("canvas selection, drag rotation, caption entry and browser history work wi
   const caption = page.locator(".cartridge-caption");
   await expect(caption).toHaveAttribute("aria-label", "Open Stadia, 2020 – 2022");
   const captionBefore = await caption.boundingBox();
-  for (const text of await caption.locator(":scope > span").all()) expect(await text.evaluate(el => getComputedStyle(el).fontWeight)).toBe("700");
+  await expect(caption.locator(':scope > span').first()).toHaveCSS('font-weight','400');
+  await expect(caption.locator('.cartridge-years')).toHaveCSS('font-weight','700');
   const before = await stage.getAttribute("data-rotation1"), p = await point(page, 1);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 80, p.y + 25, { steps: 5 }); await page.mouse.up();
   await expect(stage).not.toHaveAttribute("data-rotation1", before); await expect(page.locator(".case-study")).toHaveCount(0);
@@ -1335,4 +1339,28 @@ test('case studies render the matching single cartridge and pause its drift whil
     await page.setViewportSize({width:1280,height:720});
   }
   expect(errors).toEqual([]);
+});
+
+test('cartridge browsing follows only the exposed tops and rocks with the contact position',async({page})=>{
+  test.setTimeout(120000);const errors=[];page.on('pageerror',error=>errors.push(error.message));await load(page);
+  const stage=page.locator('.cartridge-stage');await page.mouse.move(2,2);await page.emulateMedia({reducedMotion:'no-preference'});
+  const touch=async(index,side=1)=>{const rect=await stage.boundingBox(),points=JSON.parse(await stage.getAttribute(`data-browse${index}`));await page.mouse.move(rect.x+points[side].x,rect.y+points[side].y)};
+  for(const [index,id] of ['search','stadia','gmail','blizzard','early-work'].entries()){
+    await touch(index);await expect(stage).toHaveAttribute('data-hovered',id);
+  }
+  await touch(1,0);await expect(stage).toHaveAttribute('data-hovered','stadia');
+  await expect.poll(async()=>Number((await stage.getAttribute('data-hover-contact')).split(',')[0])).toBeLessThan(-.5);
+  await expect.poll(async()=>Number((await stage.getAttribute('data-contact-pose1')).split(',')[2])).toBeGreaterThan(.01);
+  await touch(1,2);
+  await expect.poll(async()=>Number((await stage.getAttribute('data-hover-contact')).split(',')[0])).toBeGreaterThan(.5);
+  await expect.poll(async()=>Number((await stage.getAttribute('data-contact-pose1')).split(',')[2])).toBeLessThan(-.01);
+  // The printed front below the top strip does not claim hover, but remains clickable.
+  const front=await point(page,0);await page.mouse.move(front.x,front.y);await expect(stage).toHaveAttribute('data-hovered','');
+  await page.mouse.click(front.x,front.y);await expect(stage).toHaveAttribute('data-selected','search');
+  const caption=page.locator('.cartridge-caption');await expect(caption).toBeVisible();await caption.hover();
+  await expect(stage).toHaveAttribute('data-hovered','');
+  await expect(caption.locator(':scope > span').first()).toHaveCSS('font-weight','400');
+  expect(await caption.locator(':scope > span').first().evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
+  await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-contact-pose0','0.0000,0.0000,0.0000');
+  await expect(stage).toHaveAttribute('data-magnification','2.7');await expect(stage).toHaveAttribute('data-intersections','0');expect(errors).toEqual([]);
 });

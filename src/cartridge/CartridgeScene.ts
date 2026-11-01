@@ -42,6 +42,13 @@ export class CartridgeScene {
   private bottomPoint = new THREE.Vector3();
   private selected: CartridgeId | null = null;
   private hovered: CartridgeId | null = null;
+  private hoverContact = new THREE.Vector2();
+  private hoverLocal = new THREE.Vector3();
+  private pointerClient = new THREE.Vector2();
+  private pointerBrowsing = false;
+  private pickRect: DOMRect | null = null;
+  private hitboxes: THREE.Object3D[] = [];
+  private hits: THREE.Intersection[] = [];
   private drag: { id: number; item: Item; x: number; y: number; startX: number; startY: number; moved: boolean; canRotate: boolean } | null = null;
   private raf = 0;
   private last = 0;
@@ -167,6 +174,7 @@ export class CartridgeScene {
         const root = new THREE.Group(), idle = new THREE.Group(), handling = new THREE.Group(); handling.add(model); idle.add(handling); root.add(idle);
         const hitbox = new THREE.Mesh(new THREE.BoxGeometry(half.x * 2, half.y * 2, half.z * 2), new THREE.MeshBasicMaterial({ visible: false }));
         hitbox.position.copy(center); hitbox.userData.cartridgeId = config.id; idle.add(hitbox); this.scene.add(root);
+        this.hitboxes.push(hitbox);
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -277,8 +285,12 @@ export class CartridgeScene {
     }
     this.selected = id; this.measureCaption(); this.layout(); this.start();
   }
-  setHovered(id: CartridgeId | null) { this.hovered = id; this.start(); }
-  setPaused(value: boolean) { this.paused = value; if (value) this.stop(); else this.start(); }
+  setHovered(id: CartridgeId | null) {
+    // A keyboard focus change takes over from the last physical pointer contact.
+    if(id!==this.hovered){this.pointerBrowsing=false;this.hoverContact.set(0,0);this.hovered=id;this.host.dataset.hovered=id??""}
+    this.start();
+  }
+  setPaused(value: boolean) { this.paused = value; if (value) {this.pointerBrowsing=false;this.stop()} else this.start(); }
   setTheme(dark: boolean) {
     this.backdrop.set(dark ? "#1b1c1b" : "#f0f0f0"); this.renderer.setClearColor(this.backdrop, 1);
     this.shadowMaterial.opacity = dark ? .2 : .085; this.start();
@@ -287,10 +299,10 @@ export class CartridgeScene {
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight; if (!width || !height) return;
     this.mobile = innerWidth < 880; this.camera.aspect = width / height;
-    // Reduce the established magnification by 25%, capped by available width
-    // on narrow displays. Selection/drag never alters the camera or its zoom.
+    // Keep the established framing and reduce visible width/height by 10%.
+    // Selection/drag never alters the camera or its zoom.
     const span = 17.2;
-    this.camera.zoom = this.mobile ? .75 * Math.min(4, span * this.camera.aspect / 3.2) : Math.min(3, span * this.camera.aspect / 2.65);
+    this.camera.zoom = .9 * (this.mobile ? .75 * Math.min(4, span * this.camera.aspect / 3.2) : Math.min(3, span * this.camera.aspect / 2.65));
     const distance = span / (2 * Math.tan(7 * Math.PI / 180));
     this.camera.position.set(0, 0, distance);
     // Preserve depth precision for the recessed paper and shell seam. A near
@@ -302,11 +314,33 @@ export class CartridgeScene {
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.measureCaption(); this.layout(); this.viewport(); this.start();
   }
   private pick(event: PointerEvent) {
-    const rect = this.host.getBoundingClientRect();
-    this.pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
-    this.ray.setFromCamera(this.pointer, this.camera);
-    const hit = this.ray.intersectObjects(this.items.map((item) => item.hitbox), false)[0];
+    this.pickRect=this.host.getBoundingClientRect();
+    const hit = this.raycast(event.clientX,event.clientY)[0];
     return hit ? this.items.find((item) => item.id === hit.object.userData.cartridgeId) ?? null : null;
+  }
+  private raycast(x:number,y:number) {
+    const rect=this.pickRect!;
+    this.pointer.set((x-rect.left)/rect.width*2-1,1-(y-rect.top)/rect.height*2);
+    this.ray.setFromCamera(this.pointer, this.camera);
+    this.hits.length=0;this.ray.intersectObjects(this.hitboxes,false,this.hits);return this.hits;
+  }
+  private browse() {
+    if(!this.pointerBrowsing||this.drag||!this.pickRect)return false;
+    const hit=this.raycast(this.pointerClient.x,this.pointerClient.y)[0];
+    // Closed members respond only on their exposed local +Y top surface.
+    // Use the resting hitbox so the tiny contact response cannot flicker itself off.
+    const item=hit&&(hit.object.userData.cartridgeId===this.selected||(hit.face?.normal.y??0)>.9)
+      ?this.items.find(item=>item.id===hit.object.userData.cartridgeId):null;
+    if(item&&hit){
+      this.hoverLocal.copy(hit.point);item.hitbox.worldToLocal(this.hoverLocal);
+      this.hoverContact.set(THREE.MathUtils.clamp(this.hoverLocal.x/item.half.x,-1,1),THREE.MathUtils.clamp(this.hoverLocal.z/item.half.z,-1,1));
+    }
+    const id=item?.id??null,changed=id!==this.hovered;
+    if(changed){this.hovered=id;this.callbacks.onHover(id)}
+    this.host.dataset.hovered=id??"";
+    this.host.dataset.hoverContact=id?`${this.hoverContact.x.toFixed(3)},${this.hoverContact.y.toFixed(3)}`:"";
+    this.host.style.cursor=id?id===this.selected?"grab":"pointer":"default";
+    return changed;
   }
   private down = (event: PointerEvent) => {
     if (event.button !== 0 || this.paused || this.drag || event.target !== this.renderer.domElement) return;
@@ -318,6 +352,7 @@ export class CartridgeScene {
   };
   private move = (event: PointerEvent) => {
     if (this.paused) return;
+    this.pointerClient.set(event.clientX,event.clientY);
     if (this.drag && this.drag.id === event.pointerId) {
       const d = this.drag;
       if (Math.hypot(event.clientX - d.startX, event.clientY - d.startY) > 7) d.moved = true;
@@ -327,9 +362,8 @@ export class CartridgeScene {
       }
       d.x = event.clientX; d.y = event.clientY;
     } else {
-      const item = this.pick(event), id = item?.id ?? null;
-      if (id !== this.hovered) { this.hovered = id; this.callbacks.onHover(id); }
-      this.host.style.cursor = id ? id === this.selected ? "grab" : "pointer" : "default";
+      if(event.target!==this.renderer.domElement||event.pointerType==="touch"){this.leave();return}
+      this.pointerClient.set(event.clientX,event.clientY);this.pickRect=this.host.getBoundingClientRect();this.pointerBrowsing=true;this.browse();
     }
     this.start();
   };
@@ -337,13 +371,15 @@ export class CartridgeScene {
     if (!this.drag || this.drag.id !== event.pointerId) return;
     const d = this.drag; this.drag = null; this.host.dataset.dragging = "false";
     if (this.host.hasPointerCapture(event.pointerId)) this.host.releasePointerCapture(event.pointerId);
+    this.pointerClient.set(event.clientX,event.clientY);
+    this.pointerBrowsing=event.pointerType!=="touch"&&document.elementFromPoint(event.clientX,event.clientY)===this.renderer.domElement;
     if (!d.moved && !this.paused) this.callbacks.onSelect(this.selected === d.item.id ? null : d.item.id);
     this.start();
   };
-  private cancel = () => { this.drag = null; this.host.dataset.dragging = "false"; this.host.style.cursor = "default"; this.start(); };
-  private leave = () => { if (!this.drag) { this.hovered = null; this.callbacks.onHover(null); this.start(); } };
+  private cancel = () => { if(!this.drag)return;this.drag = null;this.host.dataset.dragging = "false";this.leave(); };
+  private leave = () => { if (!this.drag) { this.pointerBrowsing=false;this.hovered = null;this.host.dataset.hovered="";this.host.dataset.hoverContact="";this.host.style.cursor="default";this.callbacks.onHover(null);this.start(); } };
   private contextLost = (event: Event) => { event.preventDefault(); this.stop(); this.callbacks.onError(); };
-  private viewport = () => { const rect = this.host.getBoundingClientRect(); this.inView = rect.bottom > 0 && rect.top < innerHeight; if (this.inView) this.start(); else this.stop(); };
+  private viewport = () => { const rect = this.host.getBoundingClientRect();this.pickRect=rect;this.inView = rect.bottom > 0 && rect.top < innerHeight; if (this.inView) this.start(); else this.stop(); };
   private visibility = () => { if (document.hidden) this.stop(); else this.start(); };
   private preference = () => { this.start(); };
   private start() {
@@ -393,9 +429,12 @@ export class CartridgeScene {
       item.idle.rotation.z = THREE.MathUtils.lerp(item.idle.rotation.z, drifting ? Math.sin(this.ambientTime * .61) * .012 : 0, blend);
       this.host.dataset[`drift${i}`] = [item.idle.position.y, item.idle.rotation.y].join(",");
       const hover = this.hovered === item.id && !reduced && !this.drag;
-      handling.position.z = THREE.MathUtils.lerp(handling.position.z, hover ? .025 : 0, blend);
-      handling.rotation.x = THREE.MathUtils.lerp(handling.rotation.x, hover ? -.025 : 0, blend);
-      const difference = root.position.distanceToSquared(target) + velocity.lengthSq() + angularVelocity.lengthSq() + Math.abs(root.rotation.x - targetAngle.x) + Math.abs(root.rotation.y - targetAngle.y) + Math.abs(root.rotation.z - targetAngle.z) + Math.abs(handling.position.z - (hover ? .025 : 0)) + Math.abs(handling.rotation.x - (hover ? -.025 : 0));
+      const contactPitch=hover?-.02+this.hoverContact.y*.012:0,contactYaw=hover?-this.hoverContact.x*.025:0,contactDepth=hover?.028:0;
+      handling.position.z = THREE.MathUtils.lerp(handling.position.z,contactDepth,blend);
+      handling.rotation.x = THREE.MathUtils.lerp(handling.rotation.x,contactPitch,blend);
+      handling.rotation.y = THREE.MathUtils.lerp(handling.rotation.y,contactYaw,blend);
+      this.host.dataset[`contactPose${i}`]=`${handling.position.z.toFixed(4)},${handling.rotation.x.toFixed(4)},${handling.rotation.y.toFixed(4)}`;
+      const difference = root.position.distanceToSquared(target) + velocity.lengthSq() + angularVelocity.lengthSq() + Math.abs(root.rotation.x - targetAngle.x) + Math.abs(root.rotation.y - targetAngle.y) + Math.abs(root.rotation.z - targetAngle.z) + Math.abs(handling.position.z-contactDepth) + Math.abs(handling.rotation.x-contactPitch) + Math.abs(handling.rotation.y-contactYaw);
       if (difference > .00001) unsettled = true;
       else { root.position.copy(target); velocity.set(0, 0, 0); angularVelocity.set(0, 0, 0); root.rotation.set(targetAngle.x, targetAngle.y, targetAngle.z); }
       this.host.dataset[`rotation${i}`] = root.rotation.toArray().slice(0, 3).join(",");
@@ -403,6 +442,7 @@ export class CartridgeScene {
     const corrected = this.keepSeparated();
     if (corrected) unsettled = true;
     this.renderer.render(this.scene, this.camera);
+    if(this.browse())unsettled=true;
     if (this.host.dataset.rendered !== "true") this.host.dataset.rendered = "true";
     const frameBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
     const captionLeft = (this.host.clientWidth - this.captionWidth) / 2 - 6;
@@ -434,6 +474,12 @@ export class CartridgeScene {
       this.projected.set(0, item.id !== this.selected ? item.half.y - .02 : 0, item.half.z).applyMatrix4(item.root.matrixWorld).project(this.camera);
       const point = { x: (this.projected.x + 1) * this.host.clientWidth / 2, y: (1 - this.projected.y) * this.host.clientHeight / 2 };
       this.host.dataset[`hit${i}`] = JSON.stringify(point);
+      const browsePoints=[];
+      for(const x of [-.65,0,.65]){
+        this.projected.set(x*item.half.x,item.half.y,0).applyMatrix4(item.hitbox.matrixWorld).project(this.camera);
+        browsePoints.push({x:(this.projected.x+1)*this.host.clientWidth/2,y:(1-this.projected.y)*this.host.clientHeight/2});
+      }
+      this.host.dataset[`browse${i}`]=JSON.stringify(browsePoints);
       this.host.style.setProperty(`--hit-${i}-x`, `${THREE.MathUtils.clamp(point.x, 22, this.host.clientWidth - 22)}px`);
       this.host.style.setProperty(`--hit-${i}-y`, `${THREE.MathUtils.clamp(point.y, 22, this.host.clientHeight - 22)}px`);
       if (item.id === this.selected) {

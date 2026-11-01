@@ -41,6 +41,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.VSMShadowMap;
     this.renderer.domElement.setAttribute("aria-hidden","true");host.append(this.renderer.domElement);
     this.camera.position.set(0,0,8);this.camera.lookAt(0,0,0);
+    this.camera.zoom=.9;
     this.pmrem=new THREE.PMREMGenerator(this.renderer);
     const room=new RoomEnvironment();this.environment=this.pmrem.fromScene(room,.045);room.dispose();
     this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.65;
