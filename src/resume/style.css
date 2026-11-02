@@ -118,3 +118,7 @@
 @media(max-height:600px) and (min-width:701px) { .resume-toolbar,.resume-page[data-view="page"] .resume-toolbar { bottom:max(12px,env(safe-area-inset-bottom)); } .resume-floating-frame { top:88px; bottom:92px; } .collection.resume-page { padding-top:112px; } .resume-page[data-view="page"] .resume-read-stage { top:112px; } }
 @media print { .resume-header-shell,.resume-nav,.resume-toolbar,.resume-floating-frame,.resume-morph-layer { display:none!important; } .collection.resume-page { padding:0; } .resume-read-stage,.resume-page[data-view="page"] .resume-read-stage { position:static; visibility:visible; margin:0; } }
 .resume-view-switch button:active { scale:1; }
+
+.resume-header-shell::before { content:""; position:fixed; top:0; left:0; right:0; height:112px; z-index:-1; pointer-events:none; background:linear-gradient(to bottom,color-mix(in srgb,var(--resume-read-base) 96%,transparent),color-mix(in srgb,var(--resume-read-base) 82%,transparent) 55%,transparent); backdrop-filter:blur(12px); mask-image:linear-gradient(to bottom,#000 55%,transparent); }
+.resume-page-back { display:grid; place-items:center; width:44px; height:44px; padding:0; border-radius:50%; color:var(--ui-muted); transition:color 160ms ease,background 160ms ease; }
+.resume-page-back:hover { color:var(--ui-text); background:color-mix(in srgb,var(--ui-text) 6%,transparent); }

@@ -41,6 +41,7 @@ function App() {
   const [selected, setSelected] = useState(null), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
   useContentReveal(content, `${status}:${selected || ""}`);
   const [reading, setReading] = useState(readRoute);
+  const [previewingProject,setPreviewingProject]=useState(null);
   const currentSelection = useRef(null); currentSelection.current = selected;
   const presented = true;
   presentedRef.current = presented;
@@ -136,11 +137,11 @@ function App() {
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}
             {active && status === "ready" && <button key={active.id} className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
           </div>
-          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button data-reveal data-cartridge={item.id} key={item.id} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
+          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button data-reveal data-cartridge={item.id} key={item.id} onPointerEnter={event=>{if(event.pointerType!=="touch")setHovered(item.id)}} onPointerLeave={()=>setHovered(null)} onFocus={()=>setHovered(item.id)} onBlur={()=>setHovered(null)} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
-      <RecentProjects onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
-      {presented && <PortfolioFooter hidden={Boolean(reading)} />}
+      <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
+      {presented && <PortfolioFooter hidden={Boolean(reading)} dismissHistory={Boolean(previewingProject || hovered || reading)} />}
     </main>
     {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
   </>;

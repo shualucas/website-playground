@@ -42,7 +42,7 @@ function TrackTransition(view) {
   </span>;
 }
 
-export function ListeningWidget() {
+export function ListeningWidget({ dismissHistory = false }) {
   const { track, recent, status, stale } = useListening();
   const widget = useRef(null);
   useLayoutEffect(()=>{
@@ -65,6 +65,11 @@ export function ListeningWidget() {
   }, [open]);
   const [caption] = useState(() => listeningCaptions[Math.floor(Math.random() * listeningCaptions.length)]);
   const toggle = useRef(null);
+  useEffect(()=>{
+    if(!dismissHistory)return;
+    if(widget.current?.querySelector(".listening-history")?.contains(document.activeElement))toggle.current?.focus({preventScroll:true});
+    setOpen(false);
+  },[dismissHistory]);
   const playing = Boolean(track?.playing && !stale);
   const profile = "https://www.last.fm/user/shualucas";
   const emptyTitle = status === "loading" ? "Loading listening history…" : status === "unavailable" ? "Listening unavailable" : status === "ready" ? "Nothing scrobbled yet" : "my listening history";

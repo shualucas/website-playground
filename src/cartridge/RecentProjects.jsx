@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { recentProjects } from "./projects";
 import { entrance } from "./entrance";
 import { ZinePreview } from "./ZinePreview";
@@ -13,7 +13,7 @@ const previews = {
 };
 const film = { id: "film", label: "Say cheese!", description: "Film photographs" };
 
-export function RecentProjects({ onOpen, dark, ready, hidden }) {
+export function RecentProjects({ onOpen, dark, ready, hidden, onPreviewChange }) {
   const [active, setActive] = useState(null);
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const [visible, setVisible] = useState(false);
@@ -47,6 +47,7 @@ export function RecentProjects({ onOpen, dark, ready, hidden }) {
   const project = [...recentProjects, film].find(project => project.id === active);
   const preview = previews[active];
   const showing = visible && !hidden;
+  useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);
   return <>
     <div className="project-hue-wash" aria-hidden="true" data-active={showing}>
       {Object.entries(previews).map(([id, item]) => <span key={id} data-active={showing && active === id} style={{ "--wash-color": item.accent }} />)}

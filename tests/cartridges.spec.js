@@ -527,7 +527,7 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
   const pastArt=await dialog.locator(".listening-artwork").first().boundingBox(),pastCopy=await dialog.locator(".listening-song").first().boundingBox();
   expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x).toBeCloseTo(copy.x,1);
-  expect(art.height).toBeCloseTo(copy.height,1);await expect(dialog.locator("ol")).toHaveCSS("gap","3px");
+  expect(art.height).toBeCloseTo(copy.height,1);await expect(dialog.locator("ol")).toHaveCSS("gap","12px");
   expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeCloseTo(pastArt.height,2);expect(art.width).toBeCloseTo(pastArt.width,2);
   const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));
   expect(green[1]).toBeGreaterThan(green[0]);expect(green[1]).toBeGreaterThan(green[2]);
@@ -1101,7 +1101,7 @@ test('resume Read keeps its title clear of navigation when shared styles load la
     await page.setViewportSize({width,height});
     await expect.poll(async()=>{const heading=await page.locator('.resume-read-stage h1').boundingBox(),nav=await page.locator('.resume-nav').boundingBox();return heading.y-(nav.y+nav.height)}).toBeGreaterThanOrEqual(24);
     const controls=await page.locator('.resume-toolbar').boundingBox();expect(controls.y).toBeGreaterThan(height*.7);
-    await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:'Back to page view',exact:true})).toBeVisible();
   }
   await page.evaluate(()=>scrollTo(0,400));await page.getByRole('button',{name:'Page',exact:true}).click();await expect(main).toHaveAttribute('data-view','page');
   await page.getByRole('button',{name:'Read',exact:true}).click();await expect(main).toHaveAttribute('data-view','read');
@@ -1431,4 +1431,49 @@ test('project heading matches the row numbers and its divider fades with the fir
  await expect(nav.locator('ul')).toHaveCSS('border-top-width','0px');const first=nav.locator('li').first();
  expect(await first.evaluate(el=>getComputedStyle(el,'::before').height)).toBe('1px');await expect(first).toHaveCSS('opacity','0');
  await page.emulateMedia({reducedMotion:'reduce'});await expect(first).toHaveCSS('opacity','1');
+});
+
+
+test('history songs share the current-track gap and dismiss for project browsing without reopening',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  const track={title:'Current track',artist:'An artist',url:'https://www.last.fm/music/fixture',artwork:'',playing:true};
+  await page.route('**/api/listening',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({track,recent:Array.from({length:5},(_,i)=>({...track,title:`Previous ${i+1}`,playing:false}))})}));
+  await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
+  const toggle=page.getByRole('button',{name:'Show last five songs'}),history=page.locator('.listening-history');
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:1000});await toggle.click();await expect(history).toHaveCount(1);
+    const gaps=await page.evaluate(()=>{
+      const all=[...document.querySelectorAll('.listening-history .listening-artwork'),document.querySelector('.listening-current .listening-artwork')].map(el=>el.getBoundingClientRect());
+      return all.slice(1).map((art,i)=>art.top-all[i].bottom);
+    });
+    expect(gaps).toHaveLength(5);for(const gap of gaps)expect(gap).toBeCloseTo(12,1);
+    await toggle.click();await expect(history).toHaveCount(0);
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  const links=page.getByRole('navigation',{name:'Recent projects'}).locator('.recent-project-link');
+  for(const link of await links.all()){
+    await toggle.click();await expect(toggle).toHaveAttribute('aria-expanded','true');await link.hover();
+    await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(history).toHaveCount(0);
+    await page.mouse.move(2,2);await expect(toggle).toHaveAttribute('aria-expanded','false');
+  }
+  await toggle.click();await expect(history).toHaveCount(1);await page.getByRole('button',{name:'Open Search cartridge',exact:true}).hover();await expect(history).toHaveCount(0);
+  await page.mouse.move(2,2);await toggle.click();await expect(history).toHaveCount(1);
+  await links.first().focus();await page.keyboard.press('Tab');await expect(links.nth(1)).toBeFocused();await expect(history).toHaveCount(0);
+  await page.emulateMedia({reducedMotion:'no-preference'});await toggle.click();await expect(history).toHaveAttribute('data-state','open');
+  await links.first().hover();await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(history).toHaveAttribute('data-state','closing');await expect(history).toHaveCount(0);
+});
+
+test('resume header has a scrim and its icon-only Read back button returns to Page',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/resume/');
+  const main=page.locator('.resume-page'),header=page.locator('.resume-header-shell');
+  await expect(page.getByRole('link',{name:'Home',exact:true})).toHaveAttribute('href','/');
+  const scrim=await header.evaluate(el=>{const s=getComputedStyle(el,'::before');return{background:s.backgroundImage,blur:s.backdropFilter,events:s.pointerEvents,height:s.height}});
+  expect(scrim.background).toContain('linear-gradient');expect(scrim.blur).toBe('blur(12px)');expect(scrim.events).toBe('none');expect(scrim.height).toBe('112px');
+  await expect(page.locator('.resume-sheet')).toHaveAttribute('data-art-ready','true');const controls=await page.locator('.resume-toolbar').boundingBox();
+  await page.getByRole('button',{name:'Read',exact:true}).click();await expect(main).toHaveAttribute('data-view','read');
+  const back=page.getByRole('button',{name:'Back to page view',exact:true});await expect(back).toBeVisible();await expect(back).toHaveText('');await expect(back.locator('svg')).toHaveCount(1);await expect(page.getByRole('link',{name:'Home',exact:true})).toHaveCount(0);
+  await back.click();await expect(main).toHaveAttribute('data-view','page');await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();expect(await page.locator('.resume-toolbar').boundingBox()).toEqual(controls);
+  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Read',exact:true}).click();await page.getByRole('button',{name:'Back to page view',exact:true}).click();await expect(main).toHaveAttribute('data-view','page');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
