@@ -15,15 +15,16 @@ type Item = {
   half: THREE.Vector3; center: THREE.Vector3; bounds: RigidBounds; spin: THREE.Vector2; angle: THREE.Euler;
   target: THREE.Vector3; targetAngle: THREE.Vector3; velocity: THREE.Vector3; angularVelocity: THREE.Vector3; wait: number;
 };
-const PITCH = 80 * Math.PI / 180;
+const MOBILE_PITCH = 80 * Math.PI / 180;
+const DESKTOP_PITCH = 72 * Math.PI / 180;
 // Local +Y is the cartridge's top, +Z its printed front. Positive pitch exposes
 // the top edge to a long-lens camera on +Z; it does not lay the faces flat.
-const AXIS = new THREE.Vector3(0, -Math.sin(PITCH), Math.cos(PITCH));
-const ROLLS = [.008, -.012, .013, -.006, .01];
-const YAWS = [-.019, .025, -.014, .018, -.015];
-const SHIFTS = [-.035, .025, -.02, .035, -.01];
+
+const ROLLS = [-.035, -.012, .016, .04];
+const YAWS = [-.025, .018, -.018, .025];
+const SHIFTS = [.21, .07, -.07, -.21];
 const COMPONENTS = ["x", "y", "z"] as const;
-const REST_CENTER_Y = 0;
+
 
 /** Tilted, top-edge-first stack; rigid shells, interruptible springs, one clock. */
 export class CartridgeScene {
@@ -69,6 +70,9 @@ export class CartridgeScene {
   private correction = new THREE.Vector3();
   private cleanup = new Set<THREE.Texture>();
   private extentRotation = new THREE.Matrix4();
+  private stackAxis = new THREE.Vector3(0, -Math.sin(DESKTOP_PITCH), Math.cos(DESKTOP_PITCH));
+  private get pitch() { return this.mobile ? MOBILE_PITCH : DESKTOP_PITCH; }
+  private getRoll(i: number) { return this.mobile ? (i % 2 ? -.008 : .008) : ROLLS[i]; }
   private backdrop = new THREE.Color("#f0f0f0");
 
   constructor(private host: HTMLElement, private callbacks: Callbacks) {
@@ -128,7 +132,7 @@ export class CartridgeScene {
   private keepSeparated() {
     let corrected = false;
     for (const item of this.items) this.refreshBounds(item);
-    // Five bodies need only a small bounded solver; this is separation, not a full physics simulation.
+    // Four bodies need only a small bounded solver; this is separation, not a full physics simulation.
     for (let pass = 0; pass < 12; pass++) {
       let changed = false;
       for (let i = 0; i < this.items.length; i++) for (let j = i + 1; j < this.items.length; j++) {
@@ -210,28 +214,29 @@ export class CartridgeScene {
   }
   /** Bounds projected along the stack normal keep neighboring closed shells disjoint. */
   private stackExtent(item: Item, i: number) {
-    this.extentRotation.makeRotationFromEuler(item.angle.set(PITCH, YAWS[i], ROLLS[i]));
+    this.extentRotation.makeRotationFromEuler(item.angle.set(this.pitch, YAWS[i], this.getRoll(i)));
     const e = this.extentRotation.elements, h = item.half;
-    return 2 * (Math.abs(AXIS.x * e[0] + AXIS.y * e[1] + AXIS.z * e[2]) * h.x + Math.abs(AXIS.x * e[4] + AXIS.y * e[5] + AXIS.z * e[6]) * h.y + Math.abs(AXIS.x * e[8] + AXIS.y * e[9] + AXIS.z * e[10]) * h.z);
+    return 2 * (Math.abs(this.stackAxis.x * e[0] + this.stackAxis.y * e[1] + this.stackAxis.z * e[2]) * h.x + Math.abs(this.stackAxis.x * e[4] + this.stackAxis.y * e[5] + this.stackAxis.z * e[6]) * h.y + Math.abs(this.stackAxis.x * e[8] + this.stackAxis.y * e[9] + this.stackAxis.z * e[10]) * h.z);
   }
   private layout() {
     this.host.dataset.settled = "false";
     const active = this.items.findIndex((item) => item.id === this.selected);
+    const centerY = this.mobile ? .35 : .32;
     const heights = this.items.map((item, i) => {
-      if (i !== active) return (this.stackExtent(item, i) + .12) / Math.abs(AXIS.y);
+      if (i !== active) return (this.stackExtent(item, i) + (this.mobile ? .12 : .10)) / Math.abs(this.stackAxis.y);
       // Fit the selected orientation instead of reserving an entire sphere.
       // The lower allowance holds the caption; rotation can widen the slot.
-      this.extentRotation.makeRotationFromEuler(item.angle.set(item.spin.x, YAWS[i] + item.spin.y, ROLLS[i]));
+      this.extentRotation.makeRotationFromEuler(item.angle.set(item.spin.x, YAWS[i] + item.spin.y, this.getRoll(i)));
       const e = this.extentRotation.elements, h = item.half;
       return 2 * (Math.abs(e[1]) * h.x + Math.abs(e[5]) * h.y + Math.abs(e[9]) * h.z + item.center.length()) + .78;
     });
-    let cursor = heights.reduce((sum, h) => sum + h, 0) / 2 + (active < 0 ? REST_CENTER_Y : 0);
+    let cursor = heights.reduce((sum, h) => sum + h, 0) / 2 + (active < 0 ? centerY : 0);
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       const y = cursor - heights[i] / 2 + (i === active ? .21 : 0); cursor -= heights[i];
-      const centeredY = y - (active < 0 ? REST_CENTER_Y : 0);
-      item.target.set(SHIFTS[i], y, i === active ? 1.8 : -.3 + centeredY * AXIS.z / AXIS.y);
-      item.targetAngle.set(i === active ? 0 : PITCH, YAWS[i], ROLLS[i]);
+      const centeredY = y - (active < 0 ? centerY : 0);
+      item.target.set(i === active || this.mobile ? 0 : SHIFTS[i], y, i === active ? 1.8 : -.3 + centeredY * this.stackAxis.z / this.stackAxis.y);
+      item.targetAngle.set(i === active ? 0 : this.pitch, YAWS[i], this.getRoll(i));
       if (i === active) { item.targetAngle.x += item.spin.x; item.targetAngle.y += item.spin.y; }
     }
     // Keep the inspected shell centered at the enlarged scale. Its neighbors
@@ -240,7 +245,7 @@ export class CartridgeScene {
       const offset = this.items[active].target.y;
       for (const item of this.items) item.target.y -= offset;
     }
-    this.host.dataset.composition = this.mobile ? "stack-mobile" : "stack";
+    this.host.dataset.composition = this.mobile ? "stack-mobile" : "diagonal-stack";
     this.host.dataset.selected = this.selected ?? "";
     // Caption belongs to the layout, not the animated shell's bounds. Use the
     // same front-facing envelope for every selection; drag/idle cannot move it.
@@ -299,17 +304,18 @@ export class CartridgeScene {
   private resize() {
     const width = this.host.clientWidth, height = this.host.clientHeight; if (!width || !height) return;
     this.mobile = innerWidth < 880; this.camera.aspect = width / height;
-    // Keep the established framing and reduce visible width/height by 10%.
+    this.stackAxis.set(0, -Math.sin(this.pitch), Math.cos(this.pitch));
+    // Give the four-object desktop fan a compact, stable inspection size.
     // Selection/drag never alters the camera or its zoom.
     const span = 17.2;
-    this.camera.zoom = .9 * (this.mobile ? .75 * Math.min(4, span * this.camera.aspect / 3.2) : Math.min(3, span * this.camera.aspect / 2.65));
+    this.camera.zoom = this.mobile ? .9 * .75 * Math.min(4, span * this.camera.aspect / 3.2) : Math.min(2.4, span * this.camera.aspect / 2.95);
     const distance = span / (2 * Math.tan(7 * Math.PI / 180));
     this.camera.position.set(0, 0, distance);
     // Preserve depth precision for the recessed paper and shell seam. A near
     // plane at .1 wastes precision when this long lens sits ~70 units away.
     this.camera.near = Math.max(.1, distance - 12); this.camera.far = distance + 12;
     this.camera.lookAt(0, 0, 0);
-    this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = "80"; this.host.dataset.magnification = String(this.camera.zoom); this.host.dataset.shadow = "soft-silhouette";
+    this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = String(Math.round(this.pitch * 180 / Math.PI)); this.host.dataset.magnification = String(this.camera.zoom); this.host.dataset.shadow = "soft-silhouette";
     this.host.dataset.order = cartridges.map((item) => item.id).join(",");
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.measureCaption(); this.layout(); this.viewport(); this.start();
   }

@@ -4,10 +4,10 @@ import { entrance } from "./entrance";
 import { CameraLink } from "./CameraLink";
 
 const previews = {
-  "ai-mode-nudges": { image: "/cartridges/labels/ai-mode.svg", team: "Google", accent: "#6988d8", kind: "ai" },
-  "search-labs": { image: "/cartridges/labels/search-label.jpg", team: "Google", accent: "#b759ba", kind: "search" },
-  "stadia-store-redesign": { image: "/cartridges/labels/stadia-label.jpg", team: "Stadia", accent: "#e5633d", kind: "stadia" },
-  "rave-flyer-zine": { image: "/zines/rave-flyers/wavform.jpg", team: "Independent", accent: "#e48dae", kind: "zine" },
+  "ai-mode-nudges": { team: "Google", accent: "#6988d8", kind: "ai" },
+  "search-labs": { team: "Google", accent: "#b759ba", kind: "search" },
+  "stadia-store-redesign": { team: "Stadia", accent: "#e5633d", kind: "stadia" },
+  "rave-flyer-zine": { team: "Independent", accent: "#e48dae", kind: "zine" },
   "film": { team: "Film", accent: "#b69272", kind: "film" },
 };
 const film = { id: "film", label: "Say cheese!", description: "Film photographs" };
@@ -79,14 +79,16 @@ export function RecentProjects({ onOpen, dark, ready, hidden }) {
         </li>
       </ul>
       <div className="recent-project-preview" aria-hidden="true" data-visible={showing}>
-        {project && <div className="recent-preview-content" key={project.id} data-kind={preview.kind}>
-          <div className="recent-preview-art">
-            {preview.kind === "film" ? <div className="recent-preview-polaroids"><i /><i /><i /></div>
-              : <img src={preview.image} alt="" decoding="async" />}
+        <div className="recent-preview-frame">{project && <div className="recent-preview-content" key={project.id} data-kind={preview.kind}>
+          <div className="recent-preview-art" data-motion={showing}>
+            <div className="recent-motion-visual" data-visual={preview.kind}>
+              <span className="motion-orb motion-orb-a" /><span className="motion-orb motion-orb-b" /><span className="motion-orb motion-orb-c" />
+              <span className="motion-grid" /><span className="motion-signal" />
+            </div>
             <span className="recent-preview-dither" />
           </div>
           <p>{project.description}</p>
-        </div>}
+        </div>}</div>
       </div>
     </div>
   </nav></>;

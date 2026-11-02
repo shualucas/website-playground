@@ -6,8 +6,8 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/listening", route => route.fulfill({ status:204 }));
   await page.route("**/api/weather", route => route.fulfill({ contentType:"application/json", body:JSON.stringify({ temperature:58, condition:"Fog", city:"San Francisco" }) }));
 });
-const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment", "Early work"];
-const dates = ["2022 – now", "2020 – 2022", "2019", "2017", "Before 2017"];
+const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment"];
+const dates = ["2022 – now", "2020 – 2022", "2019", "2017"];
 const body = "based in beautiful California, building fun things at Google.";
 async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
@@ -26,7 +26,7 @@ async function point(page, index) {
   return { x: bounds.x + position.x, y: bounds.y + position.y };
 }
 
-test("career collection uses exact bio and five individually visible, tilted top-edge cartridges", async ({ page, request }) => {
+test("career collection uses exact bio and four individually visible cartridges in a compact diagonal stack", async ({ page, request }) => {
   await load(page);
   await expect(page.locator(".miniature-loader")).toHaveCount(0);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
@@ -36,16 +36,16 @@ test("career collection uses exact bio and five individually visible, tilted top
   expect(funFacts).toContain(await page.locator(".random-fact").textContent());
   await expect(page.locator(".collection-header").getByRole("button", { name: "About", exact: true })).toHaveCount(0);
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
-  await expect(page.locator(".cartridge-keyboard")).toHaveCount(5);
+  await expect(page.locator(".cartridge-keyboard")).toHaveCount(4);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "tilted-top-edge");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2.7");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "80");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2.4");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "72");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-silhouette");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-model", "external-glb");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-order", "search,stadia,gmail,blizzard,early-work");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-order", "search,stadia,gmail,blizzard");
   const projected = JSON.parse(await page.locator(".cartridge-stage").getAttribute("data-frame-bounds"));
-  expect(projected.right - projected.left).toBeGreaterThan(375*.9);
-  expect(projected.right - projected.left).toBeLessThan(430*.9);
+  expect(projected.right - projected.left).toBeGreaterThan(300);
+  expect(projected.right - projected.left).toBeLessThan(380);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
   const hero = await page.locator(".collection-hero").boundingBox();
   expect(hero.width).toBe(960);
@@ -55,15 +55,14 @@ test("career collection uses exact bio and five individually visible, tilted top
   const headerBounds=await page.locator('.collection-header').boundingBox();
   expect(Math.abs(footerBounds.x+footerBounds.width-headerBounds.x-headerBounds.width)).toBeLessThan(1);
   expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
-  // Recover the original column envelope: only the objects shrink, not the grid.
-  const columnRight=stage.x+stage.width/2+(projected.right-stage.width/2)/.9;
-  const rightGutter = page.viewportSize().width - columnRight;
-  expect(Math.abs(intro.x - rightGutter)).toBeLessThan(20);
+  expect(projected.left).toBeGreaterThan(20);expect(projected.right).toBeLessThan(stage.width-20);
+  await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-composition','diagonal-stack');
+  await expect(page.getByRole('button',{name:/View Early work cartridge/})).toHaveCount(0);
   expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 4; i++) {
     const facing = Number(await page.locator(".cartridge-stage").getAttribute(`data-front-facing${i}`));
-    expect(facing).toBeGreaterThan(.1); expect(facing).toBeLessThan(.25);
+    expect(facing).toBeGreaterThan(.28); expect(facing).toBeLessThan(.38);
     await expect(page.locator(".cartridge-stage")).toHaveAttribute(`data-top-near${i}`, "true");
     hits.push(JSON.parse(await page.locator(".cartridge-stage").getAttribute(`data-hit${i}`)));
   }
@@ -75,7 +74,7 @@ test("career collection uses exact bio and five individually visible, tilted top
   }
 });
 
-test("all career captions contain only team and supplied dates; early work has no invented dates", async ({ page }) => {
+test("career captions retain team and dates while the archived early reader remains accessible", async ({ page }) => {
   await load(page);
   for (let i = 0; i < names.length; i++) {
     await choose(page, names[i]);
@@ -86,12 +85,13 @@ test("all career captions contain only team and supplied dates; early work has n
     expect((await caption.innerText()).trim()).toBe([names[i], dates[i]].filter(Boolean).join("\n"));
     await expect(page.getByRole("button", { name: "Reset cartridge rotation" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Close cartridge" })).toHaveCount(0);
-    const visible = await page.locator(".cartridge-stage").evaluate((el) => [0,1,2,3,4].every((i) => {
+    const visible = await page.locator(".cartridge-stage").evaluate((el) => [0,1,2,3].every((i) => {
       const x = parseFloat(el.style.getPropertyValue(`--hit-${i}-x`)), y = parseFloat(el.style.getPropertyValue(`--hit-${i}-y`)); return x >= 22 && x <= el.clientWidth - 22 && y >= 22 && y <= el.clientHeight - 22;
     }));
     expect(visible).toBe(true);
   }
-  await page.getByRole("button", { name: "Open Early work, Before 2017", exact: true }).click();
+  await expect(page.getByRole("button", { name: "View Early work cartridge", exact: true })).toHaveCount(0);
+  await page.goto("/?project=early-work&view=case-study");
   await expect(page.getByRole("heading", { name: "Early work", exact: true })).toBeFocused();
   await expect(page.getByText("High school & college", { exact: true }).first()).toBeVisible();
 });
@@ -106,7 +106,7 @@ test("captions enter with their cartridge and stay clear of every shell during i
       if(caption && getComputedStyle(caption).visibility==='visible' && Number(getComputedStyle(caption).opacity)>.02){
         window.captionSamples.visible++;
         const origin=stage.getBoundingClientRect(),box=caption.getBoundingClientRect();
-        for(let i=0;i<5;i++){
+        for(let i=0;i<4;i++){
           const frame=stage.dataset[`frame${i}`];if(!frame)continue;const cart=JSON.parse(frame);
           if(box.right-origin.x>cart.left && box.left-origin.x<cart.right && box.bottom-origin.y>cart.top && box.top-origin.y<cart.bottom)window.captionSamples.overlaps.push({selected:stage.dataset.selected,cart:i});
         }
@@ -128,7 +128,7 @@ test("captions enter with their cartridge and stay clear of every shell during i
   await expect.poll(()=>page.evaluate(()=>window.captionSamples.visible),{timeout:10000}).toBeGreaterThan(2);
   const samples=await page.evaluate(()=>{cancelAnimationFrame(window.captionSampleFrame);return window.captionSamples});
   expect(samples.visible).toBeGreaterThan(2);expect(samples.overlaps).toEqual([]);
-  await page.emulateMedia({reducedMotion:'reduce'});await select('Early work');await expect(caption).toBeVisible();await expect(caption).toHaveCSS('animation-name','none');
+  await page.emulateMedia({reducedMotion:'reduce'});await select('Blizzard Entertainment');await expect(caption).toBeVisible();await expect(caption).toHaveCSS('animation-name','none');
 });
 
 test("canvas selection, drag rotation, caption entry and browser history work with the new chronology", async ({ page }) => {
@@ -159,7 +159,7 @@ test("canvas selection, drag rotation, caption entry and browser history work wi
 test("mobile keeps enlarged cartridges and captions in view, with persistent theme", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await load(page);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-composition", "stack-mobile");
-  for (const name of ["Blizzard Entertainment", "Search", "Early work"]) {
+  for (const name of ["Blizzard Entertainment", "Search", "Gmail"]) {
     await choose(page, name);
     // The long supplied bio and canvas form a scrollable mobile page. Keyboard
     // users can reach the fixed caption normally after selecting a cartridge.
@@ -180,15 +180,15 @@ test("mobile keeps enlarged cartridges and captions in view, with persistent the
   await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
 });
 
-test("without WebGL all five career cartridges retain team/year captions and open their readers", async ({ page }) => {
+test("without WebGL all four career cartridges retain team/year captions and open their readers", async ({ page }) => {
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /webgl/i.test(type) ? null : original.call(this, type, ...args); };
   });
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
-  await expect(page.locator(".cartridge-fallback img")).toHaveCount(5);
+  await expect(page.locator(".cartridge-fallback img")).toHaveCount(4);
   await page.getByRole("button", { name: "Open Gmail cartridge", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Gmail case study" })).toBeVisible(); await expect(page.getByRole("region", { name: "Gmail case study" }).getByText("2019", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Gmail case study" })).toBeVisible(); await expect(page.getByRole("region", { name: "Gmail case study" }).getByText("Summer 2019", { exact: true })).toBeVisible();
 });
 
 test("Search and legacy AI Mode deep links remain readable", async ({ page }) => {
@@ -321,7 +321,7 @@ test("opening poses remain separated through interrupted selection and full rota
     const stage = document.querySelector(".cartridge-stage");
     new MutationObserver(() => {
       if (Number(stage.dataset.intersections) > 0) window.intersectionsSeen.push(stage.dataset.intersections);
-      const ys = [0,1,2,3,4].map(i => Number(stage.dataset[`position${i}`].split(",")[1]));
+      const ys = [0,1,2,3].map(i => Number(stage.dataset[`position${i}`].split(",")[1]));
       if (ys.some((y, i) => i > 0 && y >= ys[i - 1])) window.orderChanges.push(ys);
     }).observe(stage, { attributes: true, attributeFilter: ["data-intersections"] });
   });
@@ -330,18 +330,18 @@ test("opening poses remain separated through interrupted selection and full rota
   // slots and prevented settling, despite the final target poses being clear.
   await page.getByRole("button", { name: "View Stadia cartridge", exact: true }).focus(); await page.keyboard.press("Enter");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", { timeout: 60000 });
-  for (const name of ["Gmail", "Early work", "Blizzard Entertainment", "Stadia"]) {
+  for (const name of ["Gmail", "Search", "Blizzard Entertainment", "Stadia"]) {
     const control = page.getByRole("button", { name: `View ${name} cartridge`, exact: true }); await control.focus(); await control.press("Enter");
   }
   const stage = page.locator(".cartridge-stage");
   await expect(stage).toHaveAttribute("data-settled", "true", { timeout: 60000 });
   await expect(stage).toHaveAttribute("data-intersections", "0");
   expect(Number(await stage.getAttribute("data-front-facing1"))).toBeGreaterThan(.98);
-  for (const i of [0, 2, 3, 4]) {
+  for (const i of [0, 2, 3]) {
     const facing = Number(await stage.getAttribute(`data-front-facing${i}`));
-    expect(facing).toBeGreaterThan(.1); expect(facing).toBeLessThan(.25);
+    expect(facing).toBeGreaterThan(.28); expect(facing).toBeLessThan(.38);
   }
-  const positions = await stage.evaluate((el) => [0,1,2,3,4].map(i => el.dataset[`position${i}`].split(",").map(Number)));
+  const positions = await stage.evaluate((el) => [0,1,2,3].map(i => el.dataset[`position${i}`].split(",").map(Number)));
   expect(positions[0][1]).toBeGreaterThan(positions[1][1]);
   expect(positions[2][1]).toBeLessThan(positions[1][1]);
   expect(positions[0][1] - positions[1][1]).toBeLessThan(1.6);
@@ -748,15 +748,17 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-project-preview')).toHaveCSS('opacity','1');
   await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
   await expect(links.nth(1)).toHaveCSS('opacity','0.4');
-  const titleBefore=await links.first().locator('.recent-project-copy').boundingBox();
+  const copyBox=()=>links.first().locator('.recent-project-copy').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y+scrollY,width:r.width,height:r.height}});
+  const titleBefore=await copyBox();
   await links.nth(1).hover();await links.nth(2).hover();await links.last().hover();
   await expect(navigation).toHaveAttribute('data-active-project','rave-flyer-zine');
   await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
-  await expect(navigation.locator('.recent-preview-art img')).toHaveAttribute('src','/zines/rave-flyers/wavform.jpg');
+  await expect(navigation.locator('.recent-motion-visual')).toHaveAttribute('data-visual','zine');
+  await expect(navigation.locator('.recent-preview-art img')).toHaveCount(0);
   await page.mouse.move(5,5);
   await expect(navigation).toHaveAttribute('data-preview-active','false');
   await expect(links.first()).toHaveCSS('opacity','1');
-  const titleAfter=await links.first().locator('.recent-project-copy').boundingBox();expect(titleAfter).toEqual(titleBefore);
+  const titleAfter=await copyBox();expect(titleAfter).toEqual(titleBefore);
   await links.first().focus();await page.keyboard.press('Tab');
   await expect(navigation).toHaveAttribute('data-active-project','search-labs');
   await expect(links.nth(1)).toBeFocused();
@@ -1362,7 +1364,7 @@ test('cartridge browsing follows only the exposed tops and rocks with the contac
   test.setTimeout(120000);const errors=[];page.on('pageerror',error=>errors.push(error.message));await load(page);
   const stage=page.locator('.cartridge-stage');await page.mouse.move(2,2);await page.emulateMedia({reducedMotion:'no-preference'});
   const touch=async(index,side=1)=>{const rect=await stage.boundingBox(),points=JSON.parse(await stage.getAttribute(`data-browse${index}`));await page.mouse.move(rect.x+points[side].x,rect.y+points[side].y)};
-  for(const [index,id] of ['search','stadia','gmail','blizzard','early-work'].entries()){
+  for(const [index,id] of ['search','stadia','gmail','blizzard'].entries()){
     await touch(index);await expect(stage).toHaveAttribute('data-hovered',id);
   }
   await touch(1,0);await expect(stage).toHaveAttribute('data-hovered','stadia');
@@ -1379,7 +1381,7 @@ test('cartridge browsing follows only the exposed tops and rocks with the contac
   await expect(caption.locator(':scope > span').first()).toHaveCSS('font-weight','400');
   expect(await caption.locator(':scope > span').first().evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
   await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-contact-pose0','0.0000,0.0000,0.0000');
-  await expect(stage).toHaveAttribute('data-magnification','2.7');await expect(stage).toHaveAttribute('data-intersections','0');expect(errors).toEqual([]);
+  await expect(stage).toHaveAttribute('data-magnification','2.4');await expect(stage).toHaveAttribute('data-intersections','0');expect(errors).toEqual([]);
 });
 
 
@@ -1403,7 +1405,7 @@ test('project previews follow movement inside a row, dim other content and wash 
   await expect.poll(async()=>Math.abs(await position()-firstTarget)).toBeLessThan(.3);
   const top=await position();
   await page.mouse.move(row.x+row.width*.4,row.y+row.height-8);
-  await expect.poll(async()=>await position()-top).toBeGreaterThan(14);
+  await expect.poll(async()=>await position()-top).toBeGreaterThan(10);
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
   await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
   await expect(links.first()).toHaveCSS('opacity','1');
@@ -1421,4 +1423,26 @@ test('project previews follow movement inside a row, dim other content and wash 
   await page.emulateMedia({reducedMotion:'reduce'});await links.first().focus();
   await expect(preview).toHaveCSS('transform','none');expect(await wash.locator('span').first().evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(.001);
   await page.keyboard.press('Enter');await expect(page.locator('.case-study')).toBeVisible();await expect(wash).toHaveAttribute('data-active','false');
+});
+
+
+test('compact project rows keep equal typography and weight while motion previews pause when hidden',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
+  const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
+  expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([45,45,45,45,45]);
+  const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
+  await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
+  for(const link of await links.all()){
+    await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
+    await expect(nav.locator('.motion-orb-a')).toHaveCSS('animation-name','none');
+  }
+  await page.emulateMedia({reducedMotion:'no-preference'});await links.first().hover();
+  const orb=nav.locator('.motion-orb-a');await expect(orb).toHaveCSS('animation-play-state','running');
+  const before=await orb.evaluate(el=>getComputedStyle(el).transform);await expect.poll(()=>orb.evaluate(el=>getComputedStyle(el).transform)).not.toBe(before);
+  await page.mouse.move(2,2);await expect(orb).toHaveCSS('animation-play-state','paused');
+  await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
+  await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([55,55,55,55,55]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

@@ -1,5 +1,5 @@
 import { projects as zineProjects } from "../book/projects";
-import { cartridges } from "./config";
+import { archivedCartridges, cartridges } from "./config";
 import { aiModeCaseStudy } from "../content/ai-mode-case-study";
 import { searchLabsCaseStudy } from "../content/search-labs-case-study";
 import { stadiaCaseStudy } from "../content/stadia-case-study";
@@ -13,7 +13,7 @@ const careerDetails = {
 };
 
 /** Career pages stay separate from the preserved zine's four spreads. */
-export const careerProjects = cartridges.map((cartridge) => {
+export const careerProjects = [...cartridges, ...archivedCartridges].map((cartridge) => {
   const existing = zineProjects.find((p) => p.id === (cartridge.id === "search" ? "ai-mode" : cartridge.id));
   const details = careerDetails[cartridge.id];
   const early = cartridge.id === "early-work";

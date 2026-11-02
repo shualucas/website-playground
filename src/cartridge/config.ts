@@ -7,6 +7,9 @@ export const cartridges = [
   { id: "stadia", number: "02", name: "Stadia", years: "2020 – 2022", label: "/cartridges/labels/stadia-label.jpg", shell: "#d8541c", accent: "#d8541c", finish: { transmission: .94, roughness: .08, thickness: .035, attenuationDistance: 4 } },
   { id: "gmail", number: "03", name: "Gmail", years: "2019", label: "/cartridges/labels/gmail-label.jpg", shell: "#9d1938", accent: "#9d1938", finish: { transmission: .94, roughness: .08, thickness: .035, attenuationDistance: 4 } },
   { id: "blizzard", number: "04", name: "Blizzard Entertainment", years: "2017", label: "/cartridges/labels/blizzard-label.svg", shell: "#1d4cac", accent: "#1d4cac", finish: { transmission: .94, roughness: .08, thickness: .035, attenuationDistance: 4 } },
+] as const;
+/** Retain the old assets and direct reader URL without displaying a cartridge. */
+export const archivedCartridges = [
   { id: "early-work", number: "05", name: "Early work", years: "Before 2017", label: "/cartridges/labels/early-work-label.svg", shell: "#34383a", accent: "#34383a", finish: matte },
 ] as const;
 export type CartridgeId = typeof cartridges[number]["id"];
