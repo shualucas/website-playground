@@ -70,7 +70,7 @@ export function RecentProjects({ onOpen, dark, ready, hidden, onPreviewChange })
             }}>
             <span className="recent-project-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
             <span className="recent-project-copy"><span className="recent-project-name">{project.label}</span>
-              <span id={`recent-summary-${project.id}`} className="recent-project-summary sr-only" aria-hidden="true">{project.description}</span></span>
+              <span id={`recent-summary-${project.id}`} className={`recent-project-summary${previews[project.id].kind==="zine" ? " sr-only" : ""}`} aria-hidden="true">{project.description}</span></span>
             <span className="recent-project-team">{previews[project.id].team}</span>
             <svg className="recent-project-arrow" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </a>
@@ -92,7 +92,6 @@ export function RecentProjects({ onOpen, dark, ready, hidden, onPreviewChange })
             </div>}
             <span key={`dither-${project?.id}`} className="recent-preview-dither" />
           </div>
-          {preview && preview.kind!=="film" && preview.kind!=="zine" && <p>{project?.description}</p>}
         </div></div>
       </div>
     </div>
