@@ -25,7 +25,7 @@ for (const contact of paperContacts) {
 if (changed) {
   page.node.set(PDFName.of("Annots"), annotations);
   pdf.setTitle(`${resume.name} — Résumé`); pdf.setAuthor(resume.name);
-  pdf.setModificationDate(new Date("2026-10-29T00:00:00Z"));
+  pdf.setModificationDate(new Date());
   await writeFile(path, await pdf.save());
 }
 for (const width of [1200, 2400]) {

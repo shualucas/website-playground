@@ -1005,9 +1005,10 @@ test("resume page preserves original artwork and downloads its one-page PDF with
   await page.getByRole('button',{name:'Read',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
   await expect(sheet).toHaveAttribute('data-motion','paused');
-  await expect(page.locator('.resume-job')).toHaveCount(2);await expect(page.locator('.resume-job').first()).toContainText('May 2019 - Present');
-  await expect(page.locator('.resume-job').last()).toContainText('May - Sept 2017');await expect(page.locator('.resume-job').first()).toContainText('12% increase');
-  await expect(page.locator('.resume-skills li')).toHaveCount(8);await expect(page.locator('.resume-tools li')).toHaveText(['Figma','Adobe Suite','GIFSKI','Principle']);
+  await expect(page.locator('.resume-job')).toHaveCount(1);await expect(page.locator('.resume-job').first()).toContainText('May 2019 - Present');
+  await expect(page.locator('.resume-job li')).toHaveCount(6);await expect(page.locator('.resume-job')).toContainText('+12% game sales');
+  await expect(page.locator('.resume-job')).toContainText('+1.84% daily active users');await expect(page.locator('.resume-job')).toContainText('+7.73% follow-up questions');await expect(page.locator('.resume-job')).toContainText('pending US design patent');
+  await expect(page.locator('.resume-skills li')).toHaveText(['AI prototyping','Interaction design','Visual & motion craft','Product strategy','Brand development','Design systems']);await expect(page.locator('.resume-tools li')).toHaveText(['Antigravity','Codex','Github','Figma','Adobe Suite','GIFSKI']);
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect(await page.locator('.resume-job li').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('.resume-gradient')).toHaveAttribute('data-active','true');

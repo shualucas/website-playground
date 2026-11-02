@@ -1,7 +1,7 @@
-.resume-page { --resume-read-base:#fff; --resume-print-ink:#101010; --resume-body:#505050; --resume-accent:#e00000; --resume-pink:#ff9fa8; --resume-warm:#ffe2a0; position:relative; isolation:isolate; padding-bottom:40px; }
+.resume-page { --resume-read-base:#fff; --resume-print-ink:#101010; --resume-body:#505050; --resume-accent:#505050; --resume-pink:#c5b2ff; --resume-warm:#f6b4e7; position:relative; isolation:isolate; padding-bottom:40px; }
 :root[data-resume-view] { background:#fff; }
 :root[data-color-mode="dark"][data-resume-view] { background:#171417; }
-:root[data-color-mode="dark"] .resume-page { --resume-read-base:#171417; --resume-print-ink:#f4eeee; --resume-body:#d8d0d4; --resume-accent:#ff9c98; --resume-pink:#773947; --resume-warm:#6c522d; }
+:root[data-color-mode="dark"] .resume-page { --resume-read-base:#171417; --resume-print-ink:#f4eeee; --resume-body:#d8d0d4; --resume-accent:#d8d0d4; --resume-pink:#514266; --resume-warm:#61385a; }
 .resume-nav { justify-content:space-between; color:var(--ui-muted); font-size:13px; }
 .resume-nav > a { display:inline-flex; align-items:center; gap:9px; min-height:44px; }
 .resume-toolbar { position:sticky; top:8px; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:16px; width:100%; max-width:1000px; margin:12px auto 0; padding:8px 0; background:color-mix(in srgb,var(--scene-bg) 94%,transparent); backdrop-filter:blur(12px); border-radius:28px; }
@@ -46,7 +46,7 @@
 .resume-print-heading > p { margin:16px 0 70px; font:400 16px/1.4 ui-monospace,"Courier New",monospace; text-transform:uppercase; color:var(--resume-accent); }
 .resume-print-columns { display:grid; grid-template-columns:24% minmax(0,1fr); gap:5%; }
 .resume-document h2 { font-size:19px; font-weight:500; margin:0 0 37px; }
-.resume-print-sidebar ul { padding:0; margin:0; list-style:none; color:var(--resume-accent); text-transform:lowercase; font-size:17px; line-height:1.55; }
+.resume-print-sidebar ul { padding:0; margin:0; list-style:none; color:var(--resume-accent); font-size:17px; line-height:1.55; }
 .resume-skills { margin-top:66px; }
 .resume-job { margin:0 0 42px; }
 .resume-job:last-child { margin-bottom:0; }
@@ -85,7 +85,7 @@
 @media(max-height:600px) and (min-width:701px) { .resume-page[data-view="page"] { grid-template-rows:48px 60px minmax(0,1fr) 24px; padding-block:12px; } .resume-page[data-view="page"] .resume-nav { height:48px; } }
 @media(max-width:360px) { .resume-print-heading > p { font-size:10px; } .resume-print-sidebar { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { .resume-gradient { transition:none; } .resume-download-copy { display:none; } ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*) { animation:none!important; } }
-@media print { .resume-gradient,.resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.resume-read-target,.paper-contact,.resume-download-copy { display:none!important; } .resume-page,.resume-page[data-view="page"] { padding:0; height:auto; display:block; overflow:visible; --resume-print-ink:#111; --resume-body:#505050; --resume-accent:#e00000; } .resume-paper-stage,.resume-page[data-view="page"] .resume-paper-stage { margin:0; height:auto; container-type:normal; perspective:none; max-width:none; display:block; } .resume-sheet,.resume-page[data-view="page"] .resume-sheet { width:100%; transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }
+@media print { .resume-gradient,.resume-nav,.resume-toolbar,.resume-site-footer,.resume-art-loading,.resume-read-target,.paper-contact,.resume-download-copy { display:none!important; } .resume-page,.resume-page[data-view="page"] { padding:0; height:auto; display:block; overflow:visible; --resume-print-ink:#111; --resume-body:#505050; --resume-accent:#505050; } .resume-paper-stage,.resume-page[data-view="page"] .resume-paper-stage { margin:0; height:auto; container-type:normal; perspective:none; max-width:none; display:block; } .resume-sheet,.resume-page[data-view="page"] .resume-sheet { width:100%; transform:none!important; box-shadow:none; } .resume-artwork img { opacity:1!important; } [data-reveal] { opacity:1!important; filter:none!important; animation:none!important; } .resume-document:not(.sr-only) { padding:0; } .resume-job { break-inside:avoid; } @page { size:A4; margin:0; } }
 /* Match the home/zine header gutters; both views share a bottom action row. */
 :root:has(.resume-page) { scrollbar-gutter:stable; }
 .collection.resume-page { padding-top:128px; padding-bottom:144px; }
