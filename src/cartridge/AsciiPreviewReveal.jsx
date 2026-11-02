@@ -1,65 +1,103 @@
-import React, { useEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 
-const glyphs = ".,:;+=x*#%@";
-const hash = (x, y) => {
-  let n = Math.imul(x + 17, 374761393) ^ Math.imul(y + 31, 668265263);
-  n = Math.imul(n ^ (n >>> 13), 1274126177);
-  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
-};
+const glyphs = ".:-=+*#%@";
+const smooth = value => { const p = Math.max(0, Math.min(1, value)); return p * p * (3 - 2 * p); };
 
-/** A short, decorative character pass. No extra WebGL context or persistent loop. */
+/** Sample the real preview, then crossfade its monochrome characters into the original. */
 export function AsciiPreviewReveal({ active, kind }) {
   const canvas = useRef(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const surface = canvas.current, art = surface.parentElement;
     const motion = matchMedia("(prefers-reduced-motion: reduce)");
     const context = surface.getContext("2d");
-    let frame = 0, start = null, lastPaint = -Infinity, stopped = false;
-    surface.dataset.state = active && !motion.matches ? "waiting" : "complete";
-    surface.hidden = !active || motion.matches || !context;
-    if (surface.hidden) return;
-    const ready = () => {
-      if (kind === "zine") return /ready|unavailable/.test(art.querySelector(".zine-preview-scene")?.dataset.status || "");
-      if (kind === "film") return /ready|unavailable/.test(art.querySelector(".film-camera-dock")?.dataset.status || "") || art.closest(".collection")?.dataset.status === "fallback";
-      return true;
+    const sample = document.createElement("canvas"), pixels = sample.getContext("2d", { willReadFrequently:true });
+    let frame = 0, start = null, source = null, lastSample = -Infinity, stopped = false, complete = false;
+    const releaseSource = () => {
+      source?.removeEventListener("ascii-preview-frame", capture);
+      source?.removeAttribute("data-ascii-capture");
+      source = null;
     };
-    const paint = now => {
-      if (stopped) return;
-      if (motion.matches) { surface.dataset.state = "complete"; surface.hidden = true; return; }
-      if (now - lastPaint >= 1000 / 18) {
-        lastPaint = now;
-        if (start === null && ready()) { start = now; surface.dataset.state = "revealing"; }
-        const progress = start === null ? 0 : Math.min(1, (now - start) / 680);
-        const width = Math.max(1, Math.round(art.clientWidth)), height = Math.max(1, Math.round(art.clientHeight));
-        if (surface.width !== width || surface.height !== height) { surface.width = width; surface.height = height; }
-        const style = getComputedStyle(art);
-        context.clearRect(0, 0, width, height);
-        context.font = '10px "Courier New", monospace';
-        context.textBaseline = "middle";
-        const cols = Math.ceil(width / 9), rows = Math.ceil(height / 12), tick = Math.floor(now / 95);
-        const ink = getComputedStyle(art.closest(".recent-projects")).getPropertyValue("--preview-accent").trim();
-        for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
-          const seed = hash(col, row), threshold = .12 + .58 * col / cols + .18 * row / rows + .12 * seed;
-          if (progress >= threshold) continue;
-          context.globalAlpha = 1;
-          context.fillStyle = style.backgroundColor;
-          context.fillRect(col * 9, row * 12, 9, 12);
-          const x = (col + .5) / cols, y = (row + .5) / rows;
-          // Give the object previews a simple character silhouette before resolving.
-          const shape = kind === "film" ? x > .2 && x < .8 && y > .25 && y < .72
-            : kind === "zine" ? Math.abs(x - .5 + (y - .5) * .2) < .19 && y > .13 && y < .87
-            : Math.sin(x * 9 + y * 5) + Math.cos(y * 10 - x * 4) > .1;
-          context.globalAlpha = (shape ? .65 : .15) * Math.min(1, (threshold - progress) * 9);
-          context.fillStyle = ink || "#666";
-          context.fillText(glyphs[Math.floor(hash(col + tick, row) * glyphs.length)], col * 9 + 1, row * 12 + 6);
+    const finish = () => {
+      complete = true; surface.dataset.state = "complete"; surface.hidden = true;
+      art.style.removeProperty("--preview-content-opacity");
+      releaseSource();
+    };
+    surface.dataset.state = active && !motion.matches ? "waiting" : "complete";
+    surface.dataset.source = "none";
+    surface.hidden = !active || motion.matches || !context || !pixels;
+    surface.style.opacity = "0";
+    if (surface.hidden) return;
+    art.style.setProperty("--preview-content-opacity", "0");
+    const dimensions = () => {
+      const width = Math.max(1, Math.round(art.clientWidth)), height = Math.max(1, Math.round(art.clientHeight));
+      if (surface.width !== width || surface.height !== height) { surface.width = width; surface.height = height; }
+      sample.width = Math.ceil(width / 8); sample.height = Math.ceil(height / 11);
+      return { width, height };
+    };
+    function capture() {
+      const now = performance.now();
+      if (stopped || complete || now - lastSample < 1000 / 18) return;
+      lastSample = now;
+      const { width, height } = dimensions();
+      const flat = !source;
+      pixels.clearRect(0, 0, sample.width, sample.height);
+      if (source) {
+        if (source instanceof HTMLImageElement) {
+          if (!source.complete) return;
+          if (!source.naturalWidth) { finish(); return; }
         }
-        context.globalAlpha = 1;
-        if (progress === 1) { surface.dataset.state = "complete"; surface.hidden = true; return; }
+        if (source instanceof HTMLVideoElement && source.readyState < 2) return;
+        const rect = source.getBoundingClientRect(), bounds = art.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        pixels.drawImage(source, (rect.left - bounds.left) / width * sample.width, (rect.top - bounds.top) / height * sample.height, rect.width / width * sample.width, rect.height / height * sample.height);
+      } else {
+        pixels.fillStyle = getComputedStyle(art).backgroundColor;
+        pixels.fillRect(0, 0, sample.width, sample.height);
+      }
+      let data;
+      try { data = pixels.getImageData(0, 0, sample.width, sample.height).data; }
+      catch { finish(); return; } // A future cross-origin image must not block the preview.
+      context.clearRect(0, 0, width, height);
+      context.font = '10px "Courier New", monospace'; context.textBaseline = "middle";
+      context.fillStyle = getComputedStyle(art.closest(".recent-projects")).getPropertyValue("--preview-accent").trim() || "#666";
+      for (let row = 0; row < sample.height; row++) for (let col = 0; col < sample.width; col++) {
+        const i = (row * sample.width + col) * 4, alpha = data[i + 3] / 255;
+        if (alpha < .04) continue;
+        const shade = 1 - (data[i] * .2126 + data[i + 1] * .7152 + data[i + 2] * .0722) / 255;
+        context.globalAlpha = flat ? .2 : alpha * (.4 + .6 * shade);
+        context.fillText(glyphs[Math.round((.2 + .8 * shade) * (glyphs.length - 1))], col * 8, row * 11 + 5.5);
+      }
+      context.globalAlpha = 1;
+      surface.dataset.source = flat ? "fill" : "content";
+      if (start === null) { start = performance.now(); surface.dataset.state = "revealing"; }
+    }
+    const paint = now => {
+      if (stopped || complete) return;
+      if (motion.matches) { finish(); return; }
+      if (!source) {
+        const found = [...art.querySelectorAll(".recent-preview-source canvas,.recent-preview-source img,.recent-preview-source video")]
+          .find(node => !node.closest(".recent-special-preview") || node.closest(".recent-special-preview").dataset.visible === "true");
+        if (found) {
+          source = found;
+          source.addEventListener("ascii-preview-frame", capture);
+          if (source instanceof HTMLCanvasElement) source.setAttribute("data-ascii-capture", "");
+        }
+      }
+      const liveCanvas = source instanceof HTMLCanvasElement && (source.classList.contains("book-webgl") || source.closest(".film-camera-dock"));
+      const unavailable = kind === "film" && art.closest(".collection")?.dataset.status === "fallback" || kind === "zine" && art.querySelector('.zine-preview-scene[data-status="unavailable"]');
+      if (!liveCanvas && (source || !["film", "zine"].includes(kind) || unavailable)) capture();
+      if (complete) return;
+      if (start !== null) {
+        const progress = Math.min(1, Math.max(0, (now - start) / 1200));
+        const reveal = smooth((progress - .28) / .72);
+        surface.style.opacity = String(smooth(progress / .22) * (1 - reveal));
+        art.style.setProperty("--preview-content-opacity", String(reveal));
+        if (progress === 1) { finish(); return; }
       }
       frame = requestAnimationFrame(paint);
     };
     frame = requestAnimationFrame(paint);
-    return () => { stopped = true; cancelAnimationFrame(frame); };
+    return () => { stopped = true; cancelAnimationFrame(frame); releaseSource(); art.style.removeProperty("--preview-content-opacity"); };
   }, [active, kind]);
   return <canvas ref={canvas} className="recent-preview-ascii" aria-hidden="true" hidden />;
 }

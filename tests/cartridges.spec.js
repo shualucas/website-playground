@@ -1719,3 +1719,30 @@ test('3D cartridge input stays locked until both its fade and physical arrival h
   window.earlyCartridgeInputs=[];new MutationObserver(()=>{const stage=document.querySelector('.cartridge-stage');if(!stage||stage.dataset.rendered!=='true'||stage.dataset.entrance==='complete')return;window.earlyCartridgeInputs.push({enabled:stage.dataset.interactive,hovered:stage.dataset.hovered||'',selected:stage.dataset.selected||''});const canvas=stage.querySelector('canvas');canvas?.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:900,clientY:300,pointerType:'mouse'}));canvas?.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:900,clientY:300,button:0}));}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-entrance','data-rendered']});
  });await page.goto('/');const stage=page.locator('.cartridge-stage');await expect(stage).toHaveAttribute('data-interactive','true',{timeout:60000});await expect(stage).toHaveAttribute('data-entrance','complete');expect(await stage.evaluate(el=>el.inert)).toBe(false);const early=await page.evaluate(()=>window.earlyCartridgeInputs);expect(early.length).toBeGreaterThan(0);expect(early.every(frame=>frame.enabled==='false'&&!frame.hovered&&!frame.selected)).toBe(true);await expect(stage).toHaveAttribute('data-selected','');
 });
+
+test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
+  const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)};
+  window.dissolve={};new MutationObserver(()=>{
+   const visual=document.querySelector('.recent-solid-visual[data-visual="ai"]');
+   if(visual&&!visual.firstChild){const source=document.createElement('canvas');source.width=360;source.height=200;source.style.cssText='width:100%;height:100%';const ctx=source.getContext('2d');ctx.fillStyle='#111';ctx.fillRect(30,40,100,120);ctx.fillStyle='#eee';ctx.beginPath();ctx.arc(280,100,40,0,Math.PI*2);ctx.fill();visual.append(source)}
+   const ascii=document.querySelector('.recent-preview-ascii[data-source="content"]');if(!ascii)return;
+   const state=window.dissolve,opacity=Number(ascii.style.opacity),content=Number(ascii.parentElement.style.getPropertyValue('--preview-content-opacity'));
+   if(ascii.dataset.state==='revealing'){
+    state.start??=performance.now();
+    if(opacity>.5&&content===0&&!state.fadeIn){state.fadeIn=ascii.toDataURL();state.visiblePixels=ascii.getContext('2d').getImageData(0,0,ascii.width,ascii.height).data.some((v,i)=>i%4===3&&v>0)}
+    if(content>.5&&opacity<.5&&!state.fadeOut)state.fadeOut=ascii.toDataURL();
+   }else if(ascii.dataset.state==='complete')state.duration??=performance.now()-state.start;
+  }).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['data-state','style','data-source']});
+ });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="ai-mode-nudges"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/AI Mode Nudges/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
+ const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
+ const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
+});
+
+test('camera and zine ASCII sample their live render and release capture after revealing',async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);await page.emulateMedia({reducedMotion:'no-preference'});const nav=page.getByRole('navigation',{name:'Recent projects'});
+ for(const name of [/Say cheese!/,/Zine of Extracurriculars/]){
+  await nav.getByRole('link',{name}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-source','content',{timeout:60000});await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000});await expect(nav.locator('[data-ascii-capture]')).toHaveCount(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
+  const coverage=await ascii.evaluate(el=>{const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;return pixels.filter((v,i)=>i%4===3&&v>0).length/(el.width*el.height)});expect(coverage).toBeGreaterThan(.005);expect(coverage).toBeLessThan(.3);
+ }
+});

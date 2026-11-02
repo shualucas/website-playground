@@ -1337,6 +1337,7 @@ export class BookScene {
   }
   private render() {
     this.renderer.render(this.scene, this.camera);
+    if(this.renderer.domElement.hasAttribute("data-ascii-capture"))this.renderer.domElement.dispatchEvent(new Event("ascii-preview-frame"));
     this.css.render(this.printing, this.camera);
     if (performance.now() - this.reportedAt > 80) this.report();
   }

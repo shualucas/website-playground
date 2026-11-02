@@ -24,9 +24,11 @@ function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true})
   const preview=previews[project?.id];
   return <div className="recent-preview-content" data-kind={preview?.kind}>
     <div className="recent-preview-art" data-motion={showing}>
+      <div className="recent-preview-source">
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
       {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}/>}
+      </div>
       {project&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
     </div>
   </div>;
