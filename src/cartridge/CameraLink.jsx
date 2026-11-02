@@ -8,7 +8,8 @@ function preloadPhotos() {
   const link=document.createElement('link');link.rel='prefetch';link.href='/photos/';link.as='document';document.head.appendChild(link);
 }
 
-export function CameraLink({ dark, hidden, ready, rowTitle, rowIndex, rowTeam, entranceAt, previewTarget, previewActive = false, previewSeen = false }) {
+export function CameraLink({ dark, hidden, ready, rowTitle, rowIndex, rowTeam, entranceAt, previewTarget, previewActive = false, previewSeen = false, previewMode = false, onPreviewTap, expanded, openAction }) {
+  const hasPreview=previewMode||Boolean(previewTarget);
   const controller = useRef(null), gesture = useRef(null), suppress = useRef(false), timer = useRef(null);
   const model = useRef(null);
   const [flashing, setFlashing] = useState(false), [arming, setArming] = useState(false);
@@ -27,9 +28,28 @@ export function CameraLink({ dark, hidden, ready, rowTitle, rowIndex, rowTeam, e
     if (suppress.current || !momentum) { setHovered(false); setFocused(false); controller.current?.setHovered(false); }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
+  const startNavigation=(event)=>{
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+        event.preventDefault();
+        if ((event.detail > 0 && suppress.current) || busy.current) return;
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) { location.assign(event.currentTarget.href); return; }
+        const usePreview=hasPreview?previewActive:true;
+        const destination = event.currentTarget.href, rect = (usePreview&&model.current ? model.current : event.currentTarget).getBoundingClientRect();
+        origin.current = (usePreview?controller.current?.prepareFlash():null) ?? { x: rect.left + rect.width * .3, y: rect.top + rect.height * .4 };
+        busy.current = true; setArming(true);
+        flashTimer.current = setTimeout(() => {
+          // Re-sample at the flash, after the camera has finished any coasting.
+          origin.current=(usePreview?controller.current?.prepareFlash():null)??origin.current;
+          controller.current?.flash(); setArming(false); setFlashing(true);
+          const cameraRect=usePreview?model.current?.getBoundingClientRect()??rect:rect;
+          try { sessionStorage.setItem("camera-entry", JSON.stringify({at:Date.now(),origin:{x:origin.current.x/innerWidth,y:origin.current.y/innerHeight},camera:{x:(cameraRect.left+cameraRect.width/2)/innerWidth,y:(cameraRect.top+cameraRect.height/2)/innerHeight}})); } catch {}
+          timer.current = setTimeout(() => location.assign(destination), 500);
+        }, 180);
+  };
+  if(openAction)openAction.current=startNavigation;
   const cameraModel = <>
       <span className="camera-model" ref={model}>
-      {ready && (!previewTarget || previewSeen) ? <FilmCamera dark={dark} hidden={hidden || Boolean(previewTarget && !previewActive)} preview={Boolean(previewTarget)} previewActive={previewActive} controller={controller} highlighted={!dragging && (hovered || focused)} entranceAt={entranceAt} /> : null}
+      {ready && (!hasPreview || previewSeen) ? <FilmCamera dark={dark} hidden={hidden || Boolean(hasPreview && !previewActive)} preview={hasPreview} previewActive={previewActive} controller={controller} highlighted={!dragging && (hovered || focused)} entranceAt={entranceAt} /> : null}
       <span className="camera-ready-light" aria-hidden="true" />
       <span className="camera-lens-flash" aria-hidden="true" />
       {flashing&&<span className="camera-say-cheese" aria-hidden="true">say cheese</span>}
@@ -59,38 +79,23 @@ export function CameraLink({ dark, hidden, ready, rowTitle, rowIndex, rowTeam, e
       onKeyDown={(event) => {
         if (event.metaKey || event.ctrlKey || event.altKey) return;
         setFocused(true);
-        if (!previewTarget && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "r", "R"].includes(event.key)) {
+        if(onPreviewTap&&event.key===" "){event.preventDefault();event.currentTarget.click();return}
+        if (!hasPreview && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "r", "R"].includes(event.key)) {
           event.preventDefault(); event.stopPropagation();
           if (event.key.toLowerCase() === "r") controller.current?.resetRotation();
           else controller.current?.rotateBy(event.key === "ArrowLeft" ? -20 : event.key === "ArrowRight" ? 20 : 0, event.key === "ArrowUp" ? -20 : event.key === "ArrowDown" ? 20 : 0);
         }
       }}
-      onClick={(event) => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
-        event.preventDefault();
-        if ((event.detail > 0 && suppress.current) || busy.current) return;
-        if (matchMedia("(prefers-reduced-motion: reduce)").matches) { location.assign(event.currentTarget.href); return; }
-        const usePreview=previewTarget?previewActive:true;
-        const destination = event.currentTarget.href, rect = (usePreview&&model.current ? model.current : event.currentTarget).getBoundingClientRect();
-        origin.current = (usePreview?controller.current?.prepareFlash():null) ?? { x: rect.left + rect.width * .3, y: rect.top + rect.height * .4 };
-        busy.current = true; setArming(true);
-        flashTimer.current = setTimeout(() => {
-          // Re-sample at the flash, after the camera has finished any coasting.
-          origin.current=(usePreview?controller.current?.prepareFlash():null)??origin.current;
-          controller.current?.flash(); setArming(false); setFlashing(true);
-          const cameraRect=usePreview?model.current?.getBoundingClientRect()??rect:rect;
-          try { sessionStorage.setItem("camera-entry", JSON.stringify({at:Date.now(),origin:{x:origin.current.x/innerWidth,y:origin.current.y/innerHeight},camera:{x:(cameraRect.left+cameraRect.width/2)/innerWidth,y:(cameraRect.top+cameraRect.height/2)/innerHeight}})); } catch {}
-          timer.current = setTimeout(() => location.assign(destination), 500);
-        }, 180);
-      }}>
+      role={onPreviewTap?"button":undefined} aria-expanded={onPreviewTap?expanded:undefined} aria-controls={onPreviewTap?"preview-film":undefined}
+      onClick={event=>{if(onPreviewTap&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey&&event.button===0){event.preventDefault();onPreviewTap();return}startNavigation(event)}}>
       {rowTitle && <span className="recent-project-index" aria-hidden="true">{String(rowIndex ?? 5).padStart(2, "0")}</span>}
       <span className={rowTitle ? "recent-project-copy recent-camera-copy" : undefined}>
       {rowTitle && <span className="recent-project-name">{rowTitle}</span>}
-      {!previewTarget && cameraModel}</span>
+      {!hasPreview && cameraModel}</span>
       {rowTitle && <><span className="recent-project-team">{rowTeam ?? "Film"}</span><svg className="recent-project-arrow" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></>}
     </a>
     {previewTarget && previewSeen && createPortal(cameraModel,previewTarget)}
-    <span id="camera-help" className="sr-only">{previewTarget ? "Open film photographs." : "Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore."}</span>
+    <span id="camera-help" className="sr-only">{hasPreview ? "Open film photographs." : "Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore."}</span>
     {flashing && createPortal(<div className="camera-page-flash" style={{ "--origin-x": `${origin.current.x}px`, "--origin-y": `${origin.current.y}px` }} aria-hidden="true" />, document.body)}
   </>;
 }

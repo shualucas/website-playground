@@ -58,6 +58,7 @@ export class CartridgeScene {
   private disposed = false;
   private paused = false;
   private entering = true;
+  private captionX = 0;
   private captionY = 0;
   private captionWidth = 260;
   private captionHeight = 48;
@@ -190,7 +191,7 @@ export class CartridgeScene {
         applyCartridgeTheme(model,this.dark);
         this.items.push({ id: config.id, root, idle, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
       }
-      this.layout();
+      this.resize();
       for (const item of this.items) {
         item.root.position.copy(item.target); item.root.rotation.set(item.targetAngle.x, item.targetAngle.y, item.targetAngle.z);
         if (!this.motion.matches) { item.root.position.y += 3.2; item.root.rotation.x -= .95; }
@@ -241,7 +242,9 @@ export class CartridgeScene {
     const halfHeight = Math.max(0, ...this.items.map((item) => item.half.y + Math.abs(item.center.y)));
     const halfDepth = Math.max(0, ...this.items.map((item) => item.half.z + Math.abs(item.center.z)));
     this.projected.set(0, -halfHeight, 1.8 + halfDepth).project(this.camera);
+    this.captionX = (1 + this.projected.x) * this.host.clientWidth / 2;
     this.captionY = (1 - this.projected.y) * this.host.clientHeight / 2 + 12;
+    this.host.style.setProperty("--caption-x", `${this.captionX}px`);
     this.host.style.setProperty("--caption-y", `${this.captionY}px`);
     // Reserve the actual text rectangle in screen space. Only lower neighbors
     // yield, and only by the missing clearance; camera/selected shell stay fixed.
@@ -307,7 +310,21 @@ export class CartridgeScene {
     this.camera.lookAt(0, 0, 0);
     this.host.dataset.view = "tilted-top-edge"; this.host.dataset.restPitch = String(Math.round(this.pitch * 180 / Math.PI)); this.host.dataset.magnification = String(this.camera.zoom); this.host.dataset.shadow = "soft-silhouette";
     this.host.dataset.order = cartridges.map((item) => item.id).join(",");
-    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.measureCaption(); this.layout(); this.viewport(); this.start();
+    this.camera.clearViewOffset();this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld(true);
+    if(this.mobile&&this.items.length){
+      let left=Infinity;
+      for(let i=0;i<this.items.length;i++){
+        const item=this.items[i];
+        this.extentRotation.makeRotationFromEuler(item.angle.set(this.pitch,YAWS[i],this.getRoll(i))).setPosition(SHIFTS[i]*.25,.35,0);
+        for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1]){
+          this.projected.copy(item.center).add(this.topPoint.set(x*item.half.x,y*item.half.y,z*item.half.z)).applyMatrix4(this.extentRotation).project(this.camera);
+          left=Math.min(left,(this.projected.x+1)*width/2);
+        }
+      }
+      // Fixed optical offset, measured from the resting stack. Dragging never refits it.
+      this.camera.setViewOffset(width,height,Math.max(0,left-12),0,width,height);
+    }
+    this.renderer.setSize(width, height, false); this.measureCaption(); this.layout(); this.viewport(); this.start();
   }
   private pick(event: PointerEvent) {
     this.pickRect=this.host.getBoundingClientRect();
@@ -441,8 +458,8 @@ export class CartridgeScene {
     if(this.browse())unsettled=true;
     if (this.host.dataset.rendered !== "true") this.host.dataset.rendered = "true";
     const frameBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
-    const captionLeft = (this.host.clientWidth - this.captionWidth) / 2 - 6;
-    const captionRight = (this.host.clientWidth + this.captionWidth) / 2 + 6;
+    const captionLeft = this.captionX - this.captionWidth / 2 - 6;
+    const captionRight = this.captionX + this.captionWidth / 2 + 6;
     let captionClear = Boolean(this.selected);
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];

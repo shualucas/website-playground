@@ -82,6 +82,10 @@ export class SkinnedLeaf {
   private poseError = 0;
   private lastFlex = NaN;
   private direction = 1;
+  private gravity = new THREE.Vector3(0,-1,0);
+  private parentRotation = new THREE.Quaternion();
+  private lastGravity = NaN;
+  private gravityNormal = -1;
 
   constructor(
     readonly id: number,
@@ -154,7 +158,8 @@ export class SkinnedLeaf {
     this.sync();
   }
   step(delta: number, flex: number, speed = 1) {
-    if (this.settled && Math.abs(flex - this.lastFlex) < 0.00005) return false;
+    this.updateGravity();
+    if (this.settled && Math.abs(flex - this.lastFlex) < 0.00005 && Math.abs(this.gravityNormal-this.lastGravity)<.00005) return false;
     const dt = Math.min(Math.max(delta, 0), 0.25) * speed * this.physics.turnSpeed;
     damp(this.hinge, 0, this.target, 5.8, dt);
     this.shape(dt, flex, false);
@@ -174,12 +179,22 @@ export class SkinnedLeaf {
     const moving = Math.sin(p * Math.PI),
       side = 1 - 2 * p,
       paper = this.physics.curl / (this.cover ? this.physics.coverStiffness : 1);
-    return (
-      side * (0.06 + flex * 0.16) * paper * Math.cos(Math.PI * u) * (1 - moving) +
-      moving * paper * (0.56 * Math.sin(Math.PI * u) - 0.36 * u - 0.1)
-    );
+    // Turn-induced lag reverses; gravity always points down in world space.
+    // The root stays attached while curvature builds just beyond the seam.
+    const spine=(1-Math.exp(-u/.09))*Math.exp(-u/.8);
+    const inertia=-this.direction*moving*paper*this.physics.spineCurl*.95*spine;
+    const sag=this.gravityNormal*this.physics.gravitySag*(.025+.28*moving)*u*u;
+    const resting=side*(.025+flex*.23)*Math.cos(Math.PI*u)*(1-moving);
+    const limit=Math.min(p*Math.PI,(1-p)*Math.PI)*.84+.04;
+    return resting+THREE.MathUtils.clamp(inertia+sag,-limit,limit);
+  }
+  private updateGravity() {
+    this.parentRotation.identity();this.group.parent?.getWorldQuaternion(this.parentRotation);
+    this.gravity.set(0,-1,0).applyQuaternion(this.parentRotation.invert());
+    this.gravityNormal=this.gravity.y*Math.cos(this.hingeAngle)-this.gravity.x*Math.sin(this.hingeAngle);
   }
   private shape(dt: number, flex: number, immediate: boolean) {
+    this.updateGravity();
     const p = this.progress,
       moving = Math.sin(p * Math.PI),
       paper = this.physics.curl / (this.cover ? this.physics.coverStiffness : 1);
@@ -189,7 +204,7 @@ export class SkinnedLeaf {
     for (let i = 0; i <= LEAF_SEGMENTS; i++) {
       const u = i / LEAF_SEGMENTS,
         tangent = this.tangent(u, p, flex),
-        fold = moving * paper * 0.085 * u * u,
+        fold = this.direction * moving * paper * 0.085 * u * u,
         bendTarget = tangent - previousBend,
         foldTarget = fold - previousFold,
         offset = i * 2;
@@ -215,6 +230,7 @@ export class SkinnedLeaf {
       );
     }
     this.lastFlex = flex;
+    this.lastGravity = this.gravityNormal;
   }
   private sync() {
     this.group.rotation.z = this.hingeAngle;

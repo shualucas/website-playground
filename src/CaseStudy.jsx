@@ -10,6 +10,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   const content = useRef(null);
   const pageExit=usePageExit(content);
   const study = project.caseStudy;
+  const editorial = Boolean(study || project.minimal);
   useContentReveal(content, project.id);
   const heading = useRef(null),
     theme = projectTheme(project.theme);
@@ -33,7 +34,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       onClick={pageExit.onLinkClick}
       data-exiting={pageExit.exiting}
       inert={pageExit.exiting}
-      className={`case-study${study ? " case-study-editorial" : ""}`}
+      className={`case-study${editorial ? " case-study-editorial" : ""}`}
       data-case-theme={project.theme}
       aria-label={`${project.label} case study`}
       style={{
@@ -43,7 +44,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       }}
     >
       <header className="case-study-nav">
-        {study ? <div className="case-study-nav-inner">{navigation}</div> : navigation}
+        {editorial ? <div className="case-study-nav-inner">{navigation}</div> : navigation}
       </header>
       <article className="case-study-content">
         <div className="case-study-measure">
@@ -57,7 +58,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           </h1>
           {(study?.summary || project.subtitle) && <p data-reveal className="case-study-deck">{study?.summary || project.subtitle}</p>}
           </div>
-          {study && project.cartridgeId && <CaseStudyCartridge id={project.cartridgeId} />}
+          {editorial && project.cartridgeId && <CaseStudyCartridge id={project.cartridgeId} />}
           {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
             {(project.role || project.team) && <div>
               <dt>{study ? "Role" : "ROLE & TEAM"}</dt>
@@ -107,7 +108,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           </p>
         )}
         <footer data-reveal>
-          <button className="back-to-zine" onClick={onBack}>
+          <button className="back-to-zine" onClick={()=>pageExit.run(onBack,{navigation:true})}>
             ← {backLabel}
           </button>
         </footer>

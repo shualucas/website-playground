@@ -108,9 +108,9 @@ function App() {
       const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current : buttons.current[selected];
       target?.focus({ preventScroll: true });
     }
-    engine.current?.setPaused(Boolean(reading) || pageExit.exiting || !presented || status === "fallback");
+    engine.current?.setPaused(Boolean(reading) || pageExit.exiting || Boolean(previewingProject) || !presented || status === "fallback");
     previousReading.current = reading;
-  }, [reading, presented, status, pageExit.exiting]);
+  }, [reading, presented, status, pageExit.exiting, previewingProject]);
   useEffect(() => {
     const pop = () => { pageExit.cancel();setReading(readRoute()); setSelected(selectedRoute()); };
     const keyboard = (event) => {
@@ -128,10 +128,10 @@ function App() {
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
   return <>
-    <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
+    <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-project-browsing={Boolean(previewingProject)} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
       <header className="collection-header"><LocationMeta /><button data-reveal className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
-        <Intro active={presented} />
+        <Intro active={presented && !previewingProject} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
           <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false">
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}

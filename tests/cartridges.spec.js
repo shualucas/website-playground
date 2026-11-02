@@ -254,7 +254,7 @@ test("the camera loads only in its hover preview and pauses when that preview is
  const before=await camera.getAttribute('data-float');await expect.poll(()=>camera.getAttribute('data-float')).not.toBe(before);
  await page.mouse.move(2,2);await expect(camera).toBeHidden();await expect(camera).toHaveAttribute('data-motion','idle');
  await page.emulateMedia({reducedMotion:'reduce'});await page.keyboard.press('Tab');await link.focus();await expect(camera).toBeVisible();await expect(camera).toHaveAttribute('data-motion','reduced');
- await page.setViewportSize({width:390,height:844});await expect(camera).toBeHidden();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.setViewportSize({width:390,height:844});await expect(camera).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test("footer links and music stay usable on small screens without WebGL", async ({ page }) => {
@@ -661,11 +661,11 @@ test("recent projects use one column with native reader links and restore focus 
   await page.addInitScript(() => { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)} });
   await page.goto("/");
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
-  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
-  const descriptions=['Guided follow-ups for clearer questions','Launching AI experiments to 48M+ users','Helping players explore and buy games','Flyers for music, coffee, and community'];
-  await expect(links).toHaveCount(4);
+  const titles=['AI Mode Nudges','Chat Bubbles','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
+  const descriptions=['Helping users go from initial search to task completion','Contextual representation inside the conversation','Launching AI experiments on Search to 48M+ users','Guiding users towards an informed game purchase','Flyers for music, coffee, and community'];
+  await expect(links).toHaveCount(5);
   await expect(links.locator('.recent-project-name')).toHaveText(titles);
-  await expect(navigation.getByRole('link')).toHaveCount(5);
+  await expect(navigation.getByRole('link')).toHaveCount(6);
   await expect(navigation.getByRole('link',{name:'Say cheese! Explore film photographs'})).toHaveAttribute('href','/photos/');
   await expect(navigation.locator('.recent-project-summary')).toHaveText(descriptions);
   await expect(navigation.locator('.recent-project-year')).toHaveCount(0);
@@ -676,21 +676,22 @@ test("recent projects use one column with native reader links and restore focus 
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
   const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));expect(Math.max(...heights)-Math.min(...heights)).toBeLessThan(1);
-  await expect(navigation.locator('.recent-project-index')).toHaveText(['01','02','03','04','05']);
-  await expect(links.locator('.recent-project-team')).toHaveText(['Search','Search','Stadia','Fun']);
+  await expect(navigation.locator('.recent-project-index')).toHaveText(['01','02','03','04','05','06']);
+  await expect(links.locator('.recent-project-team')).toHaveText(['Search','Search','Search','Stadia','Fun']);
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).not.toBeEmpty();
+    if(titles[i]==='Chat Bubbles'){await expect(page.locator('.case-study-deck')).toHaveText('Contextual representation inside the conversation');await page.goBack();await expect(links.nth(i)).toBeFocused();continue;}
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
-    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',i===2?'stadia':'search');
+    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',titles[i]==='Stadia Store Redesign'?'stadia':'search');
     await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-status','fallback');
-    await expect(page.locator('.case-cartridge-fallback img')).toHaveAttribute('src',i===2?'/cartridges/labels/stadia-label.jpg':'/cartridges/labels/search-label.jpg');
+    await expect(page.locator('.case-cartridge-fallback img')).toHaveAttribute('src',titles[i]==='Stadia Store Redesign'?'/cartridges/labels/stadia-label.jpg':'/cartridges/labels/search-label.jpg');
     await expect(page.locator('.case-star-story > section > h2')).toHaveText(['Situation','Task','Action','Result']);
     await expect(page.locator('[data-story-stage="task"] > p')).not.toBeEmpty();
     const story=page.locator('.case-star-story');
     await expect(story.locator('.case-decisions > li')).toHaveCount(3);
-    await expect(story.locator('.case-story-media')).toHaveCount(i===1?1:3);
+    await expect(story.locator('.case-story-media')).toHaveCount(titles[i]==='Search Labs'?1:3);
     expect(await story.locator('.case-story-media').evaluateAll(elements=>elements.every(el=>!!el.closest('.case-decisions li')))).toBe(true);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid dt')];
@@ -716,9 +717,9 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(links.first()).toHaveCSS('opacity','1');
   const titleAfter=await copyBox();expect(titleAfter).toEqual(titleBefore);
   await links.first().focus();await page.keyboard.press('Tab');
-  await expect(navigation).toHaveAttribute('data-active-project','search-labs');
+  await expect(navigation).toHaveAttribute('data-active-project','chat-bubbles');
   await expect(links.nth(1)).toBeFocused();
-  await page.keyboard.press('Tab');await expect(navigation).toHaveAttribute('data-active-project','stadia-store-redesign');
+  await page.keyboard.press('Tab');await expect(navigation).toHaveAttribute('data-active-project','search-labs');
   await page.locator('.collection-header .tool-button').focus();
   await expect(navigation).toHaveAttribute('data-preview-active','false');
   const after=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));expect(after).toEqual(before);
@@ -1367,9 +1368,9 @@ test('project previews follow movement inside a row, dim other content and wash 
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
   await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
   await expect(links.first()).toHaveCSS('opacity','1');
-  for(let i=1;i<5;i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
-  const ids=['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
-  const hues=['#6988d8','#b759ba','#e5633d','#e48dae','#b69272'];
+  for(let i=1;i<6;i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
+  const ids=['ai-mode-nudges','chat-bubbles','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
+  const hues=['#6988d8','#7b9edf','#b759ba','#e5633d','#e48dae','#b69272'];
   const wash=page.locator('.project-hue-wash');await expect(wash).toHaveCSS('pointer-events','none');
   for(let i=0;i<ids.length;i++){
     await links.nth(i).hover();await expect(navigation).toHaveAttribute('data-active-project',ids[i]);
@@ -1379,7 +1380,7 @@ test('project previews follow movement inside a row, dim other content and wash 
   await page.mouse.move(5,5);await expect(wash).toHaveAttribute('data-active','false');
   for(const link of await links.all())await expect(link).toHaveCSS('opacity','1');
   await page.emulateMedia({reducedMotion:'reduce'});await links.first().focus();
-  await expect(preview).toHaveCSS('transform','none');expect(await wash.locator('span').first().evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(.001);
+  expect(await preview.evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(.001);expect(await wash.locator('span').first().evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(.001);
   await page.keyboard.press('Enter');await expect(page.locator('.case-study')).toBeVisible();await expect(wash).toHaveAttribute('data-active','false');
 });
 
@@ -1389,7 +1390,7 @@ test('compact project rows keep equal typography and weight while motion preview
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
-  expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([45,45,45,45,45]);
+  expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([45,45,45,45,45,45]);
   const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
@@ -1403,7 +1404,7 @@ test('compact project rows keep equal typography and weight while motion preview
   const before=await orb.evaluate(el=>getComputedStyle(el).transform);await expect.poll(()=>orb.evaluate(el=>getComputedStyle(el).transform)).not.toBe(before);
   await page.mouse.move(2,2);await expect(orb).toHaveCSS('animation-play-state','paused');
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
-  await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([55,55,55,55,55]);
+  await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([55,55,55,55,55,55]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
@@ -1511,18 +1512,18 @@ test('project rows span the content width and floating previews leave the full r
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),preview=nav.locator('.recent-project-preview');
   const content=await nav.boundingBox();
   for(const link of await links.all()){const r=await link.boundingBox();expect(r.x).toBeCloseTo(content.x,1);expect(r.width).toBeCloseTo(content.width,1)}
-  for(const i of [0,3,4]){
+  for(const i of [0,4,5]){
     await links.nth(i).hover();await expect(preview).toHaveAttribute('data-visible','true');await expect(preview).toHaveCSS('position','absolute');await expect(preview).toHaveCSS('pointer-events','none');
     const row=await links.nth(i).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
     expect(art.x).toBeGreaterThan(row.x);expect(art.x+art.width).toBeLessThan(row.x+row.width);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
     if(i>0){await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color','rgb(240, 240, 240)');await expect(nav.locator('.recent-preview-content')).toHaveCSS('background-color','rgb(240, 240, 240)')}
   }
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await links.last().hover();await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color','rgb(21, 22, 21)');
-  const target=await links.nth(1).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
+  const target=await links.nth(2).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
   const point={x:art.x+art.width/2,y:target.y+target.height/2};
   const href=await page.evaluate(p=>document.elementFromPoint(p.x,p.y)?.closest('a')?.getAttribute('href'),point);expect(href).toBe('/?project=search-labs&view=case-study');
   await page.mouse.click(point.x,point.y);await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeFocused();
-  await page.goBack();await page.setViewportSize({width:390,height:844});await expect(preview).toBeHidden();
+  await page.goBack();await page.setViewportSize({width:390,height:844});await expect(preview).toHaveAttribute('data-follow-cursor','true');
   await expect.poll(()=>nav.evaluate(el=>{const width=el.getBoundingClientRect().width;return Math.max(...[...el.querySelectorAll('.recent-project-link')].map(link=>Math.abs(link.getBoundingClientRect().width-width)))})).toBeLessThan(.1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
@@ -1589,3 +1590,43 @@ test('project rows span the content width and floating previews leave the full r
   const fonts=await page.evaluate(()=>[getComputedStyle(document.querySelector('.resume-print-heading > p')).fontFamily,getComputedStyle(document.querySelector('.resume-job li')).fontFamily]);expect(fonts[0]).toBe(fonts[1]);
   const returning=await page.getByRole('button',{name:'Page',exact:true}).evaluate(async button=>{button.click();await Promise.resolve();return document.querySelector('.resume-back-nav').dataset.reading});expect(returning).toBe('false');await expect(main).toHaveAttribute('data-view','page');await expect(nav).toHaveAttribute('data-reading','false');
  });
+
+test('page turns reverse their spine bend while gravity stays in world space',async({page})=>{
+ await page.goto('/tests/fixtures/blank.html');
+ const result=await page.evaluate(async()=>{
+  const THREE=await import('/node_modules/three/build/three.module.js');const {SkinnedLeaf,createLeafGeometry}=await import('/src/book/leaf.ts');const {normalizePaperPhysics}=await import('/src/book/paper-physics.ts');
+  const texture=new THREE.Texture(),material=new THREE.MeshStandardMaterial({map:texture}),geometry=createLeafGeometry();
+  const leaf=new SkinnedLeaf(0,false,1,geometry,Array(6).fill(material));const root=new THREE.Group();root.add(leaf.group);
+  const config=normalizePaperPhysics({gravitySag:0});leaf.setPhysics(config);
+  const sample=forward=>{leaf.snap(forward?0:1);leaf.turnTo(forward);for(let i=0;i<400;i++){leaf.step(1/120,0);if(forward?leaf.progress>=.5:leaf.progress<=.5)break}return leaf.bones.slice(0,9).reduce((n,b)=>n+b.rotation.z,0)};
+  const forward=sample(true),backward=sample(false);
+  const sag=(strength,rotation)=>{root.rotation.z=rotation;leaf.setPhysics(normalizePaperPhysics({gravitySag:strength}));leaf.snap(0);return leaf.bones.reduce((n,b)=>n+b.rotation.z,0)};
+  const flat=sag(0,0),down=sag(.7,0),inverted=sag(.7,Math.PI);
+  leaf.dispose();geometry.dispose();material.dispose();texture.dispose();return{forward,backward,flat,down,inverted};
+ });
+ expect(result.forward).toBeLessThan(-.2);expect(result.backward).toBeGreaterThan(.2);expect(result.down).toBeLessThan(result.flat);expect(result.inverted).toBeGreaterThan(result.flat);
+});
+
+test('touch projects expand inline, show full descriptions and navigate only through Open project',async({browser})=>{
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),page=await context.newPage();
+ await page.route('**/api/listening',r=>r.fulfill({status:204}));await page.route('**/api/weather',r=>r.fulfill({status:204}));await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+ await page.goto('http://127.0.0.1:3000/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-preview-mode','inline');
+ const ai=nav.getByRole('button',{name:/AI Mode Nudges/});await ai.tap();const preview=page.getByRole('region',{name:'AI Mode Nudges preview'});await expect(preview).toBeVisible();await expect(preview).toContainText('Helping users go from initial search to task completion');await expect(ai).toHaveAttribute('aria-expanded','true');
+ const row=await ai.boundingBox(),box=await preview.boundingBox();expect(box.y).toBeGreaterThanOrEqual(row.y+row.height-1);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');
+ await ai.tap();await expect(preview).toHaveCount(0);const chat=nav.getByRole('button',{name:/Chat Bubbles/});await chat.tap();const chatPreview=page.getByRole('region',{name:'Chat Bubbles preview'});await expect(chatPreview).toContainText('Contextual representation inside the conversation');await expect(page.locator('.recent-inline-preview')).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await chatPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Chat Bubbles',exact:true})).toBeVisible();await context.close();
+});
+
+test('narrow desktop previews follow the cursor and stay within the viewport',async({page})=>{
+ await page.setViewportSize({width:900,height:800});await page.emulateMedia({reducedMotion:'reduce'});await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('.recent-project-link').first(),preview=nav.locator('.recent-project-preview');await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();await page.mouse.move(r.x+100,r.y+r.height/2);await expect(preview).toBeVisible();await expect(preview).toHaveAttribute('data-follow-cursor','true');await expect(preview).toHaveCSS('position','fixed');const before=await preview.boundingBox();await page.mouse.move(r.x+180,r.y+r.height/2);await expect.poll(()=>preview.boundingBox().then(b=>Math.abs(b.x-before.x))).toBeGreaterThan(30);const after=await preview.boundingBox();expect(after.x).toBeGreaterThanOrEqual(0);expect(after.x+after.width).toBeLessThanOrEqual(900);expect(after.y).toBeGreaterThanOrEqual(0);expect(after.y+after.height).toBeLessThanOrEqual(800);await page.mouse.move(2,2);await expect(preview).toHaveAttribute('data-visible','false');
+});
+
+test('stacked hero and resting cartridges align to the left without changing inspection zoom',async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:768,height:1000});await load(page);const intro=await page.locator('.collection-intro').boundingBox(),stage=page.locator('.cartridge-stage'),display=await page.locator('.collection-display').boundingBox();expect(intro.x).toBe(60);expect(display.x).toBe(intro.x);await expect.poll(async()=>{const frame=JSON.parse(await stage.getAttribute('data-frame-bounds'));return frame.left}).toBeLessThan(35);expect(JSON.parse(await stage.getAttribute('data-frame-bounds')).left).toBeGreaterThan(0);const zoom=await stage.getAttribute('data-magnification');await choose(page,'Search');await expect(stage).toHaveAttribute('data-magnification',zoom);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('touch zine and camera previews use real models and retain the camera flash route',async({browser})=>{
+ test.setTimeout(180000);const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),page=await context.newPage();await page.route('**/api/listening',r=>r.fulfill({status:204}));await page.route('**/api/weather',r=>r.fulfill({status:204}));await page.goto('http://127.0.0.1:3000/');await expect(page.locator('.collection')).toHaveAttribute('data-status','ready',{timeout:60000});
+ const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(page.locator('.film-camera-dock')).toHaveCount(0);await nav.getByRole('button',{name:/Zine of Extracurriculars/}).tap();await expect(page.locator('.recent-inline-preview .zine-preview-scene')).toHaveAttribute('data-status','ready',{timeout:60000});await nav.getByRole('button',{name:/Say cheese!/}).tap();await expect(page.locator('.recent-inline-preview .film-camera-dock')).toHaveAttribute('data-status','ready',{timeout:60000});await expect(page.locator('.recent-inline-preview canvas')).toHaveCount(1);await page.emulateMedia({reducedMotion:'no-preference'});await page.getByRole('region',{name:'Say cheese! preview'}).getByRole('link',{name:'Open project'}).tap();await expect(page.locator('#film-camera-link')).toHaveAttribute('data-arming','true');await expect(page).toHaveURL(/\/photos\/$/);await expect(page.locator('.photos-page')).toHaveAttribute('data-camera-entry','true');await context.close();
+});

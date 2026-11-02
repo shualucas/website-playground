@@ -25,7 +25,7 @@ export function measureTurnEnvelope(
         leaf.mesh.material,
         leaf.width,
         // Reserve the most flexible supported silhouette once, so live tuning never zooms the book.
-        normalizePaperPhysics({...leaf.physicsSettings,curl:physicsControls.curl.max,edgeStiffness:physicsControls.edgeStiffness.min,coverStiffness:physicsControls.coverStiffness.min}),
+        normalizePaperPhysics({...leaf.physicsSettings,curl:physicsControls.curl.max,spineCurl:physicsControls.spineCurl.max,gravitySag:physicsControls.gravitySag.max,edgeStiffness:physicsControls.edgeStiffness.min,coverStiffness:physicsControls.coverStiffness.min}),
       ),
   );
   copies.forEach((leaf) => rig.add(leaf.group));
