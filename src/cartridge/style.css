@@ -72,6 +72,7 @@
 .recent-preview-content { width:100%; position:relative; background:var(--preview-surface); border-radius:0; overflow:hidden; }
 .recent-preview-art { position:relative; aspect-ratio:1.8; overflow:hidden; background:var(--preview-surface); border-radius:0; }
 .recent-solid-visual { position:absolute; inset:0; background:var(--preview-surface); }
+.recent-preview-image { display:block; width:auto; height:100%; max-width:100%; margin-inline:auto; object-fit:contain; }
 @media(max-width:879px) { .recent-project-link { column-gap:8px; grid-template-columns:20px minmax(0,1fr) auto 12px; } }
 @media(hover:none) { .recent-project-browser { display:block; } }
 @media(prefers-reduced-motion:reduce) { .recent-project-preview[data-visible],.recent-preview-content,.recent-project-arrow { animation:none; transition:none; transform:none; filter:none; } }
