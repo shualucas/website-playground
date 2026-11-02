@@ -181,8 +181,13 @@ test('compact project rows keep equal typography and solid previews switch off w
 
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
-  expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([45,45,45,45,45,45]);
+  expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([38,38,38,38,38,38]);
   const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
+  await page.evaluate(()=>document.fonts.ready);
+  expect(await nav.locator('.recent-project-index,.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')))).toBe(true);
+  expect(await page.evaluate(()=>document.fonts.check('400 15px "Roboto Mono"'))).toBe(true);
+  await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
+  expect(await page.locator('.collection-footer .link-copy,.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
     await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
@@ -194,7 +199,7 @@ test('compact project rows keep equal typography and solid previews switch off w
   const fill=nav.locator('.recent-solid-visual');await expect(fill).toHaveCSS('background-image','none');await expect(fill).toHaveCSS('animation-name','none');
   await page.mouse.move(2,2);await expect(nav.locator('.recent-project-preview')).toHaveAttribute('data-visible','false');
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
-  await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([55,55,55,55,55,55]);
+  await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([47,47,47,47,47,47]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
