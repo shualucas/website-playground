@@ -1659,3 +1659,20 @@ test('browsing projects lets an entering role finish before its rotation pauses'
  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});await page.goto('/');await expect(page.locator('.role-rotator')).toHaveAttribute('data-ready','true');
  await page.locator('.role-label').evaluate(el=>el.getAnimations().forEach(animation=>animation.currentTime=1));await page.locator('.recent-project-link').first().hover();await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');await expect(page.locator('.role-label')).toHaveCSS('opacity','1');await expect(page.locator('.role-label')).toHaveCSS('animation-play-state','running');
 });
+
+test('short screens keep the entire cartridge caption clear of the scene crop and projects',async({page})=>{
+ test.setTimeout(180000);await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:768,height:600});await load(page);
+ for(const [width,height]of[[768,600],[844,390],[390,560],[1024,600],[1440,600]]){
+  await page.setViewportSize({width,height});await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-settled','true',{timeout:30000});
+  for(const name of ['Search','Blizzard Entertainment']){
+   await choose(page,name);const caption=page.locator('.cartridge-caption');await expect(caption).toBeVisible();await caption.scrollIntoViewIfNeeded();
+   const bounds=await caption.evaluate(el=>{
+    const rect=el.getBoundingClientRect(),stage=el.closest('.cartridge-stage'),box=stage.getBoundingClientRect(),style=getComputedStyle(stage),trim=parseFloat(style.getPropertyValue('--hero-trim')),room=parseFloat(style.getPropertyValue('--caption-room'));
+    const year=el.querySelector('.cartridge-years').getBoundingClientRect(),projects=document.querySelector('.recent-projects').getBoundingClientRect(),display=stage.parentElement.getBoundingClientRect();
+    return{bottom:rect.bottom,yearBottom:year.bottom,clipBottom:box.bottom-trim+room,displayBottom:display.bottom,projectsTop:projects.top,room,zoom:stage.dataset.magnification,height:innerHeight};
+   });
+   expect(bounds.bottom).toBeLessThanOrEqual(bounds.clipBottom-4);expect(bounds.yearBottom).toBeLessThanOrEqual(bounds.displayBottom);expect(bounds.bottom).toBeLessThan(bounds.projectsTop);expect(bounds.yearBottom).toBeLessThanOrEqual(bounds.height);expect(bounds.room).toBeGreaterThanOrEqual(0);
+   const before=await caption.boundingBox();await page.keyboard.press('r');await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-magnification',bounds.zoom);const after=await caption.boundingBox();expect(after.y).toBeCloseTo(before.y,0);
+  }
+ }
+});

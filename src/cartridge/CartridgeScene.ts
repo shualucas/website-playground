@@ -251,6 +251,12 @@ export class CartridgeScene {
     this.captionY = (1 - this.projected.y) * this.host.clientHeight / 2 + 12;
     this.host.style.setProperty("--caption-x", `${this.captionX}px`);
     this.host.style.setProperty("--caption-y", `${this.captionY}px`);
+    // The canvas fades before the end of the virtual stage. Reserve the complete
+    // two-line DOM caption beyond that fade, including on the stacked layout.
+    const trim=parseFloat(getComputedStyle(this.host).getPropertyValue("--hero-trim"))||0;
+    const captionBottom=this.captionY+Math.max(48,this.captionHeight)+12;
+    const captionRoom=Math.min(trim,Math.max(0,Math.ceil(captionBottom-(this.host.clientHeight-trim))));
+    this.host.closest<HTMLElement>(".collection")?.style.setProperty("--caption-room",`${captionRoom}px`);
     // Reserve the actual text rectangle in screen space. Only lower neighbors
     // yield, and only by the missing clearance; camera/selected shell stay fixed.
     let clearance = 0;
