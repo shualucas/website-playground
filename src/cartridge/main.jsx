@@ -43,6 +43,7 @@ function App() {
   const [reading, setReading] = useState(readRoute);
   const [previewingProject,setPreviewingProject]=useState(null);
   const currentSelection = useRef(null); currentSelection.current = selected;
+  const [cartInteractive, setCartInteractive] = useState(false);
   const presented = true;
   presentedRef.current = presented;
   const previousReading = useRef(reading), restoreFocus = useRef(null), buttons = useRef({});
@@ -85,6 +86,7 @@ function App() {
         scene = new CartridgeScene(host.current, {
           onHover: setHovered, onSelect: (id) => selectRef.current(id),
           onReady: () => { if (alive.current) setStatus("ready"); },
+          onInteractiveReady: () => { if (alive.current) setCartInteractive(true); },
           onError: () => { if (alive.current) { setStatus("fallback"); engine.current?.setPaused(true); } },
         });
         engine.current = scene; scene.setTheme(document.documentElement.dataset.colorMode === "dark");
@@ -122,7 +124,7 @@ function App() {
         else selectRef.current(null);
         event.preventDefault();
       }
-      if (event.key.toLowerCase() === "r" && !readingRef.current) engine.current?.reset();
+      if (event.key.toLowerCase() === "r" && !readingRef.current && host.current?.dataset.interactive === "true") engine.current?.reset();
     };
     window.addEventListener("popstate", pop); window.addEventListener("keydown", keyboard);
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
@@ -133,7 +135,7 @@ function App() {
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented && !previewingProject} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
-          <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false">
+          <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false" data-interactive={cartInteractive} inert={!cartInteractive}>
             {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}
             {active && status === "ready" && <button key={active.id} className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
           </div>

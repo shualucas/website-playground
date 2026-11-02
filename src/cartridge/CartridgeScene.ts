@@ -9,6 +9,7 @@ type Callbacks = {
   onHover: (id: CartridgeId | null) => void;
   onSelect: (id: CartridgeId | null) => void;
   onReady: () => void;
+  onInteractiveReady?: () => void;
   onError: () => void;
 };
 type Item = {
@@ -63,6 +64,8 @@ export class CartridgeScene {
   private disposed = false;
   private paused = false;
   private entering = true;
+  private interactive = false;
+  private canvasRevealed = false;
   private captionX = 0;
   private captionY = 0;
   private captionWidth = 260;
@@ -115,6 +118,7 @@ export class CartridgeScene {
     host.addEventListener("pointerup", this.up); host.addEventListener("pointercancel", this.cancel);
     host.addEventListener("lostpointercapture", this.cancel); host.addEventListener("pointerleave", this.leave);
     this.renderer.domElement.addEventListener("webglcontextlost", this.contextLost);
+    this.renderer.domElement.addEventListener("animationend", this.revealed);
     window.addEventListener("scroll", this.viewport, { passive: true });
     document.addEventListener("visibilitychange", this.visibility); this.motion.addEventListener("change", this.preference);
     void this.prepare();
@@ -349,7 +353,7 @@ export class CartridgeScene {
     this.hits.length=0;this.ray.intersectObjects(this.hitboxes,false,this.hits);return this.hits;
   }
   private browse() {
-    if(!this.pointerBrowsing||this.drag||!this.pickRect)return false;
+    if(!this.interactive||!this.pointerBrowsing||this.drag||!this.pickRect)return false;
     const hit=this.raycast(this.pointerClient.x,this.pointerClient.y)[0];
     // Closed members respond only on their exposed local +Y top surface.
     // Use the resting hitbox so the tiny contact response cannot flicker itself off.
@@ -367,7 +371,7 @@ export class CartridgeScene {
     return changed;
   }
   private down = (event: PointerEvent) => {
-    if (event.button !== 0 || this.paused || this.drag || event.target !== this.renderer.domElement) return;
+    if (event.button !== 0 || !this.interactive || this.paused || this.drag || event.target !== this.renderer.domElement) return;
     const item = this.pick(event); if (!item) return;
     const canRotate = item.id === this.selected;
     if (canRotate) { event.preventDefault(); this.host.setPointerCapture(event.pointerId); }
@@ -375,7 +379,7 @@ export class CartridgeScene {
     this.host.dataset.dragging = "false"; this.start();
   };
   private move = (event: PointerEvent) => {
-    if (this.paused) return;
+    if (this.paused || !this.interactive) return;
     if(!this.drag&&event.pointerType!=="touch"){
       const dy=this.lastPointerAt?event.clientY-this.pointerClient.y:event.movementY;
       const elapsed=this.lastPointerAt?Math.max(8,event.timeStamp-this.lastPointerAt):16;
@@ -409,6 +413,15 @@ export class CartridgeScene {
   };
   private cancel = () => { if(!this.drag)return;this.drag = null;this.host.dataset.dragging = "false";this.leave(); };
   private leave = () => { if (!this.drag) { this.pointerBrowsing=false;this.hovered = null;this.lastPointerAt=0;this.swipeDirection=this.swipeStrength=0;this.host.dataset.swipeDirection="none";this.host.dataset.hovered="";this.host.dataset.hoverContact="";this.host.style.cursor="default";this.callbacks.onHover(null);this.start(); } };
+  private enableInteraction() {
+    if(this.interactive||this.entering||!(this.canvasRevealed||this.motion.matches))return;
+    this.interactive=true;this.host.dataset.interactive="true";
+    this.callbacks.onInteractiveReady?.();
+  }
+  private revealed = (event: AnimationEvent) => {
+    if(event.animationName!=="cartridge-reveal")return;
+    this.canvasRevealed=true;this.enableInteraction();
+  };
   private contextLost = (event: Event) => { event.preventDefault(); this.stop(); this.callbacks.onError(); };
   private viewport = () => { const rect = this.host.getBoundingClientRect();this.pickRect=rect;this.inView = rect.bottom > 0 && rect.top < innerHeight; if (this.inView) this.start(); else this.stop(); };
   private visibility = () => { if (document.hidden) this.stop(); else this.start(); };
@@ -534,6 +547,7 @@ export class CartridgeScene {
     if (this.host.dataset.captionReady !== String(captionReady)) this.host.dataset.captionReady = String(captionReady);
     if (!this.selected) delete this.host.dataset.selectedFrame;
     this.host.dataset.frameBounds = JSON.stringify(frameBounds);
+    this.enableInteraction();
     this.host.dataset.entrance = this.entering ? "entering" : "complete";
     this.host.dataset.settled = !unsettled && !this.entering ? "true" : "false";
     if (unsettled || this.entering || this.drag || (this.selected && !reduced && this.inView)) this.raf = requestAnimationFrame(this.frame);
@@ -546,6 +560,7 @@ export class CartridgeScene {
   }
   dispose() {
     this.disposed = true; this.stop(); this.observer.disconnect();
+    this.renderer.domElement.removeEventListener("animationend", this.revealed);
     this.host.removeEventListener("pointerdown", this.down); this.host.removeEventListener("pointermove", this.move);
     this.host.removeEventListener("pointerup", this.up); this.host.removeEventListener("pointercancel", this.cancel);
     this.host.removeEventListener("lostpointercapture", this.cancel); this.host.removeEventListener("pointerleave", this.leave);

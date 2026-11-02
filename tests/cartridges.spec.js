@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 });
 const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment"];
 const dates = ["2022 – now", "2020 – 2022", "2019", "2017"];
-const body = "based in beautiful California, building fun things at Google.";
+const body = "based in California, building stuff at Google.";
 async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
   await expect(page.locator(".collection")).toHaveAttribute("data-status", "ready", { timeout: 60000 });
@@ -1508,7 +1508,7 @@ test('project rows span the content width and floating previews leave the full r
   for(const i of [0,4,5]){
     await links.nth(i).hover();await expect(preview).toHaveAttribute('data-visible','true');await expect(preview).toHaveCSS('position','absolute');await expect(preview).toHaveCSS('pointer-events','none');
     const row=await links.nth(i).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
-    expect(art.x).toBeGreaterThan(row.x);expect(art.x+art.width).toBeLessThan(row.x+row.width);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
+    expect(art.x).toBeGreaterThan(row.x);expect(art.x+art.width).toBeCloseTo(row.x+row.width,1);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
     const surface=await page.locator('.project-hue-wash > span[data-active="true"]').evaluate(el=>getComputedStyle(el).backgroundColor);await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color',surface);await expect(nav.locator('.recent-preview-content')).toHaveCSS('background-color',surface);
   }
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await links.last().hover();await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color',await page.locator('.project-hue-wash > span[data-active="true"]').evaluate(el=>getComputedStyle(el).backgroundColor));
@@ -1610,9 +1610,9 @@ test('touch projects expand inline, show full descriptions and navigate only thr
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await chatPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Chat Bubbles',exact:true})).toBeVisible();await context.close();
 });
 
-test('narrow desktop previews follow the cursor and stay within the viewport',async({page})=>{
+test('narrow desktop previews hug the content right edge and follow the pointer vertically',async({page})=>{
  await page.setViewportSize({width:900,height:800});await page.emulateMedia({reducedMotion:'reduce'});await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('.recent-project-link').first(),preview=nav.locator('.recent-project-preview');await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();await page.mouse.move(r.x+100,r.y+r.height/2);await expect(preview).toBeVisible();await expect(preview).toHaveAttribute('data-follow-cursor','true');await expect(preview).toHaveCSS('position','fixed');const before=await preview.boundingBox();await page.mouse.move(r.x+180,r.y+r.height/2);await expect.poll(()=>preview.boundingBox().then(b=>Math.abs(b.x-before.x))).toBeGreaterThan(30);const after=await preview.boundingBox();expect(after.x).toBeGreaterThanOrEqual(0);expect(after.x+after.width).toBeLessThanOrEqual(900);expect(after.y).toBeGreaterThanOrEqual(0);expect(after.y+after.height).toBeLessThanOrEqual(800);await page.mouse.move(2,2);await expect(preview).toHaveAttribute('data-visible','false');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('.recent-project-link').first(),preview=nav.locator('.recent-project-preview');await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();await page.mouse.move(r.x+100,r.y+r.height/2);await expect(preview).toBeVisible();await expect(preview).toHaveAttribute('data-follow-cursor','true');await expect(preview).toHaveCSS('position','fixed');const before=await preview.boundingBox();await page.mouse.move(r.x+180,r.y+r.height/2+10);await expect.poll(()=>preview.boundingBox().then(b=>Math.abs(b.y-before.y))).toBeGreaterThan(5);const after=await preview.boundingBox();expect(after.x).toBeCloseTo(before.x,1);const content=await nav.boundingBox();expect(after.x+after.width).toBeCloseTo(content.x+content.width,1);expect(after.x).toBeGreaterThanOrEqual(0);expect(after.x+after.width).toBeLessThanOrEqual(900);expect(after.y).toBeGreaterThanOrEqual(0);expect(after.y+after.height).toBeLessThanOrEqual(800);await page.setViewportSize({width:850,height:800});await expect.poll(async()=>{const art=await nav.locator('.recent-preview-art').boundingBox(),bounds=await nav.boundingBox();return Math.abs(art.x+art.width-bounds.x-bounds.width)}).toBeLessThan(1);await page.mouse.move(2,2);await expect(preview).toHaveAttribute('data-visible','false');
 });
 
 test('stacked hero and resting cartridges align to the left without changing inspection zoom',async({page})=>{
@@ -1621,7 +1621,7 @@ test('stacked hero and resting cartridges align to the left without changing ins
 
 test('touch zine and camera previews use real models and retain the camera flash route',async({browser})=>{
  test.setTimeout(180000);const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),page=await context.newPage();await page.route('**/api/listening',r=>r.fulfill({status:204}));await page.route('**/api/weather',r=>r.fulfill({status:204}));await page.goto('http://127.0.0.1:3000/');await expect(page.locator('.collection')).toHaveAttribute('data-status','ready',{timeout:60000});
- const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(page.locator('.film-camera-dock')).toHaveCount(0);await nav.getByRole('button',{name:/Zine of Extracurriculars/}).tap();await expect(page.locator('.recent-inline-preview .zine-preview-scene')).toHaveAttribute('data-status','ready',{timeout:60000});await nav.getByRole('button',{name:/Say cheese!/}).tap();await expect(page.locator('.recent-inline-preview .film-camera-dock')).toHaveAttribute('data-status','ready',{timeout:60000});await expect(page.locator('.recent-inline-preview canvas')).toHaveCount(1);await page.emulateMedia({reducedMotion:'no-preference'});await page.getByRole('region',{name:'Say cheese! preview'}).getByRole('link',{name:'Open project'}).tap();await expect(page.locator('#film-camera-link')).toHaveAttribute('data-arming','true');await expect(page).toHaveURL(/\/photos\/$/);await expect(page.locator('.photos-page')).toHaveAttribute('data-camera-entry','true');await context.close();
+ const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(page.locator('.film-camera-dock')).toHaveCount(0);await nav.getByRole('button',{name:/Zine of Extracurriculars/}).tap();await expect(page.locator('.recent-inline-preview .zine-preview-scene')).toHaveAttribute('data-status','ready',{timeout:60000});await nav.getByRole('button',{name:/Say cheese!/}).tap();await expect(page.locator('.recent-inline-preview .film-camera-dock')).toHaveAttribute('data-status','ready',{timeout:60000});await expect(page.locator('.recent-inline-preview .film-camera-dock canvas')).toHaveCount(1);await page.emulateMedia({reducedMotion:'no-preference'});await page.getByRole('region',{name:'Say cheese! preview'}).getByRole('link',{name:'Open project'}).tap();await expect(page.locator('#film-camera-link')).toHaveAttribute('data-arming','true');await expect(page).toHaveURL(/\/photos\/$/);await expect(page.locator('.photos-page')).toHaveAttribute('data-camera-entry','true');await context.close();
 });
 
 test('project hover surfaces fade as one solid color with identical thumbnail fills in both themes',async({page})=>{
@@ -1688,4 +1688,34 @@ test('reload and full-page navigation always start at the top across the site',a
   await page.goto(path);await expect(page.locator('main')).toBeVisible();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeGreaterThan(100);await page.evaluate(()=>scrollTo(0,400));await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(80);expect(await page.evaluate(()=>history.scrollRestoration)).toBe('manual');await page.reload();await expect(page.locator('main')).toBeVisible();await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
  }
  const archived=await request.get('/zine/');expect(await archived.text()).toContain('history.scrollRestoration = "manual"');
+});
+
+test('content cannot hover, click or receive keyboard focus until its entrance completes',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});await page.goto('/');
+ await page.addStyleTag({content:'[data-reveal-state="visible"],.intro-word {animation-play-state:paused !important}'});
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('[data-project="chat-bubbles"]'),google=page.locator('.hero-google-link'),footer=page.locator('.footer-links');
+ await expect(row).toHaveAttribute('data-reveal-state','visible');await expect(row).toHaveAttribute('data-reveal-ready','false');expect(await row.evaluate(el=>el.inert)).toBe(true);await expect(row.locator('a')).toHaveCSS('pointer-events','none');
+ const rect=await row.boundingBox();await page.mouse.click(rect.x+140,rect.y+rect.height/2);await expect(nav).toHaveAttribute('data-preview-active','false');expect(new URL(page.url()).searchParams.has('view')).toBe(false);
+ await google.evaluate(el=>el.focus());expect(await google.evaluate(el=>document.activeElement===el)).toBe(false);await expect(google).toHaveCSS('pointer-events','none');expect(await footer.evaluate(el=>el.inert)).toBe(true);
+ await page.evaluate(()=>document.querySelectorAll('[data-reveal],[data-reveal-gate]').forEach(el=>el.getAnimations().forEach(a=>a.finish())));
+ await expect(row).toHaveAttribute('data-reveal-ready','true');expect(await row.evaluate(el=>el.inert)).toBe(false);await expect(google).toHaveCSS('pointer-events','auto');await row.locator('a').hover();await expect(nav).toHaveAttribute('data-active-project','chat-bubbles');
+});
+
+test('each hover preview resolves through ASCII, replays on return and stays static for reduced motion',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
+  const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)};
+  window.asciiReveals=[];new MutationObserver(records=>{for(const {target}of records){if(!target.matches?.('.recent-preview-ascii')||target.dataset.state!=='revealing')continue;const pixels=target.getContext('2d').getImageData(0,0,target.width,target.height).data;window.asciiReveals.push({kind:target.closest('.recent-preview-content').dataset.kind,painted:pixels.some((v,i)=>i%4===3&&v>0)})}}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-state']});
+ });await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
+ for(const link of await links.all()){
+  await link.hover();const ascii=nav.locator('.recent-project-preview .recent-preview-ascii'),kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000});await expect(ascii).toBeHidden();expect(await page.evaluate(kind=>window.asciiReveals.some(entry=>entry.kind===kind&&entry.painted),kind)).toBe(true);
+ }
+ const before=await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='ai').length);await page.mouse.move(2,2);await links.first().hover();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');expect(await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='ai').length)).toBeGreaterThan(before);
+ await page.emulateMedia({reducedMotion:'reduce'});await links.nth(1).hover();await expect(nav.locator('.recent-preview-ascii')).toBeHidden();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');
+});
+
+test('3D cartridge input stays locked until both its fade and physical arrival have finished',async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
+  window.earlyCartridgeInputs=[];new MutationObserver(()=>{const stage=document.querySelector('.cartridge-stage');if(!stage||stage.dataset.rendered!=='true'||stage.dataset.entrance==='complete')return;window.earlyCartridgeInputs.push({enabled:stage.dataset.interactive,hovered:stage.dataset.hovered||'',selected:stage.dataset.selected||''});const canvas=stage.querySelector('canvas');canvas?.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:900,clientY:300,pointerType:'mouse'}));canvas?.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:900,clientY:300,button:0}));}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-entrance','data-rendered']});
+ });await page.goto('/');const stage=page.locator('.cartridge-stage');await expect(stage).toHaveAttribute('data-interactive','true',{timeout:60000});await expect(stage).toHaveAttribute('data-entrance','complete');expect(await stage.evaluate(el=>el.inert)).toBe(false);const early=await page.evaluate(()=>window.earlyCartridgeInputs);expect(early.length).toBeGreaterThan(0);expect(early.every(frame=>frame.enabled==='false'&&!frame.hovered&&!frame.selected)).toBe(true);await expect(stage).toHaveAttribute('data-selected','');
 });

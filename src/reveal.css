@@ -1,4 +1,9 @@
-[data-reveal-state="waiting"] { opacity:0; filter:blur(1.5px); }
-[data-reveal-state="visible"] { animation:content-reveal 700ms cubic-bezier(.4,0,.2,1) both; animation-delay:var(--content-delay,0ms); }
+[data-reveal][data-reveal-state="waiting"] { opacity:0; filter:blur(1.5px); }
+[data-reveal][data-reveal-state="visible"] { animation:content-reveal 700ms cubic-bezier(.4,0,.2,1) both; animation-delay:var(--content-delay,0ms); }
 @keyframes content-reveal { from { opacity:0; filter:blur(1.5px); } to { opacity:1; filter:none; } }
 @media(prefers-reduced-motion:reduce) { [data-reveal] { opacity:1; filter:none; animation:none !important; } }
+
+/* Inert also removes pending links from keyboard navigation. Keep descendants
+   from opting back into pointer events while their parent is still arriving. */
+:is([data-reveal],[data-reveal-gate]):not([data-reveal-ready="true"]),
+:is([data-reveal],[data-reveal-gate]):not([data-reveal-ready="true"]) * { pointer-events:none !important; }

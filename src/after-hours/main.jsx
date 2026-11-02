@@ -42,7 +42,7 @@ function AfterHours() {
   }, [dark]);
   useEffect(() => {
     const onKey = event => {
-      if (noteOpen.current || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (host.current?.dataset.revealReady !== "true" || noteOpen.current || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input,textarea,select,[role="textbox"],[role="slider"]'))) return;
       const book = engine.current;
