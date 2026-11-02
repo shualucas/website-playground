@@ -49,10 +49,10 @@
 @keyframes role-ascii-scan { 0% { content:"/"; opacity:.5; } 18% { content:"+"; opacity:1; } 35% { content:"["; } 52% { content:"#"; } 68% { content:"="; } 85% { content:">"; opacity:.5; } 100% { content:""; opacity:0; } }
 
 /* Middle letter first, then alternating neighbors join it from either side. */
-.role-char-gather .role-char-ink { animation:role-gather-letter 420ms cubic-bezier(.16,1,.3,1) both; animation-delay:calc(240ms + var(--gather-delay)); }
+.role-char-gather .role-char-ink { animation:role-gather-letter 600ms cubic-bezier(.22,1,.36,1) both; animation-delay:calc(180ms + var(--gather-delay)); }
 @keyframes role-gather-letter { from { opacity:0; transform:translate(var(--gather-x),3px); filter:blur(2px); } to { opacity:1; transform:none; filter:blur(0); } }
-.role-char-gather { animation:role-community-squeeze 1400ms 200ms both; }
-@keyframes role-community-squeeze { 0%,45% { transform:translateX(0); } 65% { transform:translateX(var(--gather-compress)); } 82% { transform:translateX(calc(var(--gather-compress) * -.3)); } 94% { transform:translateX(calc(var(--gather-compress) * .08)); } 100% { transform:translateX(0); } }
+.role-char-gather { animation:role-community-squeeze 1100ms 180ms cubic-bezier(.22,.8,.3,1) both; }
+@keyframes role-community-squeeze { 0% { transform:translateX(0); } 38% { transform:translateX(var(--gather-compress)); } 70% { transform:translateX(calc(var(--gather-compress) * -.2)); } 88% { transform:translateX(calc(var(--gather-compress) * .04)); } 100% { transform:translateX(0); } }
 
 .role-illustrate .role-word-ink { animation:role-story-fill 1400ms 150ms both; }
 .role-story-drawing { position:absolute; left:0; top:-1px; width:100%; height:1.4em; overflow:visible; animation:role-story-outline 1400ms 150ms both; }

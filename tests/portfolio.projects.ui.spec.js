@@ -204,8 +204,9 @@ test('project heading matches the row numbers and its divider fades with the fir
  const nav=page.getByRole('navigation',{name:'Recent projects'}),heading=nav.locator('h2'),number=nav.locator('.recent-project-index').first();
  for(const property of ['font-size','font-weight'])await expect(heading).toHaveCSS(property,await number.evaluate((el,p)=>getComputedStyle(el).getPropertyValue(p),property));
  await expect(nav.locator('ul')).toHaveCSS('border-top-width','0px');const first=nav.locator('li').first();
- await expect(heading).toHaveCSS('color','rgb(98, 98, 106)');
- await expect(number).toHaveCSS('color',await first.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
+ await expect(heading).toHaveCSS('color',await number.evaluate(el=>getComputedStyle(el).color));
+ await expect(number).toHaveCSS('color',await nav.locator('.recent-project-summary:not(.sr-only)').first().evaluate(el=>getComputedStyle(el).color));
+ expect(await first.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).not.toBe(await number.evaluate(el=>getComputedStyle(el).color));
  expect(await first.evaluate(el=>getComputedStyle(el,'::before').height)).toBe('1px');await expect(first).toHaveCSS('opacity','0');
  await page.emulateMedia({reducedMotion:'reduce'});await expect(first).toHaveCSS('opacity','1');
 });

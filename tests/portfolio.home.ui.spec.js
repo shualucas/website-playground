@@ -107,7 +107,7 @@ test("the page entrance continues from the hero into the footer on one timeline"
   await page.setViewportSize({width:1280,height:1400});
   await page.emulateMedia({reducedMotion:"no-preference"});
 
-  await page.goto("/"); await expect(page).toHaveTitle("josh lucas - product designer");
+  await page.goto("/"); await expect(page).toHaveTitle("Joshua Lucas — Product Designer");
   await expect(page.locator(".footer-links")).toHaveAttribute("data-reveal-state","visible");
   const timing=await page.evaluate(()=>{
     const origin=Number(document.querySelector('.collection').dataset.revealStart);
@@ -125,4 +125,16 @@ test("the page entrance continues from the hero into the footer on one timeline"
   expect(timing.starts[0]).toBeGreaterThanOrEqual(timing.heroEnd);
   expect(timing.starts[0]).toBeGreaterThanOrEqual(timing.projectsEnd);
   expect(timing.starts[1]).toBeGreaterThan(timing.starts[0]);
+});
+
+test('community letters gather while the word compresses, then settle without shifting its width',async({page})=>{
+ const initial=new Date('2026-11-02T12:00:00Z');await page.clock.install({time:initial});await page.clock.pauseAt(initial);await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');await page.clock.runFor(1001);
+ const role=page.locator('.role-rotator');for(let i=0;i<6;i++)await page.clock.fastForward(2281);await expect(role).toHaveAttribute('data-role','community builder');
+ const motion=await role.evaluate(el=>{
+  const animations=el.getAnimations({subtree:true});animations.forEach(animation=>{animation.pause();animation.currentTime=360});
+  const letter=el.querySelector('.role-char-gather'),ink=letter.querySelector('.role-char-ink');
+  const moving={gather:new DOMMatrixReadOnly(getComputedStyle(ink).transform).m41,squeeze:new DOMMatrixReadOnly(getComputedStyle(letter).transform).m41,width:el.getBoundingClientRect().width};
+  animations.forEach(animation=>animation.currentTime=1500);
+  return{...moving,restGather:new DOMMatrixReadOnly(getComputedStyle(ink).transform).m41,restSqueeze:new DOMMatrixReadOnly(getComputedStyle(letter).transform).m41,restWidth:el.getBoundingClientRect().width};
+ });expect(motion.gather).toBeLessThan(-1);expect(motion.squeeze).toBeGreaterThan(.1);expect(motion.restGather).toBe(0);expect(motion.restSqueeze).toBe(0);expect(motion.restWidth).toBeCloseTo(motion.width,1);
 });

@@ -17,7 +17,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     const previous = document.title;
-    document.title = `${project.label} | josh lucas - product designer`;
+    document.title = `${project.label} | Joshua Lucas — Product Designer`;
     return () => {
       document.title = previous;
     };

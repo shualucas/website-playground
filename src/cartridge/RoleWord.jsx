@@ -8,7 +8,7 @@ export function RoleWord({ word, effect }) {
     return Array.from(word).map((letter, index) => {
       const order = index === middle ? 0 : index < middle ? (middle - index) * 2 - 1 : (index - middle) * 2;
       return <span className={`role-char role-char-${effect}`} key={index} style={{
-        "--char-delay": `${index * 45}ms`, "--gather-delay": `${order * 40}ms`,
+        "--char-delay": `${index * 45}ms`, "--gather-delay": `${order * 18}ms`,
         "--gather-x": `${index < middle ? -26 : index > middle ? 26 : 0}px`, "--gather-compress": `${(middle - index) * 1.2}px`,
       }}>
         <span className="role-char-measure">{letter}</span>
