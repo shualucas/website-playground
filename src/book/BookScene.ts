@@ -22,6 +22,7 @@ import {
   SkinnedLeaf,
   type PaperMaterial,
 } from "./leaf";
+import { PreviewSpin } from "./preview-spin";
 import { TurnScheduler } from "./turn-scheduler";
 import {
   PAGE_WIDTH as W,
@@ -113,11 +114,7 @@ export class BookScene {
   private printFloatRoot = new THREE.Group();
   private ambientTime = 0;
   private ambientStrength = 1;
-  private previewSpinElapsed = Infinity;
-  private previewSpinAngle = 0;
-  private previewSpinAxis = new THREE.Vector3();
-  private previewRockAxis = new THREE.Vector3();
-  private previewRock = new THREE.Quaternion();
+  private previewSpin = new PreviewSpin();
   private entered = false;
   private presentationScale = 1;
   private displayScale = 1;
@@ -634,12 +631,7 @@ export class BookScene {
     this.printFloatRoot.position.copy(this.floatRoot.position);
     this.printFloatRoot.quaternion.copy(this.floatRoot.quaternion);
     this.orbit.quaternion.copy(this.orientation);
-    if(this.callbacks.preview&&Number.isFinite(this.previewSpinElapsed)&&!this.motion.matches){
-      const p=Math.min(1,this.previewSpinElapsed/1.1),ease=1-Math.pow(1-p,4);
-      this.previewSpinAngle=-Math.PI*2*(1-ease);
-      this.orbit.quaternion.setFromAxisAngle(this.previewSpinAxis,this.previewSpinAngle)
-        .multiply(this.previewRock.setFromAxisAngle(this.previewRockAxis,Math.sin(p*Math.PI)*.12));
-    }else this.previewSpinAngle=0;
+    if(this.callbacks.preview)this.previewSpin.apply(this.orbit.quaternion);
     this.printOrbit.quaternion.copy(this.orbit.quaternion);
     this.binding.update();
     this.floatRoot.updateMatrixWorld(true);
@@ -826,15 +818,13 @@ export class BookScene {
   /** Match the camera miniature's eased spin; the preview stays on its cover. */
   playPreviewSpin() {
     if (!this.callbacks.preview) return;
-    this.previewSpinElapsed=this.motion.matches?Infinity:0;
-    this.previewSpinAxis.set(0,1,0).applyQuaternion(this.camera.quaternion);
-    this.previewRockAxis.set(1,0,0).applyQuaternion(this.camera.quaternion);
+    if(this.motion.matches)this.previewSpin.stop();else this.previewSpin.start(this.camera.quaternion);
     this.orientation.identity();this.orientationTarget.identity();
     this.scheduler.request(0);this.skip();this.report();
   }
   stopPreviewSpin() {
     if(!this.callbacks.preview)return;
-    this.previewSpinElapsed=Infinity;this.updateRig();this.report();this.render();
+    this.previewSpin.stop();this.updateRig();this.report();this.render();
   }
   stepPage(direction: number) {
     this.goTo((this.pendingPage ?? this.scheduler.requested - 1) + direction);
@@ -1250,10 +1240,7 @@ export class BookScene {
       return;
     }
     const cpu = performance.now();
-    if(this.callbacks.preview&&Number.isFinite(this.previewSpinElapsed)){
-      this.previewSpinElapsed+=dt;
-      if(this.previewSpinElapsed>=1.1)this.previewSpinElapsed=Infinity;
-    }
+    if(this.callbacks.preview)this.previewSpin.advance(dt);
     if (this.intro) this.updateIntro(dt);
     const flex = advancePaperFlex(
       this.paperFlex,
@@ -1525,7 +1512,7 @@ export class BookScene {
     data.rotationFit = String(this.rotationFit);
     data.arrivalScale = this.presentationScale.toFixed(4);
     data.ambientPosition = JSON.stringify(this.floatRoot.position.toArray());
-    if(this.callbacks.preview){data.previewIntro=Number.isFinite(this.previewSpinElapsed)?"spinning":"settled";data.previewSpinAngle=String(this.previewSpinAngle)}
+    if(this.callbacks.preview){data.previewIntro=this.previewSpin.active?"spinning":"settled";data.previewSpinAngle=String(this.previewSpin.angle)}
     data.ambientRotation = JSON.stringify(
       this.floatRoot.rotation.toArray().slice(0, 3),
     );
@@ -1561,7 +1548,7 @@ export class BookScene {
     this.raf = requestAnimationFrame(this.frame);
   }
   private onMotion = () => {
-    if(this.callbacks.preview&&this.motion.matches)this.previewSpinElapsed=Infinity;
+    if(this.callbacks.preview&&this.motion.matches)this.previewSpin.stop();
     if (this.dive) {
       if (this.motion.matches) {
         this.dive.progress = this.dive.direction === 1 ? 1 : 0;

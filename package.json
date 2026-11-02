@@ -12,7 +12,19 @@
     "test": "playwright test",
     "typecheck": "tsc --noEmit",
     "test:zine": "playwright test --config playwright.zine.config.js",
-    "test:listening": "node --test checks/listening.test.mjs"
+    "test:listening": "node --test checks/listening.test.mjs",
+    "setup": "node scripts/setup.mjs",
+    "test:unit": "node --test checks/*.test.mjs",
+    "test:ui": "playwright test --project=ui --workers=2",
+    "test:3d": "playwright test --project=3d",
+    "test:home": "playwright test portfolio.home",
+    "test:projects": "playwright test portfolio.projects",
+    "test:cartridges": "playwright test portfolio.cartridges",
+    "test:resume": "playwright test portfolio.resume",
+    "test:camera": "playwright test portfolio.camera",
+    "test:flyers": "playwright test portfolio.flyers",
+    "test:listening:ui": "playwright test portfolio.listening",
+    "review": "node scripts/review.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",

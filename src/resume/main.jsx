@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
-import "../cartridge/style.css";
+import "../site.css";
 import "./style.css";
 import { usePageExit } from "../usePageExit";
 import { useContentReveal } from "../useContentReveal";

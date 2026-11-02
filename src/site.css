@@ -1,0 +1,26 @@
+/* Shared theme, controls and page shell. Keep page-specific styling out. */
+:root { font-family:"DM Sans",Arial,sans-serif; font-synthesis:none; color:#18181b; background:#f0f0f0; --scene-bg:#f0f0f0; --ui-text:#18181b; --ui-muted:#62626a; --ui-fill:#e4e4e5; --line:#c6c6c8; }
+:root[data-color-mode="dark"] { color-scheme:dark; color:#eee; background:#101110; --scene-bg:#101110; --ui-text:#eee; --ui-muted:#b1b1b6; --ui-fill:#303130; --line:#4b4b4e; }
+* { box-sizing:border-box; }
+body { margin:0; }
+button,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; background:none; }
+a { color:inherit; text-decoration:none; }
+button:focus-visible,a:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
+button:disabled { opacity:.4; cursor:default; }
+svg { display:block; flex-shrink:0; }
+::selection { background:#d8dde3; color:#18181b; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.collection { --project-surface:var(--scene-bg); transition:--project-surface 420ms ease; --hero-gap:clamp(40px,calc(100vw - 900px),140px); --hero-trim:0px; --caption-room:0px; --scene-fade:110px; max-width:1280px; margin:auto; min-height:100svh; padding:24px 60px 30px; }
+.collection-header { height:64px; display:flex; align-items:flex-start; justify-content:flex-end; gap:16px; position:relative; z-index:2; }
+.collection-header .tool-button { margin-left:auto; }
+.text-link { padding:0; text-align:left; min-height:44px; display:inline-flex; align-items:center; font-size:15px; }
+.text-link:hover,a:hover { color:var(--ui-muted); }
+.tool-button { width:44px; height:44px; display:grid; place-items:center; border-radius:50%; transition:background 180ms ease; }
+.tool-button:hover { background:var(--ui-fill); }
+.tool-button svg { width:20px; height:20px; stroke-width:2.1; stroke-linecap:round; stroke-linejoin:round; }
+.collection-header { width:100%; max-width:calc(772px + var(--hero-gap)); margin-inline:auto; }
+@media(max-width:879px) { .collection { padding:24px 24px 28px; } }
+@media(min-width:640px) and (max-width:879px) { .collection { padding-left:60px; padding-right:60px; } }
+@media(min-width:880px) and (max-width:1100px) { .collection { padding-left:36px; padding-right:36px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; animation-iteration-count:1 !important; } }

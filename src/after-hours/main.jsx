@@ -4,7 +4,7 @@ import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/caveat/latin-400.css";
-import "../cartridge/style.css";
+import "../site.css";
 import "./style.css";
 import { usePageExit } from "../usePageExit";
 import { useContentReveal } from "../useContentReveal";

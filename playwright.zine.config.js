@@ -1,23 +1,14 @@
 import { defineConfig } from "@playwright/test";
+import { browserOptions } from "./scripts/browser-config.mjs";
+
 export default defineConfig({
   timeout: 45000,
-  testIgnore: "**/cartridges.spec.js",
+  testIgnore: "**/portfolio.*.spec.js",
   workers: 1,
   testDir: "./tests",
-  use: {
-    baseURL: "http://127.0.0.1:3001",
-    launchOptions: {
-      executablePath: "/usr/bin/chromium",
-      args: [
-        "--no-sandbox",
-        "--enable-unsafe-swiftshader",
-        "--use-angle=swiftshader",
-        "--disable-dev-shm-usage",
-      ],
-    },
-  },
+  use: { baseURL: "http://127.0.0.1:3001", launchOptions: browserOptions },
   webServer: {
-    command: "npm run dev -- --mode zine --port 3001",
+    command: "npm run dev -- --mode zine --port 3001 --strictPort",
     url: "http://127.0.0.1:3001",
     reuseExistingServer: true,
   },
