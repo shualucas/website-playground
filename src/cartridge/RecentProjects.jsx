@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from "react";
+import React,{useEffect,useLayoutEffect,useRef,useState} from "react";
 import {recentProjects} from "./projects";
 import {entrance} from "./entrance";
 import {ZinePreview} from "./ZinePreview";
@@ -55,6 +55,11 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.bottom,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
+  useLayoutEffect(()=>{
+    const root=navigation.current?.closest(".collection");if(!root)return;
+    root.style.setProperty("--project-surface",showing?`color-mix(in srgb,${preview.accent} 12%,var(--scene-bg))`:"var(--scene-bg)");
+    return()=>root.style.removeProperty("--project-surface");
+  },[showing,preview?.accent]);
   useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);
   useEffect(()=>{pointer.current=focus.current=null;setVisible(false)},[canHover]);
   useEffect(()=>{

@@ -1,3 +1,4 @@
+@property --project-surface { syntax:"<color>"; inherits:true; initial-value:transparent; }
 :root { font-family:"DM Sans",Arial,sans-serif; font-synthesis:none; color:#18181b; background:#f0f0f0; --scene-bg:#f0f0f0; --ui-text:#18181b; --ui-muted:#62626a; --ui-fill:#e4e4e5; --line:#c6c6c8; }
 :root[data-color-mode="dark"] { color-scheme:dark; color:#eee; background:#151615; --scene-bg:#151615; --ui-text:#eee; --ui-muted:#b1b1b6; --ui-fill:#303130; --line:#4b4b4e; }
 * { box-sizing:border-box; }
@@ -10,7 +11,7 @@ button:disabled { opacity:.4; cursor:default; }
 svg { display:block; flex-shrink:0; }
 ::selection { background:#d8dde3; color:#18181b; }
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
-.collection { --hero-gap:clamp(40px,calc(100vw - 900px),140px); --hero-trim:0px; --caption-room:0px; --scene-fade:110px; max-width:1280px; margin:auto; min-height:100svh; padding:24px 60px 30px; }
+.collection { --project-surface:var(--scene-bg); transition:--project-surface 420ms ease; --hero-gap:clamp(40px,calc(100vw - 900px),140px); --hero-trim:0px; --caption-room:0px; --scene-fade:110px; max-width:1280px; margin:auto; min-height:100svh; padding:24px 60px 30px; }
 .collection:not([data-status="fallback"]) { --hero-trim:172px; }
 .collection-header { height:64px; display:flex; align-items:flex-start; justify-content:flex-end; gap:16px; position:relative; z-index:2; }
 .collection-header,.recent-projects,.collection-footer { width:100%; max-width:calc(772px + var(--hero-gap)); margin-inline:auto; }
@@ -58,12 +59,12 @@ svg { display:block; flex-shrink:0; }
 @keyframes loader-out { to { opacity:0; } }
 .collection-footer { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:end; gap:32px; padding-top:32px; color:var(--ui-muted); font-size:13px; }
 .collection-footer[hidden] { display:none; }
-.recent-projects { --preview-surface:color-mix(in srgb,var(--preview-accent,#6988d8) 12%,var(--scene-bg)); --row-divider:color-mix(in srgb,var(--ui-text) 16%,transparent); position:relative; z-index:1; margin-top:20px; margin-bottom:24px; }
+.recent-projects { --preview-surface:var(--project-surface); --row-divider:color-mix(in srgb,var(--ui-text) 16%,transparent); position:relative; z-index:1; margin-top:20px; margin-bottom:24px; }
 .recent-projects h2 { margin:0 0 10px; font-size:15px; font-weight:400; font-variant-numeric:tabular-nums; line-height:1.5; color:var(--ui-muted); }
 /* Keep the wash behind content, including the transparent cartridge canvas. */
-.project-hue-wash { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; }
-/* One opaque, uniform surface: hover colors switch without gradients or fades. */
-.project-hue-wash > span { position:absolute; inset:0; display:none; background:color-mix(in srgb,var(--wash-color) 12%,var(--scene-bg)); }
+.project-hue-wash { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; background:var(--project-surface); }
+/* Page and preview fills inherit one animated solid color, including mid-fade. */
+.project-hue-wash > span { position:absolute; inset:0; display:none; background:var(--project-surface); }
 .project-hue-wash > span[data-active="true"] { display:block; }
 /* Full-width links stay under a pointer-transparent floating preview. */
 .recent-project-browser { position:relative; }
@@ -233,3 +234,5 @@ svg { display:block; flex-shrink:0; }
 @media(prefers-reduced-motion:reduce) { .recent-inline-preview { animation:none; } .recent-project-preview[data-follow-cursor="true"] { transform:none; } }
 
 @media(prefers-reduced-motion:reduce) { .recent-project-preview[data-follow-cursor="false"][data-visible="true"] { transform:translateY(var(--preview-offset)); } }
+
+@media(prefers-reduced-motion:reduce) { .collection { transition:none; } }
