@@ -1,6 +1,10 @@
 import React, { useLayoutEffect, useRef } from "react";
 
-const glyphs = ".:-=+*#%@";
+// Cell shading and glyph ramps adapted from stackedlol/ascii-sharks (MIT, drewdi).
+// Full attribution: THIRD_PARTY_NOTICES.md and public/licenses/ascii-sharks-MIT.txt.
+const skinRamp = ":;t%SX8#@";
+const edgeHeavy = ":;", edgeLight = ".',`";
+const cellKey = (col, row) => Math.imul(col + 1, 374761393) ^ Math.imul(row + 1, 668265263);
 const smooth = value => { const p = Math.max(0, Math.min(1, value)); return p * p * (3 - 2 * p); };
 
 /** Sample the real preview, then crossfade its monochrome characters into the original. */
@@ -58,14 +62,27 @@ export function AsciiPreviewReveal({ active, kind }) {
       try { data = pixels.getImageData(0, 0, sample.width, sample.height).data; }
       catch { finish(); return; } // A future cross-origin image must not block the preview.
       context.clearRect(0, 0, width, height);
-      context.font = '10px "Courier New", monospace'; context.textBaseline = "middle";
+      context.font = '600 8px ui-monospace, Menlo, monospace'; context.textAlign = "center"; context.textBaseline = "middle";
       context.fillStyle = getComputedStyle(art.closest(".recent-projects")).getPropertyValue("--preview-accent").trim() || "#666";
       for (let row = 0; row < sample.height; row++) for (let col = 0; col < sample.width; col++) {
         const i = (row * sample.width + col) * 4, alpha = data[i + 3] / 255;
         if (alpha < .04) continue;
         const shade = 1 - (data[i] * .2126 + data[i + 1] * .7152 + data[i + 2] * .0722) / 255;
-        context.globalAlpha = flat ? .2 : alpha * (.4 + .6 * shade);
-        context.fillText(glyphs[Math.round((.2 + .8 * shade) * (glyphs.length - 1))], col * 8, row * 11 + 5.5);
+        const key = cellKey(col, row), x = col * 8, y = row * 11;
+        if (!flat && alpha < .6) {
+          // The reference leaves edge cells unfilled for a soft silhouette.
+          const edge = alpha >= .5 ? edgeHeavy : edgeLight;
+          context.globalAlpha = alpha * .75;
+          context.fillText(edge[(key >>> 8) % edge.length], x + 4, y + 6.5);
+          continue;
+        }
+        // Tonal cell backing keeps volume legible using only the project's ink.
+        context.globalAlpha = flat ? .025 : alpha * (.1 + .16 * shade);
+        context.fillRect(x + 1, y + 1, 7, 10);
+        const jitter = flat ? 0 : ((key >>> 4) % 3) - 1;
+        const index = Math.max(0, Math.min(skinRamp.length - 1, Math.floor(shade * 8.99) + jitter));
+        context.globalAlpha = flat ? .17 : alpha * (.5 + .45 * shade);
+        context.fillText(skinRamp[index], x + 4, y + 6.5);
       }
       context.globalAlpha = 1;
       surface.dataset.source = flat ? "fill" : "content";

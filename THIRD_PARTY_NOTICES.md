@@ -62,3 +62,7 @@ The user-supplied `chrome_pa2YGAqqwi.mp4` and public mamuso.dev source informed 
 ## Miniature loader
 
 The loader reuses the original clay film-camera geometry and adds independently modeled CDJ-3000-inspired equipment, a small printed zine and a lightbulb. These are procedural interpretations; the deck is not a manufacturer-supplied or dimension-certified Pioneer DJ asset. No product logo, downloaded deck model, external texture or additional asset service is included. The minimal SVG fallbacks are original illustrations of the same four props. The archived zine loader remains unchanged.
+
+## ASCII preview cell styling
+
+The project-preview ASCII dissolve adapts the centered semibold monospace glyphs, skin-density ramp, tonal cell backing, and unfilled silhouette edges from [`stackedlol/ascii-sharks`'s `src/renderer.ts`](https://github.com/stackedlol/ascii-sharks/blob/a0074c16a106f0abc665fe9712ca445f8f98ad8e/src/renderer.ts), copyright (c) 2026 drewdi, MIT. The local renderer samples the actual preview, uses one project-colored ink, and retains its uniform 1.2-second crossfade. The upstream shark geometry, simulation, wake effects, background, and multicolor shimmer are not included. Full license: `public/licenses/ascii-sharks-MIT.txt`.

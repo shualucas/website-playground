@@ -9,7 +9,7 @@ function TrackArtwork({ track, className = "" }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [track?.artwork]);
   return <span className={`listening-artwork ${className}`}>
-    {track?.artwork && !failed ? <img src={track.artwork} alt="" width="52" height="52" loading="lazy" onError={() => setFailed(true)} /> : <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="7" fill="currentColor" opacity=".08" /><circle cx="20" cy="20" r="13" stroke="currentColor" opacity=".4" /><circle cx="20" cy="20" r="10" stroke="currentColor" opacity=".16" /><circle cx="20" cy="20" r="3" fill="currentColor" opacity=".5" /></svg>}
+    {track?.artwork && !failed ? <img src={track.artwork} alt="" width="52" height="52" loading="lazy" onError={() => setFailed(true)} /> : <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" fill="currentColor" opacity=".08" /><circle cx="20" cy="20" r="13" stroke="currentColor" opacity=".4" /><circle cx="20" cy="20" r="10" stroke="currentColor" opacity=".16" /><circle cx="20" cy="20" r="3" fill="currentColor" opacity=".5" /></svg>}
   </span>;
 }
 

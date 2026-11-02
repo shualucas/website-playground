@@ -1,4 +1,4 @@
-.listening-widget { --listening-track-gap:12px; --listening-leading:1.35; --art-column-size:calc(24px * var(--listening-leading)); --art-size:var(--art-column-size); --art-radius:11px; --listening-green:#27894b; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:320px; max-width:100%; min-width:0; }
+.listening-widget { --listening-track-gap:12px; --listening-leading:1.35; --art-column-size:calc(24px * var(--listening-leading)); --art-size:var(--art-column-size); --art-radius:0px; --listening-green:#27894b; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:320px; max-width:100%; min-width:0; }
 :root[data-color-mode="dark"] .listening-widget { --listening-green:#62d68d; }
 .listening-current { display:flex; align-items:center; gap:2px; }
 .now-playing { display:flex; align-items:center; gap:10px; min-width:0; flex:1; }
@@ -16,8 +16,8 @@
 .listening-indicator { display:inline-block; vertical-align:middle; margin-right:5px; width:5px; height:5px; border-radius:50%; background:var(--listening-green); animation:listening-pulse 1800ms ease-in-out infinite; }
 @keyframes listening-pulse { 0%,100% { opacity:.4; } 50% { opacity:1; } }
 .listening-history-toggle { display:grid; place-items:center; width:44px; min-height:44px; flex-shrink:0; padding:0; border-radius:7px; }
-.listening-history-toggle:hover { background:var(--ui-fill); color:var(--ui-text); }
-.listening-history-toggle svg { transition:transform 180ms ease; }
+.listening-history-toggle:is(:hover,:focus-visible) { color:var(--ui-text); }
+.listening-history-toggle svg { transition:transform 180ms ease,color 180ms ease; }
 .listening-history-toggle[aria-expanded="true"] svg { transform:rotate(180deg); }
 .listening-history { position:absolute; z-index:5; isolation:isolate; inset:auto 0 calc(100% + var(--listening-track-gap)); padding:0; opacity:1; filter:blur(0); transform:translateY(0); transition:opacity 220ms ease-out,filter 220ms ease-out,transform 220ms ease-out; }
 .listening-history::before { content:""; position:absolute; inset:-12px -10px -8px; z-index:-1; background:var(--scene-bg); filter:blur(12px); pointer-events:none; }
