@@ -53,6 +53,7 @@ type Phase =
   | "closing";
 type Callbacks = {
   projects: Project[];
+  preview?: boolean;
   blankInterior?: boolean;
   arrivalMotion?: boolean;
   stageInsets?: { top: number; bottom: number };
@@ -198,7 +199,7 @@ export class BookScene {
     this.renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: true,
-      powerPreference: "high-performance",
+      powerPreference: callbacks.preview ? "low-power" : "high-performance",
     });
     const gl = this.renderer.getContext(),
       debug = gl.getExtension("WEBGL_debug_renderer_info");
@@ -208,7 +209,7 @@ export class BookScene {
         String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)),
       );
     this.renderer.setPixelRatio(
-      this.software ? 0.85 : Math.min(devicePixelRatio, 1.5),
+      this.software ? 0.85 : Math.min(devicePixelRatio, callbacks.preview ? 1 : 1.5),
     );
     this.renderer.setClearColor(0xffffff, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -266,6 +267,7 @@ export class BookScene {
     this.intersection.observe(host);
     this.motion.addEventListener("change", this.onMotion);
     document.addEventListener("visibilitychange", this.onVisibility);
+    if(!callbacks.preview) {
     host.addEventListener("pointerdown", this.onDown);
     host.addEventListener("pointermove", this.onMove);
     host.addEventListener("pointerup", this.onUp);
@@ -275,6 +277,7 @@ export class BookScene {
     host.addEventListener("focusin", this.onFocus);
     host.addEventListener("focusout", this.onBlur);
     host.addEventListener("click", this.onClick, true);
+    }
     this.resize();
     if (!this.intro) this.commit();
     this.updatePhase();
@@ -287,8 +290,8 @@ export class BookScene {
     key.position.set(-1.5, 15, -2);
     key.castShadow = true;
     key.shadow.mapSize.set(
-      this.software ? 512 : 2048,
-      this.software ? 512 : 2048,
+      this.software || this.callbacks.preview ? 512 : 2048,
+      this.software || this.callbacks.preview ? 512 : 2048,
     );
     Object.assign(key.shadow.camera, {
       left: -8,
@@ -1190,7 +1193,7 @@ export class BookScene {
     this.raf = 0;
     if (this.disposed || this.overlayOpen || !this.visible || document.hidden)
       return;
-    if (this.software && this.last && now - this.last < 100) {
+    if ((this.software || this.callbacks.preview) && this.last && now - this.last < (this.software ? 100 : 1000 / 30)) {
       this.schedule();
       return;
     }

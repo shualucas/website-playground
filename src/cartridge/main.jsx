@@ -94,7 +94,7 @@ function App() {
   }, []);
   useEffect(() => {
     document.documentElement.dataset.colorMode = dark ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#1b1c1b" : "#f0f0f0");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#151615" : "#f0f0f0");
     try { localStorage.setItem("cartridge-color-mode", dark ? "dark" : "light"); } catch {}
     engine.current?.setTheme(dark);
   }, [dark]);

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { recentProjects } from "./projects";
 import { entrance } from "./entrance";
+import { ZinePreview } from "./ZinePreview";
 import { CameraLink } from "./CameraLink";
 
 const previews = {
@@ -14,11 +15,13 @@ const film = { id: "film", label: "Say cheese!", description: "Film photographs"
 
 export function RecentProjects({ onOpen, dark, ready, hidden }) {
   const [active, setActive] = useState(null);
+  const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const [visible, setVisible] = useState(false);
   const navigation = useRef(null), browser = useRef(null);
   const pointer = useRef(null), focus = useRef(null);
   const select = (id, index) => {
     setActive(id); setVisible(true);
+    const kind=previews[id]?.kind;if((kind==="film"||kind==="zine")&&!seen[kind])setSeen(old=>({...old,[kind]:true}));
     const height = browser.current?.clientHeight ?? 0;
     navigation.current?.style.setProperty("--preview-offset", `${((index + .5) / (recentProjects.length + 1) - .5) * height * .45}px`);
   };
@@ -75,20 +78,22 @@ export function RecentProjects({ onOpen, dark, ready, hidden }) {
           onPointerEnter={event => browse(event, "film", recentProjects.length)} onFocus={event => focused(event, "film", recentProjects.length)}
           data-reveal data-reveal-at={entrance.projectsStart + (recentProjects.length + 1) * 60}>
           <CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={recentProjects.length + 1} rowTeam="Film"
-            entranceAt={entrance.projectsStart + (recentProjects.length + 1) * 60} />
+            entranceAt={0} previewTarget={cameraTarget} previewActive={showing&&active==="film"} previewSeen={seen.film} />
         </li>
       </ul>
       <div className="recent-project-preview" aria-hidden="true" data-visible={showing}>
-        <div className="recent-preview-frame">{project && <div className="recent-preview-content" key={project.id} data-kind={preview.kind}>
+        <div className="recent-preview-frame"><div className="recent-preview-content" data-kind={preview?.kind}>
           <div className="recent-preview-art" data-motion={showing}>
-            <div className="recent-motion-visual" data-visual={preview.kind}>
+            <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&active==="film"} />
+            <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark} />}</div>
+            {project&&preview.kind!=="film"&&preview.kind!=="zine"&&<div key={`visual-${project.id}`} className="recent-motion-visual" data-visual={preview.kind}>
               <span className="motion-orb motion-orb-a" /><span className="motion-orb motion-orb-b" /><span className="motion-orb motion-orb-c" />
               <span className="motion-grid" /><span className="motion-signal" />
-            </div>
-            <span className="recent-preview-dither" />
+            </div>}
+            <span key={`dither-${project?.id}`} className="recent-preview-dither" />
           </div>
-          <p>{project.description}</p>
-        </div>}</div>
+          <p>{project?.description}</p>
+        </div></div>
       </div>
     </div>
   </nav></>;

@@ -11,7 +11,7 @@ export class AmbientGradient {
   private motion = matchMedia("(prefers-reduced-motion: reduce)");
   private pink: HTMLElement;
   private warm: HTMLElement;
-  constructor(private host: HTMLElement) {
+  constructor(private host: HTMLElement,private active=true) {
     this.pink = host.querySelector<HTMLElement>(".resume-wash-pink")!;
     this.warm = host.querySelector<HTMLElement>(".resume-wash-warm")!;
     window.addEventListener("pointermove", this.onMove, { passive: true });
@@ -21,32 +21,33 @@ export class AmbientGradient {
     this.motion.addEventListener("change", this.sync);
     this.paint(); this.sync();
   }
+  setActive(active:boolean) {this.active=active;this.sync()}
   private onMove = (event: PointerEvent) => {
-    if (event.pointerType === "touch" || this.motion.matches) return;
-    this.targetX = (Math.max(0, Math.min(1, event.clientX / Math.max(1, innerWidth))) - .5) * 24;
-    this.targetY = (Math.max(0, Math.min(1, event.clientY / Math.max(1, innerHeight))) - .5) * 18;
+    if (!this.active || event.pointerType === "touch" || this.motion.matches) return;
+    this.targetX = (Math.max(0, Math.min(1, event.clientX / Math.max(1, innerWidth))) - .5) * 12;
+    this.targetY = (Math.max(0, Math.min(1, event.clientY / Math.max(1, innerHeight))) - .5) * 10;
   };
   private recenter = () => { this.targetX = this.targetY = 0; };
   private sync = () => {
     cancelAnimationFrame(this.frame); this.frame = 0; this.last = 0;
     if (this.motion.matches) { this.x = this.y = this.targetX = this.targetY = 0; this.paint(); }
-    if (!this.disposed && !document.hidden && !this.motion.matches) this.frame = requestAnimationFrame(this.tick);
+    if (!this.disposed && this.active && !document.hidden && !this.motion.matches) this.frame = requestAnimationFrame(this.tick);
   };
   private tick = (now: number) => {
     this.frame = 0;
-    if (this.disposed || document.hidden) return;
+    if (this.disposed || !this.active || document.hidden) return;
     // A frame can see the updated preference before its change event arrives.
     if (this.motion.matches) { this.sync(); return; }
     const dt = this.last ? Math.min(.05, (now - this.last) / 1000) : 0;
     this.last = now; this.time += dt;
-    const ease = 1 - Math.exp(-3 * dt);
+    const ease = 1 - Math.exp(-1.6 * dt);
     this.x += (this.targetX - this.x) * ease; this.y += (this.targetY - this.y) * ease;
     this.paint(); this.frame = requestAnimationFrame(this.tick);
   };
   private paint() {
     const t = this.motion.matches ? 0 : this.time;
-    this.pink.style.transform = `translate3d(${(Math.sin(t * .15) * 24 + this.x).toFixed(2)}px,${(Math.cos(t * .12) * 14 - 14 + this.y).toFixed(2)}px,0)`;
-    this.warm.style.transform = `translate3d(${(Math.sin(t * .11) * 20 - this.x * .65).toFixed(2)}px,${(Math.sin(t * .14) * 16 - this.y * .65).toFixed(2)}px,0)`;
+    this.pink.style.transform = `translate3d(${(Math.sin(t * .09) * 14 + this.x).toFixed(2)}px,${(Math.cos(t * .07) * 10 - 10 + this.y).toFixed(2)}px,0)`;
+    this.warm.style.transform = `translate3d(${(Math.sin(t * .08) * 12 - this.x * .65).toFixed(2)}px,${(Math.sin(t * .09) * 10 - this.y * .65).toFixed(2)}px,0)`;
     this.host.dataset.motion = this.motion.matches ? "reduced" : "ambient";
   }
   dispose() {

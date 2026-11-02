@@ -44,6 +44,12 @@ function TrackTransition(view) {
 
 export function ListeningWidget() {
   const { track, recent, status, stale } = useListening();
+  const widget = useRef(null);
+  useLayoutEffect(()=>{
+    const copy=widget.current?.querySelector(".now-playing-copy");if(!copy)return;
+    const measure=()=>{const size=copy.getBoundingClientRect().height;if(size>0){widget.current?.style.setProperty("--art-size",`${size}px`);widget.current?.style.setProperty("--art-column-size",`${size}px`)}};
+    const observer=new ResizeObserver(measure);observer.observe(copy);measure();return()=>observer.disconnect();
+  },[track?.title,track?.artist,status]);
   const [open, setOpen] = useState(false);
   const [historyPresent, setHistoryPresent] = useState(false);
   // Keep the absolute panel mounted for its exit; a new click cancels dismissal.
@@ -63,7 +69,7 @@ export function ListeningWidget() {
   const profile = "https://www.last.fm/user/shualucas";
   const emptyTitle = status === "loading" ? "Loading listening history…" : status === "unavailable" ? "Listening unavailable" : status === "ready" ? "Nothing scrobbled yet" : "my listening history";
   const label = playing ? caption : track ? "last listened" : "Last.fm";
-  return <div className="listening-widget" data-listening-status={status} onKeyDown={event => {
+  return <div ref={widget} className="listening-widget" data-listening-status={status} onKeyDown={event => {
     if (open && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); toggle.current?.focus({ preventScroll: true }); }
   }}>
     {(open || historyPresent) && <section className="listening-history" id="recent-listening" role="region" aria-label="Recently listened" data-state={open ? "open" : "closing"} aria-hidden={!open} inert={!open}>

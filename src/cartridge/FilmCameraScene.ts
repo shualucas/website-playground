@@ -41,7 +41,9 @@ export class FilmCameraScene {
   private fill = new THREE.HemisphereLight("#ffffff", "#bbc1ca", .8);
   private strap: CameraStrap;
 
-  constructor(private host: HTMLElement) {
+  private introElapsed=Infinity;
+  private previewPulse=false;
+  constructor(private host: HTMLElement,private preview=false) {
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
     this.grain = acquireClayGrain();
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -74,12 +76,17 @@ export class FilmCameraScene {
     window.addEventListener("scroll", this.sync, { passive: true }); window.addEventListener("resize", this.sync);
     this.resize();
   }
+  playHoverIntro() {
+    this.introElapsed=this.motion.matches?Infinity:0;this.previewPulse=false;
+    this.inspection.rotation.set(0,this.motion.matches?0:-Math.PI*2,0);this.publishRotation();this.updateReadyLight();this.sync();this.draw();
+  }
+  stopHoverIntro() {this.introElapsed=Infinity;this.previewPulse=false;this.inspection.rotation.set(0,0,0);this.publishRotation();this.updateReadyLight();this.draw()}
   setTheme(dark: boolean) { this.fill.intensity = dark ? 1.1 : .8; this.draw(); }
   setHovered(value: boolean) {
     this.hovered = value; this.updateReadyLight(performance.now() - this.flashStart < 180); this.draw();
   }
   private updateReadyLight(suppress = false) {
-    const on = !suppress && !this.dragging && (this.hovered || this.armed);
+    const on = !suppress && !this.dragging && (this.armed || (this.preview ? this.previewPulse : this.hovered));
     this.readyLight.material.color.set(on ? "#ff2525" : "#3b0808");
     this.readyLight.scale.setScalar(on ? this.armed ? 1.6 : 1.35 : 1);
     this.host.dataset.readyLight = on ? "on" : "off";
@@ -166,6 +173,13 @@ export class FilmCameraScene {
   };
   private frame = (now: number) => {
     this.raf = 0; const dt = Math.min((now - this.last) / 1000, .05); this.time += dt; this.last = now;
+    if(this.preview && Number.isFinite(this.introElapsed)) {
+      this.introElapsed+=dt;const p=Math.min(1,this.introElapsed/1.1),ease=1-Math.pow(1-p,4);
+      this.inspection.rotation.set(Math.sin(p*Math.PI)*.12,-Math.PI*2*(1-ease),0);this.publishRotation();
+      this.previewPulse=this.introElapsed>.72&&this.introElapsed<1.15;
+      this.host.dataset.intro=p<1?"spinning":"settled";
+      if(this.introElapsed>=1.2){this.introElapsed=Infinity;this.previewPulse=false;this.inspection.rotation.set(0,0,0);this.publishRotation()}
+    }
     if (!this.dragging && this.spinVelocity.lengthSq() > .0001) {
       const decay = Math.exp(-6 * dt);
       this.inspection.rotation.x += this.spinVelocity.x * (1 - decay) / 6;

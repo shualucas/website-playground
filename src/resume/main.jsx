@@ -39,6 +39,8 @@ function Resume() {
   const [view, setView] = useState(() => matchMedia("(max-width: 700px)").matches ? "read" : "page");
   const requestedView = useRef(view);
   const [selectedView,setSelectedView]=useState(view),[previewRequested,setPreviewRequested]=useState(view === "page"),[transitioning,setTransitioning]=useState(false);
+  const [paperReady,setPaperReady]=useState(false),[gradientReady,setGradientReady]=useState(false);
+  const gradientMotion=useRef(null);
   const [artReady, setArtReady] = useState(false), [artFailed, setArtFailed] = useState(false);
   const reading = view === "read" || artFailed;
   displayedReading.current=reading;
@@ -61,8 +63,20 @@ function Resume() {
     return () => { window.removeEventListener("resize",settleResize);preference.removeEventListener("change", stopTransition); motion.dispose(); downloadMotion.current = null; viewTransition.current?.dispose(); viewTransition.current=null; };
   }, []);
   useEffect(() => {
-    const gradient = new AmbientGradient(wash.current); return () => gradient.dispose();
+    const gradient = new AmbientGradient(wash.current,false);gradientMotion.current=gradient;return () => {gradient.dispose();gradientMotion.current=null};
   }, []);
+  useEffect(()=>{gradientMotion.current?.setActive(gradientReady)},[gradientReady]);
+  useEffect(()=>{
+    if(gradientReady||(!reading&&!paperReady))return;
+    let cancelled=false,timer;
+    (async()=>{
+      await document.fonts.ready;
+      const stage=reading?readSheet.current:sheet.current?.parentElement;
+      await Promise.allSettled((stage?.getAnimations({subtree:true})??[]).filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished));
+      if(!cancelled)timer=setTimeout(()=>setGradientReady(true),180);
+    })();
+    return()=>{cancelled=true;clearTimeout(timer)};
+  },[gradientReady,reading,paperReady]);
   useEffect(() => {
     controller.current?.setActive(!reading && !transitioning);
   },[reading,transitioning]);
@@ -75,10 +89,10 @@ function Resume() {
     if (!artReady || artFailed) return;
     const scene=new FloatingPaper(sheet.current,()=>openRead.current?.());controller.current=scene;
     scene.setActive(!displayedReading.current);
-    scene.ready.then(()=>{previewWaiters.current.splice(0).forEach(resolve=>resolve(true))});
+    let mounted=true;scene.ready.then(()=>{if(!mounted)return;setPaperReady(true);previewWaiters.current.splice(0).forEach(resolve=>resolve(true))});
     const reset=event=>{if(!displayedReading.current&&!viewTransition.current&&!event.defaultPrevented&&!event.metaKey&&!event.ctrlKey&&!event.altKey&&!event.target?.closest?.('input,textarea,select')&&event.key.toLowerCase()==='r')scene.reset()};
     window.addEventListener('keydown',reset);
-    return ()=>{window.removeEventListener('keydown',reset);scene.dispose();controller.current=null;previewWaiters.current.splice(0).forEach(resolve=>resolve(false))};
+    return ()=>{mounted=false;window.removeEventListener('keydown',reset);scene.dispose();controller.current=null;previewWaiters.current.splice(0).forEach(resolve=>resolve(false))};
   },[artReady,artFailed]);
   useEffect(()=>{if(artFailed){previewWaiters.current.splice(0).forEach(resolve=>resolve(false));setSelectedView('read')}},[artFailed]);
   const chooseView=async next=>{
@@ -105,7 +119,7 @@ function Resume() {
   };
   openRead.current = () => chooseView("read");
   return <main ref={content} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"} data-transitioning={transitioning}>
-    <div className="resume-gradient" ref={wash} data-active="true" aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
+    <div className="resume-gradient" ref={wash} data-active={gradientReady} aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
     <div className="resume-header-shell"><header className="collection-header resume-nav" data-reveal data-reveal-at="0">
       <a href="/" aria-label="Home"><span className="link-copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Home</span></a><ThemeToggle />
     </header></div>

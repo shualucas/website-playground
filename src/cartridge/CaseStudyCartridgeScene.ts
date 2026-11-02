@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { applyCartridgeTheme } from "./cartridge-theme";
 import { cartridges } from "./config";
 import { loadExternalShell } from "./model";
 
@@ -76,7 +77,7 @@ export class CaseStudyCartridgeScene {
         object.castShadow=!object.userData.label&&materials.some(material=>material.visible&&!((material as THREE.MeshPhysicalMaterial).transmission>.05));
         object.receiveShadow=false;
       });
-      this.root.add(model);this.root.updateMatrixWorld(true);
+      this.root.add(model);applyCartridgeTheme(this.root,document.documentElement.dataset.colorMode==="dark");this.root.updateMatrixWorld(true);
       new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
       await this.renderer.compileAsync(this.scene,this.camera);
       if(this.disposed)return;
@@ -90,7 +91,8 @@ export class CaseStudyCartridgeScene {
   }
   private updateTheme=()=>{
     const dark=document.documentElement.dataset.colorMode==="dark";
-    this.background.set(dark?"#1b1c1b":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
+    applyCartridgeTheme(this.root,dark);this.host.dataset.shellTheme=dark?"dark":"light";
+    this.background.set(dark?"#151615":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
     if(this.ready)this.draw();
   };
   private resize=()=>{

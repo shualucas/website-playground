@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { cartridgeModel, cartridges, type CartridgeId } from "./config";
 import { loadExternalShell, makeCartridge } from "./model";
+import { applyCartridgeTheme } from "./cartridge-theme";
 import { makeBounds, updateBounds, Separation, type RigidBounds } from "./separation";
 
 type Callbacks = {
@@ -20,9 +21,9 @@ const DESKTOP_PITCH = 72 * Math.PI / 180;
 // Local +Y is the cartridge's top, +Z its printed front. Positive pitch exposes
 // the top edge to a long-lens camera on +Z; it does not lay the faces flat.
 
-const ROLLS = [-.035, -.012, .016, .04];
+const ROLLS = [-.018, .018, -.016, .018];
 const YAWS = [-.025, .018, -.018, .025];
-const SHIFTS = [.21, .07, -.07, -.21];
+const SHIFTS = [.17, -.17, .17, -.17];
 const COMPONENTS = ["x", "y", "z"] as const;
 
 
@@ -73,6 +74,7 @@ export class CartridgeScene {
   private stackAxis = new THREE.Vector3(0, -Math.sin(DESKTOP_PITCH), Math.cos(DESKTOP_PITCH));
   private get pitch() { return this.mobile ? MOBILE_PITCH : DESKTOP_PITCH; }
   private getRoll(i: number) { return this.mobile ? (i % 2 ? -.008 : .008) : ROLLS[i]; }
+  private dark = false;
   private backdrop = new THREE.Color("#f0f0f0");
 
   constructor(private host: HTMLElement, private callbacks: Callbacks) {
@@ -199,6 +201,7 @@ export class CartridgeScene {
             object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible && !((m as THREE.MeshPhysicalMaterial).transmission > .05)); object.receiveShadow = false;
           }
         });
+        applyCartridgeTheme(model,this.dark);
         this.items.push({ id: config.id, root, idle, handling, hitbox, half, center, bounds: makeBounds(), spin: new THREE.Vector2(), angle: new THREE.Euler(), target: new THREE.Vector3(), targetAngle: new THREE.Vector3(), velocity: new THREE.Vector3(), angularVelocity: new THREE.Vector3(), wait: 0 });
       }
       this.layout();
@@ -235,7 +238,7 @@ export class CartridgeScene {
       const item = this.items[i];
       const y = cursor - heights[i] / 2 + (i === active ? .21 : 0); cursor -= heights[i];
       const centeredY = y - (active < 0 ? centerY : 0);
-      item.target.set(i === active || this.mobile ? 0 : SHIFTS[i], y, i === active ? 1.8 : -.3 + centeredY * this.stackAxis.z / this.stackAxis.y);
+      item.target.set(i === active ? 0 : SHIFTS[i] * (this.mobile ? .25 : 1), y, i === active ? 1.8 : -.3 + centeredY * this.stackAxis.z / this.stackAxis.y);
       item.targetAngle.set(i === active ? 0 : this.pitch, YAWS[i], this.getRoll(i));
       if (i === active) { item.targetAngle.x += item.spin.x; item.targetAngle.y += item.spin.y; }
     }
@@ -245,7 +248,7 @@ export class CartridgeScene {
       const offset = this.items[active].target.y;
       for (const item of this.items) item.target.y -= offset;
     }
-    this.host.dataset.composition = this.mobile ? "stack-mobile" : "diagonal-stack";
+    this.host.dataset.composition = this.mobile ? "stack-mobile" : "zigzag-stack";
     this.host.dataset.selected = this.selected ?? "";
     // Caption belongs to the layout, not the animated shell's bounds. Use the
     // same front-facing envelope for every selection; drag/idle cannot move it.
@@ -297,7 +300,8 @@ export class CartridgeScene {
   }
   setPaused(value: boolean) { this.paused = value; if (value) {this.pointerBrowsing=false;this.stop()} else this.start(); }
   setTheme(dark: boolean) {
-    this.backdrop.set(dark ? "#1b1c1b" : "#f0f0f0"); this.renderer.setClearColor(this.backdrop, 0);
+    this.dark=dark;applyCartridgeTheme(this.scene,dark);this.host.dataset.shellTheme=dark?"dark":"light";
+    this.backdrop.set(dark ? "#151615" : "#f0f0f0"); this.renderer.setClearColor(this.backdrop, 0);
     this.shadowMaterial.opacity = dark ? .2 : .085; this.start();
   }
   reset() { for (const item of this.items) item.spin.set(0, 0); this.layout(); this.start(); }

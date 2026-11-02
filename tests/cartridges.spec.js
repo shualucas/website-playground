@@ -56,7 +56,7 @@ test("career collection uses exact bio and four individually visible cartridges 
   expect(Math.abs(footerBounds.x+footerBounds.width-headerBounds.x-headerBounds.width)).toBeLessThan(1);
   expect(Math.abs(intro.y + intro.height / 2 - stage.y - stage.height / 2)).toBeLessThan(1);
   expect(projected.left).toBeGreaterThan(20);expect(projected.right).toBeLessThan(stage.width-20);
-  await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-composition','diagonal-stack');
+  await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-composition','zigzag-stack');
   await expect(page.getByRole('button',{name:/View Early work cartridge/})).toHaveCount(0);
   expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
   const hits = [];
@@ -242,36 +242,17 @@ test("each load chooses a supplied fact without immediate repeats; interactions 
   expect(await page.locator(".random-fact").textContent()).toBe(previous);
 });
 
-test("the camera lives in the Say cheese row, floats only in view, and respects reduced motion", async ({ page }) => {
-  test.setTimeout(120000);
-  await page.setViewportSize({ width: 1440, height: 1000 }); await load(page);
-  const camera = page.locator(".film-camera-dock");
-  await camera.scrollIntoViewIfNeeded();
-  await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
-  await expect(camera).toBeVisible(); await expect(camera.locator("canvas")).toHaveCount(1);
-  expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
-  const footer = await page.locator(".collection-footer").boundingBox(), bounds = await camera.boundingBox(),row=await page.locator('.recent-camera-row').boundingBox();
-  const social=await page.locator('.footer-links').boundingBox();
-  expect(Math.abs(social.x-footer.x)).toBeLessThan(1);
-  expect(bounds.y).toBeGreaterThanOrEqual(row.y);expect(bounds.y+bounds.height).toBeLessThanOrEqual(row.y+row.height);
-  await expect(page.locator('.recent-camera-row .recent-project-name')).toHaveText('Say cheese!');await expect(page.locator('.collection-footer .camera-link')).toHaveCount(0);
-  await expect(page.locator(".footer-camera figcaption,.camera-say-cheese")).toHaveCount(0);
-  expect(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => r.name.includes("BookScene")))).toBe(false);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await camera.scrollIntoViewIfNeeded();
-  expect(await camera.evaluate((el) => getComputedStyle(el).position)).toBe("relative");
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await expect(camera).toHaveAttribute("data-motion", "ambient");
-  await expect(camera).toHaveAttribute("data-float", /,/);
-  const before = await camera.getAttribute("data-float");
-  await expect.poll(() => camera.getAttribute("data-float")).not.toBe(before);
-  await page.evaluate(() => scrollTo(0, 0)); await expect(camera).toHaveAttribute("data-motion", "idle");
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await camera.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-motion", "reduced");
-  await choose(page, "Stadia"); await page.locator(".cartridge-caption").click();
-  await expect(camera).toBeHidden();
-  await expect(camera).toHaveAttribute("data-motion", "reduced");
+test("the camera loads only in its hover preview and pauses when that preview is hidden", async ({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);
+ const link=page.getByRole('link',{name:/Explore film photographs/}),camera=page.locator('.film-camera-dock');
+ await expect(camera).toHaveCount(0);await expect(link.locator('.camera-model')).toHaveCount(0);
+ await link.hover();await expect(camera).toHaveAttribute('data-status','ready',{timeout:60000});await expect(camera).toBeVisible();
+ await expect(page.locator('.recent-special-preview .film-camera-dock')).toHaveCount(1);await expect(camera.locator('canvas')).toHaveCount(1);
+ await page.emulateMedia({reducedMotion:'no-preference'});await expect(camera).toHaveAttribute('data-motion','ambient');
+ const before=await camera.getAttribute('data-float');await expect.poll(()=>camera.getAttribute('data-float')).not.toBe(before);
+ await page.mouse.move(2,2);await expect(camera).toBeHidden();await expect(camera).toHaveAttribute('data-motion','idle');
+ await page.emulateMedia({reducedMotion:'reduce'});await link.focus();await expect(camera).toBeVisible();await expect(camera).toHaveAttribute('data-motion','reduced');
+ await page.setViewportSize({width:390,height:844});await expect(camera).toBeHidden();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test("footer links and music stay usable on small screens without WebGL", async ({ page }) => {
@@ -467,37 +448,19 @@ test("translucent shells retain opaque labels and team-specific finishes", async
   expect(finishes.search.shells.every((m) => m.transmission > 0 && m.transmission < .5)).toBe(true);
   expect(finishes.blizzard.shells.every((m) => m.transmission > .5)).toBe(true);
   expect(finishes.gmail.shells.every((m) => m.transmission > .5)).toBe(true);
-  expect(finishes.stadia.shells.every((m) => m.transmission > .8)).toBe(true);
+  expect(finishes.stadia.shells.every((m) => m.transmission > .5 && m.transmission < .8)).toBe(true);
 });
 
-test("camera drag rotates without navigation; keyboard entry opens the separate photos page", async ({ page }) => {
-  test.setTimeout(120000);
-  await load(page);
-  const link = page.getByRole("link", { name: /Explore film photographs/ }), camera = page.locator(".film-camera-dock");
-  await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
-  await link.hover(); await expect(camera).toHaveAttribute("data-ready-light","on");
-  await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","1");
-  await expect(page.locator(".camera-page-flash")).toHaveCount(0);
-  await page.mouse.move(8,8); await expect(camera).toHaveAttribute("data-ready-light","off");
-  await page.getByRole("link",{name:/Zine of Extracurriculars/}).focus(); await page.keyboard.press("Tab"); await expect(link).toBeFocused(); await expect(camera).toHaveAttribute("data-ready-light","on");
-  await link.evaluate(el=>el.blur()); await expect(camera).toHaveAttribute("data-ready-light","off");
-  const bounds = await camera.boundingBox(), before = await camera.getAttribute("data-rotation");
-  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
-  await expect(camera).toHaveAttribute("data-ready-light","off"); await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","0");
-  await page.mouse.move(bounds.x + bounds.width / 2 + 85, bounds.y + bounds.height / 2 + 35, { steps: 5 }); await page.mouse.up();
-  await expect(camera).not.toHaveAttribute("data-rotation", before ?? "");
-  await expect(camera).toHaveAttribute("data-ready-light","off"); await expect(link.locator(".camera-ready-light")).toHaveCSS("opacity","0");
-  await expect(page).not.toHaveURL(/photos/);
-  const rotated = await camera.getAttribute("data-rotation");
-  await link.focus(); await page.keyboard.press("ArrowLeft"); await expect(camera).not.toHaveAttribute("data-rotation", rotated);
-  await page.keyboard.press("r"); await expect(camera).toHaveAttribute("data-rotation", "0,0,0");
-  await page.keyboard.press("Enter"); await expect(page).toHaveURL(/\/photos\/$/);
-  await expect(page).toHaveTitle("josh lucas - product designer");
-  await expect(page.locator(".polaroid")).toHaveCount(6);
-  await expect(page.locator(".after-hours-book,.photo-entry-camera")).toHaveCount(0);
-  await page.reload(); await expect(page.locator(".polaroid")).toHaveCount(6);
-  await page.goBack(); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
-  await expect(page.locator(".camera-page-flash")).toHaveCount(0);
+test("camera preview spins and blinks once before settling, and keyboard entry opens photos",async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.addInitScript(()=>{});
+ await page.evaluate(()=>{window.cameraLights=[];new MutationObserver(()=>{const h=document.querySelector('.film-camera-dock');if(h)window.cameraLights.push(h.dataset.readyLight)}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-ready-light']})});
+ const link=page.getByRole('link',{name:/Explore film photographs/}),camera=page.locator('.film-camera-dock');
+ await link.hover();await expect(camera).toHaveAttribute('data-status','ready',{timeout:60000});await expect(camera).toHaveAttribute('data-intro','settled',{timeout:15000});
+ await expect(camera).toHaveAttribute('data-ready-light','off');expect(await page.evaluate(()=>window.cameraLights.includes('on'))).toBe(true);
+ await expect(camera).toHaveAttribute('data-rotation','0,0,0');await expect(link.locator('.camera-model')).toHaveCount(0);
+ await page.mouse.move(2,2);await link.focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(/\/photos\/$/);await expect(page.locator('.polaroid')).toHaveCount(6);
+ await expect(page.locator('.photo-entry-camera')).toHaveCount(0);
 });
 
 test("camera click uses a single flash, with an accessible fallback and mobile destination", async ({ page }) => {
@@ -525,23 +488,12 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("camera coasts after release, and selected cartridges drift without changing heading", async ({ page }) => {
-  test.setTimeout(120000);
-  await load(page); await page.emulateMedia({ reducedMotion: "no-preference" });
-  const link = page.getByRole("link", { name: /Explore film photographs/ }), camera = page.locator(".film-camera-dock");
-  await link.scrollIntoViewIfNeeded(); await expect(camera).toHaveAttribute("data-status", "ready", { timeout: 60000 });
-  const b = await camera.boundingBox(); await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();
-  await page.mouse.move(b.x+b.width/2+45,b.y+b.height/2+15,{steps:6});await page.mouse.up();
-  const released = await camera.getAttribute("data-rotation");
-  await expect.poll(() => camera.getAttribute("data-rotation")).not.toBe(released);
-  await expect(camera).toHaveAttribute("data-coasting", "false", { timeout:10000 });
-  await expect(page).not.toHaveURL(/photos/);
-  await choose(page,"Gmail");
-  const stage = page.locator(".cartridge-stage"), drift = await stage.getAttribute("data-drift2"), zoom=await stage.getAttribute("data-magnification");
-  await expect.poll(() => stage.getAttribute("data-drift2")).not.toBe(drift);
-  expect(Number(await stage.getAttribute("data-front-facing2"))).toBeGreaterThan(.98);
-  await expect(stage).toHaveAttribute("data-intersections", "0"); await expect(stage).toHaveAttribute("data-magnification", zoom);
-  await page.emulateMedia({reducedMotion:"reduce"}); await expect(stage).toHaveAttribute("data-drift2", "0,0");
+test("selected cartridges retain ambient drift and fixed framing with the frosted finish",async({page})=>{
+ test.setTimeout(120000);await load(page);await page.emulateMedia({reducedMotion:'no-preference'});await choose(page,'Gmail');
+ const stage=page.locator('.cartridge-stage'),drift=await stage.getAttribute('data-drift2'),zoom=await stage.getAttribute('data-magnification');
+ await expect.poll(()=>stage.getAttribute('data-drift2')).not.toBe(drift);expect(Number(await stage.getAttribute('data-front-facing2'))).toBeGreaterThan(.98);
+ await expect(stage).toHaveAttribute('data-intersections','0');await expect(stage).toHaveAttribute('data-magnification',zoom);
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-drift2','0,0');
 });
 
 test("Last.fm refreshes every 20 seconds and reveals history above the song without moving the page", async ({ page }) => {
@@ -575,6 +527,7 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
   const pastArt=await dialog.locator(".listening-artwork").first().boundingBox(),pastCopy=await dialog.locator(".listening-song").first().boundingBox();
   expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x).toBeCloseTo(copy.x,1);
+  expect(art.height).toBeCloseTo(copy.height,1);await expect(dialog.locator("ol")).toHaveCSS("gap","3px");
   expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeCloseTo(pastArt.height,2);expect(art.width).toBeCloseTo(pastArt.width,2);
   const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));
   expect(green[1]).toBeGreaterThan(green[0]);expect(green[1]).toBeGreaterThan(green[2]);
@@ -753,8 +706,8 @@ test("recent projects use one column with native reader links and restore focus 
   await links.nth(1).hover();await links.nth(2).hover();await links.last().hover();
   await expect(navigation).toHaveAttribute('data-active-project','rave-flyer-zine');
   await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
-  await expect(navigation.locator('.recent-motion-visual')).toHaveAttribute('data-visual','zine');
-  await expect(navigation.locator('.recent-preview-art img')).toHaveCount(0);
+  await expect(navigation.locator('.zine-preview-scene')).toHaveAttribute('data-interactive','false');
+  await expect(navigation.locator('.recent-motion-visual')).toHaveCount(0);
   await page.mouse.move(5,5);
   await expect(navigation).toHaveAttribute('data-preview-active','false');
   await expect(links.first()).toHaveCSS('opacity','1');
@@ -1436,7 +1389,7 @@ test('compact project rows keep equal typography and weight while motion preview
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
     await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
-    await expect(nav.locator('.motion-orb-a')).toHaveCSS('animation-name','none');
+    if(await nav.locator('.motion-orb-a').count())await expect(nav.locator('.motion-orb-a')).toHaveCSS('animation-name','none');
   }
   await page.emulateMedia({reducedMotion:'no-preference'});await links.first().hover();
   const orb=nav.locator('.motion-orb-a');await expect(orb).toHaveCSS('animation-play-state','running');
@@ -1445,4 +1398,36 @@ test('compact project rows keep equal typography and weight while motion preview
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
   await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([55,55,55,55,55]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+
+test('zine preview uses the actual book without controls, pauses on leave and keeps its scene on return',async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);
+ const link=page.getByRole('link',{name:/Zine of Extracurriculars/});await expect(page.locator('.zine-preview-scene')).toHaveCount(0);
+ await link.hover();const book=page.locator('.zine-preview-scene');await expect(book).toHaveAttribute('data-status','ready',{timeout:60000});await expect(book).toHaveAttribute('data-interactive','false');
+ await expect(book.locator('.book-webgl')).toHaveCount(1);await expect(book.locator('button,a')).toHaveCount(0);await expect(book).toHaveCSS('pointer-events','none');
+ await book.evaluate(el=>el.dataset.testIdentity='same-book');const orientation=await book.getAttribute('data-orientation');
+ const box=await book.boundingBox();await page.mouse.click(box.x+box.width/2,box.y+box.height/2);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.case-study')).toHaveCount(0);
+ await expect(book).toHaveAttribute('data-active','false');await expect(book).toHaveAttribute('data-orientation',orientation);
+ await link.hover();await expect(book).toHaveAttribute('data-test-identity','same-book');await expect(book).toHaveAttribute('data-active','true');
+});
+
+test('resume corner washes arrive after the paper and remain soft in both reading states',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.goto('/resume/');const wash=page.locator('.resume-gradient');
+ await expect(wash).toHaveAttribute('data-active','false');await expect(page.locator('.resume-sheet')).toHaveAttribute('data-art-ready','true',{timeout:30000});
+ await expect(wash).toHaveAttribute('data-active','true',{timeout:30000});await expect(wash).toHaveCSS('opacity','1');
+ const pink=await page.locator('.resume-wash-pink').boundingBox(),warm=await page.locator('.resume-wash-warm').boundingBox();
+ expect(pink.x+pink.width/2).toBeGreaterThan(1440*.7);expect(pink.y+pink.height/2).toBeLessThan(200);
+ expect(warm.x+warm.width/2).toBeLessThan(1440*.3);expect(warm.y+warm.height/2).toBeGreaterThan(800);
+ await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');await expect(wash).toHaveAttribute('data-active','true');
+});
+
+test('project heading matches the row numbers and its divider fades with the first row',async({page})=>{
+ const initial=new Date('2026-11-02T00:00:00Z');await page.clock.install({time:initial});await page.clock.pauseAt(new Date(initial.getTime()+1));
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),heading=nav.locator('h2'),number=nav.locator('.recent-project-index').first();
+ for(const property of ['font-size','font-weight','color'])await expect(heading).toHaveCSS(property,await number.evaluate((el,p)=>getComputedStyle(el).getPropertyValue(p),property));
+ await expect(nav.locator('ul')).toHaveCSS('border-top-width','0px');const first=nav.locator('li').first();
+ expect(await first.evaluate(el=>getComputedStyle(el,'::before').height)).toBe('1px');await expect(first).toHaveCSS('opacity','0');
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(first).toHaveCSS('opacity','1');
 });
