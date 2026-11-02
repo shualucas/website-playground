@@ -39,3 +39,17 @@
 }
 @media(min-width:640px) and (max-width:879px) { .zine-header-shell { padding-inline:60px; } }
 @media(max-height:600px) and (min-width:640px) { .after-hours-book { inset:78px 20px 24px; } }
+
+.physics-panel { position:fixed; z-index:20; top:100px; right:24px; width:min(300px,calc(100vw - 48px)); max-height:calc(100svh - 124px); overflow:auto; padding:16px; border:1px solid var(--line); border-radius:16px; background:color-mix(in srgb,var(--scene-bg) 95%,transparent); backdrop-filter:blur(12px); color:var(--ui-text); box-shadow:0 12px 40px #0001; font-size:13px; }
+.physics-panel summary { min-height:28px; cursor:pointer; font-weight:500; }
+.physics-panel p { color:var(--ui-muted); line-height:1.5; margin:8px 0 16px; }
+.physics-panel fieldset { border:0; padding:0; margin:0; min-width:0; }
+.physics-panel label { display:block; margin:12px 0; }
+.physics-panel label > span { display:flex; justify-content:space-between; gap:12px; }
+.physics-panel output { color:var(--ui-muted); font-variant-numeric:tabular-nums; }
+.physics-panel input { display:block; width:100%; min-height:32px; accent-color:var(--ui-text); cursor:ew-resize; }
+.physics-actions,.physics-turns { display:flex; gap:8px; flex-wrap:wrap; }
+.physics-panel button { min-height:44px; padding:7px 12px; border-radius:24px; background:var(--ui-fill); }
+.physics-panel button:hover { background:var(--line); }
+.physics-panel .physics-actions { margin-top:8px; }
+.physics-panel .physics-status { min-height:20px; margin-bottom:0; }

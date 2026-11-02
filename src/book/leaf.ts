@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { PAGE_WIDTH as WIDTH, PAGE_HEIGHT as HEIGHT } from "./materials";
+import { defaultPaperPhysics, type PaperPhysics } from "./paper-physics";
 
 export type PaperMaterial =
   THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
@@ -89,6 +90,7 @@ export class SkinnedLeaf {
     geometry: THREE.BoxGeometry,
     materials: PaperMaterial[],
     readonly width = WIDTH,
+    private physics:PaperPhysics = defaultPaperPhysics,
   ) {
     this.mesh = new THREE.SkinnedMesh(geometry, materials);
     this.faces = [materials[2].map!, materials[3].map!];
@@ -118,6 +120,8 @@ export class SkinnedLeaf {
   get progress() {
     return this.hinge[0];
   }
+  get physicsSettings() { return this.physics; }
+  setPhysics(physics:PaperPhysics) { this.physics=physics;this.lastFlex=NaN;this.settled=false; }
   /** Flex can move bones without changing the physical page boundary. */
   get turning() {
     return (
@@ -151,7 +155,7 @@ export class SkinnedLeaf {
   }
   step(delta: number, flex: number, speed = 1) {
     if (this.settled && Math.abs(flex - this.lastFlex) < 0.00005) return false;
-    const dt = Math.min(Math.max(delta, 0), 0.25) * speed;
+    const dt = Math.min(Math.max(delta, 0), 0.25) * speed * this.physics.turnSpeed;
     damp(this.hinge, 0, this.target, 5.8, dt);
     this.shape(dt, flex, false);
     if (
@@ -169,16 +173,16 @@ export class SkinnedLeaf {
   private tangent(u: number, p: number, flex: number) {
     const moving = Math.sin(p * Math.PI),
       side = 1 - 2 * p,
-      paper = 1;
+      paper = this.physics.curl / (this.cover ? this.physics.coverStiffness : 1);
     return (
-      side * (0.06 + flex * 0.16) * Math.cos(Math.PI * u) * (1 - moving) +
+      side * (0.06 + flex * 0.16) * paper * Math.cos(Math.PI * u) * (1 - moving) +
       moving * paper * (0.56 * Math.sin(Math.PI * u) - 0.36 * u - 0.1)
     );
   }
   private shape(dt: number, flex: number, immediate: boolean) {
     const p = this.progress,
       moving = Math.sin(p * Math.PI),
-      paper = 1;
+      paper = this.physics.curl / (this.cover ? this.physics.coverStiffness : 1);
     let previousBend = 0,
       previousFold = 0;
     this.poseError = 0;
@@ -197,8 +201,9 @@ export class SkinnedLeaf {
         this.bends[offset + 1] = this.folds[offset + 1] = 0;
       } else {
         // The outer joints settle later, carrying their own bend and fold velocity.
-        damp(this.bends, offset, bendTarget, 12 - u * 3, dt);
-        damp(this.folds, offset, foldTarget, 14 - u * 3, dt);
+        const stiffness=this.physics.edgeStiffness*(this.cover?this.physics.coverStiffness:1);
+        damp(this.bends, offset, bendTarget, (12 - u * 3)*stiffness, dt);
+        damp(this.folds, offset, foldTarget, (14 - u * 3)*stiffness, dt);
       }
       this.bones[i].rotation.set(this.folds[offset], 0, this.bends[offset]);
       this.poseError = Math.max(

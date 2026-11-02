@@ -6,11 +6,14 @@ import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/caveat/latin-400.css";
 import "../cartridge/style.css";
 import "./style.css";
+import { usePageExit } from "../usePageExit";
 import { useContentReveal } from "../useContentReveal";
 import { flyers, flyerPage, flyerSpreads, prepareFlyerPages } from "./flyers";
 import { prepareFlyerCovers } from "./covers";
 import { zineNotes } from "../content/zine-notes";
 import { NoteDialog } from "./NoteDialog";
+import { loadPaperPhysics } from "../book/paper-physics";
+import { PhysicsPanel } from "./PhysicsPanel";
 
 function ThemeIcon({ dark }) {
   return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" />}</svg>;
@@ -18,6 +21,7 @@ function ThemeIcon({ dark }) {
 
 function AfterHours() {
   const content = useRef(null);
+  const pageExit=usePageExit(content);
   const host = useRef(null), engine = useRef(null);
   const entranceTimer = useRef(null);
   const noteOpen = useRef(false);
@@ -27,6 +31,8 @@ function AfterHours() {
   const closeNote = () => { engine.current?.setNoteDetached(activeNote,false); noteOpen.current = false; setActiveNote(null); engine.current?.setOverlayOpen(false); };
   const [fallback, setFallback] = useState(false), [spread, setSpread] = useState(-1), [ready, setReady] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
+  const [tuning]=useState(()=>new URLSearchParams(location.search).get("tune")==="1");
+  useEffect(()=>{engine.current?.setOverlayOpen(pageExit.exiting||noteOpen.current)},[pageExit.exiting]);
   useContentReveal(content, `${ready}:${fallback}`, ready);
   useEffect(() => {
     document.documentElement.dataset.colorMode = dark ? "dark" : "light";
@@ -56,7 +62,7 @@ function AfterHours() {
       const dark = document.documentElement.dataset.colorMode === "dark";
       try {
         texture = new THREE.CanvasTexture(document.createElement("canvas"));
-        book = new BookScene(host.current, { projects: flyerSpreads, blankInterior: true, paperInserts: true, arrivalMotion: false, stageInsets: { top: 0, bottom: 0 }, pageArtwork, coverArtwork, pageWidth: 4.7 * flyerPage.width / flyerPage.height,
+        book = new BookScene(host.current, { physics:loadPaperPhysics(), projects: flyerSpreads, blankInterior: true, paperInserts: true, arrivalMotion: false, stageInsets: { top: 0, bottom: 0 }, pageArtwork, coverArtwork, pageWidth: 4.7 * flyerPage.width / flyerPage.height,
           google: { parts: [], blizzard: [], texture },
           onPhase: phase => { host.current.dataset.phase = phase; }, onIndex: () => {}, onSpread: () => {}, onOpen: () => {}, onView: setSpread,
           onNoteOpen: openNote,
@@ -76,9 +82,9 @@ function AfterHours() {
     }).catch(() => { if (alive) { setFallback(true); setReady(true); document.documentElement.dataset.pageReady = "true"; } });
     return () => { alive = false; clearTimeout(entranceTimer.current); book?.dispose(); engine.current = null; };
   }, []);
-  return <main ref={content} data-reveal-flow="page" data-ready={ready} className={`after-hours${fallback ? " is-fallback" : ""}`}>
+  return <main ref={content} onClick={pageExit.onLinkClick} data-exiting={pageExit.exiting} inert={pageExit.exiting} data-reveal-flow="page" data-ready={ready} className={`after-hours${fallback ? " is-fallback" : ""}`}>
     <header className="zine-header-shell"><nav data-reveal data-reveal-at="0" className="zine-header" aria-label="Main navigation">
-      <a className="after-hours-back" href="/" aria-label="Back to Josh Lucas"><span className="link-copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Josh Lucas</span></a>
+      <a className="after-hours-back" href="/" aria-label="Home"><span className="link-copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Home</span></a>
       <button className="tool-button" type="button" onClick={() => setDark(value => !value)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><ThemeIcon dark={dark} /></button>
     </nav></header>
     <h1 className="sr-only">Extracurriculars</h1>
@@ -89,6 +95,7 @@ function AfterHours() {
     {!fallback && ready && <div className="zine-note-shortcuts" role="group" aria-label="Print notes">{flyers.map(flyer => <button key={flyer.id} type="button" aria-haspopup="dialog" aria-controls="zine-note-dialog" onClick={() => openNote(flyer.id)}>Read note for {flyer.title}</button>)}</div>}
     {fallback && <div className="flyer-gallery" aria-label="Flyer pages">{flyers.map(flyer => <figure data-reveal key={flyer.id} style={{ "--flyer-background": flyer.background }}><img src={flyer.src} alt={flyer.alt} width="1110" height="1280" /><figcaption>{flyer.title}<button type="button" className="fallback-note-link" aria-label={`Read note for ${flyer.title}`} aria-haspopup="dialog" onClick={() => openNote(flyer.id)}>Read note</button></figcaption></figure>)}</div>}
     {activeNote && <NoteDialog flyer={flyers.find(flyer => flyer.id === activeNote)} note={zineNotes.find(note => note.id === activeNote)} getPose={() => engine.current?.getNotePose(activeNote)} setDetached={value => engine.current?.setNoteDetached(activeNote,value)} onClose={closeNote} />}
+    {tuning&&!fallback&&<PhysicsPanel engine={engine} ready={ready} />}
   </main>;
 }
 createRoot(document.getElementById("root")).render(<AfterHours />);

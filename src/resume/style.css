@@ -43,7 +43,7 @@
 .resume-wash-pink::after,.resume-wash-warm::after { content:""; position:absolute; inset:0; background:url('/resume/wash-grain.svg') repeat; background-size:180px 180px; opacity:.2; mix-blend:soft-light; mask-image:radial-gradient(ellipse,#000,transparent 70%); }
 .resume-document:not(.sr-only) { color:var(--resume-print-ink); padding:0; background:none; }
 .resume-print-heading h1 { font:700 italic clamp(42px,5.4vw,68px)/1.05 Georgia,"Times New Roman",serif; letter-spacing:-.055em; margin:0; }
-.resume-print-heading > p { margin:16px 0 70px; font:400 16px/1.4 ui-monospace,"Courier New",monospace; text-transform:uppercase; color:var(--resume-accent); }
+.resume-print-heading > p { margin:16px 0 70px; font:400 16px/1.4 "DM Sans",Arial,sans-serif; text-transform:uppercase; color:var(--resume-accent); }
 .resume-print-columns { display:grid; grid-template-columns:24% minmax(0,1fr); gap:5%; }
 .resume-document h2 { font-size:19px; font-weight:500; margin:0 0 37px; }
 .resume-print-sidebar ul { padding:0; margin:0; list-style:none; color:var(--resume-accent); font-size:17px; line-height:1.55; }

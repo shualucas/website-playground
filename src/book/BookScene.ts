@@ -13,6 +13,7 @@ import { PagePopups } from "./popups";
 import { projectTheme } from "./themes";
 import { measureTurnEnvelope, fitTurnEnvelope } from "./framing";
 import { advancePaperFlex } from "./paper-flex";
+import { normalizePaperPhysics, type PaperPhysics } from "./paper-physics";
 import { createPaperInserts, hoverPaperInsert, INSERT_SAMPLES } from "./paper-inserts";
 import { preservePrintColors } from "./printed-paper";
 import {
@@ -54,6 +55,7 @@ type Phase =
 type Callbacks = {
   projects: Project[];
   preview?: boolean;
+  physics?:Partial<PaperPhysics>;
   blankInterior?: boolean;
   arrivalMotion?: boolean;
   stageInsets?: { top: number; bottom: number };
@@ -132,6 +134,7 @@ export class BookScene {
   private rotation = new THREE.Vector2();
   private rotationImpulse = 0;
   private paperFlex = 0;
+  private physics=normalizePaperPhysics(null);
   private flexVelocity = 0;
   private leaves: SkinnedLeaf[] = [];
   private paperInserts: THREE.SkinnedMesh[] = [];
@@ -191,6 +194,7 @@ export class BookScene {
     private callbacks: Callbacks,
     initial = -1,
   ) {
+    this.physics=normalizePaperPhysics(callbacks.physics);
     this.pageWidth = callbacks.pageWidth ?? W;
     this.sceneRadius = Math.hypot(this.pageWidth, H / 2) + 0.52;
     this.groundY = (-this.sceneRadius - 0.2) * SHADOW_DISTANCE;
@@ -251,7 +255,7 @@ export class BookScene {
     );
     this.buildPrinting();
     this.scheduler = new TurnScheduler(this.leaves, (forward, cover) =>
-      this.callbacks.onTurn?.(forward, cover),
+      this.callbacks.onTurn?.(forward, cover),this.physics,
     );
     this.scheduler.snap(0);
     this.updateRig();
@@ -413,6 +417,7 @@ export class BookScene {
           edge,
         ],
         this.pageWidth,
+        this.physics,
       );
       this.leaves.push(leaf);
       this.rig.add(leaf.group);
@@ -643,6 +648,10 @@ export class BookScene {
     this.callbacks.onView?.(boundary - 1);
     this.setPrinting(boundary > 0 && boundary < this.leaves.length);
     this.report();
+  }
+  setPhysics(input:Partial<PaperPhysics>) {
+    this.physics=normalizePaperPhysics(input);this.scheduler.setPhysics(this.physics);
+    this.last=0;this.report();this.schedule();
   }
   setOverlayOpen(open: boolean) {
     this.overlayOpen = open;
@@ -1233,8 +1242,9 @@ export class BookScene {
     const flex = advancePaperFlex(
       this.paperFlex,
       this.flexVelocity,
-      this.motion.matches ? 0 : this.rotationImpulse,
+      this.motion.matches ? 0 : this.rotationImpulse*this.physics.rotationFlex,
       dt,
+      this.physics.reboundDamping,
     );
     this.paperFlex = this.motion.matches ? 0 : flex.value;
     this.flexVelocity = this.motion.matches ? 0 : flex.velocity;
@@ -1464,6 +1474,7 @@ export class BookScene {
     data.elapsed = this.elapsed.toFixed(3);
     data.duration = String(INTRO_DURATION);
     data.paperFlex = this.paperFlex.toFixed(5);
+    data.paperPhysics=JSON.stringify(this.physics);
     data.riffleCount = String(this.leaves.length);
     data.groundY = String(this.groundY);
     data.frameCpuMs = this.frameCpu.toFixed(3);

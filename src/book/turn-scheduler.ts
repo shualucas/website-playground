@@ -1,4 +1,5 @@
 import { SkinnedLeaf } from "./leaf";
+import { defaultPaperPhysics, type PaperPhysics } from "./paper-physics";
 
 /** Input intent, launched turns and the settled spread are deliberately separate. */
 export class TurnScheduler {
@@ -11,10 +12,12 @@ export class TurnScheduler {
   constructor(
     readonly leaves: SkinnedLeaf[],
     private onTurn: (forward: boolean, cover: boolean) => void = () => {},
+    private physics:PaperPhysics = defaultPaperPhysics,
   ) {}
   get moving() {
     return this.launched !== this.requested || this.turns.size > 0;
   }
+  setPhysics(physics:PaperPhysics) { this.physics=physics;this.leaves.forEach(leaf=>leaf.setPhysics(physics)); }
   get active() {
     let count = 0;
     for (const leaf of this.leaves) if (this.turns.has(leaf.id)) count++;
@@ -50,7 +53,7 @@ export class TurnScheduler {
         this.launched += forward ? 1 : -1;
         const distance = Math.abs(this.requested - this.launched);
         // Launch the final cover in the same riffle; never wait for a settled spread.
-        this.untilLaunch = intro ? 0.13 : distance > 1 ? 0.085 : 0.12;
+        this.untilLaunch = (intro ? 0.13 : distance > 1 ? 0.085 : 0.12)*this.physics.turnSpacing/this.physics.turnSpeed;
       }
     }
     let changed = false;

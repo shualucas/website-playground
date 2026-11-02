@@ -140,7 +140,7 @@ test("canvas selection, drag rotation, caption entry and browser history work wi
   await expect(caption).toHaveAttribute("aria-label", "Open Stadia, 2020 – 2022");
   const captionBefore = await caption.boundingBox();
   await expect(caption.locator(':scope > span').first()).toHaveCSS('font-weight','400');
-  await expect(caption.locator('.cartridge-years')).toHaveCSS('font-weight','700');
+  await expect(caption.locator('.cartridge-years')).toHaveCSS('font-weight','400');
   const before = await stage.getAttribute("data-rotation1"), p = await point(page, 1);
   await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 80, p.y + 25, { steps: 5 }); await page.mouse.up();
   await expect(stage).not.toHaveAttribute("data-rotation1", before); await expect(page.locator(".case-study")).toHaveCount(0);
@@ -730,7 +730,7 @@ test("recent projects use one column with native reader links and restore focus 
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
   await page.goto(await links.last().getAttribute('href'));
   await expect(page.locator('.flyer-gallery img')).toHaveCount(5,{timeout:15000});
-  await page.getByRole('link',{name:'Back to Josh Lucas',exact:true}).click();
+  await page.getByRole('link',{name:'Home',exact:true}).click();
   await expect(page.locator('.collection')).toBeVisible();
 });
 
@@ -788,7 +788,7 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   const book=page.getByRole('region',{name:'Interactive zine of extracurriculars'});
   await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(book).toHaveAttribute('data-flyer-count','5');await expect(book).toHaveAttribute('data-page-count','8');
   await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
-  await expect(page.getByRole('link',{name:'Back to Josh Lucas'})).toHaveAttribute('href','/');
+  await expect(page.getByRole('link',{name:'Home'})).toHaveAttribute('href','/');
   await expect(page.locator('.after-hours [data-reveal]')).toHaveCount(2);
   await expect(page.locator('.zine-footer,.zine-pagination,.zine-current')).toHaveCount(0);
   await expect(page.locator('.zine-heading')).toHaveCount(0);
@@ -808,7 +808,7 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(book).toHaveAttribute('data-left-print','wavform');
   await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
-  await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(27, 28, 27)');
+  await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(21, 22, 21)');
   await page.evaluate(()=>{const input=document.createElement('input');input.value='typing';document.body.append(input);input.focus();});
   await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
 });
@@ -844,7 +844,7 @@ test("sticky notes open their own readable notes without turning or dragging the
   await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
   const hit=JSON.parse(await book.getAttribute('data-note-hits')).find(hit=>hit.id==='metronome');
   await page.mouse.click(hit.x,hit.y);
-  const dialog=page.getByRole('dialog',{name:'Metronome'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('a kiteclub.fm takeover of the everyday commute.');await expect(dialog).toHaveCSS('border-radius','0px');
+  const dialog=page.getByRole('dialog',{name:'Metronome'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('my collective kiteclub.fm took over the nighttime commute,');await expect(dialog).toHaveCSS('border-radius','0px');
   await expect(dialog.locator('p')).toHaveCount(1);await expect(dialog.locator('.zine-note-eyebrow')).toHaveCount(0);
   const copy=await dialog.locator('#zine-note-body').textContent();expect(copy).toBe(copy.toLowerCase());expect(copy).not.toContain('—');
   expect(await dialog.locator('#zine-note-body').evaluate(el=>getComputedStyle(el).fontFamily)).toContain('Caveat');
@@ -1526,3 +1526,66 @@ test('project rows span the content width and floating previews leave the full r
   await expect.poll(()=>nav.evaluate(el=>{const width=el.getBoundingClientRect().width;return Math.max(...[...el.querySelectorAll('.recent-project-link')].map(link=>Math.abs(link.getBoundingClientRect().width-width)))})).toBeLessThan(.1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+ test('author tuning stays opt-in, applies live, persists, exports and resets',async({page})=>{
+  test.setTimeout(180000);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/after-hours/?tune=1');
+  const book=page.locator('.after-hours-book'),panel=page.getByRole('complementary',{name:'Zine motion tuning'});
+  await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(panel).toBeVisible();
+  const speed=page.locator('#physics-turnSpeed');await speed.focus();await speed.press('End');
+  await expect.poll(()=>book.getAttribute('data-paper-physics').then(JSON.parse).then(value=>value.turnSpeed)).toBe(1.5);
+  await panel.getByRole('button',{name:'Next page',exact:true}).click();await expect(book).toHaveAttribute('data-view','spread');
+  await panel.getByRole('button',{name:'Save',exact:true}).click();await expect(panel.locator('.physics-status')).toHaveText('Saved in this browser');
+  await page.reload();await expect(book).toHaveAttribute('data-phase','ready',{timeout:90000});await expect(speed).toHaveValue('1.5');
+  const download=page.waitForEvent('download');await panel.getByRole('button',{name:'Export JSON'}).click();const exported=await download;expect(exported.suggestedFilename()).toBe('zine-physics.json');
+  const {readFile}=await import('node:fs/promises');const data=JSON.parse(await readFile(await exported.path(),'utf8'));expect(data.physics.turnSpeed).toBe(1.5);
+  await panel.getByRole('button',{name:'Reset',exact:true}).click();await expect(speed).toHaveValue('1');
+  expect(await page.evaluate(()=>localStorage.getItem('zine-paper-physics-v1'))).toBe(null);
+  await page.goto('/after-hours/');await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();await expect(panel).toHaveCount(0);
+ });
+
+ test('bounded paper settings stay finite and ordered through interrupted turns',async({page})=>{
+  await page.goto('/tests/fixtures/blank.html');
+  const result=await page.evaluate(async()=>{
+   const THREE=await import('/node_modules/three/build/three.module.js');
+   const {SkinnedLeaf,createLeafGeometry}=await import('/src/book/leaf.ts');const {TurnScheduler}=await import('/src/book/turn-scheduler.ts');
+   const {physicsControls,normalizePaperPhysics}=await import('/src/book/paper-physics.ts');const {advancePaperFlex}=await import('/src/book/paper-flex.ts');
+   const material=new THREE.MeshStandardMaterial({map:new THREE.Texture()});let finite=true,ordered=true,closed=true;
+   for(const bound of ['min','max']){
+    const settings=normalizePaperPhysics(Object.fromEntries(Object.entries(physicsControls).map(([key,value])=>[key,value[bound]])));
+    const leaves=Array.from({length:4},(_,i)=>new SkinnedLeaf(i,i===0||i===3,4,createLeafGeometry(),Array(6).fill(material)));
+    const scheduler=new TurnScheduler(leaves);scheduler.setPhysics(settings);scheduler.snap(0);scheduler.request(4);
+    let flex=0,velocity=0;
+    for(let frame=0;frame<1000;frame++){
+     if(frame===12)scheduler.request(0);if(frame===25)scheduler.request(4);if(frame===80)scheduler.request(0);
+     const response=advancePaperFlex(flex,velocity,frame<80?.15:0,1/30,settings.reboundDamping);flex=response.value;velocity=response.velocity;scheduler.step(1/30,flex*settings.rotationFlex);
+     finite&&=Number.isFinite(flex)&&leaves.every(leaf=>Number.isFinite(leaf.progress)&&leaf.bones.every(b=>[b.rotation.x,b.rotation.y,b.rotation.z].every(Number.isFinite)));
+     ordered&&=leaves.every((leaf,i)=>!i||leaves[i-1].progress+1e-7>=leaf.progress);
+    }
+    closed&&=!scheduler.moving&&leaves.every(leaf=>leaf.progress===0);leaves.forEach(leaf=>{leaf.dispose();leaf.mesh.geometry.dispose()});
+   }
+   material.map.dispose();material.dispose();const normalized=normalizePaperPhysics({turnSpeed:Infinity,curl:900,edgeStiffness:-10});
+   return{finite,ordered,closed,normalized};
+  });
+  expect(result.finite).toBe(true);expect(result.ordered).toBe(true);expect(result.closed).toBe(true);expect(result.normalized.turnSpeed).toBe(1);expect(result.normalized.curl).toBe(1.15);expect(result.normalized.edgeStiffness).toBe(.65);
+ });
+
+ test('internal page links share the project exit while camera links keep their own transition',async({page})=>{
+  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/');await page.getByRole('link',{name:'Résumé',exact:true}).click();await expect(page.locator('.collection')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/resume\/$/);
+  await page.getByRole('link',{name:'Home',exact:true}).click();await expect(page.locator('.resume-page')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/$/);
+  await page.getByRole('link',{name:/Zine of Extracurriculars/}).click();await expect(page.locator('.collection')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/after-hours\/$/);
+  await page.getByRole('link',{name:'Home',exact:true}).click();await expect(page.locator('.after-hours')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/$/);
+  await page.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(page.locator('.case-study')).toHaveAttribute('data-exiting','true');await expect(page.locator('.case-study')).toHaveCount(0);
+  await expect(page.getByRole('link',{name:/Explore film photographs/})).toHaveAttribute('href','/photos/');
+ });
+
+ test('resume navigation responds before paper morph finishes and Read uses body typography without contact links',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.goto('/resume/');await expect(page.locator('.resume-sheet')).toHaveAttribute('data-surface','webgl',{timeout:30000});
+  const nav=page.locator('.resume-back-nav'),main=page.locator('.resume-page');
+  const entering=await page.getByRole('button',{name:'Read',exact:true}).evaluate(button=>{button.click();return{navigation:document.querySelector('.resume-back-nav').dataset.reading,view:document.querySelector('.resume-page').dataset.view,transitioning:document.querySelector('.resume-page').dataset.transitioning}});
+  expect(entering).toEqual({navigation:'true',view:'page',transitioning:'true'});await expect(main).toHaveAttribute('data-view','read');
+  await expect(page.locator('.resume-read-sheet .resume-print-contacts')).toHaveCount(0);
+  const fonts=await page.evaluate(()=>[getComputedStyle(document.querySelector('.resume-print-heading > p')).fontFamily,getComputedStyle(document.querySelector('.resume-job li')).fontFamily]);expect(fonts[0]).toBe(fonts[1]);
+  const returning=await page.getByRole('button',{name:'Page',exact:true}).evaluate(async button=>{button.click();await Promise.resolve();return document.querySelector('.resume-back-nav').dataset.reading});expect(returning).toBe('false');await expect(main).toHaveAttribute('data-view','page');await expect(nav).toHaveAttribute('data-reading','false');
+ });

@@ -1,4 +1,5 @@
 import React,{useEffect,useLayoutEffect,useRef,useState} from "react";
+import { loadPaperPhysics } from "../book/paper-physics";
 
 /** The actual extracurricular book, presented without input or page controls. */
 export function ZinePreview({active,dark}) {
@@ -9,7 +10,7 @@ export function ZinePreview({active,dark}) {
     Promise.all([import("../book/BookScene"),import("three"),import("../after-hours/flyers"),import("../after-hours/covers")]).then(async([{BookScene},THREE,flyers,covers])=>{
       const [pageArtwork,coverArtwork]=await Promise.all([flyers.prepareFlyerPages(),covers.prepareFlyerCovers()]);if(!alive)return;
       texture=new THREE.CanvasTexture(document.createElement("canvas"));
-      book=new BookScene(host.current,{preview:true,projects:flyers.flyerSpreads,blankInterior:true,paperInserts:true,arrivalMotion:false,stageInsets:{top:0,bottom:0},pageWidth:4.7*flyers.flyerPage.width/flyers.flyerPage.height,pageArtwork,coverArtwork,
+      book=new BookScene(host.current,{preview:true,physics:loadPaperPhysics(),projects:flyers.flyerSpreads,blankInterior:true,paperInserts:true,arrivalMotion:false,stageInsets:{top:0,bottom:0},pageWidth:4.7*flyers.flyerPage.width/flyers.flyerPage.height,pageArtwork,coverArtwork,
         google:{parts:[],blizzard:[],texture},onPhase:()=>{},onIndex:()=>{},onSpread:()=>{},onOpen:()=>{},onPresented:()=>{},onRequest:()=>{}});
       engine.current=book;book.setDarkMode(live.current.dark);book.appear();book.setOverlayOpen(true);setStatus("ready");
     }).catch(()=>{if(alive)setStatus("unavailable")});

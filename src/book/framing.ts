@@ -3,6 +3,7 @@ import { ConvexHull } from "three/addons/math/ConvexHull.js";
 import { SkinnedLeaf } from "./leaf";
 import { TurnScheduler } from "./turn-scheduler";
 import { INSERT_SAMPLES } from "./paper-inserts";
+import { normalizePaperPhysics, physicsControls } from "./paper-physics";
 
 export const FRAME_MARGIN = 0.92;
 
@@ -23,6 +24,8 @@ export function measureTurnEnvelope(
         leaf.mesh.geometry,
         leaf.mesh.material,
         leaf.width,
+        // Reserve the most flexible supported silhouette once, so live tuning never zooms the book.
+        normalizePaperPhysics({...leaf.physicsSettings,curl:physicsControls.curl.max,edgeStiffness:physicsControls.edgeStiffness.min,coverStiffness:physicsControls.coverStiffness.min}),
       ),
   );
   copies.forEach((leaf) => rig.add(leaf.group));

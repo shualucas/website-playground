@@ -68,14 +68,14 @@ export class CaseStudyCartridgeScene {
       const label=await new THREE.TextureLoader().loadAsync(this.cartridge.label);
       if(this.disposed){label.dispose();return}
       this.textures.add(label);label.colorSpace=THREE.SRGBColorSpace;label.anisotropy=Math.min(8,this.renderer.capabilities.getMaxAnisotropy());
-      const model=await loadExternalShell(label,this.cartridge.shell,undefined,this.cartridge.finish);
+      const model=await loadExternalShell(label,this.cartridge.shell,undefined,this.cartridge.finish,this.cartridge.id==="gmail");
       if(!model)throw new Error("Cartridge model unavailable");
       if(this.disposed){this.disposeModel(model);return}
       model.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
         const materials=Array.isArray(object.material)?object.material:[object.material];
         object.castShadow=!object.userData.label&&materials.some(material=>material.visible&&!((material as THREE.MeshPhysicalMaterial).transmission>.05));
-        object.receiveShadow=false;
+        object.receiveShadow=Boolean(object.userData.label);
       });
       this.root.add(model);applyCartridgeTheme(this.root,document.documentElement.dataset.colorMode==="dark");this.root.updateMatrixWorld(true);
       new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();

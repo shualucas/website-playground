@@ -5,6 +5,7 @@ import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
 import "../cartridge/style.css";
 import "./style.css";
+import { usePageExit } from "../usePageExit";
 import { useContentReveal } from "../useContentReveal";
 import { ThemeToggle } from "../ThemeToggle";
 import { FloatingPaper } from "./FloatingPaper";
@@ -26,15 +27,14 @@ function ResumeDocument({ hidden = false }) {
         {resume.experience.map((job, index) => <section className="resume-job" key={job.company} aria-labelledby={`job-${index}`}><h3 id={`job-${index}`}>{job.company}</h3><div className="resume-job-meta"><span>{job.role}</span><span>{job.period}</span></div><ul>{job.work.map(line => <li key={line}>{line}</li>)}</ul></section>)}
       </section>
     </div>
-    {!hidden && <footer className="resume-print-contacts">
-      <a href={resume.links.portfolio}><span className="link-copy">joshglucas.com</span></a><a href={`mailto:${resume.email}`}><span className="link-copy">{resume.email}</span></a><a href={resume.links.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><span className="link-copy">/joshglucas</span></a>
-    </footer>}
+
   </article>;
 }
 
 function Resume() {
   const content = useRef(null), sheet = useRef(null), controller = useRef(null), explicitView = useRef(false);
   const openRead = useRef(null), readSheet=useRef(null), displayedReading=useRef(false), previewWaiters=useRef([]);
+  const pageExit=usePageExit(content);
   const wash = useRef(null), downloadButton = useRef(null), downloadMotion = useRef(null), viewTransition = useRef(null);
   const [view, setView] = useState(() => matchMedia("(max-width: 700px)").matches ? "read" : "page");
   const requestedView = useRef(view);
@@ -43,6 +43,7 @@ function Resume() {
   const gradientMotion=useRef(null);
   const [artReady, setArtReady] = useState(false), [artFailed, setArtFailed] = useState(false);
   const reading = view === "read" || artFailed;
+  const navigationReading = selectedView === "read" || artFailed;
   displayedReading.current=reading;
   useLayoutEffect(() => {
     document.documentElement.dataset.resumeView = reading ? "read" : "page";
@@ -78,8 +79,8 @@ function Resume() {
     return()=>{cancelled=true;clearTimeout(timer)};
   },[gradientReady,reading,paperReady]);
   useEffect(() => {
-    controller.current?.setActive(!reading && !transitioning);
-  },[reading,transitioning]);
+    controller.current?.setActive(!reading && !transitioning && !pageExit.exiting);
+  },[reading,transitioning,pageExit.exiting]);
   useEffect(() => {
     const mobile = matchMedia("(max-width: 700px)");
     const update = () => { if (!explicitView.current) { const next=mobile.matches ? "read" : "page"; requestedView.current=next;setSelectedView(next);if(next==="page")setPreviewRequested(true);setView(next); } };
@@ -118,12 +119,12 @@ function Resume() {
     viewTransition.current=motion;flushSync(()=>setTransitioning(true));
   };
   openRead.current = () => chooseView("read");
-  return <main ref={content} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"} data-transitioning={transitioning}>
+  return <main ref={content} onClick={pageExit.onLinkClick} data-exiting={pageExit.exiting} inert={pageExit.exiting} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"} data-transitioning={transitioning}>
     <div className="resume-gradient" ref={wash} data-active={gradientReady} aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
     <div className="resume-header-shell"><header className="collection-header resume-nav" data-reveal data-reveal-at="0">
-      <div className="resume-back-nav" data-reading={reading}>
-        <a className="resume-home-link" href="/" aria-label="Home" aria-hidden={reading} inert={reading} tabIndex={reading ? -1 : undefined}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg><span>Home</span></a>
-        <button type="button" className="resume-page-back" aria-label="Back to page view" aria-hidden={!reading} inert={!reading} tabIndex={reading ? undefined : -1} disabled={artFailed} onClick={()=>chooseView("page")}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg></button>
+      <div className="resume-back-nav" data-reading={navigationReading}>
+        <a className="resume-home-link" href="/" aria-label="Home" aria-hidden={navigationReading} inert={navigationReading} tabIndex={navigationReading ? -1 : undefined}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg><span>Home</span></a>
+        <button type="button" className="resume-page-back" aria-label="Back to page view" aria-hidden={!navigationReading} inert={!navigationReading} tabIndex={navigationReading ? undefined : -1} disabled={artFailed} onClick={()=>chooseView("page")}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg></button>
       </div><ThemeToggle />
     </header></div>
     <div className="resume-toolbar" data-reveal data-reveal-at="90">

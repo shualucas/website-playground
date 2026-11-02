@@ -173,7 +173,7 @@ export class CartridgeScene {
       }));
       if (this.disposed) return;
       for (let i = 0; i < cartridges.length; i++) {
-        const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell, this.grain, config.finish) ?? makeCartridge(config.shell, maps[i], this.grain);
+        const config = cartridges[i], model = await loadExternalShell(maps[i], config.shell, this.grain, config.finish, config.id === "gmail") ?? makeCartridge(config.shell, maps[i], this.grain);
         if (this.disposed) { this.disposeObject(model); return; }
         const modelBounds = new THREE.Box3().setFromObject(model);
         const half = modelBounds.getSize(new THREE.Vector3()).multiplyScalar(.5), center = modelBounds.getCenter(new THREE.Vector3());
@@ -184,21 +184,7 @@ export class CartridgeScene {
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
-            if (config.id === "gmail" && (object.userData.label || object.name === "Label")) {
-              for (const material of materials) {
-                material.onBeforeCompile = (shader:THREE.WebGLProgramParametersWithUniforms) => {
-                  shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
-                    // Soften the bright red ink while preserving white lettering.
-                    float inkChroma = max(max(diffuseColor.r, diffuseColor.g), diffuseColor.b) - min(min(diffuseColor.r, diffuseColor.g), diffuseColor.b);
-                    float inkLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-                    vec3 mutedInk = mix(vec3(inkLuma), diffuseColor.rgb, 0.9) * 0.84;
-                    diffuseColor.rgb = mix(diffuseColor.rgb, mutedInk, smoothstep(0.02, 0.4, inkChroma));
-                  `);
-                };
-                material.customProgramCacheKey = () => "gmail-muted-print-v1";
-              }
-            }
-            object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible && !((m as THREE.MeshPhysicalMaterial).transmission > .05)); object.receiveShadow = false;
+            object.castShadow = !object.userData.label && object.name !== "Label" && materials.some((m) => m.visible && !((m as THREE.MeshPhysicalMaterial).transmission > .05)); object.receiveShadow = Boolean(object.userData.label || object.name === "Label");
           }
         });
         applyCartridgeTheme(model,this.dark);

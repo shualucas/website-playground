@@ -115,7 +115,7 @@ function App() {
     const pop = () => { pageExit.cancel();setReading(readRoute()); setSelected(selectedRoute()); };
     const keyboard = (event) => {
       if (!presentedRef.current) return;
-      if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.defaultPrevented || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "Escape") {
         if(content.current?.dataset.exiting === "true"){pageExit.cancel();event.preventDefault();return;}
         if (readingRef.current) close();
@@ -128,7 +128,7 @@ function App() {
     return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
   }, []);
   return <>
-    <main ref={content} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
+    <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
       <header className="collection-header"><LocationMeta /><button data-reveal className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented} />

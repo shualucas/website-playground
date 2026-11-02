@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { projectTheme } from "./book/themes";
+import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
@@ -7,6 +8,7 @@ import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
   const content = useRef(null);
+  const pageExit=usePageExit(content);
   const study = project.caseStudy;
   useContentReveal(content, project.id);
   const heading = useRef(null),
@@ -20,7 +22,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
     };
   }, [project.id, identity]);
   const navigation = <>
-    <button data-reveal onClick={onBack} className="back-to-zine">
+    <button data-reveal onClick={()=>pageExit.run(onBack,{navigation:true})} className="back-to-zine">
       <span className="link-copy"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>{backLabel}</span>
     </button>
     {identity && <span data-reveal>{identity.toUpperCase()}</span>}
@@ -28,6 +30,9 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   return (
     <section
       ref={content}
+      onClick={pageExit.onLinkClick}
+      data-exiting={pageExit.exiting}
+      inert={pageExit.exiting}
       className={`case-study${study ? " case-study-editorial" : ""}`}
       data-case-theme={project.theme}
       aria-label={`${project.label} case study`}

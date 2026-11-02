@@ -4,9 +4,9 @@ export function advancePaperFlex(
   velocity: number,
   target: number,
   delta: number,
+  damping = 7,
 ) {
   const dt = Math.min(Math.max(delta, 0), 0.15),
-    damping = 7,
     omega = Math.sqrt(160 - damping * damping),
     offset = value - target,
     coefficient = (velocity + damping * offset) / omega,

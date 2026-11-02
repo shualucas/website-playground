@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { cartridgeModel, type ShellFinish } from "./config";
 import { circuitBoardMaps, mapBoardGeometry } from "./circuit-board";
+import { labelMaterial } from "./label-material";
 
 const rounded = (w: number, h: number, d: number, radius = .035) => new RoundedBoxGeometry(w, h, d, 3, radius);
 
@@ -12,8 +13,7 @@ export function makeCartridge(color: string, label: THREE.Texture, grain: THREE.
   const dark = new THREE.MeshStandardMaterial({ color: "#343936", roughness: .8 });
   const frame = new THREE.MeshStandardMaterial({ color, roughness: .72 });
   frame.color.multiplyScalar(.86);
-  // Print stays color-accurate; shell and recessed frame carry the studio highlights.
-  const paper = new THREE.MeshBasicMaterial({ map: label, toneMapped: false });
+  const paper = labelMaterial(label,grain);
   const seam = new THREE.MeshStandardMaterial({ color, roughness: .7 }); seam.color.multiplyScalar(.55);
   const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x = 0, y = 0, z = 0) => {
     const m = new THREE.Mesh(geometry, material);
@@ -74,7 +74,7 @@ async function externalTemplate(url: string) {
   return template.promise;
 }
 
-export async function loadExternalShell(label: THREE.Texture, color: string, grain?: THREE.Texture, finish?: ShellFinish): Promise<THREE.Group | null> {
+export async function loadExternalShell(label: THREE.Texture, color: string, grain?: THREE.Texture, finish?: ShellFinish, mutedLabel=false): Promise<THREE.Group | null> {
   if (!cartridgeModel.url) return null;
   const group = (await externalTemplate(cartridgeModel.url)).clone(true);
   group.rotation.set(...cartridgeModel.rotation); group.updateMatrixWorld(true);
@@ -95,9 +95,7 @@ export async function loadExternalShell(label: THREE.Texture, color: string, gra
       // material, and suppress the second, overlapping paper primitive.
       if (material.name === "Label (Artwork)" || object.name === cartridgeModel.labelMesh) {
         hasLabel = true; object.userData.label = true;
-        // Printed ink keeps its authored contrast rather than reflecting the studio key.
-        return new THREE.MeshBasicMaterial({ name: "Project label", map: labelMap, color: "#fff", toneMapped: false, side: THREE.DoubleSide,
-          polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        return labelMaterial(labelMap,grain,mutedLabel);
       }
       const clone = material.clone() as THREE.MeshStandardMaterial;
       if (material.name === "Label (Paper)") { clone.visible = false; object.castShadow = false; }
