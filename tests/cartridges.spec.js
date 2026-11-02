@@ -677,7 +677,8 @@ test("recent projects use one column with native reader links and restore focus 
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
   const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));expect(Math.max(...heights)-Math.min(...heights)).toBeLessThan(1);
   await expect(navigation.locator('.recent-project-index')).toHaveText(['01','02','03','04','05']);
-  await expect(links.locator('.recent-project-team')).toHaveText(['Google','Google','Stadia','Independent']);
+  await expect(links.locator('.recent-project-team')).toHaveText(['Search','Search','Stadia','Fun']);
+  await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).not.toBeEmpty();
@@ -1392,10 +1393,12 @@ test('compact project rows keep equal typography and weight while motion preview
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
     await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
-    if(await nav.locator('.motion-orb-a').count())await expect(nav.locator('.motion-orb-a')).toHaveCSS('animation-name','none');
+    if(await nav.locator('.motion-mesh').count())await expect(nav.locator('.motion-mesh')).toHaveCSS('animation-name','none');
+    await expect(nav.locator('.motion-grid,.motion-signal,.motion-orb')).toHaveCount(0);
+    if(await link.locator('.recent-project-team').textContent()==='Fun')await expect(nav.locator('.recent-preview-content p')).toHaveCount(0);
   }
   await page.emulateMedia({reducedMotion:'no-preference'});await links.first().hover();
-  const orb=nav.locator('.motion-orb-a');await expect(orb).toHaveCSS('animation-play-state','running');
+  const orb=nav.locator('.motion-mesh');await expect(orb).toHaveCSS('animation-play-state','running');
   const before=await orb.evaluate(el=>getComputedStyle(el).transform);await expect.poll(()=>orb.evaluate(el=>getComputedStyle(el).transform)).not.toBe(before);
   await page.mouse.move(2,2);await expect(orb).toHaveCSS('animation-play-state','paused');
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
@@ -1413,6 +1416,23 @@ test('zine preview uses the actual book without controls, pauses on leave and ke
  await page.mouse.move(2,2);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.case-study')).toHaveCount(0);
  await expect(book).toHaveAttribute('data-active','false');await expect(book).toHaveAttribute('data-orientation',orientation);
  await link.hover();await expect(book).toHaveAttribute('data-test-identity','same-book');await expect(book).toHaveAttribute('data-active','true');
+});
+
+test('zine hover closes an open spread to the cover and replays on return',async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.evaluate(()=>new Promise(requestAnimationFrame));
+ const link=page.getByRole('link',{name:/Zine of Extracurriculars/}),book=page.locator('.zine-preview-scene');
+ await link.hover();await expect(book).toHaveAttribute('data-status','ready',{timeout:60000});
+ await expect(book).toHaveAttribute('data-requested-page','-1');
+ await expect.poll(()=>book.getAttribute('data-leaf-states').then(value=>JSON.parse(value||'[]').filter(leaf=>leaf.progress>.1).length)).toBeGreaterThan(1);
+ await expect(book).toHaveAttribute('data-view','cover',{timeout:30000});
+ expect(JSON.parse(await book.getAttribute('data-leaf-states')).every(leaf=>leaf.progress===0)).toBe(true);
+ await book.evaluate(el=>el.dataset.testIdentity='same-closing-book');
+ await page.mouse.move(2,2);await expect(book).toHaveAttribute('data-active','false');await link.hover();
+ await expect(book).toHaveAttribute('data-test-identity','same-closing-book');await expect(book).toHaveAttribute('data-view','spread');
+ await expect(book).toHaveAttribute('data-view','cover',{timeout:30000});
+ await page.mouse.move(2,2);await page.emulateMedia({reducedMotion:'reduce'});await link.hover();
+ await expect(book).toHaveAttribute('data-view','cover');expect(JSON.parse(await book.getAttribute('data-leaf-states')).every(leaf=>leaf.progress===0)).toBe(true);
 });
 
 test('resume corner washes arrive after the paper and remain soft in both reading states',async({page})=>{

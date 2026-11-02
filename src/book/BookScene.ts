@@ -803,6 +803,18 @@ export class BookScene {
     }
     this.schedule();
   }
+  /** Replay the hover-only preview from an open spread, using the existing turn queue. */
+  playPreviewClose() {
+    if (!this.callbacks.preview) return;
+    if (!this.motion.matches) {
+      this.scheduler.snap(this.leaves.length - 1);
+      this.updateRig();
+      this.commit();
+      this.renderer.shadowMap.needsUpdate = true;
+      this.render();
+    }
+    this.goTo(-1);
+  }
   stepPage(direction: number) {
     this.goTo((this.pendingPage ?? this.scheduler.requested - 1) + direction);
   }

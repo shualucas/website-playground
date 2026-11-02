@@ -5,11 +5,11 @@ import { ZinePreview } from "./ZinePreview";
 import { CameraLink } from "./CameraLink";
 
 const previews = {
-  "ai-mode-nudges": { team: "Google", accent: "#6988d8", kind: "ai" },
-  "search-labs": { team: "Google", accent: "#b759ba", kind: "search" },
+  "ai-mode-nudges": { team: "Search", accent: "#6988d8", kind: "ai" },
+  "search-labs": { team: "Search", accent: "#b759ba", kind: "search" },
   "stadia-store-redesign": { team: "Stadia", accent: "#e5633d", kind: "stadia" },
-  "rave-flyer-zine": { team: "Independent", accent: "#e48dae", kind: "zine" },
-  "film": { team: "Film", accent: "#b69272", kind: "film" },
+  "rave-flyer-zine": { team: "Fun", accent: "#e48dae", kind: "zine" },
+  "film": { team: "Fun", accent: "#b69272", kind: "film" },
 };
 const film = { id: "film", label: "Say cheese!", description: "Film photographs" };
 
@@ -78,7 +78,7 @@ export function RecentProjects({ onOpen, dark, ready, hidden, onPreviewChange })
         <li className="recent-camera-row" data-active={showing && active === "film"}
           onPointerEnter={event => browse(event, "film", recentProjects.length)} onFocus={event => focused(event, "film", recentProjects.length)}
           data-reveal data-reveal-at={entrance.projectsStart + (recentProjects.length + 1) * 60}>
-          <CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={recentProjects.length + 1} rowTeam="Film"
+          <CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={recentProjects.length + 1} rowTeam="Fun"
             entranceAt={0} previewTarget={cameraTarget} previewActive={showing&&active==="film"} previewSeen={seen.film} />
         </li>
       </ul>
@@ -88,12 +88,11 @@ export function RecentProjects({ onOpen, dark, ready, hidden, onPreviewChange })
             <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&active==="film"} />
             <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark} />}</div>
             {project&&preview.kind!=="film"&&preview.kind!=="zine"&&<div key={`visual-${project.id}`} className="recent-motion-visual" data-visual={preview.kind}>
-              <span className="motion-orb motion-orb-a" /><span className="motion-orb motion-orb-b" /><span className="motion-orb motion-orb-c" />
-              <span className="motion-grid" /><span className="motion-signal" />
+              <span className="motion-mesh" />
             </div>}
             <span key={`dither-${project?.id}`} className="recent-preview-dither" />
           </div>
-          <p>{project?.description}</p>
+          {preview && preview.kind!=="film" && preview.kind!=="zine" && <p>{project?.description}</p>}
         </div></div>
       </div>
     </div>

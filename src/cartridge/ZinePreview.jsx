@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from "react";
+import React,{useEffect,useLayoutEffect,useRef,useState} from "react";
 
 /** The actual extracurricular book, presented without input or page controls. */
 export function ZinePreview({active,dark}) {
@@ -11,11 +11,15 @@ export function ZinePreview({active,dark}) {
       texture=new THREE.CanvasTexture(document.createElement("canvas"));
       book=new BookScene(host.current,{preview:true,projects:flyers.flyerSpreads,blankInterior:true,paperInserts:true,arrivalMotion:false,stageInsets:{top:0,bottom:0},pageWidth:4.7*flyers.flyerPage.width/flyers.flyerPage.height,pageArtwork,coverArtwork,
         google:{parts:[],blizzard:[],texture},onPhase:()=>{},onIndex:()=>{},onSpread:()=>{},onOpen:()=>{},onPresented:()=>{},onRequest:()=>{}});
-      engine.current=book;book.setDarkMode(live.current.dark);book.appear();book.setOverlayOpen(!live.current.active);setStatus("ready");
+      engine.current=book;book.setDarkMode(live.current.dark);book.appear();book.setOverlayOpen(true);setStatus("ready");
     }).catch(()=>{if(alive)setStatus("unavailable")});
     return()=>{alive=false;book?.dispose();texture?.dispose();engine.current=null};
   },[]);
   useEffect(()=>{engine.current?.setDarkMode(dark)},[dark]);
-  useEffect(()=>{engine.current?.setOverlayOpen(!active)},[active]);
+  useLayoutEffect(()=>{
+    const book=engine.current;if(!book)return;
+    book.setOverlayOpen(!active);
+    if(active)book.playPreviewClose();
+  },[active,status]);
   return <><div ref={host} className="zine-preview-scene" data-status={status} data-interactive="false" data-active={active} />{status==="unavailable"&&<img className="zine-preview-fallback" src="/zines/covers/extracurriculars-blue-ink.jpg" alt="" />}</>;
 }
