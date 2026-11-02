@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { entrance, remainingEntranceDelay } from "./entrance";
 
 export function FilmCamera({ dark, hidden, controller, highlighted = false, preview = false, previewActive = false, onReady, initialPose, entranceMotion = true, entranceAt = entrance.footerStart }) {
@@ -30,6 +30,12 @@ export function FilmCamera({ dark, hidden, controller, highlighted = false, prev
     window.addEventListener("scroll", check, { passive: true }); window.addEventListener("resize", check); check();
     return () => { active = false; window.removeEventListener("scroll", check); window.removeEventListener("resize", check); scene.current?.dispose(); scene.current = null; if (controller) controller.current = null; };
   }, []);
+  useLayoutEffect(()=>{
+    if(status!=="ready"||hidden)return;
+    scene.current?.refresh();
+    const frame=requestAnimationFrame(()=>scene.current?.refresh());
+    return()=>cancelAnimationFrame(frame);
+  },[status,hidden,dark]);
   useEffect(()=>{if(preview){if(previewActive)scene.current?.playHoverIntro();else scene.current?.stopHoverIntro()}},[previewActive,preview]);
   useEffect(() => { scene.current?.setTheme(dark); }, [dark]);
   useEffect(() => { scene.current?.setHovered(highlighted); }, [highlighted]);

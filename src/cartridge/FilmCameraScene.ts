@@ -76,6 +76,8 @@ export class FilmCameraScene {
     window.addEventListener("scroll", this.sync, { passive: true }); window.addEventListener("resize", this.sync);
     this.resize();
   }
+  // Paint after the loading/hidden DOM state changes, even without an animation loop.
+  refresh() { this.resize(); }
   playHoverIntro() {
     this.introElapsed=this.motion.matches?Infinity:0;this.previewPulse=false;
     this.inspection.rotation.set(0,this.motion.matches?0:-Math.PI*2,0);this.publishRotation();this.updateReadyLight();this.sync();this.draw();

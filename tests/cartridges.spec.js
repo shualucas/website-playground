@@ -248,10 +248,12 @@ test("the camera loads only in its hover preview and pauses when that preview is
  await expect(camera).toHaveCount(0);await expect(link.locator('.camera-model')).toHaveCount(0);
  await link.hover();await expect(camera).toHaveAttribute('data-status','ready',{timeout:60000});await expect(camera).toBeVisible();
  await expect(page.locator('.recent-special-preview .film-camera-dock')).toHaveCount(1);await expect(camera.locator('canvas')).toHaveCount(1);
+ // Let the newly mounted WebGL preview finish its first paint before changing media preferences.
+ await page.evaluate(()=>new Promise(requestAnimationFrame));
  await page.emulateMedia({reducedMotion:'no-preference'});await expect(camera).toHaveAttribute('data-motion','ambient');
  const before=await camera.getAttribute('data-float');await expect.poll(()=>camera.getAttribute('data-float')).not.toBe(before);
  await page.mouse.move(2,2);await expect(camera).toBeHidden();await expect(camera).toHaveAttribute('data-motion','idle');
- await page.emulateMedia({reducedMotion:'reduce'});await link.focus();await expect(camera).toBeVisible();await expect(camera).toHaveAttribute('data-motion','reduced');
+ await page.emulateMedia({reducedMotion:'reduce'});await page.keyboard.press('Tab');await link.focus();await expect(camera).toBeVisible();await expect(camera).toHaveAttribute('data-motion','reduced');
  await page.setViewportSize({width:390,height:844});await expect(camera).toBeHidden();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
@@ -1408,7 +1410,7 @@ test('zine preview uses the actual book without controls, pauses on leave and ke
  await link.hover();const book=page.locator('.zine-preview-scene');await expect(book).toHaveAttribute('data-status','ready',{timeout:60000});await expect(book).toHaveAttribute('data-interactive','false');
  await expect(book.locator('.book-webgl')).toHaveCount(1);await expect(book.locator('button,a')).toHaveCount(0);await expect(book).toHaveCSS('pointer-events','none');
  await book.evaluate(el=>el.dataset.testIdentity='same-book');const orientation=await book.getAttribute('data-orientation');
- const box=await book.boundingBox();await page.mouse.click(box.x+box.width/2,box.y+box.height/2);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.case-study')).toHaveCount(0);
+ await page.mouse.move(2,2);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.case-study')).toHaveCount(0);
  await expect(book).toHaveAttribute('data-active','false');await expect(book).toHaveAttribute('data-orientation',orientation);
  await link.hover();await expect(book).toHaveAttribute('data-test-identity','same-book');await expect(book).toHaveAttribute('data-active','true');
 });
@@ -1475,5 +1477,29 @@ test('resume header has a scrim and its icon-only Read back button returns to Pa
   const back=page.getByRole('button',{name:'Back to page view',exact:true});await expect(back).toBeVisible();await expect(back).toHaveText('');await expect(back.locator('svg')).toHaveCount(1);await expect(page.getByRole('link',{name:'Home',exact:true})).toHaveCount(0);
   await back.click();await expect(main).toHaveAttribute('data-view','page');await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();expect(await page.locator('.resume-toolbar').boundingBox()).toEqual(controls);
   await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Read',exact:true}).click();await page.getByRole('button',{name:'Back to page view',exact:true}).click();await expect(main).toHaveAttribute('data-view','page');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+
+test('project rows span the content width and floating previews leave the full row clickable',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
+  const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),preview=nav.locator('.recent-project-preview');
+  const content=await nav.boundingBox();
+  for(const link of await links.all()){const r=await link.boundingBox();expect(r.x).toBeCloseTo(content.x,1);expect(r.width).toBeCloseTo(content.width,1)}
+  for(const i of [0,3,4]){
+    await links.nth(i).hover();await expect(preview).toHaveAttribute('data-visible','true');await expect(preview).toHaveCSS('position','absolute');await expect(preview).toHaveCSS('pointer-events','none');
+    const row=await links.nth(i).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
+    expect(art.x).toBeGreaterThan(row.x);expect(art.x+art.width).toBeLessThan(row.x+row.width);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
+    if(i>0){await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color','rgb(240, 240, 240)');await expect(nav.locator('.recent-preview-content')).toHaveCSS('background-color','rgb(240, 240, 240)')}
+  }
+  await page.getByRole('button',{name:'Switch to dark mode'}).click();await links.last().hover();await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color','rgb(21, 22, 21)');
+  const target=await links.nth(1).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
+  const point={x:art.x+art.width/2,y:target.y+target.height/2};
+  const href=await page.evaluate(p=>document.elementFromPoint(p.x,p.y)?.closest('a')?.getAttribute('href'),point);expect(href).toBe('/?project=search-labs&view=case-study');
+  await page.mouse.click(point.x,point.y);await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeFocused();
+  await page.goBack();await page.setViewportSize({width:390,height:844});await expect(preview).toBeHidden();
+  await expect.poll(()=>nav.evaluate(el=>{const width=el.getBoundingClientRect().width;return Math.max(...[...el.querySelectorAll('.recent-project-link')].map(link=>Math.abs(link.getBoundingClientRect().width-width)))})).toBeLessThan(.1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
