@@ -809,7 +809,7 @@ test("flyer zine prints one flyer per page through forward and reverse turns", a
   await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(book).toHaveAttribute('data-left-print','wavform');
   await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
-  await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(21, 22, 21)');
+  await expect(page.locator('.after-hours')).toHaveCSS('background-color','rgb(16, 17, 16)');
   await page.evaluate(()=>{const input=document.createElement('input');input.value='typing';document.body.append(input);input.focus();});
   await page.keyboard.press('ArrowRight');await expect(book).toHaveAttribute('data-left-print','wavform');
 });
@@ -1370,7 +1370,7 @@ test('project previews follow movement inside a row, dim other content and wash 
   await expect(links.first()).toHaveCSS('opacity','1');
   for(let i=1;i<6;i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
   const ids=['ai-mode-nudges','chat-bubbles','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
-  const hues=['#6988d8','#7b9edf','#b759ba','#e5633d','#e48dae','#b69272'];
+  const hues=['#6988d8','#169b72','#b759ba','#e5633d','#e48dae','#b69272'];
   const wash=page.locator('.project-hue-wash');await expect(wash).toHaveCSS('pointer-events','none');
   for(let i=0;i<ids.length;i++){
     await links.nth(i).hover();await expect(navigation).toHaveAttribute('data-active-project',ids[i]);
@@ -1419,21 +1419,15 @@ test('zine preview uses the actual book without controls, pauses on leave and ke
  await link.hover();await expect(book).toHaveAttribute('data-test-identity','same-book');await expect(book).toHaveAttribute('data-active','true');
 });
 
-test('zine hover closes an open spread to the cover and replays on return',async({page})=>{
+test('zine hover spins the closed cover without turning pages and replays on return',async({page})=>{
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);
  await page.emulateMedia({reducedMotion:'no-preference'});await page.evaluate(()=>new Promise(requestAnimationFrame));
  const link=page.getByRole('link',{name:/Zine of Extracurriculars/}),book=page.locator('.zine-preview-scene');
- await link.hover();await expect(book).toHaveAttribute('data-status','ready',{timeout:60000});
- await expect(book).toHaveAttribute('data-requested-page','-1');
- await expect.poll(()=>book.getAttribute('data-leaf-states').then(value=>JSON.parse(value||'[]').filter(leaf=>leaf.progress>.1).length)).toBeGreaterThan(1);
- await expect(book).toHaveAttribute('data-view','cover',{timeout:30000});
- expect(JSON.parse(await book.getAttribute('data-leaf-states')).every(leaf=>leaf.progress===0)).toBe(true);
- await book.evaluate(el=>el.dataset.testIdentity='same-closing-book');
- await page.mouse.move(2,2);await expect(book).toHaveAttribute('data-active','false');await link.hover();
- await expect(book).toHaveAttribute('data-test-identity','same-closing-book');await expect(book).toHaveAttribute('data-view','spread');
- await expect(book).toHaveAttribute('data-view','cover',{timeout:30000});
- await page.mouse.move(2,2);await page.emulateMedia({reducedMotion:'reduce'});await link.hover();
- await expect(book).toHaveAttribute('data-view','cover');expect(JSON.parse(await book.getAttribute('data-leaf-states')).every(leaf=>leaf.progress===0)).toBe(true);
+ await link.hover();await expect(book).toHaveAttribute('data-status','ready',{timeout:60000});await expect(book).toHaveAttribute('data-preview-intro','spinning');
+ await expect(book).toHaveAttribute('data-view','cover');await expect(book).toHaveAttribute('data-requested-page','-1');const angle=await book.getAttribute('data-preview-spin-angle');await expect.poll(()=>book.getAttribute('data-preview-spin-angle')).not.toBe(angle);
+ expect(JSON.parse(await book.getAttribute('data-leaf-states')).every(leaf=>leaf.progress===0)).toBe(true);await expect(book).toHaveAttribute('data-preview-intro','settled',{timeout:30000});await expect(book).toHaveAttribute('data-preview-spin-angle','0');
+ await book.evaluate(el=>el.dataset.testIdentity='same-spinning-book');await page.mouse.move(2,2);await expect(book).toHaveAttribute('data-active','false');await link.hover();await expect(book).toHaveAttribute('data-test-identity','same-spinning-book');await expect(book).toHaveAttribute('data-preview-intro','spinning');await expect(book).toHaveAttribute('data-view','cover');
+ await page.mouse.move(2,2);await page.emulateMedia({reducedMotion:'reduce'});await link.hover();await expect(book).toHaveAttribute('data-preview-intro','settled');await expect(book).toHaveAttribute('data-view','cover');expect(JSON.parse(await book.getAttribute('data-leaf-states')).every(leaf=>leaf.progress===0)).toBe(true);
 });
 
 test('resume corner washes arrive after the paper and remain soft in both reading states',async({page})=>{
@@ -1678,4 +1672,20 @@ test('short screens keep the entire cartridge caption clear of the scene crop an
    const before=await caption.boundingBox();await page.keyboard.press('r');await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-magnification',bounds.zoom);const after=await caption.boundingBox();expect(after.y).toBeCloseTo(before.y,0);
   }
  }
+});
+
+test('hover previews are fifty percent larger, stay inside narrow viewports and Chat Bubbles is emerald',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),chat=nav.getByRole('link',{name:/Chat Bubbles/}),preview=nav.locator('.recent-project-preview');await chat.hover();const wide=await nav.locator('.recent-preview-art').boundingBox();expect(wide.width).toBeCloseTo(326*1.5,0);expect(wide.height).toBeCloseTo(326/1.8*1.5,0);expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#169b72');
+ await page.setViewportSize({width:900,height:650});await chat.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const narrow=await nav.locator('.recent-preview-art').boundingBox();expect(narrow.width).toBeCloseTo(450,0);expect(narrow.x).toBeGreaterThanOrEqual(0);expect(narrow.x+narrow.width).toBeLessThanOrEqual(900);expect(narrow.y+narrow.height).toBeLessThanOrEqual(650);
+ await page.setViewportSize({width:1440,height:600});await chat.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const short=await nav.locator('.recent-preview-art').boundingBox();expect(short.width).toBeCloseTo(489,0);expect(short.y+short.height).toBeLessThanOrEqual(600);
+ await page.getByRole('button',{name:'Switch to dark mode'}).click();await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
+});
+
+test('reload and full-page navigation always start at the top across the site',async({page,request})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:390,height:560});await page.emulateMedia({reducedMotion:'reduce'});await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+ for(const path of ['/','/after-hours/','/photos/','/resume/']){
+  await page.goto(path);await expect(page.locator('main')).toBeVisible();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeGreaterThan(100);await page.evaluate(()=>scrollTo(0,400));await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(80);expect(await page.evaluate(()=>history.scrollRestoration)).toBe('manual');await page.reload();await expect(page.locator('main')).toBeVisible();await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
+ }
+ const archived=await request.get('/zine/');expect(await archived.text()).toContain('history.scrollRestoration = "manual"');
 });

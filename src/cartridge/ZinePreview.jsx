@@ -20,7 +20,7 @@ export function ZinePreview({active,dark}) {
   useLayoutEffect(()=>{
     const book=engine.current;if(!book)return;
     book.setOverlayOpen(!active);
-    if(active)book.playPreviewClose();
+    if(active)book.playPreviewSpin();else book.stopPreviewSpin();
   },[active,status]);
   return <><div ref={host} className="zine-preview-scene" data-status={status} data-interactive="false" data-active={active} />{status==="unavailable"&&<img className="zine-preview-fallback" src="/zines/covers/extracurriculars-blue-ink.jpg" alt="" />}</>;
 }

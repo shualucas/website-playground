@@ -6,7 +6,7 @@ import {CameraLink} from "./CameraLink";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai"},
-  "chat-bubbles":{team:"Search",accent:"#7b9edf",kind:"chat"},
+  "chat-bubbles":{team:"Search",accent:"#169b72",kind:"chat"},
   "search-labs":{team:"Search",accent:"#b759ba",kind:"search"},
   "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia"},
   "rave-flyer-zine":{team:"Fun",accent:"#e48dae",kind:"zine"},
@@ -30,7 +30,7 @@ function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true})
   </div>;
 }
 export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
-  const canHover=useMedia("(hover:hover) and (pointer:fine)"),narrow=useMedia("(max-width:1099px)");
+  const canHover=useMedia("(hover:hover) and (pointer:fine)"),narrow=useMedia("(max-width:1099px), (max-height:700px)");
   const [active,setActive]=useState(null),[visible,setVisible]=useState(false);
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
@@ -46,7 +46,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
     if(!canHover||!pointer.current||event.pointerType==="touch"||!browser.current)return;
     const bounds=browser.current.getBoundingClientRect(),y=Math.max(0,Math.min(bounds.height,event.clientY-bounds.top));
     navigation.current?.style.setProperty("--preview-offset",`${(y-bounds.height/2)*.45}px`);
-    const width=Math.min(300,innerWidth-48),height=width/1.8;
+    const width=Math.min(innerWidth>=1100?489:450,innerWidth-48,(innerHeight-32)*1.8),height=width/1.8;
     const x=event.clientX+width+22>innerWidth-16?event.clientX-width-22:event.clientX+22;
     const top=event.clientY+height+20>innerHeight-16?event.clientY-height-18:event.clientY+18;
     navigation.current?.style.setProperty("--preview-client-x",`${Math.max(16,Math.min(innerWidth-width-16,x))}px`);
@@ -57,7 +57,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
-    root.style.setProperty("--project-surface",showing?`color-mix(in srgb,${preview.accent} 12%,var(--scene-bg))`:"var(--scene-bg)");
+    root.style.setProperty("--project-surface",showing?`color-mix(in srgb,${preview.accent} 16%,var(--scene-bg))`:"var(--scene-bg)");
     return()=>root.style.removeProperty("--project-surface");
   },[showing,preview?.accent]);
   useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);
