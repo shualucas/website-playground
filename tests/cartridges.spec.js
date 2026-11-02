@@ -1081,6 +1081,7 @@ test("resume keeps its original paper preview usable without WebGL", async ({pag
   await expect(page.locator('.resume-artwork picture')).toHaveCSS('opacity','1');
   await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
   const idleGlow=await sheet.evaluate(el=>getComputedStyle(el).boxShadow),box=await sheet.boundingBox();
+  await expect(sheet).toHaveCSS('outline-color','rgb(228, 59, 250)');
   await page.mouse.move(box.x+box.width/2,box.y+box.height*.4);
   await expect.poll(()=>sheet.evaluate(el=>Number(el.style.getPropertyValue('--paper-emphasis')))).toBeGreaterThan(.98);
   expect(await sheet.evaluate(el=>getComputedStyle(el).boxShadow)).not.toBe(idleGlow);
@@ -1486,16 +1487,18 @@ test('history songs share the current-track gap and dismiss for project browsing
   await links.first().hover();await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(history).toHaveAttribute('data-state','closing');await expect(history).toHaveCount(0);
 });
 
-test('resume header has a scrim and its icon-only Read back button returns to Page',async({page})=>{
+test('resume header scrim appears only in Read and aligned back arrows return to Page',async({page})=>{
   await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/resume/');
   const main=page.locator('.resume-page'),header=page.locator('.resume-header-shell');
   await expect(page.getByRole('link',{name:'Home',exact:true})).toHaveAttribute('href','/');
+  const homeArrow=await page.locator('.resume-home-link svg').boundingBox();
+  expect(await header.evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('0');
   const scrim=await header.evaluate(el=>{const s=getComputedStyle(el,'::before');return{background:s.backgroundImage,blur:s.backdropFilter,events:s.pointerEvents,height:s.height}});
   expect(scrim.background).toContain('linear-gradient');expect(scrim.blur).toBe('blur(12px)');expect(scrim.events).toBe('none');expect(scrim.height).toBe('112px');
   await expect(page.locator('.resume-sheet')).toHaveAttribute('data-art-ready','true');const controls=await page.locator('.resume-toolbar').boundingBox();
   await page.getByRole('button',{name:'Read',exact:true}).click();await expect(main).toHaveAttribute('data-view','read');
-  const back=page.getByRole('button',{name:'Back to page view',exact:true});await expect(back).toBeVisible();await expect(back).toHaveText('');await expect(back.locator('svg')).toHaveCount(1);await expect(page.getByRole('link',{name:'Home',exact:true})).toHaveCount(0);
-  await back.click();await expect(main).toHaveAttribute('data-view','page');await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();expect(await page.locator('.resume-toolbar').boundingBox()).toEqual(controls);
+  const back=page.getByRole('button',{name:'Back to page view',exact:true});await expect(back).toBeVisible();expect(await header.evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('1');expect(await back.locator('svg').boundingBox()).toEqual(homeArrow);await expect(back).toHaveText('');await expect(back.locator('svg')).toHaveCount(1);await expect(page.getByRole('link',{name:'Home',exact:true})).toHaveCount(0);
+  await back.click();await expect(main).toHaveAttribute('data-view','page');await expect(page.getByRole('link',{name:'Home',exact:true})).toBeVisible();expect(await page.locator('.resume-toolbar').boundingBox()).toEqual(controls);expect(await header.evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('0');
   await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Read',exact:true}).click();await page.getByRole('button',{name:'Back to page view',exact:true}).click();await expect(main).toHaveAttribute('data-view','page');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

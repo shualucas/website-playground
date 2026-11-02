@@ -18,10 +18,11 @@ export class PaperSurface {
   private back: THREE.Mesh;
   private halo: THREE.Mesh;
   private edgeWidth={value:1};
+  private edgeTint={value:new THREE.Color("#e43bfa")};
   private glowBase=.23;
   // A local, depth-tested halo follows the same deformed surface. No full-screen bloom pass.
   private haloMaterial=new THREE.ShaderMaterial({
-    uniforms:{tint:{value:new THREE.Color("#edc7b9")},strength:{value:.23},spread:{value:1}},
+    uniforms:{tintTop:{value:new THREE.Color("#c5b2ff")},tintBottom:{value:new THREE.Color("#f6b4e7")},strength:{value:.23},spread:{value:1}},
     vertexShader:`varying vec2 vHaloPoint;
       void main(){
         vec3 p=position;
@@ -30,13 +31,14 @@ export class PaperSurface {
         vHaloPoint=(uv-.5)*vec2(${W+HALO_MARGIN*2},${H+HALO_MARGIN*2});
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
-    fragmentShader:`uniform vec3 tint;uniform float strength;uniform float spread;varying vec2 vHaloPoint;
+    fragmentShader:`uniform vec3 tintTop;uniform vec3 tintBottom;uniform float strength;uniform float spread;varying vec2 vHaloPoint;
       void main(){
         vec2 q=abs(vHaloPoint)-(vec2(${W},${H})*.5-.065);
         float d=length(max(q,0.))+min(max(q.x,q.y),0.)-.065;
         float glow=exp(-pow(max(d,0.)/(.09*spread),1.5));
         float fade=1.-smoothstep(.15,${HALO_MARGIN},d);
-        gl_FragColor=vec4(tint,glow*fade*strength);
+        float blend=clamp(.5+(vHaloPoint.x/${W}+vHaloPoint.y/${H})*.5,0.,1.);
+        gl_FragColor=vec4(mix(tintBottom,tintTop,blend),glow*fade*strength);
         #include <colorspace_fragment>
       }`,
     transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
@@ -91,7 +93,7 @@ export class PaperSurface {
           float paperDistance=length(max(paperQ,0.0))+min(max(paperQ.x,paperQ.y),0.0)-.065;
           if(paperDistance>0.)discard;`);
         if(material!==this.depth){
-          shader.uniforms.paperEdge={value:new THREE.Color("#a59b91")};
+          shader.uniforms.paperEdge=this.edgeTint;
           shader.uniforms.paperEdgeWidth=this.edgeWidth;
           shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 paperEdge;uniform float paperEdgeWidth;');
           shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
@@ -110,7 +112,7 @@ export class PaperSurface {
             #include <opaque_fragment>`);
         }
       };
-      material.customProgramCacheKey=()=>`resume-rounded-satin-edge-${material.type}-v3`;
+      material.customProgramCacheKey=()=>`resume-rounded-satin-edge-${material.type}-v4`;
     }
     this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;this.front.customDepthMaterial=this.depth;
     this.back = new THREE.Mesh(this.geometry,this.backMaterial);
@@ -130,7 +132,13 @@ export class PaperSurface {
     this.scene.add(hemisphere,this.key,fill,bounce,this.floor);
     this.contacts=[...host.querySelectorAll<HTMLAnchorElement>(".paper-contact")].map(element=>({element,x:parseFloat(element.style.left)/100,y:parseFloat(element.style.top)/100,style:element.getAttribute("style")}));
     this.observer=new ResizeObserver(this.resize);this.observer.observe(host);this.observer.observe(host.parentElement!);
-    const updateTheme=()=>{const dark=document.documentElement.dataset.colorMode==="dark";this.floorMaterial.opacity=dark?.4:.18;this.glowBase=dark?.32:.23};
+    const updateTheme=()=>{
+      const dark=document.documentElement.dataset.colorMode==="dark",style=getComputedStyle(host);
+      this.floorMaterial.opacity=dark?.4:.18;this.glowBase=dark?.32:.23;
+      this.haloMaterial.uniforms.tintTop.value.set(style.getPropertyValue("--resume-pink").trim());
+      this.haloMaterial.uniforms.tintBottom.value.set(style.getPropertyValue("--resume-warm").trim());
+      this.edgeTint.value.set(style.getPropertyValue("--resume-edge").trim());
+    };
     this.theme=new MutationObserver(()=>{updateTheme();this.invalidate()});
     this.theme.observe(document.documentElement,{attributes:true,attributeFilter:["data-color-mode"]});
     updateTheme();

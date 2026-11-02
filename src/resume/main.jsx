@@ -121,8 +121,10 @@ function Resume() {
   return <main ref={content} className="collection resume-page" data-reveal-flow="page" data-view={reading ? "read" : "page"} data-transitioning={transitioning}>
     <div className="resume-gradient" ref={wash} data-active={gradientReady} aria-hidden="true"><div className="resume-wash-pink" /><div className="resume-wash-warm" /></div>
     <div className="resume-header-shell"><header className="collection-header resume-nav" data-reveal data-reveal-at="0">
-      {reading ? <button type="button" className="resume-page-back" aria-label="Back to page view" disabled={artFailed} onClick={()=>chooseView("page")}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg></button>
-        : <a href="/" aria-label="Home"><span className="link-copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Home</span></a>}<ThemeToggle />
+      <div className="resume-back-nav" data-reading={reading}>
+        <a className="resume-home-link" href="/" aria-label="Home" aria-hidden={reading} inert={reading} tabIndex={reading ? -1 : undefined}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg><span>Home</span></a>
+        <button type="button" className="resume-page-back" aria-label="Back to page view" aria-hidden={!reading} inert={!reading} tabIndex={reading ? undefined : -1} disabled={artFailed} onClick={()=>chooseView("page")}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg></button>
+      </div><ThemeToggle />
     </header></div>
     <div className="resume-toolbar" data-reveal data-reveal-at="90">
       <div className="resume-view-switch" role="group" aria-label="Résumé view"><button type="button" aria-pressed={selectedView === "page"} onClick={() => chooseView("page")} disabled={artFailed}>Page</button><button type="button" aria-pressed={selectedView === "read"} onClick={() => chooseView("read")}>Read</button></div>
