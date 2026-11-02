@@ -80,7 +80,7 @@ export class CartridgeScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .95;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.VSMShadowMap;
-    this.renderer.setClearColor(this.backdrop, 1);
+    this.renderer.setClearColor(this.backdrop, 0);
     this.renderer.domElement.setAttribute("aria-hidden", "true"); host.appendChild(this.renderer.domElement);
     this.camera.position.set(0, 0, 68); this.camera.lookAt(0, 0, 0);
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -292,7 +292,7 @@ export class CartridgeScene {
   }
   setPaused(value: boolean) { this.paused = value; if (value) {this.pointerBrowsing=false;this.stop()} else this.start(); }
   setTheme(dark: boolean) {
-    this.backdrop.set(dark ? "#1b1c1b" : "#f0f0f0"); this.renderer.setClearColor(this.backdrop, 1);
+    this.backdrop.set(dark ? "#1b1c1b" : "#f0f0f0"); this.renderer.setClearColor(this.backdrop, 0);
     this.shadowMaterial.opacity = dark ? .2 : .085; this.start();
   }
   reset() { for (const item of this.items) item.spin.set(0, 0); this.layout(); this.start(); }

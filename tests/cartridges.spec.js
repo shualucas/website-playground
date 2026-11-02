@@ -747,7 +747,7 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
   await expect(navigation.locator('.recent-project-preview')).toHaveCSS('opacity','1');
   await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
-  await expect(links.nth(1).locator('.recent-project-name')).toHaveCSS('color',await links.nth(1).locator('.recent-project-team').evaluate(el=>getComputedStyle(el).color));
+  await expect(links.nth(1)).toHaveCSS('opacity','0.4');
   const titleBefore=await links.first().locator('.recent-project-copy').boundingBox();
   await links.nth(1).hover();await links.nth(2).hover();await links.last().hover();
   await expect(navigation).toHaveAttribute('data-active-project','rave-flyer-zine');
@@ -771,7 +771,7 @@ test("recent projects use one column with native reader links and restore focus 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   for(const link of await links.all()) { const r=await link.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366); }
   await page.goto(await links.last().getAttribute('href'));
-  await expect(page.locator('.flyer-gallery img')).toHaveCount(5);
+  await expect(page.locator('.flyer-gallery img')).toHaveCount(5,{timeout:15000});
   await page.getByRole('link',{name:'Back to Josh Lucas',exact:true}).click();
   await expect(page.locator('.collection')).toBeVisible();
 });
@@ -1380,4 +1380,45 @@ test('cartridge browsing follows only the exposed tops and rocks with the contac
   expect(await caption.locator(':scope > span').first().evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
   await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-contact-pose0','0.0000,0.0000,0.0000');
   await expect(stage).toHaveAttribute('data-magnification','2.7');await expect(stage).toHaveAttribute('data-intersections','0');expect(errors).toEqual([]);
+});
+
+
+test('project previews follow movement inside a row, dim other content and wash the background by project',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
+  await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args)}});
+  await page.goto('/');
+  await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
+  const google=page.getByRole('link',{name:'Google (opens in a new tab)'});
+  await expect(google).toHaveAttribute('href','https://google.ai');await expect(google).toHaveAttribute('rel','noopener noreferrer');
+  const googleBefore=await google.boundingBox();await google.hover();
+  expect(new Set(await google.locator('span').evaluateAll(els=>els.map(el=>getComputedStyle(el).color))).size).toBe(4);
+  const googleAfter=await google.boundingBox();expect(googleAfter.width).toBe(googleBefore.width);expect(googleAfter.height).toBe(googleBefore.height);
+  const navigation=page.getByRole('navigation',{name:'Recent projects'}),links=navigation.locator('.recent-project-link');
+  await navigation.scrollIntoViewIfNeeded();await page.emulateMedia({reducedMotion:'no-preference'});
+  const row=await links.first().boundingBox();
+  await page.mouse.move(row.x+row.width*.4,row.y+8);
+  const preview=navigation.locator('.recent-project-preview');await expect(preview).toHaveCSS('opacity','1');
+  const position=()=>preview.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m42);
+  const firstTarget=await navigation.evaluate(el=>parseFloat(el.style.getPropertyValue('--preview-offset')));
+  await expect.poll(async()=>Math.abs(await position()-firstTarget)).toBeLessThan(.3);
+  const top=await position();
+  await page.mouse.move(row.x+row.width*.4,row.y+row.height-8);
+  await expect.poll(async()=>await position()-top).toBeGreaterThan(14);
+  await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
+  await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
+  await expect(links.first()).toHaveCSS('opacity','1');
+  for(let i=1;i<5;i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
+  const ids=['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
+  const hues=['#6988d8','#b759ba','#e5633d','#e48dae','#b69272'];
+  const wash=page.locator('.project-hue-wash');await expect(wash).toHaveCSS('pointer-events','none');
+  for(let i=0;i<ids.length;i++){
+    await links.nth(i).hover();await expect(navigation).toHaveAttribute('data-active-project',ids[i]);
+    expect(await navigation.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe(hues[i]);
+    await expect(wash.locator('span[data-active="true"]')).toHaveCount(1);await expect(wash.locator('span').nth(i)).toHaveCSS('opacity','1');
+  }
+  await page.mouse.move(5,5);await expect(wash).toHaveAttribute('data-active','false');
+  for(const link of await links.all())await expect(link).toHaveCSS('opacity','1');
+  await page.emulateMedia({reducedMotion:'reduce'});await links.first().focus();
+  await expect(preview).toHaveCSS('transform','none');expect(await wash.locator('span').first().evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(.001);
+  await page.keyboard.press('Enter');await expect(page.locator('.case-study')).toBeVisible();await expect(wash).toHaveAttribute('data-active','false');
 });

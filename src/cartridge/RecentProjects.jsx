@@ -5,9 +5,9 @@ import { CameraLink } from "./CameraLink";
 
 const previews = {
   "ai-mode-nudges": { image: "/cartridges/labels/ai-mode.svg", team: "Google", accent: "#6988d8", kind: "ai" },
-  "search-labs": { image: "/cartridges/labels/search-label.jpg", team: "Google", accent: "#6988d8", kind: "search" },
+  "search-labs": { image: "/cartridges/labels/search-label.jpg", team: "Google", accent: "#b759ba", kind: "search" },
   "stadia-store-redesign": { image: "/cartridges/labels/stadia-label.jpg", team: "Stadia", accent: "#e5633d", kind: "stadia" },
-  "rave-flyer-zine": { image: "/zines/rave-flyers/wavform.jpg", team: "Independent", accent: "#6c91d1", kind: "zine" },
+  "rave-flyer-zine": { image: "/zines/rave-flyers/wavform.jpg", team: "Independent", accent: "#e48dae", kind: "zine" },
   "film": { team: "Film", accent: "#b69272", kind: "film" },
 };
 const film = { id: "film", label: "Say cheese!", description: "Film photographs" };
@@ -15,19 +15,27 @@ const film = { id: "film", label: "Say cheese!", description: "Film photographs"
 export function RecentProjects({ onOpen, dark, ready, hidden }) {
   const [active, setActive] = useState(null);
   const [visible, setVisible] = useState(false);
-  const [position, setPosition] = useState(0);
+  const navigation = useRef(null), browser = useRef(null);
   const pointer = useRef(null), focus = useRef(null);
   const select = (id, index) => {
-    setActive(id); setVisible(true); setPosition(index / recentProjects.length);
+    setActive(id); setVisible(true);
+    const height = browser.current?.clientHeight ?? 0;
+    navigation.current?.style.setProperty("--preview-offset", `${((index + .5) / (recentProjects.length + 1) - .5) * height * .45}px`);
   };
   const release = () => {
     const id = focus.current ?? pointer.current;
     if (id) select(id, [...recentProjects, film].findIndex(project => project.id === id));
     else setVisible(false);
   };
+  const track = event => {
+    if (!pointer.current || event.pointerType === "touch" || !browser.current) return;
+    const bounds = browser.current.getBoundingClientRect();
+    const y = Math.max(0, Math.min(bounds.height, event.clientY - bounds.top));
+    navigation.current?.style.setProperty("--preview-offset", `${(y - bounds.height / 2) * .45}px`);
+  };
   const browse = (event, id, index) => {
     if (event.pointerType === "touch" || !matchMedia("(hover:hover)").matches) return;
-    pointer.current = id; select(id, index);
+    pointer.current = id; select(id, index); track(event);
   };
   const focused = (event, id, index) => {
     if (!event.target.matches(":focus-visible")) return;
@@ -35,15 +43,20 @@ export function RecentProjects({ onOpen, dark, ready, hidden }) {
   };
   const project = [...recentProjects, film].find(project => project.id === active);
   const preview = previews[active];
-  return <nav className="recent-projects" aria-labelledby="recent-projects-title"
-    data-preview-active={visible} data-active-project={visible ? active : ""}
-    style={{ "--preview-accent": preview?.accent ?? "#6988d8", "--preview-offset": `${(position - .5) * 32}px` }}
+  const showing = visible && !hidden;
+  return <>
+    <div className="project-hue-wash" aria-hidden="true" data-active={showing}>
+      {Object.entries(previews).map(([id, item]) => <span key={id} data-active={showing && active === id} style={{ "--wash-color": item.accent }} />)}
+    </div>
+    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title"
+    data-preview-active={showing} data-active-project={showing ? active : ""}
+    style={{ "--preview-accent": preview?.accent ?? "#6988d8" }}
     onPointerLeave={() => { pointer.current = null; release(); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) { focus.current = null; release(); } }}>
     <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>
-    <div className="recent-project-browser">
-      <ul className="recent-project-list" onPointerLeave={() => { pointer.current = null; release(); }}>
-        {recentProjects.map((project, index) => <li key={project.id} data-active={visible && active === project.id}
+    <div ref={browser} className="recent-project-browser">
+      <ul className="recent-project-list" onPointerMove={track} onPointerLeave={() => { pointer.current = null; release(); }}>
+        {recentProjects.map((project, index) => <li key={project.id} data-active={showing && active === project.id}
           onPointerEnter={event => browse(event, project.id, index)} onFocus={event => focused(event, project.id, index)}
           data-reveal data-reveal-at={entrance.projectsStart + (index + 1) * 60}>
           <a className="recent-project-link" href={project.href || `/?project=${project.id}&view=case-study`}
@@ -58,14 +71,14 @@ export function RecentProjects({ onOpen, dark, ready, hidden }) {
             <svg className="recent-project-arrow" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </a>
         </li>)}
-        <li className="recent-camera-row" data-active={visible && active === "film"}
+        <li className="recent-camera-row" data-active={showing && active === "film"}
           onPointerEnter={event => browse(event, "film", recentProjects.length)} onFocus={event => focused(event, "film", recentProjects.length)}
           data-reveal data-reveal-at={entrance.projectsStart + (recentProjects.length + 1) * 60}>
           <CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={recentProjects.length + 1} rowTeam="Film"
             entranceAt={entrance.projectsStart + (recentProjects.length + 1) * 60} />
         </li>
       </ul>
-      <div className="recent-project-preview" aria-hidden="true" data-visible={visible}>
+      <div className="recent-project-preview" aria-hidden="true" data-visible={showing}>
         {project && <div className="recent-preview-content" key={project.id} data-kind={preview.kind}>
           <div className="recent-preview-art">
             {preview.kind === "film" ? <div className="recent-preview-polaroids"><i /><i /><i /></div>
@@ -76,5 +89,5 @@ export function RecentProjects({ onOpen, dark, ready, hidden }) {
         </div>}
       </div>
     </div>
-  </nav>;
+  </nav></>;
 }
