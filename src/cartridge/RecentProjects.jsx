@@ -25,8 +25,7 @@ function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true})
     <div className="recent-preview-art" data-motion={showing}>
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
-      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-motion-visual" data-visual={preview.kind}><span className="motion-mesh"/></div>}
-      <span key={`dither-${project?.id}`} className="recent-preview-dither"/>
+      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}/>}
     </div>
   </div>;
 }

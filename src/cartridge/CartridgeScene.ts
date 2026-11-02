@@ -46,6 +46,11 @@ export class CartridgeScene {
   private hovered: CartridgeId | null = null;
   private hoverContact = new THREE.Vector2();
   private hoverLocal = new THREE.Vector3();
+  private swipeDirection = 0;
+  private swipeStrength = 0;
+  private lastPointerAt = 0;
+  private contactPivot = new THREE.Vector3();
+  private rotatedPivot = new THREE.Vector3();
   private pointerClient = new THREE.Vector2();
   private pointerBrowsing = false;
   private pickRect: DOMRect | null = null;
@@ -284,7 +289,7 @@ export class CartridgeScene {
   }
   setHovered(id: CartridgeId | null) {
     // A keyboard focus change takes over from the last physical pointer contact.
-    if(id!==this.hovered){this.pointerBrowsing=false;this.hoverContact.set(0,0);this.hovered=id;this.host.dataset.hovered=id??""}
+    if(id!==this.hovered){this.pointerBrowsing=false;this.hoverContact.set(0,0);this.swipeDirection=this.swipeStrength=this.lastPointerAt=0;this.host.dataset.swipeDirection="none";this.hovered=id;this.host.dataset.hovered=id??""}
     this.start();
   }
   setPaused(value: boolean) { this.paused = value; if (value) {this.pointerBrowsing=false;this.stop()} else this.start(); }
@@ -365,6 +370,13 @@ export class CartridgeScene {
   };
   private move = (event: PointerEvent) => {
     if (this.paused) return;
+    if(!this.drag&&event.pointerType!=="touch"){
+      const dy=this.lastPointerAt?event.clientY-this.pointerClient.y:event.movementY;
+      const elapsed=this.lastPointerAt?Math.max(8,event.timeStamp-this.lastPointerAt):16;
+      if(Math.abs(dy)>.35){this.swipeDirection=dy>0?1:-1;this.swipeStrength=Math.min(1,Math.abs(dy)/elapsed)}
+      this.lastPointerAt=event.timeStamp;
+      this.host.dataset.swipeDirection=this.swipeDirection<0?"up":this.swipeDirection>0?"down":"none";
+    }
     this.pointerClient.set(event.clientX,event.clientY);
     if (this.drag && this.drag.id === event.pointerId) {
       const d = this.drag;
@@ -390,7 +402,7 @@ export class CartridgeScene {
     this.start();
   };
   private cancel = () => { if(!this.drag)return;this.drag = null;this.host.dataset.dragging = "false";this.leave(); };
-  private leave = () => { if (!this.drag) { this.pointerBrowsing=false;this.hovered = null;this.host.dataset.hovered="";this.host.dataset.hoverContact="";this.host.style.cursor="default";this.callbacks.onHover(null);this.start(); } };
+  private leave = () => { if (!this.drag) { this.pointerBrowsing=false;this.hovered = null;this.lastPointerAt=0;this.swipeDirection=this.swipeStrength=0;this.host.dataset.swipeDirection="none";this.host.dataset.hovered="";this.host.dataset.hoverContact="";this.host.style.cursor="default";this.callbacks.onHover(null);this.start(); } };
   private contextLost = (event: Event) => { event.preventDefault(); this.stop(); this.callbacks.onError(); };
   private viewport = () => { const rect = this.host.getBoundingClientRect();this.pickRect=rect;this.inView = rect.bottom > 0 && rect.top < innerHeight; if (this.inView) this.start(); else this.stop(); };
   private visibility = () => { if (document.hidden) this.stop(); else this.start(); };
@@ -442,12 +454,19 @@ export class CartridgeScene {
       item.idle.rotation.z = THREE.MathUtils.lerp(item.idle.rotation.z, drifting ? Math.sin(this.ambientTime * .61) * .012 : 0, blend);
       this.host.dataset[`drift${i}`] = [item.idle.position.y, item.idle.rotation.y].join(",");
       const hover = this.hovered === item.id && !reduced && !this.drag;
-      const contactPitch=hover?-.02+this.hoverContact.y*.012:0,contactYaw=hover?-this.hoverContact.x*.025:0,contactDepth=hover?.028:0;
-      handling.position.z = THREE.MathUtils.lerp(handling.position.z,contactDepth,blend);
+      const contactPitch=hover?(this.swipeDirection||-1)*(.021+this.swipeStrength*.011)+this.hoverContact.y*.002:0,contactYaw=hover?-this.hoverContact.x*.025:0;
       handling.rotation.x = THREE.MathUtils.lerp(handling.rotation.x,contactPitch,blend);
       handling.rotation.y = THREE.MathUtils.lerp(handling.rotation.y,contactYaw,blend);
+      // Keep the lower edge anchored; the contacted top does the moving.
+      this.contactPivot.copy(item.center);this.contactPivot.y-=item.half.y;
+      this.rotatedPivot.copy(this.contactPivot).applyEuler(handling.rotation);
+      handling.position.copy(this.contactPivot).sub(this.rotatedPivot);
+      const bottomMotion=this.rotatedPivot.copy(this.contactPivot).applyEuler(handling.rotation).add(handling.position).distanceTo(this.contactPivot);
+      this.contactPivot.y+=item.half.y*2;
+      const topMotion=this.rotatedPivot.copy(this.contactPivot).applyEuler(handling.rotation).add(handling.position).distanceTo(this.contactPivot);
+      this.host.dataset[`contactMotion${i}`]=`${bottomMotion.toFixed(6)},${topMotion.toFixed(6)}`;
       this.host.dataset[`contactPose${i}`]=`${handling.position.z.toFixed(4)},${handling.rotation.x.toFixed(4)},${handling.rotation.y.toFixed(4)}`;
-      const difference = root.position.distanceToSquared(target) + velocity.lengthSq() + angularVelocity.lengthSq() + Math.abs(root.rotation.x - targetAngle.x) + Math.abs(root.rotation.y - targetAngle.y) + Math.abs(root.rotation.z - targetAngle.z) + Math.abs(handling.position.z-contactDepth) + Math.abs(handling.rotation.x-contactPitch) + Math.abs(handling.rotation.y-contactYaw);
+      const difference = root.position.distanceToSquared(target) + velocity.lengthSq() + angularVelocity.lengthSq() + Math.abs(root.rotation.x - targetAngle.x) + Math.abs(root.rotation.y - targetAngle.y) + Math.abs(root.rotation.z - targetAngle.z) + Math.abs(handling.rotation.x-contactPitch) + Math.abs(handling.rotation.y-contactYaw);
       if (difference > .00001) unsettled = true;
       else { root.position.copy(target); velocity.set(0, 0, 0); angularVelocity.set(0, 0, 0); root.rotation.set(targetAngle.x, targetAngle.y, targetAngle.z); }
       this.host.dataset[`rotation${i}`] = root.rotation.toArray().slice(0, 3).join(",");
@@ -493,6 +512,12 @@ export class CartridgeScene {
         browsePoints.push({x:(this.projected.x+1)*this.host.clientWidth/2,y:(1-this.projected.y)*this.host.clientHeight/2});
       }
       this.host.dataset[`browse${i}`]=JSON.stringify(browsePoints);
+      const swipeStrip=[];
+      for(const z of [-.55,.55]){
+        this.projected.set(0,item.half.y,z*item.half.z).applyMatrix4(item.hitbox.matrixWorld).project(this.camera);
+        swipeStrip.push({x:(this.projected.x+1)*this.host.clientWidth/2,y:(1-this.projected.y)*this.host.clientHeight/2});
+      }
+      this.host.dataset[`swipeStrip${i}`]=JSON.stringify(swipeStrip.sort((a,b)=>a.y-b.y));
       this.host.style.setProperty(`--hit-${i}-x`, `${THREE.MathUtils.clamp(point.x, 22, this.host.clientWidth - 22)}px`);
       this.host.style.setProperty(`--hit-${i}-y`, `${THREE.MathUtils.clamp(point.y, 22, this.host.clientHeight - 22)}px`);
       if (item.id === this.selected) {
