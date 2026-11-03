@@ -9,7 +9,7 @@ const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai"},
   "chat-bubbles":{team:"Search",accent:"#169b72",kind:"chat"},
   "search-labs":{team:"Search",accent:"#b759ba",kind:"search"},
-  "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",image:"/previews/stadia-store-redesign.jpg"},
+  "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",image:"/previews/stadia-store-redesign.gif",poster:"/previews/stadia-store-redesign-still.webp",width:640,height:429},
   "rave-flyer-zine":{team:"Fun",accent:"#e48dae",kind:"zine"},
   film:{team:"Fun",accent:"#b69272",kind:"film"},
 };
@@ -27,7 +27,7 @@ function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true})
       <div className="recent-preview-source">
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
-      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}>{preview.image&&<img className="recent-preview-image" src={preview.image} width="566" height="1277" alt="Destiny 2 on Stadia, showing demo and purchase options" decoding="async"/>}</div>}
+      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}>{preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}</div>}
       </div>
       {project&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
     </div>

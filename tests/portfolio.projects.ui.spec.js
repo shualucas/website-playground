@@ -327,3 +327,13 @@ test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds'
  const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
  const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
 });
+
+test('Stadia plays its animated GIF after the ASCII dissolve and uses a still for reduced motion',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'});await nav.getByRole('link',{name:/Stadia Store Redesign/}).hover();
+ const image=nav.locator('.recent-preview-image');await expect(image).toBeVisible();await expect(image).toHaveJSProperty('complete',true);await expect(image).toHaveJSProperty('naturalWidth',640);
+ await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete',{timeout:15000});await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-source','content');
+ expect(await image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign\.gif$/);const box=await image.boundingBox();expect(box.width/box.height).toBeCloseTo(640/429,2);
+ const first=await image.screenshot();await expect.poll(async()=>!(await image.screenshot()).equals(first),{timeout:17000,intervals:[250,500,1000]}).toBe(true);
+ await page.emulateMedia({reducedMotion:'reduce'});await expect.poll(()=>image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign-still\.webp$/);await expect(image).toHaveJSProperty('complete',true);
+});
