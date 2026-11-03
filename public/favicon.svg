@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>J cartridge</title>
-  <path d="M8 10h48a5 5 0 0 1 5 5v31h-5v8H8v-8H3V15a5 5 0 0 1 5-5Z" fill="#5279b0" stroke="#263c5e" stroke-width="2" stroke-linejoin="round"/>
-  <path d="M9 15h46M12 49h40" fill="none" stroke="#a1b9d8" stroke-width="2" stroke-linecap="round"/>
-  <path d="M5 21h2m-2 5h2m-2 5h2m-2 5h2m50-15h2m-2 5h2m-2 5h2m-2 5h2" fill="none" stroke="#263c5e" stroke-width="1.5"/>
-  <rect x="11" y="20" width="42" height="24" rx="2" fill="#f5efdf" stroke="#263c5e" stroke-width="2"/>
-  <path d="M29 26h9v7a7 7 0 0 1-14 0" fill="none" stroke="#263c5e" stroke-width="5" stroke-linejoin="round"/>
+  <title>J in Bagel Fat One</title>
+  <metadata>Bagel Fat One, licensed under SIL OFL 1.1. See /fonts/Bagel-Fat-One-OFL.txt.</metadata>
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <path d="M32.51 54Q28.068 54 24.286 52.409Q20.505 50.819 18.254 47.487Q16.003 44.156 16.003 38.993Q16.003 35.452 17.714 33.591Q19.424 31.73 22.366 31.73Q25.367 31.73 27.018 33.321Q28.668 34.911 28.668 38.093Q28.668 40.974 29.719 42.025Q30.769 43.075 32.27 43.075Q33.771 43.075 34.731 42.025Q35.692 40.974 35.692 38.093V33.951Q35.692 30.889 36.502 28.909Q37.312 26.928 38.393 25.817Q39.473 24.707 40.314 24.347L40.014 23.206H24.947Q22.065 23.206 20.355 21.495Q18.644 19.784 18.524 16.723Q18.464 13.722 20.265 11.861Q22.065 10 24.947 10H42.235Q45.056 10 46.527 11.891Q47.997 13.782 47.997 16.783V38.993Q47.997 44.156 45.986 47.487Q43.975 50.819 40.464 52.409Q36.952 54 32.51 54Z" fill="#fff"/>
 </svg>
