@@ -4,6 +4,7 @@ import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
+import { LoopVideo } from "./LoopVideo";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
@@ -76,6 +77,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             </div>}
           </dl>}
         </header>
+        {study?.hero && <div data-reveal className="case-study-hero-media"><LoopVideo {...study.hero} /></div>}
         {study ? <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
           <Media project={project} controls />
         </div>

@@ -4,9 +4,10 @@ import {entrance} from "./entrance";
 import {ZinePreview} from "./ZinePreview";
 import {AsciiPreviewReveal} from "./AsciiPreviewReveal";
 import {CameraLink} from "./CameraLink";
+import {LoopVideo} from "../LoopVideo";
 
 const previews={
-  "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai"},
+  "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hover-1280.mp4",poster:"/videos/nudges/nudges-hover-poster.jpg",width:1280,height:800},
   "chat-bubbles":{team:"Search",accent:"#169b72",kind:"chat"},
   "search-labs":{team:"Search",accent:"#b759ba",kind:"search"},
   "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",image:"/previews/stadia-store-redesign.gif",poster:"/previews/stadia-store-redesign-still.webp",width:640,height:429},
@@ -22,13 +23,16 @@ function useMedia(query){
 }
 function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true}){
   const preview=previews[project?.id];
-  const aspect=preview?.image?preview.width/preview.height:1.8;
+  const aspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
   return <div className="recent-preview-content" data-kind={preview?.kind} style={{"--preview-aspect":aspect}}>
     <div className="recent-preview-art" data-motion={showing} style={{aspectRatio:aspect}}>
       <div className="recent-preview-source">
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
-      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}>{preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}</div>}
+      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}>
+        {preview.video&&<LoopVideo src={preview.video} poster={preview.poster} label="Tapping a follow-up nudge in AI Mode" active={showing}/>}
+        {preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}
+      </div>}
       </div>
       {project&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
     </div>
@@ -64,7 +68,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.bottom,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
-  const previewAspect=preview?.image?preview.width/preview.height:1.8;
+  const previewAspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
     root.style.setProperty("--project-surface",showing?`color-mix(in srgb,color-mix(in srgb,${preview.accent} 70%,#000) 20%,var(--scene-bg))`:"var(--scene-bg)");

@@ -5,6 +5,12 @@ export const aiModeCaseStudy = {
   role: "Lead Product Designer",
   scope: "Follow-ups & interactive questionnaires",
   summary: "A shared framework that helps people refine broad questions in one or two taps, without crowding the answer.",
+  hero: {
+    src: "/videos/nudges/nudges-hero-1920.mp4",
+    srcSmall: "/videos/nudges/nudges-hero-1280.mp4",
+    poster: "/videos/nudges/nudges-hero-poster.jpg",
+    label: "Planning a Jeju trip in AI Mode, then refining the answer with a questionnaire and a rainy-day follow-up nudge",
+  },
   outcomes: [
     { value: "+1.84%", label: "AI Mode daily active users" },
     { value: "+3.87%", label: "Follow-up engagement" },

@@ -315,7 +315,7 @@ test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds'
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.dissolve={};new MutationObserver(()=>{
-   const visual=document.querySelector('.recent-solid-visual[data-visual="ai"]');
+   const visual=document.querySelector('.recent-solid-visual[data-visual="chat"]');
    if(visual&&!visual.firstChild){const source=document.createElement('canvas');source.width=360;source.height=200;source.style.cssText='width:100%;height:100%';const ctx=source.getContext('2d');ctx.fillStyle='#111';ctx.fillRect(30,40,100,120);ctx.fillStyle='#eee';ctx.beginPath();ctx.arc(280,100,40,0,Math.PI*2);ctx.fill();visual.append(source)}
    const ascii=document.querySelector('.recent-preview-ascii[data-source="content"]');if(!ascii)return;
    const state=window.dissolve,opacity=Number(ascii.style.opacity),content=Number(ascii.parentElement.style.getPropertyValue('--preview-content-opacity'));
@@ -325,7 +325,7 @@ test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds'
     if(content>.5&&opacity<.5&&!state.fadeOut)state.fadeOut=ascii.toDataURL();
    }else if(ascii.dataset.state==='complete')state.duration??=performance.now()-state.start;
   }).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['data-state','style','data-source']});
- });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="ai-mode-nudges"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/AI Mode Nudges/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
+ });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="chat-bubbles"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Chat Bubbles/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
  const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
  const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
 });
@@ -338,6 +338,35 @@ test('Stadia plays its animated GIF after the ASCII dissolve and uses a still fo
  expect(await image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign\.gif$/);const box=await image.boundingBox();expect(box.width/box.height).toBeCloseTo(640/429,2);
  const first=await image.screenshot();await expect.poll(async()=>!(await image.screenshot()).equals(first),{timeout:17000,intervals:[250,500,1000]}).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce'});await expect.poll(()=>image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign-still\.webp$/);await expect(image).toHaveJSProperty('complete',true);
+});
+
+test('Nudges hover video loads on demand, resolves through ASCII and resets when leaving',async({page})=>{
+ const requests=[];page.on('request',request=>{if(request.url().includes('/videos/nudges/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.getByRole('link',{name:/AI Mode Nudges/});await expect(row).toBeVisible();expect(requests).toEqual([]);
+ await row.hover();const video=nav.locator('.loop-video video'),art=nav.locator('.recent-preview-art');
+ await expect.poll(()=>video.evaluate(el=>el.readyState)).toBeGreaterThanOrEqual(2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-source','content');
+ const frame=await art.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(frame.height).toBeCloseTo(489/1.8,0);
+ expect(await video.evaluate(el=>({muted:el.muted,loop:el.loop,inline:el.playsInline,controls:el.controls}))).toEqual({muted:true,loop:true,inline:true,controls:false});
+ await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeGreaterThan(0);
+ await page.mouse.move(2,2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeLessThan(.1); // The MP4's first presentation timestamp is 0.041s.
+ await row.hover();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(video).not.toHaveAttribute('src');await expect(video).toHaveAttribute('data-ready','false');await expect(nav.locator('.loop-video-poster')).toBeVisible();
+ expect(requests.every(url=>url.endsWith('/nudges-hover-1280.mp4'))).toBe(true);
+});
+
+test('Nudges hero uses responsive video sources, pauses offscreen and shows its poster for reduced motion',async({page})=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/?project=ai-mode-nudges&view=case-study');
+ const hero=page.locator('.case-study-hero-media'),video=hero.locator('video');await hero.scrollIntoViewIfNeeded();
+ await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toMatch(/nudges-hero-1920\.mp4$/);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ const frame=await hero.boundingBox(),measure=await page.locator('.case-study-measure').boundingBox();expect(frame.width).toBeCloseTo(measure.width,1);expect(frame.width/frame.height).toBeCloseTo(1.6,2);
+ await page.locator('.case-impact').scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);
+ await page.setViewportSize({width:390,height:844});await hero.scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toMatch(/nudges-hero-1280\.mp4$/);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(video).not.toHaveAttribute('src');await expect(hero.locator('.loop-video-poster')).toBeVisible();await expect(video).toHaveAttribute('data-ready','false');
+ const requests=[];page.on('request',request=>{if(request.url().includes('/videos/nudges/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
+ await page.reload();await expect(page.locator('.case-study-hero-media .loop-video-poster')).toBeVisible();await expect(page.locator('.case-study-hero-media video')).not.toHaveAttribute('src');expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 
 test('Stadia preview hugs its media without changing the preview height or right alignment',async({page,browser})=>{

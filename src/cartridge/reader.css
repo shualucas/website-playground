@@ -335,6 +335,7 @@
 .case-study-editorial .case-study-facts { grid-column:1/-1; display:grid; grid-template-columns:1fr 1.5fr; gap:24px 40px; padding:24px 0 0; margin:28px 0 0; }
 .case-study-editorial .case-study-facts dt { font:inherit; letter-spacing:normal; color:var(--ui-muted); margin-bottom:4px; }
 .case-study-editorial .case-study-facts dd { font-size:var(--case-body); line-height:inherit; }
+.case-study-hero-media { margin-top:32px; overflow:hidden; border-radius:8px; }
 .case-study-editorial h2 { font-family:"DM Sans",Arial,sans-serif; font-style:normal; font-size:var(--case-heading); font-weight:500; letter-spacing:-.02em; line-height:1.35; margin:0; }
 .case-star-story .case-editorial-section { display:grid; grid-template-columns:140px minmax(0,1fr); gap:36px; margin:40px 0 0; padding-top:32px; border-top:1px solid var(--line); }
 .case-star-story .case-editorial-section > p { color:var(--ui-muted); font-size:var(--case-body); line-height:inherit; margin:0; max-width:680px; text-wrap:pretty; }
