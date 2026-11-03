@@ -188,7 +188,8 @@ test('compact project rows keep equal typography and solid previews switch off w
   expect(await nav.locator('.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='400'))).toBe(true);
   expect(await page.evaluate(()=>document.fonts.check('300 15px "Roboto Mono"'))).toBe(true);
   await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
-  expect(await page.locator('.collection-footer .link-copy,.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
+  expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
+  expect(await page.locator('.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='7.5px'))).toBe(true);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
     await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
@@ -273,7 +274,7 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
   if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
   const colors=[];
   await links.first().hover();const samples=await nav.evaluate(async el=>{const values=[];for(let i=0;i<8;i++){await new Promise(requestAnimationFrame);const layer=document.querySelector('.project-hue-wash'),art=el.querySelector('.recent-preview-art');values.push([getComputedStyle(layer).backgroundColor,getComputedStyle(art).backgroundColor])}return values});
-  expect(samples.every(([page,thumbnail])=>page===thumbnail)).toBe(true);await expect(page.locator('.collection')).toHaveCSS('transition-property','--project-surface');await expect(page.locator('.collection')).toHaveCSS('transition-duration','0.42s');
+  expect(samples.every(([page,thumbnail])=>page===thumbnail)).toBe(true);await expect(page.locator('.collection')).toHaveCSS('transition-property','--project-surface');await expect(page.locator('.collection')).toHaveCSS('transition-duration','0.48s');
   for(const link of await links.all()){
 
    await link.hover();await nav.evaluate(async el=>{const root=el.closest('.collection');getComputedStyle(root).getPropertyValue('--project-surface');await Promise.allSettled(root.getAnimations().map(animation=>animation.finished))});const state=await nav.evaluate(el=>{const layer=document.querySelector('.project-hue-wash > span[data-active="true"]'),background=getComputedStyle(layer);return{color:background.backgroundColor,image:background.backgroundImage,transition:background.transitionDuration,opacity:background.opacity,fill:getComputedStyle(el.querySelector('.recent-preview-art')).backgroundColor,card:getComputedStyle(el.querySelector('.recent-preview-content')).backgroundColor,glow:getComputedStyle(el.querySelector('.recent-project-preview'),'::before').content,shadow:getComputedStyle(el.querySelector('.recent-preview-content')).boxShadow}});

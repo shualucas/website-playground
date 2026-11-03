@@ -55,7 +55,7 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
   const pastArt=await dialog.locator(".listening-artwork").first().boundingBox(),pastCopy=await dialog.locator(".listening-song").first().boundingBox();
   expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x).toBeCloseTo(copy.x,1);
-  expect(art.height).toBeCloseTo(copy.height,1);await expect(dialog.locator("ol")).toHaveCSS("gap","12px");
+  expect(art.height).toBeCloseTo(copy.height,1);expect(copy.height).toBeCloseTo(30.375,1);await expect(page.locator('.listening-widget')).toHaveCSS('width','160px');await expect(footer.locator('.now-playing-title')).toHaveCSS('font-size','7.5px');await expect(dialog.locator("ol")).toHaveCSS("gap","6px");
   expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeCloseTo(pastArt.height,2);expect(art.width).toBeCloseTo(pastArt.width,2);
   const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));
   expect(green[1]).toBeGreaterThan(green[0]);expect(green[1]).toBeGreaterThan(green[2]);
@@ -115,6 +115,7 @@ test("song changes crossfade without shifting the footer or replaying on unchang
 
   let calls=0;await page.route('**/api/listening',route=>{calls++;const title=calls===1?'First song':calls<4?'Second song':'Third song';return route.fulfill({contentType:'application/json',body:JSON.stringify({track:{title,artist:'Fixture artist',url:`https://www.last.fm/music/${calls===1?'first':calls<4?'second':'third'}`,playing:true,artwork:''},recent:[]})});});
   await page.goto('/');const link=page.locator('.now-playing');await expect(link).toHaveAttribute('data-track','First song');await link.scrollIntoViewIfNeeded();
+  await page.evaluate(()=>document.fonts.ready);await page.clock.fastForward(5000);await expect(page.locator('.listening-current')).toHaveAttribute('data-reveal-ready','true');
   const before=await page.locator('.listening-current').boundingBox();
   await page.clock.fastForward(20000);await expect(link).toHaveAttribute('data-track','Second song');
   const outgoing=link.locator('.now-playing-outgoing');await expect(outgoing).toHaveAttribute('aria-hidden','true');await expect(outgoing).toContainText('First song');
@@ -139,7 +140,7 @@ test('history songs share the current-track gap and dismiss for project browsing
       const all=[...document.querySelectorAll('.listening-history .listening-artwork'),document.querySelector('.listening-current .listening-artwork')].map(el=>el.getBoundingClientRect());
       return all.slice(1).map((art,i)=>art.top-all[i].bottom);
     });
-    expect(gaps).toHaveLength(5);for(const gap of gaps)expect(gap).toBeCloseTo(12,1);
+    expect(gaps).toHaveLength(5);for(const gap of gaps)expect(gap).toBeCloseTo(6,1);
     await toggle.click();await expect(history).toHaveCount(0);
   }
   await page.setViewportSize({width:1440,height:1000});

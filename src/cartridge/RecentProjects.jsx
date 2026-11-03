@@ -67,7 +67,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const previewAspect=preview?.image?preview.width/preview.height:1.8;
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
-    root.style.setProperty("--project-surface",showing?`color-mix(in srgb,${preview.accent} 16%,var(--scene-bg))`:"var(--scene-bg)");
+    root.style.setProperty("--project-surface",showing?`color-mix(in srgb,color-mix(in srgb,${preview.accent} 70%,#000) 20%,var(--scene-bg))`:"var(--scene-bg)");
     return()=>root.style.removeProperty("--project-surface");
   },[showing,preview?.accent]);
   useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);

@@ -5,7 +5,6 @@ export const funFacts = [
   "A random thing about me: The first celebrity I met was Akon back when I worked at a movie theater.",
   "A random fact about me: I played percussion for 5 years which has caused a need for me to paradiddle on surfaces constantly.",
   "A random fact about me: I've won numerous fantasy football championships.",
-  "A random fact about me: My first concert was seeing Kaskade.",
 ];
 
 /** Pick once per load, avoiding the previous fact when session storage is available. */
