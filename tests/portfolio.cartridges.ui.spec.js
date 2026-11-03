@@ -32,10 +32,10 @@ test('reload and full-page navigation always start at the top across the site',a
 test('content cannot hover, click or receive keyboard focus until its entrance completes',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  await page.addStyleTag({content:'[data-reveal-state="visible"],.intro-word {animation-play-state:paused !important}'});
- const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('[data-project="chat-bubbles"]'),google=page.locator('.hero-google-link'),footer=page.locator('.footer-links');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('[data-project="search-labs"]'),google=page.locator('.hero-google-link'),footer=page.locator('.footer-links');
  await expect(row).toHaveAttribute('data-reveal-state','visible');await expect(row).toHaveAttribute('data-reveal-ready','false');expect(await row.evaluate(el=>el.inert)).toBe(true);await expect(row.locator('a')).toHaveCSS('pointer-events','none');
  const rect=await row.boundingBox();await page.mouse.click(rect.x+140,rect.y+rect.height/2);await expect(nav).toHaveAttribute('data-preview-active','false');expect(new URL(page.url()).searchParams.has('view')).toBe(false);
  await google.evaluate(el=>el.focus());expect(await google.evaluate(el=>document.activeElement===el)).toBe(false);await expect(google).toHaveCSS('pointer-events','none');expect(await footer.evaluate(el=>el.inert)).toBe(true);
  await page.evaluate(()=>document.querySelectorAll('[data-reveal],[data-reveal-gate]').forEach(el=>el.getAnimations().forEach(a=>a.finish())));
- await expect(row).toHaveAttribute('data-reveal-ready','true');expect(await row.evaluate(el=>el.inert)).toBe(false);await expect(google).toHaveCSS('pointer-events','auto');await row.locator('a').hover();await expect(nav).toHaveAttribute('data-active-project','chat-bubbles');
+ await expect(row).toHaveAttribute('data-reveal-ready','true');expect(await row.evaluate(el=>el.inert)).toBe(false);await expect(google).toHaveCSS('pointer-events','auto');await row.locator('a').hover();await expect(nav).toHaveAttribute('data-active-project','search-labs');
 });

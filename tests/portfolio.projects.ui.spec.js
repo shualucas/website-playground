@@ -7,11 +7,11 @@ test("recent projects use one column with native reader links and restore focus 
 
   await page.goto("/");
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
-  const titles=['AI Mode Nudges','Chat Bubbles','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
-  const descriptions=['Helping users go from initial search to task completion','Contextual representation inside the conversation','Launching AI experiments on Search to 48M+ users','Guiding users towards an informed game purchase','Flyers for music, coffee, and community'];
-  await expect(links).toHaveCount(5);
+  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
+  const descriptions=['Helping users go from initial search to task completion','Launching AI experiments on Search to 48M+ users','Guiding users towards an informed game purchase','Flyers for music, coffee, and community'];
+  await expect(links).toHaveCount(4);
   await expect(links.locator('.recent-project-name')).toHaveText(titles);
-  await expect(navigation.getByRole('link')).toHaveCount(6);
+  await expect(navigation.getByRole('link')).toHaveCount(5);
   await expect(navigation.getByRole('link',{name:'Say cheese! Explore film photographs'})).toHaveAttribute('href','/photos/');
   await expect(navigation.locator('.recent-project-summary')).toHaveText(descriptions);
   await expect(navigation.locator('.recent-project-year')).toHaveCount(0);
@@ -22,13 +22,12 @@ test("recent projects use one column with native reader links and restore focus 
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
   const heights=await navigation.locator('.recent-project-list > li').evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().height));expect(Math.max(...heights)-Math.min(...heights)).toBeLessThan(1);
-  await expect(navigation.locator('.recent-project-index')).toHaveText(['01','02','03','04','05','06']);
-  await expect(links.locator('.recent-project-team')).toHaveText(['Search','Search','Search','Stadia','Fun']);
+  await expect(navigation.locator('.recent-project-index')).toHaveText(['01','02','03','04','05']);
+  await expect(links.locator('.recent-project-team')).toHaveText(['Search','Search','Stadia','Fun']);
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-study-deck')).not.toBeEmpty();
-    if(titles[i]==='Chat Bubbles'){await expect(page.locator('.case-study-deck')).toHaveText('Contextual representation inside the conversation');await page.goBack();await expect(links.nth(i)).toBeFocused();continue;}
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
     await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',titles[i]==='Stadia Store Redesign'?'stadia':'search');
     await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-status','fallback');
@@ -63,9 +62,9 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(links.first()).toHaveCSS('opacity','1');
   const titleAfter=await copyBox();expect(titleAfter).toEqual(titleBefore);
   await links.first().focus();await page.keyboard.press('Tab');
-  await expect(navigation).toHaveAttribute('data-active-project','chat-bubbles');
+  await expect(navigation).toHaveAttribute('data-active-project','search-labs');
   await expect(links.nth(1)).toBeFocused();
-  await page.keyboard.press('Tab');await expect(navigation).toHaveAttribute('data-active-project','search-labs');
+  await page.keyboard.press('Tab');await expect(navigation).toHaveAttribute('data-active-project','stadia-store-redesign');
   await page.locator('.collection-header .tool-button').focus();
   await expect(navigation).toHaveAttribute('data-preview-active','false');
   const after=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));expect(after).toEqual(before);
@@ -160,9 +159,9 @@ test('project previews follow movement inside a row, dim other content and wash 
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
   await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
   await expect(links.first()).toHaveCSS('opacity','1');
-  for(let i=1;i<6;i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
-  const ids=['ai-mode-nudges','chat-bubbles','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
-  const hues=['#6988d8','#169b72','#b759ba','#e5633d','#e48dae','#b69272'];
+  for(let i=1;i<await links.count();i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
+  const ids=['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
+  const hues=['#6988d8','#b759ba','#e5633d','#e48dae','#b69272'];
   const wash=page.locator('.project-hue-wash');await expect(wash).toHaveCSS('pointer-events','none');
   for(let i=0;i<ids.length;i++){
     await links.nth(i).hover();await expect(navigation).toHaveAttribute('data-active-project',ids[i]);
@@ -189,7 +188,7 @@ test('compact project rows keep equal typography and solid previews switch off w
   expect(await page.evaluate(()=>document.fonts.check('300 15px "Roboto Mono"'))).toBe(true);
   await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
   expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
-  expect(await page.locator('.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='7.5px'))).toBe(true);
+  expect(await page.locator('.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='9.375px'))).toBe(true);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
     await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
@@ -258,8 +257,8 @@ test('touch projects expand inline, show full descriptions and navigate only thr
  await page.goto('http://127.0.0.1:3000/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-preview-mode','inline');
  const ai=nav.getByRole('button',{name:/AI Mode Nudges/});await ai.tap();const preview=page.getByRole('region',{name:'AI Mode Nudges preview'});await expect(preview).toBeVisible();await expect(preview).toContainText('Helping users go from initial search to task completion');await expect(ai).toHaveAttribute('aria-expanded','true');
  const row=await ai.boundingBox(),box=await preview.boundingBox();expect(box.y).toBeGreaterThanOrEqual(row.y+row.height-1);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');
- await ai.tap();await expect(preview).toHaveCount(0);const chat=nav.getByRole('button',{name:/Chat Bubbles/});await chat.tap();const chatPreview=page.getByRole('region',{name:'Chat Bubbles preview'});await expect(chatPreview).toContainText('Contextual representation inside the conversation');await expect(page.locator('.recent-inline-preview')).toHaveCount(1);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await chatPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Chat Bubbles',exact:true})).toBeVisible();await context.close();
+ await ai.tap();await expect(preview).toHaveCount(0);const labs=nav.getByRole('button',{name:/Search Labs/});await labs.tap();const labsPreview=page.getByRole('region',{name:'Search Labs preview'});await expect(labsPreview).toContainText('Launching AI experiments on Search to 48M+ users');await expect(page.locator('.recent-inline-preview')).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await labsPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeVisible();await context.close();
 });
 
 test('narrow desktop previews hug the content right edge and follow the pointer vertically',async({page})=>{
@@ -290,11 +289,11 @@ test('browsing projects lets an entering role finish before its rotation pauses'
  await page.locator('.role-label').evaluate(el=>el.getAnimations().forEach(animation=>animation.currentTime=1));await page.locator('.recent-project-link').first().hover();await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');await expect(page.locator('.role-label')).toHaveCSS('opacity','1');await expect(page.locator('.role-label')).toHaveCSS('animation-play-state','running');
 });
 
-test('hover previews are fifty percent larger, stay inside narrow viewports and Chat Bubbles is emerald',async({page})=>{
+test('hover previews are fifty percent larger, stay inside narrow viewports and Search Labs keeps its magenta hue',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),chat=nav.getByRole('link',{name:/Chat Bubbles/}),preview=nav.locator('.recent-project-preview');await chat.hover();const wide=await nav.locator('.recent-preview-art').boundingBox();expect(wide.width).toBeCloseTo(326*1.5,0);expect(wide.height).toBeCloseTo(326/1.8*1.5,0);expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#169b72');
- await page.setViewportSize({width:900,height:650});await chat.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const narrow=await nav.locator('.recent-preview-art').boundingBox();expect(narrow.width).toBeCloseTo(450,0);expect(narrow.x).toBeGreaterThanOrEqual(0);expect(narrow.x+narrow.width).toBeLessThanOrEqual(900);expect(narrow.y+narrow.height).toBeLessThanOrEqual(650);
- await page.setViewportSize({width:1440,height:600});await chat.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const short=await nav.locator('.recent-preview-art').boundingBox();expect(short.width).toBeCloseTo(489,0);expect(short.y+short.height).toBeLessThanOrEqual(600);
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),labs=nav.getByRole('link',{name:/Search Labs/}),preview=nav.locator('.recent-project-preview');await labs.hover();const wide=await nav.locator('.recent-preview-art').boundingBox();expect(wide.width).toBeCloseTo(326*1.5,0);expect(wide.height).toBeCloseTo(326/1.8*1.5,0);expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#b759ba');
+ await page.setViewportSize({width:900,height:650});await labs.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const narrow=await nav.locator('.recent-preview-art').boundingBox();expect(narrow.width).toBeCloseTo(450,0);expect(narrow.x).toBeGreaterThanOrEqual(0);expect(narrow.x+narrow.width).toBeLessThanOrEqual(900);expect(narrow.y+narrow.height).toBeLessThanOrEqual(650);
+ await page.setViewportSize({width:1440,height:600});await labs.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const short=await nav.locator('.recent-preview-art').boundingBox();expect(short.width).toBeCloseTo(489,0);expect(short.y+short.height).toBeLessThanOrEqual(600);
  await page.getByRole('button',{name:'Switch to dark mode'}).click();await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
 });
 
@@ -315,7 +314,7 @@ test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds'
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.dissolve={};new MutationObserver(()=>{
-   const visual=document.querySelector('.recent-solid-visual[data-visual="chat"]');
+   const visual=document.querySelector('.recent-solid-visual[data-visual="search"]');
    if(visual&&!visual.firstChild){const source=document.createElement('canvas');source.width=360;source.height=200;source.style.cssText='width:100%;height:100%';const ctx=source.getContext('2d');ctx.fillStyle='#111';ctx.fillRect(30,40,100,120);ctx.fillStyle='#eee';ctx.beginPath();ctx.arc(280,100,40,0,Math.PI*2);ctx.fill();visual.append(source)}
    const ascii=document.querySelector('.recent-preview-ascii[data-source="content"]');if(!ascii)return;
    const state=window.dissolve,opacity=Number(ascii.style.opacity),content=Number(ascii.parentElement.style.getPropertyValue('--preview-content-opacity'));
@@ -325,7 +324,7 @@ test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds'
     if(content>.5&&opacity<.5&&!state.fadeOut)state.fadeOut=ascii.toDataURL();
    }else if(ascii.dataset.state==='complete')state.duration??=performance.now()-state.start;
   }).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['data-state','style','data-source']});
- });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="chat-bubbles"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Chat Bubbles/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
+ });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="search-labs"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Search Labs/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
  const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
  const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
 });

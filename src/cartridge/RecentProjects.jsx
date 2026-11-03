@@ -8,7 +8,6 @@ import {LoopVideo} from "../LoopVideo";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hover-1280.mp4",poster:"/videos/nudges/nudges-hover-poster.jpg",width:1280,height:800},
-  "chat-bubbles":{team:"Search",accent:"#169b72",kind:"chat"},
   "search-labs":{team:"Search",accent:"#b759ba",kind:"search"},
   "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",image:"/previews/stadia-store-redesign.gif",poster:"/previews/stadia-store-redesign-still.webp",width:640,height:429},
   "rave-flyer-zine":{team:"Fun",accent:"#e48dae",kind:"zine"},

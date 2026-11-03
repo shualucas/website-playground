@@ -50,7 +50,6 @@ const caseStudies = {
 /** Project-specific destinations; case-study stories remain separate from career pages. */
 export const recentProjects = [
   { id: "ai-mode-nudges", label: "AI Mode Nudges", description: "Helping users go from initial search to task completion", cartridgeId: "search", theme: "ai" },
-  { id: "chat-bubbles", minimal: true, label: "Chat Bubbles", description: "Contextual representation inside the conversation", cartridgeId: "search", theme: "ai" },
   { id: "search-labs", label: "Search Labs", description: "Launching AI experiments on Search to 48M+ users", cartridgeId: "search", theme: "ai" },
   { id: "stadia-store-redesign", label: "Stadia Store Redesign", description: "Guiding users towards an informed game purchase", cartridgeId: "stadia", theme: "stadia" },
   { id: "rave-flyer-zine", label: "Zine of Extracurriculars", description: "Flyers for music, coffee, and community", href: "/after-hours/", cartridgeId: null, theme: "after-hours" },
