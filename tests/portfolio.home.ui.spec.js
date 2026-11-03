@@ -107,7 +107,7 @@ test("the page entrance continues from the hero into the footer on one timeline"
   await page.setViewportSize({width:1280,height:1400});
   await page.emulateMedia({reducedMotion:"no-preference"});
 
-  await page.goto("/"); await expect(page).toHaveTitle("Joshua Lucas — Product Designer");
+  await page.goto("/"); await expect(page).toHaveTitle("Josh Lucas — Product Designer");
   await expect(page.locator(".footer-links")).toHaveAttribute("data-reveal-state","visible");
   const timing=await page.evaluate(()=>{
     const origin=Number(document.querySelector('.collection').dataset.revealStart);
