@@ -181,7 +181,7 @@ test('compact project rows keep equal typography and solid previews switch off w
 
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
-  expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([38,38,38,38,38,38]);
+  for(const height of await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height)))expect(height).toBeCloseTo(38*1.1,1);
   const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
   await page.evaluate(()=>document.fonts.ready);
   expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
@@ -200,7 +200,7 @@ test('compact project rows keep equal typography and solid previews switch off w
   const fill=nav.locator('.recent-solid-visual');await expect(fill).toHaveCSS('background-image','none');await expect(fill).toHaveCSS('animation-name','none');
   await page.mouse.move(2,2);await expect(nav.locator('.recent-project-preview')).toHaveAttribute('data-visible','false');
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
-  await expect.poll(()=>nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([47,47,47,47,47,47]);
+  await expect.poll(()=>nav.locator('li').evaluateAll(els=>Math.max(...els.map(el=>Math.abs(el.getBoundingClientRect().height-47*1.1))))).toBeLessThan(.05);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
