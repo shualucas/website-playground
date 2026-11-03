@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>J cartridge</title>
+  <path d="M8 10h48a5 5 0 0 1 5 5v31h-5v8H8v-8H3V15a5 5 0 0 1 5-5Z" fill="#5279b0" stroke="#263c5e" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M9 15h46M12 49h40" fill="none" stroke="#a1b9d8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M5 21h2m-2 5h2m-2 5h2m-2 5h2m50-15h2m-2 5h2m-2 5h2m-2 5h2" fill="none" stroke="#263c5e" stroke-width="1.5"/>
+  <rect x="11" y="20" width="42" height="24" rx="2" fill="#f5efdf" stroke="#263c5e" stroke-width="2"/>
+  <path d="M29 26h9v7a7 7 0 0 1-14 0" fill="none" stroke="#263c5e" stroke-width="5" stroke-linejoin="round"/>
+</svg>
