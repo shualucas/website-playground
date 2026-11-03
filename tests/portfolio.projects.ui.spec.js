@@ -337,3 +337,27 @@ test('Stadia plays its animated GIF after the ASCII dissolve and uses a still fo
  const first=await image.screenshot();await expect.poll(async()=>!(await image.screenshot()).equals(first),{timeout:17000,intervals:[250,500,1000]}).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce'});await expect.poll(()=>image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign-still\.webp$/);await expect(image).toHaveJSProperty('complete',true);
 });
+
+test('Stadia preview hugs its media without changing the preview height or right alignment',async({page,browser})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),art=nav.locator('.recent-preview-content');
+ for(const viewport of [{width:1440,height:1000},{width:900,height:800},{width:1440,height:600}]){
+  await page.setViewportSize(viewport);await nav.getByRole('link',{name:/Stadia Store Redesign/}).hover();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');
+  const image=nav.locator('.recent-preview-image');await expect(image).toHaveJSProperty('complete',true);
+  await expect.poll(async()=>(await art.boundingBox()).height).toBeCloseTo((viewport.width>=1100?489:450)/1.8,0);
+  const frame=await art.boundingBox(),media=await image.boundingBox(),bounds=await nav.boundingBox();
+  expect(frame.width/frame.height).toBeCloseTo(640/429,2);expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(media.x).toBeCloseTo(frame.x,1);
+  expect(frame.x+frame.width).toBeCloseTo(bounds.x+bounds.width,1);
+ }
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
+ try{
+  const mobile=await context.newPage();await disableWebGL(mobile);await mobile.route('**/api/listening',route=>route.fulfill({status:204}));await mobile.route('**/api/weather',route=>route.fulfill({status:204}));await mobile.goto(new URL('/',page.url()).href);
+  const navigation=mobile.getByRole('navigation',{name:'Recent projects'});
+  await navigation.getByRole('button',{name:/Stadia Store Redesign/}).tap();const image=navigation.locator('.recent-preview-image');await expect(image).toHaveJSProperty('complete',true);
+  const content=navigation.locator('.recent-preview-content'),inline=navigation.locator('.recent-inline-preview');
+  await expect.poll(async()=>(await content.boundingBox()).height).toBeCloseTo((await inline.boundingBox()).width/1.8,0);
+  const frame=await content.boundingBox(),media=await image.boundingBox();
+  expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(frame.x+frame.width).toBeLessThanOrEqual(390);
+  await expect(navigation.getByRole('link',{name:'Open project'})).toBeVisible();
+ }finally{await context.close()}
+});

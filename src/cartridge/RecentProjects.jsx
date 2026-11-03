@@ -22,8 +22,9 @@ function useMedia(query){
 }
 function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true}){
   const preview=previews[project?.id];
-  return <div className="recent-preview-content" data-kind={preview?.kind}>
-    <div className="recent-preview-art" data-motion={showing}>
+  const aspect=preview?.image?preview.width/preview.height:1.8;
+  return <div className="recent-preview-content" data-kind={preview?.kind} style={{"--preview-aspect":aspect}}>
+    <div className="recent-preview-art" data-motion={showing} style={{aspectRatio:aspect}}>
       <div className="recent-preview-source">
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
@@ -63,6 +64,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.bottom,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
+  const previewAspect=preview?.image?preview.width/preview.height:1.8;
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
     root.style.setProperty("--project-surface",showing?`color-mix(in srgb,${preview.accent} 16%,var(--scene-bg))`:"var(--scene-bg)");
@@ -81,7 +83,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   };
   return <>
     <div className="project-hue-wash" aria-hidden="true" data-active={showing}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":item.accent}}/>)}</div>
-    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":preview?.accent??"#6988d8"}}
+    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":preview?.accent??"#6988d8","--preview-width-scale":previewAspect/1.8}}
       onPointerLeave={()=>{pointer.current=null;release()}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){focus.current=null;release()}}}
       onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();setVisible(false);navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
       <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>
