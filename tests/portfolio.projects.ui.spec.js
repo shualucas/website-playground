@@ -345,6 +345,7 @@ test('Nudges hover video loads on demand, resolves through ASCII and resets when
  const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.getByRole('link',{name:/AI Mode Nudges/});await expect(row).toBeVisible();expect(requests).toEqual([]);
  await row.hover();const video=nav.locator('.loop-video video'),art=nav.locator('.recent-preview-art');
  await expect.poll(()=>video.evaluate(el=>el.readyState)).toBeGreaterThanOrEqual(2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(27);
  await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-source','content');
  const frame=await art.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(frame.height).toBeCloseTo(489/1.8,0);
  expect(await video.evaluate(el=>({muted:el.muted,loop:el.loop,inline:el.playsInline,controls:el.controls}))).toEqual({muted:true,loop:true,inline:true,controls:false});
@@ -352,7 +353,7 @@ test('Nudges hover video loads on demand, resolves through ASCII and resets when
  await page.mouse.move(2,2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeLessThan(.1); // The MP4's first presentation timestamp is 0.041s.
  await row.hover();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(video).not.toHaveAttribute('src');await expect(video).toHaveAttribute('data-ready','false');await expect(nav.locator('.loop-video-poster')).toBeVisible();
- expect(requests.every(url=>url.endsWith('/nudges-hover-1280.mp4'))).toBe(true);
+ expect(requests.every(url=>url.endsWith('/nudges-hero-1280.mp4'))).toBe(true);
 });
 
 test('Nudges hero uses responsive video sources, pauses offscreen and shows its poster for reduced motion',async({page})=>{
