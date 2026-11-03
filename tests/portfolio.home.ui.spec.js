@@ -12,6 +12,12 @@ test("Josh and roles are passive medium-weight text with a stable reduced-motion
   await role.hover();await expect(role).toHaveCSS('opacity','1');await role.click();await expect(role).toHaveAttribute('data-role','product designer');
   expect(await role.evaluate(el=>getComputedStyle(el).cursor)).not.toBe('pointer');
   expect(await page.locator('.portfolio-name').evaluate(el=>getComputedStyle(el).fontWeight)).toBe('500');
+  for(const width of [1440,390]) {
+    await page.setViewportSize({width,height:1000});
+    const rowSize=await page.locator('.recent-project-name').first().evaluate(el=>getComputedStyle(el).fontSize);
+    expect(await page.locator('.intro-title,.intro-name,.role-rotator,.bio-continuation,.random-fact').evaluateAll(els=>els.map(el=>getComputedStyle(el).fontSize))).toEqual(Array(5).fill(rowSize));
+    await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');
+  }
 });
 
 test("each load chooses a supplied fact without immediate repeats; interactions keep the current one", async ({ page }) => {

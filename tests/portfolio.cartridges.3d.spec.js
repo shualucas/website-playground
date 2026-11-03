@@ -32,7 +32,7 @@ test("career collection uses exact bio and four individually visible cartridges 
   expect(projected.left).toBeGreaterThan(20);expect(projected.right).toBeLessThan(stage.width-20);
   await expect(page.locator('.cartridge-stage')).toHaveAttribute('data-composition','zigzag-stack');
   await expect(page.getByRole('button',{name:/View Early work cartridge/})).toHaveCount(0);
-  expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("23px");
+  expect(await page.locator(".bio-continuation").evaluate((el) => getComputedStyle(el).fontSize)).toBe("15px");
   const hits = [];
   for (let i = 0; i < 4; i++) {
     const facing = Number(await page.locator(".cartridge-stage").getAttribute(`data-front-facing${i}`));
