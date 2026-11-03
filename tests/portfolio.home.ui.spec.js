@@ -14,9 +14,15 @@ test("Josh and roles are passive medium-weight text with a stable reduced-motion
   expect(await page.locator('.portfolio-name').evaluate(el=>getComputedStyle(el).fontWeight)).toBe('500');
   for(const width of [1440,390]) {
     await page.setViewportSize({width,height:1000});
-    const rowSize=await page.locator('.recent-project-name').first().evaluate(el=>getComputedStyle(el).fontSize);
-    expect(await page.locator('.intro-title,.intro-name,.role-rotator,.bio-continuation,.random-fact').evaluateAll(els=>els.map(el=>getComputedStyle(el).fontSize))).toEqual(Array(5).fill(rowSize));
+    expect(await page.locator('.intro-title,.intro-name,.role-rotator,.bio-continuation,.random-fact').evaluateAll(els=>els.map(el=>getComputedStyle(el).fontSize))).toEqual(Array(5).fill('23px'));
     await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');
+  }
+  for(const dark of [false,true]) {
+    if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
+    const gray=await page.locator('.recent-project-summary').first().evaluate(el=>getComputedStyle(el).color);
+    expect(await page.locator('.intro-title,.bio-continuation,.intro-muted,.random-fact').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).color))])).toEqual([gray]);
+    const ink=await page.locator('.recent-project-name').first().evaluate(el=>getComputedStyle(el).color);
+    await expect(page.locator('.intro-name')).toHaveCSS('color',ink);await expect(role).toHaveCSS('color',ink);
   }
 });
 
