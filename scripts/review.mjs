@@ -10,12 +10,12 @@ const { values: args } = parseArgs({ options: {
   page:{ type:"string", default:"home" }, path:{ type:"string" },
   width:{ type:"string", default:"1440" }, height:{ type:"string", default:"1000" },
   theme:{ type:"string", default:"light" }, motion:{ type:"string", default:"normal" },
-  hover:{ type:"string" }, phase:{ type:"string", default:"settled" },
+  hover:{ type:"string" }, cartridge:{ type:"string" }, phase:{ type:"string", default:"settled" },
   output:{ type:"string" }, port:{ type:"string", default:"3000" }, help:{ type:"boolean" },
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--phase settled|ascii|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--cartridge 'Stadia'] [--phase settled|ascii|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
   process.exit(0);
 }
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "ascii", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
@@ -103,6 +103,11 @@ try {
     const blocker = el.closest('[inert]');
     return !rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight || !!el.closest('[aria-hidden="true"]') || blocker && blocker.dataset.revealInert !== "true" || el.dataset.revealReady === "true";
   })), wait).toBe(true);
+  if (args.cartridge) {
+    const control = page.getByRole("button", { name:`View ${args.cartridge} cartridge`, exact:true });
+    await control.focus(); await control.press("Enter");
+    await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", wait);
+  }
   if (args.phase !== "settled") await page.evaluate(() => { window.__review.armed = true; });
   if (args.hover) {
     const row = page.locator(`[data-project="${args.hover}"] .recent-project-link`);

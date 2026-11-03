@@ -112,7 +112,7 @@ export async function loadExternalShell(label: THREE.Texture, color: string, gra
           return new THREE.MeshPhysicalMaterial({ name: "Cartridge Shell", color: tint, metalness: 0,
             roughness: finish.roughness, transmission: finish.transmission, thickness: finish.thickness,
             attenuationColor: new THREE.Color(color), attenuationDistance: finish.attenuationDistance,
-            ior: 1.46, clearcoat: .18, clearcoatRoughness: .35, envMapIntensity: 1,
+            ior: 1.46, specularIntensity: .35, clearcoat: .04, clearcoatRoughness: .7, envMapIntensity: 1,
             transparent: false, opacity: 1, side: THREE.FrontSide });
         }
         clone.color.set(color); clone.metalness = 0; clone.roughness = finish?.roughness ?? .6; clone.envMapIntensity = .85;
