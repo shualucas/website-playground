@@ -184,8 +184,9 @@ test('compact project rows keep equal typography and solid previews switch off w
   expect(await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height))).toEqual([38,38,38,38,38,38]);
   const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
   await page.evaluate(()=>document.fonts.ready);
-  expect(await nav.locator('.recent-project-index,.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')))).toBe(true);
-  expect(await page.evaluate(()=>document.fonts.check('400 15px "Roboto Mono"'))).toBe(true);
+  expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
+  expect(await nav.locator('.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='400'))).toBe(true);
+  expect(await page.evaluate(()=>document.fonts.check('300 15px "Roboto Mono"'))).toBe(true);
   await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
   expect(await page.locator('.collection-footer .link-copy,.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');

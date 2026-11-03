@@ -1,6 +1,6 @@
 @import "../site.css";
 
-@font-face { font-family:"Roboto Mono"; font-style:normal; font-weight:400; font-display:swap; src:url("/fonts/roboto-mono-latin-400.woff2") format("woff2"); }
+@font-face { font-family:"Roboto Mono"; font-style:normal; font-weight:300; font-display:swap; src:url("/fonts/roboto-mono-latin-300.woff2") format("woff2"); }
 
 @property --project-surface { syntax:"<color>"; inherits:true; initial-value:transparent; }
 .collection:not([data-status="fallback"]) { --hero-trim:172px; }
@@ -58,11 +58,11 @@
 .recent-project-list li { position:relative; border-bottom:1px solid var(--row-divider); }
 .recent-project-list li:focus-within { animation:none; opacity:1; filter:none; }
 .recent-project-link { position:relative; display:grid; grid-template-columns:32px minmax(0,1fr) auto 12px; column-gap:12px; align-items:center; min-height:37px; padding:6px 0; font-size:15px; font-weight:400; line-height:1.45; transition:opacity 180ms ease; }
-.recent-project-index { font-family:"Roboto Mono",monospace; font-size:inherit; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 180ms ease; }
+.recent-project-index { font-family:"Roboto Mono",monospace; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 180ms ease; }
 .recent-project-copy { display:flex; align-items:baseline; gap:12px; min-width:0; }
 .recent-project-name { flex-shrink:0; color:var(--ui-text); font-weight:inherit; transition:color 180ms ease; }
 .recent-project-summary:not(.sr-only) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--project-muted); }
-.recent-project-team { font-family:"Roboto Mono",monospace; color:var(--project-muted); font-size:inherit; white-space:nowrap; }
+.recent-project-team { color:var(--project-muted); font-size:inherit; white-space:nowrap; }
 .recent-project-arrow { color:var(--ui-text); opacity:0; transform:translate(-3px,3px); transition:opacity 180ms ease,transform 240ms cubic-bezier(.22,1,.36,1); }
 .recent-projects[data-preview-active="true"] .recent-project-list li:not([data-active="true"]) .recent-project-link { opacity:.4; }
 .recent-project-list li[data-active="true"] .recent-project-index { color:var(--preview-accent); }
