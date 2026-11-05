@@ -42,27 +42,6 @@ test("camera preview spins and blinks once before settling, and keyboard entry o
  await expect(page.locator('.photo-entry-camera')).toHaveCount(0);
 });
 
-test('case studies render the matching single cartridge and pause its drift while reading',async({page})=>{
-  test.setTimeout(120000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.emulateMedia({reducedMotion:'reduce'});
-  for(const [id,cartridge] of [['ai-mode-nudges','search'],['search-labs','search'],['stadia-store-redesign','stadia']]){
-    await page.goto(`/?project=${id}&view=case-study`);
-    const art=page.locator('.case-study-cartridge'),stage=art.locator('.case-cartridge-stage');
-    await expect(art).toHaveAttribute('data-cartridge',cartridge);await expect(art).toHaveAttribute('data-status','ready',{timeout:45000});
-    await expect(stage.locator('canvas')).toHaveCount(1);await expect(stage).toHaveAttribute('data-motion','reduced');
-    await expect(art.locator('.case-cartridge-fallback')).toHaveCount(0);
-    await page.emulateMedia({reducedMotion:'no-preference'});await expect(stage).toHaveAttribute('data-motion','ambient');
-    await page.locator('[data-story-stage="result"]').scrollIntoViewIfNeeded();await expect(stage).toHaveAttribute('data-motion','idle');
-    await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-motion','reduced');
-    await page.setViewportSize({width:390,height:844});await art.scrollIntoViewIfNeeded();
-    await expect.poll(()=>page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
-    const r=await art.boundingBox();expect(r.x).toBeGreaterThanOrEqual(24);expect(r.x+r.width).toBeLessThanOrEqual(366);
-    await page.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(art).toHaveCount(0);
-    await page.setViewportSize({width:1280,height:720});
-  }
-  expect(errors).toEqual([]);
-});
-
 test('zine preview uses the actual book without controls, pauses on leave and keeps its scene on return',async({page})=>{
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);
  const link=page.getByRole('link',{name:/Zine of Extracurriculars/});await expect(page.locator('.zine-preview-scene')).toHaveCount(0);

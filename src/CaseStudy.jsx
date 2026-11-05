@@ -3,7 +3,6 @@ import { projectTheme } from "./book/themes";
 import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
-import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 import { LoopVideo } from "./LoopVideo";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
@@ -57,9 +56,14 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           <h1 data-reveal ref={heading} tabIndex={-1}>
             {project.title.replace("\n", " ")}
           </h1>
-          {(study?.summary || project.subtitle) && <p data-reveal className="case-study-deck">{study?.summary || project.subtitle}</p>}
+          {!study && project.subtitle && <p data-reveal className="case-study-deck">{project.subtitle}</p>}
           </div>
-          {editorial && project.cartridgeId && <CaseStudyCartridge id={project.cartridgeId} />}
+          {study && <div className="case-outcomes" aria-label="Project impact">
+            <dl data-reveal className="case-outcome-grid">
+              {study.outcomes.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
+            </dl>
+            <p data-reveal className="case-impact">{study.impact}</p>
+          </div>}
           {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
             {(project.role || project.team) && <div>
               <dt>{study ? "Role" : "ROLE & TEAM"}</dt>
@@ -71,9 +75,9 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
               <dt>YEAR</dt>
               <dd>{project.year}</dd>
             </div>}
-            {project.disciplines.length > 0 && <div>
-              <dt>{study ? "Scope" : "FOCUS"}</dt>
-              <dd>{project.disciplines.join(" · ")}</dd>
+            {(study || project.disciplines.length > 0) && <div>
+              <dt>{study ? "My work" : "FOCUS"}</dt>
+              <dd>{study ? study.summary : project.disciplines.join(" · ")}</dd>
             </div>}
           </dl>}
         </header>

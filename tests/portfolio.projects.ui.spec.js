@@ -6,6 +6,7 @@ test("recent projects use one column with native reader links and restore focus 
   await page.emulateMedia({reducedMotion:"reduce"});
 
   await page.goto("/");
+  await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');await page.evaluate(()=>document.fonts.ready);
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
   const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
   const descriptions=['Helping users go from initial search to task completion','Launching AI experiments on Search to 48M+ users','Guiding users towards an informed game purchase','Flyers for music, coffee, and community'];
@@ -27,26 +28,32 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-study-deck')).not.toBeEmpty();
+    await expect(page.locator('.case-study-facts dd').nth(1)).toContainText(/^I /);
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
-    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',titles[i]==='Stadia Store Redesign'?'stadia':'search');
-    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-status','fallback');
-    await expect(page.locator('.case-cartridge-fallback img')).toHaveAttribute('src',titles[i]==='Stadia Store Redesign'?'/cartridges/labels/stadia-label.jpg':'/cartridges/labels/search-label.jpg');
-    await expect(page.locator('.case-star-story > section > h2')).toHaveText(['Situation','Task','Action','Result']);
+    await expect(page.locator('.case-study-cartridge')).toHaveCount(0);
+    expect(await page.locator('.case-study .eyebrow').evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
+    await expect(page.locator('.case-star-story > section > h2')).toHaveText(['Problem','Goal','What I did']);
+    await expect(page.locator('.case-study-hero .case-outcome-grid dd')).toHaveText([
+      ['+1.84%','+3.87%','10+'],['48M+','5M','20+'],['+12%','2','~6 mo.']
+    ][i]);
+    expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.querySelector('.case-outcomes').compareDocumentPosition(el.parentElement.querySelector('.case-star-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(page.locator('[data-story-stage="task"] > p')).not.toBeEmpty();
     const story=page.locator('.case-star-story');
     await expect(story.locator('.case-decisions > li')).toHaveCount(3);
-    await expect(story.locator('.case-story-media')).toHaveCount(titles[i]==='Search Labs'?1:3);
-    expect(await story.locator('.case-story-media').evaluateAll(elements=>elements.every(el=>!!el.closest('.case-decisions li')))).toBe(true);
+    await expect(story.locator('.case-story-media,.case-story-media-placeholder')).toHaveCount(0);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
     });expect(sizes).toEqual(['16px']);
-    await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
+    await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+    await expect(page.locator('.case-study-facts dd').first()).toHaveText(titles[i]==='Search Labs'?'Core Product Designer':'Lead Product Designer');
+    await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
+  await expect(page.locator('.collection-hero')).toHaveCSS('min-height','480px');
   await page.emulateMedia({reducedMotion:'no-preference'});
-  const before=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));await links.first().hover();
+  await links.first().hover();
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
+  const before=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));
   await expect(navigation.locator('.recent-project-preview')).toHaveCSS('opacity','1');
   await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
   await expect(links.nth(1)).toHaveCSS('opacity','0.4');
@@ -119,12 +126,11 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study).toBeVisible();await expect(study.getByRole('heading',{name:'AI Mode Nudges',exact:true})).toBeFocused();
   expect((await study.locator('.case-study-measure').boundingBox()).width).toBeCloseTo(homeWidth,0);
   await expect(study.locator('.case-outcome-grid dd')).toHaveText(['+1.84%','+3.87%','10+']);
-  await expect(study.locator('.case-study-facts')).toContainText('Lead Product Designer');await expect(study.locator('.case-study-facts')).toContainText('Follow-ups & interactive questionnaires');
-  await expect(study.locator('.case-impact')).toContainText('Inline nudges launched globally');await expect(study.locator('.case-impact')).toContainText('web-result clicks healthy');
+  await expect(study.locator('.case-study-facts')).toContainText('Lead Product Designer');await expect(study.locator('.case-study-facts')).toContainText('I unified follow-up patterns across 10+ Search teams');
+  await expect(study.locator('.case-impact')).toContainText('Inline nudges shipped globally');await expect(study.locator('.case-impact')).toContainText('web-result clicks healthy');
   await expect(study.locator('.case-decisions li')).toHaveCount(3);await expect(study.locator('.case-decisions')).toContainText('“Something else”');await expect(study.locator('.case-decisions')).toContainText('live browser prototypes');
-  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(3);
-  expect(await study.locator('.case-story-media').evaluateAll(elements=>elements.map(el=>el.dataset.mediaType))).toEqual(['image','image','video']);
-  await expect(study.locator('.case-story-media').nth(2)).toHaveAttribute('data-media-type','video');
+  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(0);
+  await expect(study.locator('.case-study-hero-media .loop-video-poster')).toHaveAttribute('src','/videos/nudges/nudges-hero-poster.jpg');
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>study.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   await expect.poll(async()=>{
@@ -362,7 +368,7 @@ test('Nudges hero uses responsive video sources, pauses offscreen and shows its 
  const hero=page.locator('.case-study-hero-media'),video=hero.locator('video');await hero.scrollIntoViewIfNeeded();
  await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toMatch(/nudges-hero-1920\.mp4$/);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  const frame=await hero.boundingBox(),measure=await page.locator('.case-study-measure').boundingBox();expect(frame.width).toBeCloseTo(measure.width,1);expect(frame.width/frame.height).toBeCloseTo(1.6,2);
- await page.locator('.case-impact').scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);
+ await page.setViewportSize({width:1440,height:600});await page.locator('.case-study-content footer').scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);
  await page.setViewportSize({width:390,height:844});await hero.scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toMatch(/nudges-hero-1280\.mp4$/);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(video).not.toHaveAttribute('src');await expect(hero.locator('.loop-video-poster')).toBeVisible();await expect(video).toHaveAttribute('data-ready','false');
  const requests=[];page.on('request',request=>{if(request.url().includes('/videos/nudges/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
