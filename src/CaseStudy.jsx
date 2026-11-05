@@ -3,6 +3,7 @@ import { projectTheme } from "./book/themes";
 import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
+import { CaseStudyShowcase } from "./CaseStudyShowcase";
 import { LoopVideo } from "./LoopVideo";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
@@ -11,6 +12,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   const pageExit=usePageExit(content);
   const study = project.caseStudy;
   const editorial = Boolean(study || project.minimal);
+  const showcase = study?.layout === "showcase";
   const deck = study ? study.overview : project.subtitle;
   useContentReveal(content, project.id);
   const heading = useRef(null),
@@ -35,7 +37,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       onClick={pageExit.onLinkClick}
       data-exiting={pageExit.exiting}
       inert={pageExit.exiting}
-      className={`case-study${editorial ? " case-study-editorial" : ""}`}
+      className={`case-study${editorial ? " case-study-editorial" : ""}${showcase ? " case-study-showcase" : ""}`}
       data-case-theme={project.theme}
       aria-label={`${project.label} case study`}
       style={{
@@ -59,7 +61,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           </h1>
           {deck && <p data-reveal className="case-study-deck">{deck}</p>}
           </div>
-          {study && <div className="case-outcomes" aria-label="Project impact">
+          {study && !showcase && <div className="case-outcomes" aria-label="Project impact">
             <dl data-reveal className="case-outcome-grid">
               {study.outcomes.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
             </dl>
@@ -76,17 +78,18 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
               <dt>YEAR</dt>
               <dd>{project.year}</dd>
             </div>}
-            {(study || project.disciplines.length > 0) && <div>
+            {!showcase && (study || project.disciplines.length > 0) && <div>
               <dt>{study ? "My work" : "FOCUS"}</dt>
               <dd>{study ? study.summary : project.disciplines.join(" · ")}</dd>
             </div>}
           </dl>}
+          {showcase && <p data-reveal className="case-showcase-introduction">{study.summary}</p>}
         </header>
         {study?.hero && <figure data-reveal className="case-study-hero-figure">
           <div className="case-study-hero-media"><LoopVideo {...study.hero} /></div>
           {study.hero.caption && <figcaption>{study.hero.caption}</figcaption>}
         </figure>}
-        {study ? <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
+        {study ? showcase ? <CaseStudyShowcase study={study} /> : <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
           <Media project={project} controls />
         </div>
         <div className="case-study-story">

@@ -1,7 +1,7 @@
 import { test, expect, disableWebGL, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
 test.use({ webgl: false });
-const nudgesTitle = 'Turning AI answers into conversations';
+const nudgesTitle = 'AI Mode Nudges';
 
 test("recent projects use one column with native reader links and restore focus on Back", async ({ page }) => {
   await page.emulateMedia({reducedMotion:"reduce"});
@@ -29,22 +29,22 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-study-facts dd').last()).toContainText(/^I /);
+    await expect(page.locator(i===0?'.case-showcase-introduction':'.case-study-facts dd:last-child').last()).toContainText(i===0?'I led design':/^I /);
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
     await expect(page.locator('.case-study-cartridge')).toHaveCount(0);
     expect(await page.locator('.case-study .eyebrow').evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
-    await expect(page.locator('.case-star-story > section > h2')).toHaveText(i===0?['Problem','Goal','The system','Key decisions','What changed','What’s next']:['Problem','Goal','What I did']);
-    await expect(page.locator('.case-study-hero .case-outcome-grid dd')).toHaveText([
-      ['+3.87%','+1.84%','10+'],['48M+','5M','20+'],['+12%','2','~6 mo.']
+    await expect(page.locator('.case-star-story > section > h2')).toHaveText(i===0?[]:['Problem','Goal','What I did']);
+    await expect(page.locator('.case-study .case-outcome-grid dd')).toHaveText([
+      ['+3.87%','+1.84%','+1.50%'],['48M+','5M','20+'],['+12%','2','~6 mo.']
     ][i]);
-    expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.querySelector('.case-outcomes').compareDocumentPosition(el.parentElement.querySelector('.case-star-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    await expect(page.locator('[data-story-stage="task"] > p')).not.toBeEmpty();
-    const story=page.locator('.case-star-story');
-    await expect(story.locator('.case-decisions > li')).toHaveCount(3);
+    expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-star-story,.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    await expect(page.locator(i===0?'[data-showcase-section="problem"] > p':'[data-story-stage="task"] > p')).not.toBeEmpty();
+    const story=page.locator(i===0?'.case-showcase-story':'.case-star-story');
+    await expect(story.locator(i===0?'[data-showcase-section="input"],[data-showcase-section="model"],[data-showcase-section="collapsed"]':'.case-decisions > li')).toHaveCount(3);
     await expect(story.locator('.case-story-media')).toHaveCount(i===0?5:0);
     await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?5:0);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
-      const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid dt')];
+      const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
     });expect(sizes).toEqual(['16px']);
     await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
@@ -118,7 +118,7 @@ test('project exits fade, blur and move the whole page left before navigating',a
   expect(errors).toEqual([]);
 });
 
-test('AI Mode case study shows the supplied story and outcomes at the home project width',async({page})=>{
+test('AI Mode case study shows the supplied story and outcomes at the home project width',async({page},testInfo)=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
 
   await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:1440,height:1000});await page.goto('/');
@@ -127,19 +127,26 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   const study=page.getByRole('region',{name:'AI Mode Nudges case study'});
   await expect(study).toBeVisible();await expect(study.getByRole('heading',{name:nudgesTitle,exact:true})).toBeFocused();
   expect((await study.locator('.case-study-measure').boundingBox()).width).toBeCloseTo(homeWidth,0);
-  await expect(study.locator('.case-outcome-grid dd')).toHaveText(['+3.87%','+1.84%','10+']);
-  await expect(study.locator('.case-study-facts dd')).toHaveText(['Lead Product Designer · Search Product Framework','2026','I defined the shared nudge framework, designed its interaction patterns, and built browser prototypes for expanded and collapsed answers.']);
-  await expect(study.locator('.case-impact')).toContainText('Inline nudges shipped globally');await expect(study.locator('.case-impact')).toContainText('Clarification cards are in live testing');
-  await expect(study.locator('.case-pattern-status')).toHaveText(['Shipped globally','In live testing']);
-  await expect(study.locator('.case-decisions li')).toHaveCount(3);await expect(study.locator('.case-decisions')).toContainText('“Something else”');await expect(study.locator('.case-decisions')).toContainText('lightweight second model');await expect(study.locator('.case-decisions')).toContainText('Coded prototypes');
-  await expect(study.locator('[data-story-stage="result"]')).toContainText('Clicks to external websites held steady');
-  await expect(study.locator('.case-result-list strong')).toHaveText(['+3.87%','+1.84%','+1.50%']);
-  await expect(study.locator('[data-story-stage="result"]')).toContainText('early vertical testing');await expect(study.locator('[data-story-stage="result"]')).toContainText('21.9%');
+  await expect(study.locator('.case-outcome-grid dd')).toHaveText(['+3.87%','+1.84%','+1.50%']);
+  await expect(study.locator('.case-study-hero .case-outcome-grid')).toHaveCount(0);
+  await expect(study.locator('.case-study-facts dd')).toHaveText(['Lead Product Designer · Search Product Framework','2026']);
+  await expect(study.locator('.case-showcase-introduction')).toContainText('I led design');await expect(study.locator('.case-showcase-introduction')).toContainText('10+ product teams');
+  await expect(study.locator('[data-showcase-section="system"]')).toContainText('Inline nudges have shipped globally');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards are in live testing');
+  await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
+  await expect(study.locator('[data-showcase-section="input"]')).toContainText('“Something else”');await expect(study.locator('[data-showcase-section="model"]')).toContainText('lightweight second model');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
+  await expect(study.locator('[data-showcase-section="result"]')).toContainText('Clicks to external websites held steady');
+  await expect(study.locator('[data-showcase-section="result"]')).toContainText('early vertical testing');await expect(study.locator('[data-showcase-section="result"]')).toContainText('21.9%');
   await expect(study.locator('.case-measurement-note')).toContainText('experiment window');
   await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(5);
-  await expect(study.locator('[data-story-stage="situation"] .case-story-media-placeholder')).toHaveCount(1);
-  await expect(study.locator('[data-story-stage="system"] .case-story-media-placeholder')).toHaveCount(1);
-  for(const decision of await study.locator('.case-decisions > li').all())await expect(decision.locator('.case-story-media-placeholder')).toHaveCount(1);
+  for(const passage of await study.locator('.case-showcase-passage').all()) {
+    await expect(passage.locator('.case-story-media-placeholder')).toHaveCount(1);
+    expect(await passage.locator('p').first().evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('figure'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  }
+  const system=study.locator('[data-showcase-section="system"]');
+  expect((await system.locator('figure').boundingBox()).width).toBeCloseTo(homeWidth,0);
+  expect((await system.locator('.case-showcase-copy').boundingBox()).width).toBeLessThan(homeWidth);
+  await system.evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-110);
+  await page.screenshot({path:testInfo.outputPath('nudges-showcase-desktop.png')});
   await expect(study.locator('.case-study-hero-media .loop-video-poster')).toHaveAttribute('src','/videos/nudges/nudges-hero-poster.jpg');
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>study.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
@@ -147,6 +154,8 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
     const bounds=await study.locator('.case-outcome-grid dd').evaluateAll(elements=>elements.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));
     return bounds.every(r=>r.scroll<=r.width+1);
   }).toBe(true);
+  await study.locator('[data-showcase-section="input"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-90);
+  await page.screenshot({path:testInfo.outputPath('nudges-showcase-mobile.png')});
   await study.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(study).toHaveCount(0);
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
