@@ -61,6 +61,7 @@ export const recentProjects = [
   previewImage: "", imageAlt: `${project.label} preview`, caseStudyUrl: "",
   ...(study ? {
     subtitle: study.subtitle, role: study.role,
+    team: study.team || "", year: study.year || "",
     disciplines: [study.scope], sample: false, caseStudy: study,
   } : {}),
   };

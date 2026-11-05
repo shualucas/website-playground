@@ -11,6 +11,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   const pageExit=usePageExit(content);
   const study = project.caseStudy;
   const editorial = Boolean(study || project.minimal);
+  const deck = study ? study.overview : project.subtitle;
   useContentReveal(content, project.id);
   const heading = useRef(null),
     theme = projectTheme(project.theme);
@@ -54,9 +55,9 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             {study ? study.eyebrow : `SELECTED WORK / ${project.label.toUpperCase()}`}
           </p>
           <h1 data-reveal ref={heading} tabIndex={-1}>
-            {project.title.replace("\n", " ")}
+            {(study?.title || project.title).replace("\n", " ")}
           </h1>
-          {!study && project.subtitle && <p data-reveal className="case-study-deck">{project.subtitle}</p>}
+          {deck && <p data-reveal className="case-study-deck">{deck}</p>}
           </div>
           {study && <div className="case-outcomes" aria-label="Project impact">
             <dl data-reveal className="case-outcome-grid">
@@ -64,7 +65,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             </dl>
             <p data-reveal className="case-impact">{study.impact}</p>
           </div>}
-          {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className="case-study-facts">
+          {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className={`case-study-facts${study?.year ? " case-study-facts-dated" : ""}`}>
             {(project.role || project.team) && <div>
               <dt>{study ? "Role" : "ROLE & TEAM"}</dt>
               <dd>
@@ -81,7 +82,10 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             </div>}
           </dl>}
         </header>
-        {study?.hero && <div data-reveal className="case-study-hero-media"><LoopVideo {...study.hero} /></div>}
+        {study?.hero && <figure data-reveal className="case-study-hero-figure">
+          <div className="case-study-hero-media"><LoopVideo {...study.hero} /></div>
+          {study.hero.caption && <figcaption>{study.hero.caption}</figcaption>}
+        </figure>}
         {study ? <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
           <Media project={project} controls />
         </div>
