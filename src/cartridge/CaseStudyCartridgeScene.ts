@@ -31,8 +31,16 @@ export class CaseStudyCartridgeScene {
   private visible = true;
   private ready = false;
   private disposed = false;
+  private control: HTMLElement;
+  private ray = new THREE.Raycaster();
+  private pointer = new THREE.Vector2();
+  private spin = new THREE.Vector2();
+  private targetSpin = new THREE.Vector2();
+  private spinVelocity = new THREE.Vector2();
+  private drag: { id:number; x:number; y:number; startX:number; startY:number; moved:boolean } | null = null;
 
   constructor(private host:HTMLElement,private cartridge:Cartridge,private callbacks:Callbacks) {
+    this.control=host.parentElement||host;
     this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"low-power"});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     this.renderer.transmissionResolutionScale=.5;
@@ -61,6 +69,9 @@ export class CaseStudyCartridgeScene {
     this.themeObserver=new MutationObserver(this.updateTheme);this.themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:["data-color-mode"]});
     this.motion.addEventListener("change",this.preference);document.addEventListener("visibilitychange",this.sync);
     this.renderer.domElement.addEventListener("webglcontextlost",this.contextLost);
+    host.addEventListener("pointerdown",this.down);host.addEventListener("pointermove",this.move);
+    host.addEventListener("pointerup",this.up);host.addEventListener("pointercancel",this.up);host.addEventListener("lostpointercapture",this.up);
+    this.control.addEventListener("keydown",this.keydown);window.addEventListener("blur",this.cancelDrag);
     this.resize();void this.prepare();
   }
   private async prepare() {
@@ -88,10 +99,53 @@ export class CaseStudyCartridgeScene {
     const t=this.motion.matches?0:this.time;
     // Match the camera's one-turn entrance, then let this scene's same clock drift.
     const p=this.motion.matches?1:Math.min(1,t/1.1),ease=1-Math.pow(1-p,4);
-    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12,-.22+Math.sin(t*.4)*.055-Math.PI*2*(1-ease),-.05+Math.sin(t*.35)*.02);
+    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-Math.PI*2*(1-ease)+this.spin.y,-.05+Math.sin(t*.35)*.02);
     this.root.position.y=Math.sin(t*.7)*.055;
     this.host.dataset.intro=p<1?"spinning":"settled";
     this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
+    this.host.dataset.rotation=[this.spin.x,this.spin.y].map(value=>value.toFixed(5)).join(",");
+    this.host.dataset.interactive=String(this.canInteract());
+  }
+  private canInteract() {
+    return this.ready&&!this.disposed&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=1.1)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
+  }
+  private down=(event:PointerEvent)=>{
+    if(event.button!==0||!event.isPrimary||this.drag||!this.canInteract()||event.target!==this.renderer.domElement)return;
+    const rect=this.host.getBoundingClientRect();
+    this.pointer.set((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2);
+    this.root.updateMatrixWorld(true);this.ray.setFromCamera(this.pointer,this.camera);
+    if(!this.ray.intersectObject(this.root,true).length)return;
+    event.preventDefault();this.host.setPointerCapture(event.pointerId);
+    this.drag={id:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,moved:false};
+  };
+  private move=(event:PointerEvent)=>{
+    const drag=this.drag;if(!drag||drag.id!==event.pointerId)return;
+    event.preventDefault();
+    if(Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)>7)drag.moved=true;
+    if(drag.moved){
+      this.targetSpin.x+=(event.clientY-drag.y)*.013;this.targetSpin.y+=(event.clientX-drag.x)*.013;
+      this.host.dataset.dragging="true";this.applyManualPose();
+    }
+    drag.x=event.clientX;drag.y=event.clientY;
+  };
+  private up=(event:PointerEvent)=>{if(this.drag?.id===event.pointerId)this.cancelDrag()};
+  private cancelDrag=()=>{
+    const drag=this.drag;this.drag=null;this.host.dataset.dragging="false";
+    if(drag&&this.host.hasPointerCapture(drag.id))this.host.releasePointerCapture(drag.id);
+  };
+  private keydown=(event:KeyboardEvent)=>{
+    if(!this.canInteract()||event.altKey||event.ctrlKey||event.metaKey)return;
+    if(event.key==="ArrowLeft")this.targetSpin.y-=.15;
+    else if(event.key==="ArrowRight")this.targetSpin.y+=.15;
+    else if(event.key==="ArrowUp")this.targetSpin.x-=.15;
+    else if(event.key==="ArrowDown")this.targetSpin.x+=.15;
+    else if(event.key.toLowerCase()==="r")this.targetSpin.set(0,0);
+    else return;
+    event.preventDefault();event.stopPropagation();this.applyManualPose();
+  };
+  private applyManualPose() {
+    if(this.motion.matches){this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0)}
+    this.draw();
   }
   private updateTheme=()=>{
     const dark=document.documentElement.dataset.colorMode==="dark";
@@ -107,10 +161,11 @@ export class CaseStudyCartridgeScene {
     this.renderer.setSize(w,h,false);if(this.ready)this.draw();
   };
   private draw() {if(!this.disposed&&this.host.clientWidth&&this.host.clientHeight){this.setPose();this.renderer.render(this.scene,this.camera)}}
-  private preference=()=>{this.time=this.motion.matches?0:1.1;this.sync()};
+  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:1.1;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.sync()};
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
+    if(!this.visible||document.hidden)this.cancelDrag();
     const animate=this.visible&&!document.hidden&&!this.motion.matches;
     this.host.dataset.motion=this.motion.matches?"reduced":animate?"ambient":"idle";
     if(this.visible&&!document.hidden)this.draw();
@@ -119,7 +174,14 @@ export class CaseStudyCartridgeScene {
   private tick=(now:number)=>{
     this.frame=0;if(this.disposed)return;
     if(this.last&&now-this.last<1000/30){this.frame=requestAnimationFrame(this.tick);return}
-    this.time+=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;this.draw();
+    const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
+    if(!this.drag)this.time+=dt;
+    // The same damped spring as a selected homepage cartridge, on this scene's clock.
+    for(let i=0;i<4;i++)for(const axis of ["x","y"] as const){
+      this.spinVelocity[axis]+=((this.targetSpin[axis]-this.spin[axis])*230-this.spinVelocity[axis]*27)*dt/4;
+      this.spin[axis]+=this.spinVelocity[axis]*dt/4;
+    }
+    this.draw();
     this.frame=requestAnimationFrame(this.tick);
   };
   private contextLost=(event:Event)=>{event.preventDefault();this.dispose();this.callbacks.onError()};
@@ -138,10 +200,14 @@ export class CaseStudyCartridgeScene {
     if(this.disposed)return;this.disposed=true;cancelAnimationFrame(this.frame);
     this.resizeObserver.disconnect();this.visibilityObserver.disconnect();this.themeObserver.disconnect();
     this.motion.removeEventListener("change",this.preference);document.removeEventListener("visibilitychange",this.sync);
+    this.cancelDrag();this.host.removeEventListener("pointerdown",this.down);this.host.removeEventListener("pointermove",this.move);
+    this.host.removeEventListener("pointerup",this.up);this.host.removeEventListener("pointercancel",this.up);this.host.removeEventListener("lostpointercapture",this.up);
+    this.control.removeEventListener("keydown",this.keydown);window.removeEventListener("blur",this.cancelDrag);
     this.renderer.domElement.removeEventListener("webglcontextlost",this.contextLost);
     this.disposeModel(this.root);this.receiver.geometry.dispose();this.shadow.dispose();this.key.shadow.dispose();
     this.environment.dispose();this.pmrem.dispose();this.renderer.dispose();this.renderer.forceContextLoss();this.renderer.domElement.remove();
     delete this.host.dataset.motion;
     delete this.host.dataset.intro;delete this.host.dataset.float;
+    delete this.host.dataset.rotation;delete this.host.dataset.dragging;delete this.host.dataset.interactive;
   }
 }

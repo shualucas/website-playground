@@ -21,7 +21,7 @@ export function CaseStudyCartridge({ id }) {
     return () => { active = false; scene?.dispose(); };
   }, [id]);
   if (!cartridge) return null;
-  return <div className="case-study-cartridge" data-cartridge={id} data-status={status} role="img" aria-label={`${id === "search" ? "Google Search" : cartridge.name} cartridge`} data-reveal>
+  return <div className="case-study-cartridge" data-cartridge={id} data-status={status} role="img" aria-label={`${id === "search" ? "Google Search" : cartridge.name} cartridge`} tabIndex={status === "ready" ? 0 : undefined} aria-description={status === "ready" ? "Drag or use the arrow keys to rotate. Press R to reset." : undefined} data-reveal>
     <div ref={host} className="case-cartridge-stage" aria-hidden="true" />
     {status === "fallback" && <div className="case-cartridge-fallback" style={{ "--cartridge-shell": cartridge.shell }} aria-hidden="true"><img src={cartridge.label} alt="" /></div>}
   </div>;
