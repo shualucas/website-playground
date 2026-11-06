@@ -144,6 +144,11 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   expect(await study.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(study.locator('.case-study-hero-media')).toHaveCSS('border-top-left-radius','24px');
   const center=await study.locator('.case-study-measure').boundingBox(),cart=await cartridge.boundingBox();expect(cart.x+cart.width/2).toBeCloseTo(center.x+center.width/2,0);
+  const back=study.locator('.case-study-nav .back-to-zine');
+  await expect(back).toHaveCSS('color',await study.locator('.case-study-deck').evaluate(el=>getComputedStyle(el).color));
+  await back.hover();await expect(back).toHaveCSS('color',await study.locator('h1').evaluate(el=>getComputedStyle(el).color));
+  expect(await back.evaluate(el=>getComputedStyle(el).getPropertyValue('--link-active').trim())).toBe('1');
+  await page.mouse.move(2,2);
   await page.screenshot({path:testInfo.outputPath('nudges-centered-header-desktop.png')});
   await expect(study.locator('.case-study-hero-figure figcaption')).toHaveCount(0);
   await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a useful next question written as plain text—and on ~70% of searches, it was hidden behind “Show more.” People had to type follow-ups by hand, while 10+ teams were building separate follow-up UIs. We needed one shared way to make the next step effortless without crowding the answer.');
