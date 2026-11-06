@@ -47,7 +47,7 @@ test("recent projects use one column with native reader links and restore focus 
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
-    });expect(sizes).toEqual(['16px']);
+    });expect(sizes).toEqual(i===0?['21px','16px']:['16px']);
     await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
     if(i!==0)await expect(page.locator('.case-study-facts dd').first()).toHaveText(titles[i]==='Search Labs'?'Core Product Designer':'Lead Product Designer');
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
@@ -125,6 +125,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:1440,height:1000});await page.goto('/');
   const navigation=page.getByRole('navigation',{name:'Recent projects'}),homeWidth=(await navigation.boundingBox()).width;
   const homeType=await page.locator('.intro-name').evaluate(el=>{const s=getComputedStyle(el);return [s.fontFamily,s.fontSize,s.fontWeight,s.fontStyle,s.lineHeight,s.letterSpacing]});
+  const homeMuted=await page.locator('.bio-continuation').evaluate(el=>{const s=getComputedStyle(el);return {font:[s.fontFamily,s.fontWeight,s.fontStyle,s.color],size:parseFloat(s.fontSize)}});
   await navigation.getByRole('link',{name:/AI Mode Nudges/}).click();
   const study=page.getByRole('region',{name:'AI Mode Nudges case study'});
   await expect(study).toBeVisible();await expect(study.getByRole('heading',{name:nudgesTitle,exact:true})).toBeFocused();
@@ -140,12 +141,16 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('.case-highlight-grid dt')).toHaveText(['follow-ups',"AI Mode DAU's",'reduction in manual typing']);
   await expect(study.locator('.case-highlight-note')).toHaveCount(0);
   expect(await study.locator('h1').evaluate(el=>{const s=getComputedStyle(el);return [s.fontFamily,s.fontSize,s.fontWeight,s.fontStyle,s.lineHeight,s.letterSpacing]})).toEqual(homeType);
+  const subtext=await study.locator('.case-study-deck').evaluate(el=>{const s=getComputedStyle(el);return {font:[s.fontFamily,s.fontWeight,s.fontStyle,s.color],size:parseFloat(s.fontSize)}});
+  expect(subtext.font).toEqual(homeMuted.font);expect(subtext.size).toBeLessThan(homeMuted.size);expect(subtext.size).toBeGreaterThanOrEqual(homeMuted.size*.9);
+  const paragraphs=await study.locator('.case-showcase-introduction,.case-showcase-passage > p,.case-showcase-copy > p,.case-showcase-next').evaluateAll(elements=>elements.map(el=>{const s=getComputedStyle(el);return {font:[s.fontFamily,s.fontWeight,s.fontStyle,s.color],size:parseFloat(s.fontSize)}}));
+  for(const paragraph of paragraphs)expect(paragraph).toEqual(subtext);
   await expect(study.locator('.case-showcase-introduction')).toHaveText('In 2026 I defined the design, principles, and triggering-logic for a follow-up system in Google Search, aligning 10+ product teams that previously used one-off patterns, into one approach.');
   expect(await study.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(study.locator('.case-study-hero-media')).toHaveCSS('border-top-left-radius','24px');
   const center=await study.locator('.case-study-measure').boundingBox(),cart=await cartridge.boundingBox();expect(cart.x+cart.width/2).toBeCloseTo(center.x+center.width/2,0);
   const back=study.locator('.case-study-nav .back-to-zine');
-  await expect(back).toHaveCSS('color',await study.locator('.case-study-deck').evaluate(el=>getComputedStyle(el).color));
+  await expect(back).toHaveCSS('color',await study.locator('.case-highlight-grid dt').first().evaluate(el=>getComputedStyle(el).color));
   await back.hover();await expect(back).toHaveCSS('color',await study.locator('h1').evaluate(el=>getComputedStyle(el).color));
   expect(await back.evaluate(el=>getComputedStyle(el).getPropertyValue('--link-active').trim())).toBe('1');
   await page.mouse.move(2,2);
