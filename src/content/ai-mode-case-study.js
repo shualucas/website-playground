@@ -25,7 +25,7 @@ export const aiModeCaseStudy = {
     {
       id: "problem",
       label: "The problem",
-      copy: "AI answers often ended with a useful next question written as plain text—and on ~70% of searches, it was hidden behind “Show more.” People had to type follow-ups by hand, while 10+ teams were building separate follow-up UIs. We needed one shared way to make the next step effortless without crowding the answer.",
+      copy: "AI answers often ended with a question written as plain text, requiring people to 1) know what they wanted to ask, and 2) type the follow-up question manually.",
       visual: { title: "Where the conversation stopped", caption: "Before: an unclickable follow-up behind “Show more,” alongside early team explorations.", placeholder: true, type: "image", src: "" },
     },
     {

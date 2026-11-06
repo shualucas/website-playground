@@ -156,7 +156,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await page.mouse.move(2,2);
   await page.screenshot({path:testInfo.outputPath('nudges-centered-header-desktop.png')});
   await expect(study.locator('.case-study-hero-figure figcaption')).toHaveCount(0);
-  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a useful next question written as plain text—and on ~70% of searches, it was hidden behind “Show more.” People had to type follow-ups by hand, while 10+ teams were building separate follow-up UIs. We needed one shared way to make the next step effortless without crowding the answer.');
+  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a question written as plain text, requiring people to 1) know what they wanted to ask, and 2) type the follow-up question manually.');
   await expect(study.locator('[data-showcase-section="system"]')).toContainText('Inline nudges have shipped globally');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards are in live testing');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
   await expect(study.locator('[data-showcase-section="input"]')).toContainText('“Something else”');await expect(study.locator('[data-showcase-section="model"]')).toContainText('lightweight second model');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
