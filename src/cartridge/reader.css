@@ -385,11 +385,11 @@
 .case-study-showcase .case-study-hero h1 { font:500 23px/1.3 "DM Sans",Arial,sans-serif; letter-spacing:-.015em; margin:10px 0 calc(8px * .67); }
 .case-study-showcase .case-study-deck,.case-showcase-introduction,.case-showcase-copy { font:300 21px/1.3 "DM Sans",Arial,sans-serif; letter-spacing:-.015em; color:var(--copy-muted); }
 .case-study-showcase .case-study-deck { margin:0 auto; }
-.case-study-showcase .case-highlight-grid { max-width:660px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:28px auto 0; }
-.case-highlight-grid > div { gap:1px; padding:12px 10px; border-radius:14px; background:color-mix(in srgb,var(--ui-text) 4%,var(--scene-bg)); }
+.case-study-showcase .case-highlight-grid { max-width:600px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:28px auto 0; }
+.case-highlight-grid > div { gap:1px; padding:10px; border-radius:14px; background:color-mix(in srgb,var(--ui-text) 4%,var(--scene-bg)); }
 .case-study-showcase .case-highlight-grid > div:last-child { grid-column:auto; flex-direction:column; align-items:stretch; gap:1px; }
-.case-study-showcase .case-highlight-grid dt { font-size:13px; line-height:1.4; }
-.case-study-showcase .case-highlight-grid dd { font-size:clamp(20px,2.2vw,24px); }
+.case-study-showcase .case-highlight-grid dt { font-size:12px; line-height:1.4; }
+.case-study-showcase .case-highlight-grid dd { font-size:clamp(18px,2vw,20px); }
 .case-study-showcase .case-study-facts-dated { grid-template-columns:minmax(0,300px) max-content; margin-top:0; }
 .case-showcase-introduction { max-width:620px; margin:32px auto 0; text-wrap:pretty; }
 .case-study-showcase .case-study-hero-figure { margin-top:var(--case-video-gap); }
@@ -427,7 +427,7 @@
 }
 @media(max-width:560px) {
   .case-study-showcase .case-highlight-grid { gap:8px; }
-  .case-highlight-grid > div { padding:12px 8px; }
+  .case-highlight-grid > div { padding:10px 8px; }
   .case-study-editorial .case-study-facts { grid-template-columns:1fr; gap:16px; }
   .case-outcome-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
   .case-outcome-grid > div:last-child { grid-column:1/-1; flex-direction:row; align-items:center; justify-content:flex-start; gap:16px; }
