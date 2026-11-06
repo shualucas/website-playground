@@ -31,7 +31,7 @@ test("recent projects use one column with native reader links and restore focus 
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
     await expect(page.locator(i===0?'.case-showcase-introduction':'.case-study-facts dd:last-child').last()).toContainText(i===0?'I led design':/^I /);
     await expect(page.locator('.case-study-facts')).toHaveCount(1);
-    await expect(page.locator('.case-study-cartridge')).toHaveCount(0);
+    await expect(page.locator('.case-study-cartridge')).toHaveCount(i===0?1:0);
     expect(await page.locator('.case-study .eyebrow').evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
     await expect(page.locator('.case-star-story > section > h2')).toHaveText(i===0?[]:['Problem','Goal','What I did']);
     await expect(page.locator('.case-study .case-outcome-grid dd')).toHaveText([
@@ -126,11 +126,16 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await navigation.getByRole('link',{name:/AI Mode Nudges/}).click();
   const study=page.getByRole('region',{name:'AI Mode Nudges case study'});
   await expect(study).toBeVisible();await expect(study.getByRole('heading',{name:nudgesTitle,exact:true})).toBeFocused();
+  const cartridge=study.getByRole('img',{name:'Google Search cartridge'});
+  await expect(cartridge).toHaveAttribute('data-cartridge','search');await expect(cartridge).toHaveAttribute('data-status','fallback');
+  expect(await cartridge.evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-study-hero'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   expect((await study.locator('.case-study-measure').boundingBox()).width).toBeCloseTo(homeWidth,0);
   await expect(study.locator('.case-outcome-grid dd')).toHaveText(['+3.87%','+1.84%','+1.50%']);
   await expect(study.locator('.case-study-hero .case-outcome-grid')).toHaveCount(0);
   await expect(study.locator('.case-study-facts dd')).toHaveText(['Lead Product Designer · Search Product Framework','2026']);
-  await expect(study.locator('.case-showcase-introduction')).toContainText('I led design');await expect(study.locator('.case-showcase-introduction')).toContainText('10+ product teams');
+  await expect(study.locator('.case-showcase-introduction')).toHaveText('I led design for a shared follow-up system across Google Search and AI Mode, defining the interaction framework, designing inline nudges and clarification cards, and aligning 10+ product teams onto one approach.');
+  await expect(study.locator('.case-study-hero-figure figcaption')).toHaveCount(0);
+  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a useful next question written as plain text—and on ~70% of searches, it was hidden behind “Show more.” People had to type follow-ups by hand, while 10+ teams were building separate follow-up UIs. We needed one shared way to make the next step effortless without crowding the answer.');
   await expect(study.locator('[data-showcase-section="system"]')).toContainText('Inline nudges have shipped globally');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards are in live testing');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
   await expect(study.locator('[data-showcase-section="input"]')).toContainText('“Something else”');await expect(study.locator('[data-showcase-section="model"]')).toContainText('lightweight second model');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');

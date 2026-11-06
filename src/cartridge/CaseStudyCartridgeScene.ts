@@ -86,8 +86,12 @@ export class CaseStudyCartridgeScene {
   }
   private setPose() {
     const t=this.motion.matches?0:this.time;
-    this.root.rotation.set(.26+Math.sin(t*.55)*.025,-.22+Math.sin(t*.4)*.035,-.05+Math.sin(t*.35)*.012);
-    this.root.position.y=Math.sin(t*.7)*.025;
+    // Match the camera's one-turn entrance, then let this scene's same clock drift.
+    const p=this.motion.matches?1:Math.min(1,t/1.1),ease=1-Math.pow(1-p,4);
+    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12,-.22+Math.sin(t*.4)*.055-Math.PI*2*(1-ease),-.05+Math.sin(t*.35)*.02);
+    this.root.position.y=Math.sin(t*.7)*.055;
+    this.host.dataset.intro=p<1?"spinning":"settled";
+    this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
   }
   private updateTheme=()=>{
     const dark=document.documentElement.dataset.colorMode==="dark";
@@ -103,7 +107,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.setSize(w,h,false);if(this.ready)this.draw();
   };
   private draw() {if(!this.disposed&&this.host.clientWidth&&this.host.clientHeight){this.setPose();this.renderer.render(this.scene,this.camera)}}
-  private preference=()=>{this.time=0;this.sync()};
+  private preference=()=>{this.time=this.motion.matches?0:1.1;this.sync()};
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
@@ -138,5 +142,6 @@ export class CaseStudyCartridgeScene {
     this.disposeModel(this.root);this.receiver.geometry.dispose();this.shadow.dispose();this.key.shadow.dispose();
     this.environment.dispose();this.pmrem.dispose();this.renderer.dispose();this.renderer.forceContextLoss();this.renderer.domElement.remove();
     delete this.host.dataset.motion;
+    delete this.host.dataset.intro;delete this.host.dataset.float;
   }
 }

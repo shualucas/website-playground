@@ -1,5 +1,25 @@
 import { test, expect, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
+test('Nudges opens with the Google cartridge spinning into an ambient float',async({page},testInfo)=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.addInitScript(()=>{
+  window.cartridgeEntrances=[];
+  new MutationObserver(changes=>{for(const {target} of changes)if(target.matches('.case-cartridge-stage'))window.cartridgeEntrances.push(target.dataset.intro)}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-intro']});
+ });
+ await page.goto('/?project=ai-mode-nudges&view=case-study');
+ const cartridge=page.getByRole('img',{name:'Google Search cartridge'}),stage=cartridge.locator('.case-cartridge-stage');
+ await expect(cartridge).toHaveAttribute('data-status','ready',{timeout:60000});await expect(stage.locator('canvas')).toHaveCount(1);
+ await expect(stage).toHaveAttribute('data-intro','settled',{timeout:15000});expect(await page.evaluate(()=>window.cartridgeEntrances.includes('spinning'))).toBe(true);
+ await expect(stage).toHaveAttribute('data-motion','ambient');const before=await stage.getAttribute('data-float');await expect.poll(()=>stage.getAttribute('data-float')).not.toBe(before);
+ await page.screenshot({path:testInfo.outputPath('nudges-google-cartridge-desktop.png')});
+ await page.locator('.case-study-content footer').scrollIntoViewIfNeeded();await expect(stage).toHaveAttribute('data-motion','idle');
+ const paused=await stage.getAttribute('data-float');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect(stage).toHaveAttribute('data-float',paused);
+ await page.emulateMedia({reducedMotion:'reduce'});await cartridge.scrollIntoViewIfNeeded();await expect(stage).toHaveAttribute('data-motion','reduced');await expect(stage).toHaveAttribute('data-intro','settled');
+ const reduced=await stage.getAttribute('data-float');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect(stage).toHaveAttribute('data-float',reduced);
+ await page.setViewportSize({width:390,height:844});await cartridge.scrollIntoViewIfNeeded();expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await page.screenshot({path:testInfo.outputPath('nudges-google-cartridge-mobile.png')});
+});
+
 test("the camera loads only in its hover preview and pauses when that preview is hidden", async ({page})=>{
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);
  const link=page.getByRole('link',{name:/Explore film photographs/}),camera=page.locator('.film-camera-dock');

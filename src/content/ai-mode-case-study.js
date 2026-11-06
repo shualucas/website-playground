@@ -1,6 +1,7 @@
 /** Copy supplied by Josh; shipped inline-nudge results stay separate from card testing. */
 export const aiModeCaseStudy = {
   layout: "showcase",
+  heroCartridge: "search",
   eyebrow: "Google Search & AI Mode",
   title: "AI Mode Nudges",
   overview: "Helping people turn AI answers into their next step.",
@@ -8,19 +9,18 @@ export const aiModeCaseStudy = {
   team: "Search Product Framework",
   year: "2026",
   scope: "Google Search AI Overviews & AI Mode",
-  summary: "In 2026, I led design for a shared follow-up system across Google Search and AI Mode. I defined the interaction framework, designed inline nudges and clarification cards, and built coded prototypes to bring 10+ product teams onto one approach.",
+  summary: "I led design for a shared follow-up system across Google Search and AI Mode, defining the interaction framework, designing inline nudges and clarification cards, and aligning 10+ product teams onto one approach.",
   hero: {
     src: "/videos/nudges/nudges-hero-1920.mp4",
     srcSmall: "/videos/nudges/nudges-hero-1280.mp4",
     poster: "/videos/nudges/nudges-hero-poster.jpg",
     label: "Planning a Jeju trip in AI Mode, then refining the answer with a questionnaire and a rainy-day follow-up nudge",
-    caption: "A prototype exploring clarification cards and inline follow-ups in a trip-planning conversation.",
   },
   story: [
     {
       id: "problem",
       label: "The problem",
-      copy: "AI answers often suggested a useful next question as plain text, sometimes hidden behind “Show more.” People had to type it themselves. With 10+ teams building separate follow-up experiences, we needed a shared way to make the next step easy without crowding the answer.",
+      copy: "AI answers often ended with a useful next question written as plain text—and on ~70% of searches, it was hidden behind “Show more.” People had to type follow-ups by hand, while 10+ teams were building separate follow-up UIs. We needed one shared way to make the next step effortless without crowding the answer.",
       visual: { title: "Where the conversation stopped", caption: "Before: an unclickable follow-up behind “Show more,” alongside early team explorations.", placeholder: true, type: "image", src: "" },
     },
     {

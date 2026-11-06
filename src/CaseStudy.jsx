@@ -5,6 +5,7 @@ import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyShowcase } from "./CaseStudyShowcase";
 import { LoopVideo } from "./LoopVideo";
+import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
@@ -51,6 +52,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       </header>
       <article className="case-study-content">
         <div className="case-study-measure">
+        {study?.heroCartridge && <CaseStudyCartridge id={study.heroCartridge} />}
         <header className="case-study-hero">
           <div className="case-study-intro">
           <p data-reveal className="eyebrow">

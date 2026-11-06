@@ -319,6 +319,11 @@
 .case-study-editorial .case-study-content { max-width:1280px; padding:32px 60px 64px; }
 .case-study-editorial .case-study-hero { max-width:none; }
 .case-study-intro { min-width:0; }
+.case-study-cartridge { position:relative; width:min(100%,360px); height:260px; margin:0 auto 24px; pointer-events:none; }
+.case-cartridge-stage { position:absolute; inset:0; }
+.case-cartridge-stage canvas { display:block; width:100%; height:100%; }
+.case-cartridge-fallback { position:absolute; inset:32px 24px; display:grid; place-items:center; padding:20px 24px 32px; border:1px solid color-mix(in srgb,var(--ui-text) 12%,transparent); border-radius:8px; background:var(--cartridge-shell); box-shadow:0 12px 24px color-mix(in srgb,var(--ui-text) 8%,transparent); transform:perspective(600px) rotateX(12deg) rotateY(-12deg) rotateZ(-3deg); }
+.case-cartridge-fallback img { display:block; width:100%; border-radius:3px; }
 .case-study-editorial .eyebrow { margin:0; color:var(--ui-muted); font-size:var(--case-body); line-height:inherit; letter-spacing:normal; }
 .case-study-editorial .case-study-hero h1 { font-size:var(--case-title); line-height:1.1; letter-spacing:-.035em; margin:20px 0; }
 .case-study-editorial .case-study-deck { font-size:var(--case-body); line-height:inherit; letter-spacing:normal; max-width:680px; margin:0 0 32px; color:var(--ui-muted); text-wrap:pretty; }
