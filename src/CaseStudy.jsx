@@ -52,6 +52,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       </header>
       <article className="case-study-content">
         <div className="case-study-measure">
+        <div className={showcase ? "case-showcase-cover" : undefined}>
         {study?.heroCartridge && <CaseStudyCartridge id={study.heroCartridge} />}
         <header className="case-study-hero">
           <div className="case-study-intro">
@@ -89,9 +90,9 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             <dl data-reveal className="case-outcome-grid case-highlight-grid" aria-label="Project impact">
               {study.highlights.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
             </dl>
-            {study.highlightsNote && <p data-reveal className="case-highlight-note">{study.highlightsNote}</p>}
           </div>}
         </header>
+        </div>
         {study?.hero && <figure data-reveal className="case-study-hero-figure">
           <div className="case-study-hero-media"><LoopVideo {...study.hero} /></div>
           {study.hero.caption && <figcaption>{study.hero.caption}</figcaption>}

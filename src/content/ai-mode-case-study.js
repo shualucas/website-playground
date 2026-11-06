@@ -11,11 +11,10 @@ export const aiModeCaseStudy = {
   scope: "Google Search AI Overviews & AI Mode",
   summary: "In 2026 I defined the design, principles, and triggering-logic for a follow-up system in Google Search, aligning 10+ product teams that previously used one-off patterns, into one approach.",
   highlights: [
-    { value: "+3.87%", label: "more follow-ups" },
-    { value: "+1.84%", label: "AIM DAUs" },
-    { value: "21.9%", label: "reduction in manual query typing" },
+    { value: "+3.87%", label: "follow-ups" },
+    { value: "+1.84%", label: "AI Mode DAU's" },
+    { value: "21.9%", label: "reduction in manual typing" },
   ],
-  highlightsNote: "Typing reduction measured in early vertical testing.",
   hero: {
     src: "/videos/nudges/nudges-hero-1920.mp4",
     srcSmall: "/videos/nudges/nudges-hero-1280.mp4",
