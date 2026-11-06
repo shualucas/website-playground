@@ -41,7 +41,7 @@ export class CaseStudyCartridgeScene {
 
   constructor(private host:HTMLElement,private cartridge:Cartridge,private callbacks:Callbacks) {
     this.control=host.parentElement||host;
-    this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"low-power"});
+    this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     this.renderer.transmissionResolutionScale=.5;
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -144,8 +144,9 @@ export class CaseStudyCartridgeScene {
     event.preventDefault();event.stopPropagation();this.applyManualPose();
   };
   private applyManualPose() {
-    if(this.motion.matches){this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0)}
-    this.draw();
+    if(this.motion.matches||this.drag){this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0)}
+    // The owned frame loop paints normal input once per display frame.
+    if(this.motion.matches)this.draw();
   }
   private updateTheme=()=>{
     const dark=document.documentElement.dataset.colorMode==="dark";
@@ -173,11 +174,10 @@ export class CaseStudyCartridgeScene {
   };
   private tick=(now:number)=>{
     this.frame=0;if(this.disposed)return;
-    if(this.last&&now-this.last<1000/30){this.frame=requestAnimationFrame(this.tick);return}
     const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
     if(!this.drag)this.time+=dt;
-    // The same damped spring as a selected homepage cartridge, on this scene's clock.
-    for(let i=0;i<4;i++)for(const axis of ["x","y"] as const){
+    // Direct manipulation while held; spring settling for keyboard changes.
+    if(!this.drag)for(let i=0;i<4;i++)for(const axis of ["x","y"] as const){
       this.spinVelocity[axis]+=((this.targetSpin[axis]-this.spin[axis])*230-this.spinVelocity[axis]*27)*dt/4;
       this.spin[axis]+=this.spinVelocity[axis]*dt/4;
     }

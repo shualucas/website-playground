@@ -19,6 +19,9 @@ test('Nudges opens with the Google cartridge spinning into an ambient float',asy
  await expect(stage).toHaveAttribute('data-rotation','0.00000,0.00000');
  await page.mouse.move(x+55,y+20,{steps:10});await expect(stage).toHaveAttribute('data-dragging','true');await expect(stage).toHaveCSS('cursor','grabbing');
  await expect.poll(async()=>Math.abs(Number((await stage.getAttribute('data-rotation')).split(',')[1]))).toBeGreaterThan(.3);
+ // Holding the pointer still must hold its rotation, rather than easing behind it.
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const held=await stage.getAttribute('data-rotation');
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect(stage).toHaveAttribute('data-rotation',held);
  await page.screenshot({path:testInfo.outputPath('nudges-google-cartridge-drag.png')});
  await page.mouse.up();await expect(stage).toHaveAttribute('data-dragging','false');await expect(page).toHaveURL(/project=ai-mode-nudges&view=case-study$/);
  await cartridge.focus();await reset();

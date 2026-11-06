@@ -13,9 +13,9 @@ export function CaseStudyShowcase({ study }) {
         <h2 id="case-result-title">{study.results.title}</h2>
         <p>{study.results.copy}</p>
       </div>
-      <dl data-reveal className="case-outcome-grid" aria-label="Project impact">
+      {study.results.outcomes && <dl data-reveal className="case-outcome-grid" aria-label="Project impact">
         {study.results.outcomes.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
-      </dl>
+      </dl>}
       <div data-reveal className="case-showcase-copy">
         <p>{study.results.guardrail}</p>
         <p>{study.results.testing}</p>

@@ -55,9 +55,9 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
         {study?.heroCartridge && <CaseStudyCartridge id={study.heroCartridge} />}
         <header className="case-study-hero">
           <div className="case-study-intro">
-          <p data-reveal className="eyebrow">
+          {!showcase && <p data-reveal className="eyebrow">
             {study ? study.eyebrow : `SELECTED WORK / ${project.label.toUpperCase()}`}
-          </p>
+          </p>}
           <h1 data-reveal ref={heading} tabIndex={-1}>
             {(study?.title || project.title).replace("\n", " ")}
           </h1>
@@ -69,7 +69,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             </dl>
             <p data-reveal className="case-impact">{study.impact}</p>
           </div>}
-          {(project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className={`case-study-facts${study?.year ? " case-study-facts-dated" : ""}`}>
+          {!showcase && (project.role || project.team || project.year || project.disciplines.length > 0) && <dl data-reveal className={`case-study-facts${study?.year ? " case-study-facts-dated" : ""}`}>
             {(project.role || project.team) && <div>
               <dt>{study ? "Role" : "ROLE & TEAM"}</dt>
               <dd>
@@ -85,12 +85,18 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
               <dd>{study ? study.summary : project.disciplines.join(" · ")}</dd>
             </div>}
           </dl>}
-          {showcase && <p data-reveal className="case-showcase-introduction">{study.summary}</p>}
+          {study?.highlights && <div className="case-showcase-highlights">
+            <dl data-reveal className="case-outcome-grid case-highlight-grid" aria-label="Project impact">
+              {study.highlights.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
+            </dl>
+            {study.highlightsNote && <p data-reveal className="case-highlight-note">{study.highlightsNote}</p>}
+          </div>}
         </header>
         {study?.hero && <figure data-reveal className="case-study-hero-figure">
           <div className="case-study-hero-media"><LoopVideo {...study.hero} /></div>
           {study.hero.caption && <figcaption>{study.hero.caption}</figcaption>}
         </figure>}
+        {showcase && <p data-reveal className="case-showcase-introduction">{study.summary}</p>}
         {study ? showcase ? <CaseStudyShowcase study={study} /> : <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
           <Media project={project} controls />
         </div>
