@@ -31,19 +31,19 @@ export const aiModeCaseStudy = {
     {
       id: "system",
       label: "The shared framework",
-      copy: "I defined three patterns: plain text for open-ended replies, inline links for a clear next step, and clarification cards for choices like budget or dates. Inline nudges have shipped globally in AI Overviews; clarification cards are in live testing.",
+      copy: "I defined three patterns: plain conversational text for open-ended replies, inline tappables for a clear next step, and clarification cards for choices like budget, dates, or points that could use refinement.",
       visual: { title: "Three patterns, one task", caption: "Plain text, a shipped inline nudge, and a clarification card in testing, using the same task.", placeholder: true, type: "image", src: "" },
     },
     {
       id: "input",
       label: "One place to type",
-      copy: "Early cards had a “Something else” input and a Skip button. I removed both to keep the card compact and “Ask anything” as the one place to type. The smaller card could sit closer to the answer.",
+      copy: "Early designs had a \"something else\" input that would allow for an open-ended answer, but we removed it to keep the card compact and leave the emphasis on the input plate as the one place to type.",
       visual: { title: "One clear input", caption: "The early card and current testing design, showing the competing inputs and difference in height.", placeholder: true, type: "image", src: "" },
     },
     {
       id: "model",
       label: "Reliable links in natural answers",
-      copy: "Asking the main model to generate clickable follow-ups compromised answer quality. We pivoted to a lightweight second model that identified actionable offers after the answer was written. I designed links for both sentences and bullet lists, accommodating natural variations in the response.",
+      copy: "Asking the main model to generate clickable follow-ups compromised answer quality, so we pivoted to a secondary model that uses post-processing. This allows the model to identify actionable offers after the answer was written. I designed both paragraph-style and list-style formats to accommodate the natural variations of the response.",
       visual: { title: "From answer to action", caption: "Answer generated → follow-up identified → inline link added. Show sentence and bullet-list examples.", placeholder: true, type: "image", src: "" },
     },
     {

@@ -47,7 +47,7 @@ test("recent projects use one column with native reader links and restore focus 
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
-    });expect(sizes).toEqual(i===0?['21px','8px']:['16px']);
+    });expect(sizes).toEqual(i===0?['21px','10px']:['16px']);
     await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
     if(i!==0)await expect(page.locator('.case-study-facts dd').first()).toHaveText(titles[i]==='Search Labs'?'Core Product Designer':'Lead Product Designer');
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
@@ -144,7 +144,9 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   const subtext=await study.locator('.case-study-deck').evaluate(el=>{const s=getComputedStyle(el);return {font:[s.fontFamily,s.fontWeight,s.fontStyle,s.color],size:parseFloat(s.fontSize)}});
   expect(subtext.font).toEqual(homeMuted.font);expect(subtext.size).toBeLessThan(homeMuted.size);expect(subtext.size).toBeGreaterThanOrEqual(homeMuted.size*.9);
   const paragraphs=await study.locator('.case-showcase-introduction,.case-showcase-passage > p,.case-showcase-copy > p,.case-showcase-next').evaluateAll(elements=>elements.map(el=>{const s=getComputedStyle(el);return {font:[s.fontFamily,s.fontWeight,s.fontStyle,s.color],size:parseFloat(s.fontSize)}}));
-  for(const paragraph of paragraphs)expect(paragraph).toEqual(subtext);
+  const bodyType={...subtext,font:[...subtext.font.slice(0,3),paragraphs[0].font[3]]};
+  for(const paragraph of paragraphs)expect(paragraph).toEqual(bodyType);
+  expect(bodyType.font[3]).not.toBe(subtext.font[3]);
   await expect(study.locator('.case-showcase-introduction')).toHaveText('In 2026 I defined the design, principles, and triggering-logic for a follow-up system in Google Search, aligning 10+ product teams that previously used one-off patterns, into one approach.');
   expect(await study.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(study.locator('.case-study-hero-media')).toHaveCSS('border-top-left-radius','24px');
@@ -157,9 +159,9 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await page.screenshot({path:testInfo.outputPath('nudges-centered-header-desktop.png')});
   await expect(study.locator('.case-study-hero-figure figcaption')).toHaveCount(0);
   await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a question written as plain text, requiring people to 1) know what they wanted to ask, and 2) type the follow-up question manually.');
-  await expect(study.locator('[data-showcase-section="system"]')).toContainText('Inline nudges have shipped globally');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards are in live testing');
+  await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain conversational text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for choices like budget, dates, or points that could use refinement');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
-  await expect(study.locator('[data-showcase-section="input"]')).toContainText('“Something else”');await expect(study.locator('[data-showcase-section="model"]')).toContainText('lightweight second model');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
+  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('secondary model that uses post-processing');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
   await expect(study.locator('[data-showcase-section="result"]')).toContainText('Clicks to external websites held steady');
   await expect(study.locator('[data-showcase-section="result"]')).toContainText('1.50%');
   await expect(study.locator('[data-showcase-section="result"]')).toContainText('early vertical testing');await expect(study.locator('[data-showcase-section="result"]')).toContainText('21.9%');
