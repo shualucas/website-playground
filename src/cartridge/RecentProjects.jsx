@@ -20,7 +20,7 @@ function useMedia(query){
   useEffect(()=>{const media=matchMedia(query),update=()=>setMatches(media.matches);media.addEventListener("change",update);update();return()=>media.removeEventListener("change",update)},[query]);
   return matches;
 }
-function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true}){
+function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,retainZine=true}){
   const preview=previews[project?.id];
   const aspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
   return <div className="recent-preview-content" data-kind={preview?.kind} style={{"--preview-aspect":aspect}}>
@@ -33,23 +33,24 @@ function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true})
         {preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}
       </div>}
       </div>
-      {project&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
+      {project&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind} instant={instant&&!["film","zine"].includes(preview.kind)}/>}
     </div>
   </div>;
 }
 export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const canHover=useMedia("(hover:hover) and (pointer:fine)"),narrow=useMedia("(max-width:1099px), (max-height:700px)");
-  const [active,setActive]=useState(null),[visible,setVisible]=useState(false);
+  const [{active,visible,instant},setPreview]=useState({active:null,visible:false,instant:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
   const select=(id,index)=>{
-    setActive(id);setVisible(true);const kind=previews[id]?.kind;
+    setPreview(current=>current.active===id&&current.visible?current:{active:id,visible:true,instant:canHover&&!hidden&&current.visible&&current.active!==id});const kind=previews[id]?.kind;
     if(kind==="film"||kind==="zine")setSeen(old=>old[kind]?old:{...old,[kind]:true});
     const height=browser.current?.clientHeight??0;
     navigation.current?.style.setProperty("--preview-offset",`${((index+.5)/projects.length-.5)*height*.45}px`);
   };
-  const release=()=>{if(!canHover)return;const id=focus.current??pointer.current;if(id)select(id,projects.findIndex(p=>p.id===id));else setVisible(false)};
-  const toggle=(id,index)=>{if(active===id&&visible)setVisible(false);else select(id,index)};
+  const dismiss=()=>setPreview(current=>current.visible?{...current,visible:false,instant:false}:current);
+  const release=()=>{if(!canHover)return;const id=focus.current??pointer.current;if(id)select(id,projects.findIndex(p=>p.id===id));else dismiss()};
+  const toggle=(id,index)=>{if(active===id&&visible)dismiss();else select(id,index)};
   const track=event=>{
     if(!canHover||(!pointer.current&&!focus.current)||event.pointerType==="touch"||!browser.current)return;
     const bounds=browser.current.getBoundingClientRect(),y=Math.max(0,Math.min(bounds.height,event.clientY-bounds.top));
@@ -74,9 +75,9 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
     return()=>root.style.removeProperty("--project-surface");
   },[showing,preview?.accent]);
   useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);
-  useEffect(()=>{pointer.current=focus.current=null;setVisible(false)},[canHover]);
+  useEffect(()=>{pointer.current=focus.current=null;dismiss()},[canHover]);
   useEffect(()=>{
-    if(canHover||!showing)return;const outside=event=>{if(!navigation.current?.contains(event.target))setVisible(false)};
+    if(canHover||!showing)return;const outside=event=>{if(!navigation.current?.contains(event.target))dismiss()};
     document.addEventListener("pointerdown",outside);return()=>document.removeEventListener("pointerdown",outside);
   },[canHover,showing]);
   const open=(event,item)=>{
@@ -88,7 +89,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
     <div className="project-hue-wash" aria-hidden="true" data-active={showing}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":item.accent}}/>)}</div>
     <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":preview?.accent??"#6988d8","--preview-width-scale":previewAspect/1.8}}
       onPointerLeave={()=>{pointer.current=null;release()}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){focus.current=null;release()}}}
-      onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();setVisible(false);navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
+      onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();dismiss();navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
       <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>
       <div ref={browser} className="recent-project-browser"><ul className="recent-project-list" onPointerMove={track} onPointerLeave={()=>{pointer.current=null;release()}}>
         {projects.map((item,index)=><li key={item.id} className={item.id==="film"?"recent-camera-row":undefined} data-project={item.id} data-active={showing&&active===item.id}
@@ -107,7 +108,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
           </div>}
         </li>)}
       </ul>
-      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing} data-follow-cursor={narrow}><div className="recent-preview-frame"><PreviewArt project={project} showing={showing} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
+      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing} data-follow-cursor={narrow}><div className="recent-preview-frame"><PreviewArt project={project} showing={showing} instant={instant} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
       </div>
     </nav>
   </>;

@@ -8,7 +8,7 @@ const cellKey = (col, row) => Math.imul(col + 1, 374761393) ^ Math.imul(row + 1,
 const smooth = value => { const p = Math.max(0, Math.min(1, value)); return p * p * (3 - 2 * p); };
 
 /** Sample the real preview, then crossfade its monochrome characters into the original. */
-export function AsciiPreviewReveal({ active, kind }) {
+export function AsciiPreviewReveal({ active, kind, instant = false }) {
   const canvas = useRef(null);
   useLayoutEffect(() => {
     const surface = canvas.current, art = surface.parentElement;
@@ -26,9 +26,9 @@ export function AsciiPreviewReveal({ active, kind }) {
       art.style.removeProperty("--preview-content-opacity");
       releaseSource();
     };
-    surface.dataset.state = active && !motion.matches ? "waiting" : "complete";
+    surface.dataset.state = active && !instant && !motion.matches ? "waiting" : "complete";
     surface.dataset.source = "none";
-    surface.hidden = !active || motion.matches || !context || !pixels;
+    surface.hidden = !active || instant || motion.matches || !context || !pixels;
     surface.style.opacity = "0";
     if (surface.hidden) return;
     art.style.setProperty("--preview-content-opacity", "0");
@@ -105,7 +105,8 @@ export function AsciiPreviewReveal({ active, kind }) {
       if (!liveCanvas && (source || !["film", "zine"].includes(kind) || unavailable)) capture();
       if (complete) return;
       if (start !== null) {
-        const progress = Math.min(1, Math.max(0, (now - start) / 1200));
+        const duration = ["film", "zine"].includes(kind) ? 1200 : 600;
+        const progress = Math.min(1, Math.max(0, (now - start) / duration));
         const reveal = smooth((progress - .28) / .72);
         surface.style.opacity = String(smooth(progress / .22) * (1 - reveal));
         art.style.setProperty("--preview-content-opacity", String(reveal));
@@ -115,6 +116,6 @@ export function AsciiPreviewReveal({ active, kind }) {
     };
     frame = requestAnimationFrame(paint);
     return () => { stopped = true; cancelAnimationFrame(frame); releaseSource(); art.style.removeProperty("--preview-content-opacity"); };
-  }, [active, kind]);
+  }, [active, kind, instant]);
   return <canvas ref={canvas} className="recent-preview-ascii" aria-hidden="true" hidden />;
 }

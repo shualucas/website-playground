@@ -212,6 +212,7 @@ test('project previews follow movement inside a row, dim other content and wash 
   const row=await links.first().boundingBox();
   await page.mouse.move(row.x+row.width*.4,row.y+8);
   const preview=navigation.locator('.recent-project-preview');await expect(preview).toHaveCSS('opacity','1');
+  await expect(preview).toHaveCSS('transition-duration','0.16s');
   const position=()=>preview.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m42);
   const firstTarget=await navigation.evaluate(el=>parseFloat(el.style.getPropertyValue('--preview-offset')));
   await expect.poll(async()=>Math.abs(await position()-firstTarget)).toBeLessThan(.3);
@@ -366,13 +367,14 @@ test('each hover preview resolves through ASCII, replays on return and stays sta
  });await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
  for(const link of await links.all()){
+  await page.mouse.move(2,2);
   await link.hover();const ascii=nav.locator('.recent-project-preview .recent-preview-ascii'),kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000});await expect(ascii).toBeHidden();expect(await page.evaluate(kind=>window.asciiReveals.some(entry=>entry.kind===kind&&entry.painted),kind)).toBe(true);
  }
  const before=await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='ai').length);await page.mouse.move(2,2);await links.first().hover();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');expect(await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='ai').length)).toBeGreaterThan(before);
  await page.emulateMedia({reducedMotion:'reduce'});await links.nth(1).hover();await expect(nav.locator('.recent-preview-ascii')).toBeHidden();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');
 });
 
-test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds',async({page})=>{
+test('case-study ASCII previews use source pixels and crossfade uniformly over 0.6 seconds',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.dissolve={};new MutationObserver(()=>{
@@ -387,8 +389,34 @@ test('ASCII previews use source pixels and crossfade uniformly over 1.2 seconds'
    }else if(ascii.dataset.state==='complete')state.duration??=performance.now()-state.start;
   }).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['data-state','style','data-source']});
  });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="search-labs"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Search Labs/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
- const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
+ const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(580);expect(result.duration).toBeLessThan(1100);
  const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
+});
+
+test('case-study previews switch instantly between rows and replay their entrance after leaving',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.addInitScript(()=>{
+  window.previewEntries=[];let previous;
+  new MutationObserver(()=>{
+   const art=document.querySelector('.recent-project-preview .recent-preview-content'),ascii=art?.querySelector('.recent-preview-ascii');
+   if(!ascii||ascii===previous)return;previous=ascii;
+   window.previewEntries.push({kind:art.dataset.kind,state:ascii.dataset.state,hidden:ascii.hidden,opacity:getComputedStyle(art.querySelector('.recent-preview-source')).opacity});
+  }).observe(document,{subtree:true,childList:true});
+ });
+ await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),ascii=nav.locator('.recent-preview-ascii');
+ await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
+ await links.nth(1).hover();await expect(ascii).toHaveAttribute('data-state','revealing');
+ // Interrupt the first entrance: no leftover opacity or delayed reveal may carry into the next row.
+ await links.nth(2).hover();await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toBeHidden();await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
+ await links.first().hover();await expect(ascii).toHaveAttribute('data-state','complete');
+ const entries=await page.evaluate(()=>window.previewEntries);
+ for(const kind of ['stadia','ai'])expect(entries.find(entry=>entry.kind===kind)).toEqual({kind,state:'complete',hidden:true,opacity:'1'});
+ await page.mouse.move(2,2);await expect(nav).toHaveAttribute('data-preview-active','false');
+ await links.nth(1).hover();await expect(ascii).toHaveAttribute('data-state','revealing');
+ await expect(ascii).toHaveAttribute('data-state','complete');
+ // Keyboard browsing uses the same immediate swaps, while the special previews retain ASCII.
+ await page.keyboard.press('Tab');await links.nth(2).focus();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toBeHidden();
+ for(const link of [links.nth(3),links.nth(4)]){await link.focus();await expect(ascii).toHaveAttribute('data-state','revealing');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000})}
 });
 
 test('Stadia plays its animated GIF after the ASCII dissolve and uses a still for reduced motion',async({page})=>{
