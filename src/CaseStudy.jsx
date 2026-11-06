@@ -4,6 +4,7 @@ import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyShowcase } from "./CaseStudyShowcase";
+import { CaseStudyMetrics } from "./CaseStudyMetrics";
 import { LoopVideo } from "./LoopVideo";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 
@@ -87,9 +88,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             </div>}
           </dl>}
           {study?.highlights && <div className="case-showcase-highlights">
-            <dl data-reveal className="case-outcome-grid case-highlight-grid" aria-label="Project impact">
-              {study.highlights.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
-            </dl>
+            <CaseStudyMetrics key={project.id} outcomes={study.highlights} />
           </div>}
         </header>
         </div>

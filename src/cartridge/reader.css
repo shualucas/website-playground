@@ -392,6 +392,20 @@
 .case-study-showcase .case-highlight-grid > div:last-child { grid-column:auto; flex-direction:column; align-items:stretch; gap:1px; }
 .case-study-showcase .case-highlight-grid dt { font-size:12px; line-height:1.4; }
 .case-study-showcase .case-highlight-grid dd { font-size:clamp(18px,2vw,20px); }
+.case-metric-value { display:inline-block; white-space:nowrap; }
+.case-metric-value::after { content:attr(data-value); }
+.case-highlight-grid > [data-metric-state="waiting"] { opacity:0; transform:translateY(8px); }
+.case-highlight-grid > [data-metric-state="counting"] { animation:case-metric-enter 400ms cubic-bezier(.22,1,.36,1) both; }
+[data-metric-state="counting"] .case-metric-value { animation:case-metric-number var(--metric-duration) cubic-bezier(.22,1,.36,1) both; }
+@keyframes case-metric-enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes case-metric-number {
+  from { opacity:0; transform:translateY(.55em); filter:blur(5px); }
+  45% { opacity:1; filter:blur(1.5px); }
+  to { opacity:1; transform:none; filter:none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .case-highlight-grid > [data-metric-state],.case-metric-value { opacity:1; transform:none; filter:none; animation:none !important; }
+}
 .case-study-showcase .case-study-facts-dated { grid-template-columns:minmax(0,300px) max-content; margin-top:0; }
 .case-showcase-introduction { max-width:620px; margin:32px auto 0; text-wrap:pretty; }
 .case-study-showcase .case-study-hero-figure { margin-top:var(--case-video-gap); }

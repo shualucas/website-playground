@@ -199,6 +199,42 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
 
+test('hero metrics count upward with a left-to-right blur entrance and honor reduced motion',async({page})=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});await page.setViewportSize({width:1440,height:1000});
+  await page.addInitScript(()=>{
+    window.metricEntrances=[];
+    new MutationObserver(records=>{for(const {target} of records){
+      if(!target.matches?.('.case-highlight-grid > [data-metric-state="counting"]'))continue;
+      const value=target.querySelector('.case-metric-value'),style=getComputedStyle(value);
+      window.metricEntrances.push({index:[...target.parentElement.children].indexOf(target),time:performance.now(),value:value.dataset.value,announced:target.querySelector('.sr-only').textContent,filter:style.filter,y:new DOMMatrixReadOnly(style.transform).m42,width:value.getBoundingClientRect().width});
+    }}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-metric-state']});
+  });
+  await page.goto('/?project=ai-mode-nudges&view=case-study');
+  const grid=page.locator('.case-highlight-grid'),cards=grid.locator(':scope > div'),values=grid.locator('.case-metric-value');
+  const final=['+3.87%','+1.84%','21.9%'];
+  await expect(cards.locator('dd')).toHaveText(final);
+  await expect.poll(()=>cards.evaluateAll(elements=>elements.every(el=>el.dataset.metricState==='complete'))).toBe(true);
+  const entrances=await page.evaluate(()=>window.metricEntrances);
+  expect(entrances.map(entry=>entry.index)).toEqual([0,1,2]);
+  for(let i=0;i<entrances.length;i++){
+    expect(parseFloat(entrances[i].value)).toBeLessThan(parseFloat(final[i]));
+    expect(entrances[i].filter).not.toBe('none');expect(entrances[i].y).toBeGreaterThan(0);
+    if(i)expect(entrances[i].time-entrances[i-1].time).toBeGreaterThan(80);
+    expect(entrances[i].announced).toBe(final[i]);
+    expect(await grid.getByRole('definition').nth(i).ariaSnapshot()).toContain(final[i]);
+    await expect(values.nth(i)).toHaveAttribute('data-value',final[i]);
+    await expect(values.nth(i)).toHaveAttribute('aria-hidden','true');
+    await expect(values.nth(i)).toHaveCSS('filter','none');
+    expect((await values.nth(i).boundingBox()).width).toBeCloseTo(entrances[i].width,0);
+  }
+  // A preference change during the count must reveal every exact value immediately.
+  await page.reload();await expect(cards.first()).toHaveAttribute('data-metric-state','counting');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await expect(cards.locator('dd')).toHaveText(final);
+  await expect.poll(()=>cards.evaluateAll(elements=>elements.every(el=>el.dataset.metricState==='complete'))).toBe(true);
+  for(let i=0;i<final.length;i++){await expect(values.nth(i)).toHaveAttribute('data-value',final[i]);await expect(values.nth(i)).toHaveCSS('filter','none');await expect(values.nth(i)).toHaveCSS('animation-name','none')}
+});
+
 test('project previews follow movement inside a row, dim other content and wash the background by project',async({page})=>{
   await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
 
