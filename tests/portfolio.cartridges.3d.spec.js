@@ -159,7 +159,7 @@ test("Search and legacy AI Mode deep links remain readable", async ({ page }) =>
   await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 60000 });
   await expect(page.getByRole("region", { name: "Search case study" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Search case study" }).getByText("2022–Now", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /Back to collection/ }).first().click();
+  await page.getByRole("button", { name: "Home", exact: true }).first().click();
   await expect(page.locator(".case-study")).toHaveCount(0); await expect(page.locator(".collection")).toHaveAttribute("data-selected", "search");
 });
 

@@ -145,7 +145,7 @@ function App() {
       <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
       {presented && <PortfolioFooter hidden={Boolean(reading)} dismissHistory={Boolean(previewingProject || hovered || reading)} />}
     </main>
-    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Back to collection" identity="" />}
+    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" />}
   </>;
 }
 createRoot(document.getElementById("root")).render(<App />);

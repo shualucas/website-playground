@@ -43,7 +43,7 @@ export const aiModeCaseStudy = {
     {
       id: "model",
       label: "Reliable links in natural answers",
-      copy: "Asking the main model to generate clickable follow-ups compromised answer quality, so we pivoted to a secondary model that uses post-processing. This allows the model to identify actionable offers after the answer was written. I designed both paragraph-style and list-style formats to accommodate the natural variations of the response.",
+      copy: "Asking the model to generate clickable follow-ups compromised answer quality, so we pivoted to a different approach that uses post-processing. This allows the model to identify actionable offers after the answer was written. I designed both paragraph-style and list-style formats to accommodate the natural variations of the response.",
       visual: { title: "From answer to action", caption: "Answer generated → follow-up identified → inline link added. Show sentence and bullet-list examples.", placeholder: true, type: "image", src: "" },
     },
     {

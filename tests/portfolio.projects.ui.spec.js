@@ -47,7 +47,7 @@ test("recent projects use one column with native reader links and restore focus 
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
-    });expect(sizes).toEqual(i===0?['21px','10px']:['16px']);
+    });expect(sizes).toEqual(i===0?['21px','11px']:['16px']);
     await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
     if(i!==0)await expect(page.locator('.case-study-facts dd').first()).toHaveText(titles[i]==='Search Labs'?'Core Product Designer':'Lead Product Designer');
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
@@ -161,7 +161,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a question written as plain text, requiring people to 1) know what they wanted to ask, and 2) type the follow-up question manually.');
   await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain conversational text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for choices like budget, dates, or points that could use refinement');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
-  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('secondary model that uses post-processing');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
+  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a different approach that uses post-processing');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
   await expect(study.locator('[data-showcase-section="result"]')).toContainText('Clicks to external websites held steady');
   await expect(study.locator('[data-showcase-section="result"]')).toContainText('1.50%');
   await expect(study.locator('[data-showcase-section="result"]')).toContainText('early vertical testing');await expect(study.locator('[data-showcase-section="result"]')).toContainText('21.9%');
@@ -195,7 +195,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await study.evaluate(el=>el.scrollTop=0);await page.screenshot({path:testInfo.outputPath('nudges-centered-header-mobile.png')});
   await study.locator('[data-showcase-section="input"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-90);
   await page.screenshot({path:testInfo.outputPath('nudges-showcase-mobile.png')});
-  await study.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(study).toHaveCount(0);
+  await study.getByRole('button',{name:'Home',exact:true}).first().click();await expect(study).toHaveCount(0);
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
 
@@ -312,7 +312,7 @@ test('internal page links share the project exit while camera links keep their o
   await page.getByRole('link',{name:'Home',exact:true}).click();await expect(page.locator('.resume-page')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/$/);
   await page.getByRole('link',{name:/Zine of Extracurriculars/}).click();await expect(page.locator('.collection')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/after-hours\/$/);
   await page.getByRole('link',{name:'Home',exact:true}).click();await expect(page.locator('.after-hours')).toHaveAttribute('data-exiting','true');await expect(page).toHaveURL(/\/$/);
-  await page.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.getByRole('button',{name:'Back to collection',exact:true}).first().click();await expect(page.locator('.case-study')).toHaveAttribute('data-exiting','true');await expect(page.locator('.case-study')).toHaveCount(0);
+  await page.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.getByRole('button',{name:'Home',exact:true}).first().click();await expect(page.locator('.case-study')).toHaveAttribute('data-exiting','true');await expect(page.locator('.case-study')).toHaveCount(0);
   await expect(page.getByRole('link',{name:/Explore film photographs/})).toHaveAttribute('href','/photos/');
  });
 
