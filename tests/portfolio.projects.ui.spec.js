@@ -169,7 +169,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(5);
   for(const passage of await study.locator('.case-showcase-passage').all()) {
     await expect(passage.locator('.case-story-media-placeholder')).toHaveCount(1);
-    expect(await passage.locator('p').first().evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('figure'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    expect(await passage.locator('p').first().evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('figure'))&Node.DOCUMENT_POSITION_PRECEDING))).toBe(true);
   }
   const system=study.locator('[data-showcase-section="system"]');
   expect((await system.locator('figure').boundingBox()).width).toBeCloseTo(homeWidth,0);

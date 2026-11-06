@@ -1,12 +1,12 @@
 import React from "react";
 import { CaseStudyMedia } from "./CaseStudyMedia";
 
-/** Short passages introduce the work; media keeps the full project measure. */
+/** Full-width work leads each passage, with its explanation directly below. */
 export function CaseStudyShowcase({ study }) {
   return <div className="case-showcase-story">
     {study.story.map(passage => <section className="case-showcase-passage" data-showcase-section={passage.id} aria-label={passage.label} key={passage.id}>
-      <p data-reveal className="case-showcase-copy">{passage.copy}</p>
       <div data-reveal><CaseStudyMedia media={passage.visual} /></div>
+      <p data-reveal className="case-showcase-copy">{passage.copy}</p>
     </section>)}
     <section className="case-showcase-results" data-showcase-section="result" aria-labelledby="case-result-title">
       <div data-reveal className="case-showcase-copy">
