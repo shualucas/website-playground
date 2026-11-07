@@ -378,9 +378,9 @@
 .case-star-story .case-media-transcript { margin-top:12px; }
 .case-study-editorial .case-study-content footer { margin-top:40px; }
 /* Visual-led studies alternate a short reading measure with full-width work. */
-.case-study-showcase { --case-top-inset:32px; --case-video-gap:64px; --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); }
+.case-study-showcase { --case-top-inset:32px; --case-video-gap:48px; --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); }
 .case-study-showcase .case-study-content { text-align:center; }
-.case-showcase-cover { min-height:calc(100svh - 80px - var(--case-top-inset) - var(--case-video-gap) - 72px); padding-top:calc(clamp(24px,5svh,48px) + 32px); }
+.case-showcase-cover { min-height:calc(100svh - 80px - var(--case-top-inset) - var(--case-video-gap) - 140px); display:flex; flex-direction:column; justify-content:center; }
 .case-study-showcase .case-study-cartridge { margin-bottom:12px; }
 .case-study-showcase .case-study-hero { text-align:center; }
 .case-study-showcase .case-study-hero h1 { font:500 23px/1.3 "DM Sans",Arial,sans-serif; letter-spacing:-.015em; margin:10px 0 calc(8px * .67); }

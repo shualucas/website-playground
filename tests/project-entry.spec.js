@@ -172,7 +172,10 @@ test("HTML fallback can enter a case study and return without WebGL", async ({
   await expect(
     page.getByRole("region", { name: "Stadia case study" }),
   ).toBeVisible();
+  await page.getByRole("region", { name: "Stadia case study" }).getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
   await page.keyboard.press("Escape");
   await expect(page.locator(".spellbook")).toHaveAttribute("data-view", "book");
   await expect(page.locator(".fallback-book")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Switch to light mode" })).toBeVisible();
 });

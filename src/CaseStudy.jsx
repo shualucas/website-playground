@@ -5,11 +5,12 @@ import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyShowcase } from "./CaseStudyShowcase";
 import { CaseStudyMetrics } from "./CaseStudyMetrics";
+import { ThemeToggle } from "./ThemeToggle";
 import { LoopVideo } from "./LoopVideo";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
-export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas" }) {
+export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas", dark, onToggleTheme }) {
   const content = useRef(null);
   const pageExit=usePageExit(content);
   const study = project.caseStudy;
@@ -32,6 +33,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       <span className="link-copy"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>{backLabel}</span>
     </button>
     {identity && <span data-reveal>{identity.toUpperCase()}</span>}
+    <span data-reveal><ThemeToggle dark={dark} onToggle={onToggleTheme} /></span>
   </>;
   return (
     <section

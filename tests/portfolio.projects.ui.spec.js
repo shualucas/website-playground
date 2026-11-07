@@ -188,8 +188,10 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
     await page.setViewportSize({width,height});await study.evaluate(el=>el.scrollTop=0);
     await expect.poll(async()=>{
       const top=(await study.locator('.case-study-hero-media').boundingBox()).y;
-      return top>=height-80&&top<=height-24;
+      return top>=height-148&&top<=height-112;
     }).toBe(true);
+    const cover=await study.locator('.case-showcase-cover').boundingBox(),cartridge=await study.locator('.case-study-cartridge').boundingBox(),hero=await study.locator('.case-study-hero').boundingBox();
+    expect((cartridge.y+hero.y+hero.height)/2).toBeCloseTo(cover.y+cover.height/2,0);
   }
   await page.setViewportSize({width:390,height:844});
   await study.evaluate(el=>el.scrollTop=0);await page.screenshot({path:testInfo.outputPath('nudges-centered-header-mobile.png')});
@@ -197,6 +199,22 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await page.screenshot({path:testInfo.outputPath('nudges-showcase-mobile.png')});
   await study.getByRole('button',{name:'Home',exact:true}).first().click();await expect(study).toHaveCount(0);
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
+});
+
+test('all current pages expose a working header theme toggle and preserve the selection',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});let mode='light';
+  for(const path of ['/','/?project=ai-mode-nudges&view=case-study','/?project=search-labs&view=case-study','/?project=stadia-store-redesign&view=case-study','/resume/','/after-hours/','/photos/']){
+    await page.goto(path);await expect(page.locator('html')).toHaveAttribute('data-color-mode',mode);
+    const header=path.includes('case-study')?page.locator('.case-study-nav'):page.locator('header').first();
+    const next=mode==='light'?'dark':'light';await header.getByRole('button',{name:`Switch to ${next} mode`,exact:true}).click();
+    await expect(page.locator('html')).toHaveAttribute('data-color-mode',next);
+    expect(await page.evaluate(()=>localStorage.getItem('cartridge-color-mode'))).toBe(next);
+    await expect(header.getByRole('button',{name:`Switch to ${mode} mode`,exact:true})).toBeVisible();mode=next;
+    if(path.includes('case-study')){
+      await header.getByRole('button',{name:'Home',exact:true}).click();await expect(page.locator('.case-study')).toHaveCount(0);
+      await expect(page.locator('.collection-header').getByRole('button',{name:`Switch to ${mode==='light'?'dark':'light'} mode`,exact:true})).toBeVisible();
+    }
+  }
 });
 
 test('hero metrics count upward with a left-to-right blur entrance and honor reduced motion',async({page})=>{

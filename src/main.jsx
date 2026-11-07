@@ -881,6 +881,8 @@ function App() {
           project={projects[reading]}
           onBack={closeRead}
           Media={PhoneFallback}
+          dark={colorMode === "dark"}
+          onToggleTheme={() => setColorMode(mode => mode === "dark" ? "light" : "dark")}
         />
       )}
     </main>
