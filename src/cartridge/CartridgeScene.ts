@@ -24,7 +24,7 @@ const DESKTOP_PITCH = 72 * Math.PI / 180;
 
 const ROLLS = [-.018, .018, -.016, .018];
 const YAWS = [-.025, .018, -.018, .025];
-const SHIFTS = [.17, -.17, .17, -.17];
+const SHIFTS = [.08, -.08, .08, -.08];
 const COMPONENTS = ["x", "y", "z"] as const;
 
 

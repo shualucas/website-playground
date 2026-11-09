@@ -18,7 +18,7 @@ test("career collection uses exact bio and four individually visible cartridges 
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-model", "external-glb");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-order", "search,stadia,gmail,blizzard");
   const projected = JSON.parse(await page.locator(".cartridge-stage").getAttribute("data-frame-bounds"));
-  expect(projected.right - projected.left).toBeGreaterThan(300);
+  expect(projected.right - projected.left).toBeGreaterThan(280);
   expect(projected.right - projected.left).toBeLessThan(380);
   const intro = await page.locator(".collection-intro").boundingBox(), stage = await page.locator(".cartridge-stage").boundingBox();
   const hero = await page.locator(".collection-hero").boundingBox();
