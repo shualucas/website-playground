@@ -354,6 +354,12 @@ test('hero metrics count upward with a left-to-right blur entrance and honor red
   await expect(cards.locator('dd')).toHaveText(final);
   await expect.poll(()=>cards.evaluateAll(elements=>elements.every(el=>el.dataset.metricState==='complete'))).toBe(true);
   const entrances=await page.evaluate(()=>window.metricEntrances);
+  const digitWidths=await values.first().evaluate(async node=>{
+    await document.fonts.load('500 20px "Portfolio Metrics"','0123456789');
+    const probe=node.cloneNode();probe.dataset.final='';probe.style.cssText='position:absolute;visibility:hidden';node.parentElement.append(probe);
+    const widths=[...'0123456789'].map(digit=>{probe.dataset.value=digit;return probe.getBoundingClientRect().width});probe.remove();return widths;
+  });
+  expect(Math.max(...digitWidths)-Math.min(...digitWidths)).toBeLessThan(.02);
   expect(entrances.map(entry=>entry.index)).toEqual([0,1,2]);
   for(let i=0;i<entrances.length;i++){
     expect(parseFloat(entrances[i].value)).toBeLessThan(parseFloat(final[i]));
