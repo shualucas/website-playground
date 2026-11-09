@@ -64,7 +64,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
         {backgroundColor:'transparent'},
         {offset:.23,backgroundColor:`color-mix(in srgb,${previews[row.dataset.project].accent} 32%,var(--scene-bg))`},
         {backgroundColor:'transparent'},
-      ],{duration:420,delay:index*75,easing:'ease-out'}));
+      ],{duration:840,delay:index*150,easing:'ease-out'}));
       Promise.all(animations.map(animation=>animation.finished)).then(stop).catch(()=>{});
     };
     const reduce=()=>{if(motion.matches)stop()},hide=()=>{if(document.hidden)stop()};

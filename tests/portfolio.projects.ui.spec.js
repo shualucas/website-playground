@@ -671,7 +671,7 @@ test('project colors ripple once after the rows finish loading without opening p
   };
  });
  await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','complete');
- const pulses=await page.evaluate(()=>window.rowPulses);expect(pulses.map(p=>p.project)).toEqual(['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film']);expect(pulses.every(p=>p.ready)).toBe(true);expect(pulses.map(p=>p.delay)).toEqual([0,75,150,225,300]);expect(new Set(pulses.map(p=>p.color)).size).toBe(5);
+ const pulses=await page.evaluate(()=>window.rowPulses);expect(pulses.map(p=>p.project)).toEqual(['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film']);expect(pulses.every(p=>p.ready)).toBe(true);expect(pulses.map(p=>p.delay)).toEqual([0,150,300,450,600]);expect(new Set(pulses.map(p=>p.color)).size).toBe(5);
  await expect(nav).toHaveAttribute('data-preview-active','false');await expect(nav.locator('.recent-preview-ascii,.loop-video video')).toHaveCount(0);
  for(const row of await nav.locator('.recent-project-list > li').all())await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
  await nav.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(page.locator('.case-study')).toHaveCount(0);expect(await page.evaluate(()=>window.rowPulses.length)).toBe(5);
