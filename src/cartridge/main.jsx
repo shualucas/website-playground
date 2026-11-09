@@ -140,7 +140,7 @@ function App() {
           {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button data-reveal data-cartridge={item.id} key={item.id} onPointerEnter={event=>{if(event.pointerType!=="touch")setHovered(item.id)}} onPointerLeave={()=>setHovered(null)} onFocus={()=>setHovered(item.id)} onBlur={()=>setHovered(null)} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
         </div>
       </section>
-      <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
+      <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} exiting={pageExit.exiting} />
       {presented && !reading && <PortfolioFooter dismissHistory={Boolean(previewingProject || hovered)} />}
     </main>
     {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={setDark} footer={<PortfolioFooter />} />}

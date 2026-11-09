@@ -47,9 +47,10 @@
 .collection-footer[hidden] { display:none; }
 .recent-projects { --preview-surface:var(--project-surface); --project-muted:var(--copy-muted); --row-divider:color-mix(in srgb,var(--project-muted) 24%,transparent); position:relative; z-index:1; margin-top:20px; margin-bottom:24px; }
 .recent-projects h2 { margin:0 0 10px; font-size:15px; font-weight:400; font-variant-numeric:tabular-nums; line-height:1.5; color:var(--project-muted); }
-/* Keep the wash behind content, including the transparent cartridge canvas. */
-.project-hue-wash { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; background:var(--project-surface); }
-/* Page and preview fills inherit one animated solid color, including mid-fade. */
+/* Keep the viewport wash outside the translating/filtering content during exits. */
+.project-hue-wash { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; background:var(--project-surface); opacity:1; transition:--project-surface 750ms ease,opacity 300ms cubic-bezier(.4,0,.2,1); }
+.project-hue-wash[data-exiting="true"] { opacity:0; }
+/* Keep the wash and preview fills on the same color and timing, including mid-fade. */
 .project-hue-wash > span { position:absolute; inset:0; display:none; background:var(--project-surface); }
 .project-hue-wash > span[data-active="true"] { display:block; }
 /* Full-width links stay under a pointer-transparent floating preview. */
@@ -221,7 +222,7 @@
 
 @media(prefers-reduced-motion:reduce) { .recent-project-preview[data-follow-cursor="false"][data-visible="true"] { transform:translateY(var(--preview-offset)); } }
 
-@media(prefers-reduced-motion:reduce) { .collection { transition:none; } }
+@media(prefers-reduced-motion:reduce) { .collection,.project-hue-wash { transition:none; } }
 
 @media(min-width:1100px) { .recent-project-preview[data-follow-cursor="true"] { width:calc(min(489px,calc(100vw - 48px),calc((100svh - 32px) * 1.8)) * var(--preview-width-scale,1)); } }
 

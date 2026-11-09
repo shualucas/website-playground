@@ -120,6 +120,26 @@ test('project exits fade, blur and move the whole page left before navigating',a
   expect(errors).toEqual([]);
 });
 
+test('hover backgrounds cover the viewport while page content exits in either theme',async({page},testInfo)=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  for(const [width,mode,project]of[[1440,'light','ai-mode-nudges'],[900,'dark','search-labs'],[390,'dark','rave-flyer-zine']]){
+    await page.setViewportSize({width,height:900});await page.goto('/');
+    if(await page.locator('html').getAttribute('data-color-mode')!==mode){await page.getByRole('button',{name:`Switch to ${mode} mode`}).click();await expect(page.locator('html')).not.toHaveClass(/theme-transition/)}
+    await page.evaluate(()=>{const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){const animation=animate.call(this,frames,options);if(this.matches('main.collection')){animation.pause();animation.currentTime=150}return animation}});
+    const main=page.locator('main.collection'),wash=page.locator('.project-hue-wash'),link=page.locator(`[data-project="${project}"] .recent-project-link`);
+    await link.hover();await wash.evaluate(async el=>{getComputedStyle(el).backgroundColor;await Promise.allSettled(el.getAnimations().map(animation=>animation.finished))});
+    await link.click();await expect(main).toHaveAttribute('data-exiting','true');await expect(wash).toHaveAttribute('data-exiting','true');
+    const surface=await wash.evaluate(el=>{
+      getComputedStyle(el).opacity;
+      const fade=el.getAnimations().find(animation=>animation.transitionProperty==='opacity');fade.pause();fade.currentTime=150;
+      const rect=el.getBoundingClientRect();return{x:rect.x,y:rect.y,width:rect.width,height:rect.height,opacity:Number(getComputedStyle(el).opacity),overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    expect(surface.x).toBe(0);expect(surface.y).toBe(0);expect(surface.width).toBe(width);expect(surface.height).toBe(900);expect(surface.opacity).toBeGreaterThan(0);expect(surface.opacity).toBeLessThan(1);expect(surface.overflow).toBe(false);
+    await page.screenshot({path:testInfo.outputPath(`project-background-exit-${width}-${mode}.png`)});
+    await page.keyboard.press('Escape');await expect(main).toHaveAttribute('data-exiting','false');await expect(wash).toHaveAttribute('data-exiting','false');await expect(wash).toHaveCSS('opacity','1');await expect(page.locator('.case-study')).toHaveCount(0);
+  }
+});
+
 test('AI Mode case study shows the supplied story and outcomes at the home project width',async({page},testInfo)=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
 

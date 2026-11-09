@@ -1,4 +1,5 @@
 import React,{useEffect,useLayoutEffect,useRef,useState} from "react";
+import {createPortal} from "react-dom";
 import {recentProjects} from "./projects";
 import {entrance} from "./entrance";
 import {ZinePreview} from "./ZinePreview";
@@ -37,7 +38,7 @@ function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,ret
     </div>
   </div>;
 }
-export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
+export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange}){
   const canHover=useMedia("(hover:hover) and (pointer:fine)"),narrow=useMedia("(max-width:1099px), (max-height:700px)");
   const [{active,visible,instant},setPreview]=useState({active:null,visible:false,instant:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
@@ -100,11 +101,12 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.bottom,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
   const previewAspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
+  const surface=showing?`color-mix(in srgb,color-mix(in srgb,${preview.accent} 70%,#000) 20%,var(--scene-bg))`:"var(--scene-bg)";
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
-    root.style.setProperty("--project-surface",showing?`color-mix(in srgb,color-mix(in srgb,${preview.accent} 70%,#000) 20%,var(--scene-bg))`:"var(--scene-bg)");
+    root.style.setProperty("--project-surface",surface);
     return()=>root.style.removeProperty("--project-surface");
-  },[showing,preview?.accent]);
+  },[surface]);
   useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);
   useEffect(()=>{pointer.current=focus.current=null;dismiss()},[canHover]);
   useEffect(()=>{
@@ -117,7 +119,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
     event.preventDefault();onOpen(item.id);
   };
   return <>
-    <div className="project-hue-wash" aria-hidden="true" data-active={showing}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":item.accent}}/>)}</div>
+    {createPortal(<div className="project-hue-wash" aria-hidden="true" data-active={showing} data-exiting={Boolean(exiting)} style={{"--project-surface":surface}}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":item.accent}}/>)}</div>,document.body)}
     <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":preview?.accent??"#6988d8","--preview-width-scale":previewAspect/1.8}}
       onPointerLeave={()=>{pointer.current=null;release()}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){focus.current=null;release()}}}
       onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();dismiss();navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
