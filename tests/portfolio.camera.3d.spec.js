@@ -1,3 +1,4 @@
+import { filmPhotos } from "../src/content/film-photos.js";
 import { test, expect, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
 test("camera flash clears the grip and the strap sags in world gravity after a camera rotation", async ({ page }) => {
@@ -24,7 +25,7 @@ test('photos use a loose Polaroid spread and retain the zine at its own address'
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/photos/');
   await expect(page.getByRole('heading',{name:'Film photographs'})).toHaveCount(1);
-  await expect(page.locator('.polaroid')).toHaveCount(6);await expect(page.locator('.after-hours-book,.photo-entry-camera')).toHaveCount(0);
+  await page.getByRole('button',{name:/Open \d+ film photographs/}).click();await expect(page.locator('.photos-page')).toHaveAttribute('data-envelope-state','open');await expect(page.locator('.polaroid')).toHaveCount(filmPhotos.length);await expect(page.locator('.after-hours-book,.photo-entry-camera')).toHaveCount(0);
   for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});
     await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -33,7 +34,7 @@ test('photos use a loose Polaroid spread and retain the zine at its own address'
     expect(new Set(layout).size).toBeGreaterThan(3);
   }
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
-  await page.getByRole('link',{name:'Back to Josh Lucas'}).click();
+  await page.getByRole('link',{name:'Home'}).click();
   await page.getByRole('link',{name:/Zine of Extracurriculars/}).click();await expect(page).toHaveURL(/after-hours/);
   expect(errors).toEqual([]);
 });

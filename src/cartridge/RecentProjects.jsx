@@ -8,8 +8,8 @@ import {LoopVideo} from "../LoopVideo";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
-  "search-labs":{team:"Search",accent:"#b759ba",kind:"search"},
-  "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",image:"/previews/stadia-store-redesign.gif",poster:"/previews/stadia-store-redesign-still.webp",width:640,height:429},
+  "search-labs":{team:"Search",accent:"#b759ba",kind:"search",placeholder:true},
+  "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",placeholder:true},
   "rave-flyer-zine":{team:"Fun",accent:"#e48dae",kind:"zine"},
   film:{team:"Fun",accent:"#b69272",kind:"film"},
 };
@@ -28,12 +28,12 @@ function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,ret
       <div className="recent-preview-source">
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
-      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind}>
+      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind} data-placeholder={preview.placeholder} data-entry={instant?"instant":"gradual"}>
         {preview.video&&<LoopVideo src={preview.video} poster={preview.poster} label="Tapping a follow-up nudge in AI Mode" active={showing}/>}
         {preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}
       </div>}
       </div>
-      {project&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind} instant={instant&&!["film","zine"].includes(preview.kind)}/>}
+      {project&&["film","zine"].includes(preview.kind)&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
     </div>
   </div>;
 }
@@ -42,6 +42,37 @@ export function RecentProjects({onOpen,dark,ready,hidden,onPreviewChange}){
   const [{active,visible,instant},setPreview]=useState({active:null,visible:false,instant:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
+  const colorIntroPlayed=useRef(false);
+  useEffect(()=>{
+    const nav=navigation.current;if(!nav||hidden||colorIntroPlayed.current)return;
+    const motion=matchMedia('(prefers-reduced-motion: reduce)');
+    if(motion.matches){colorIntroPlayed.current=true;nav.dataset.colorIntro='complete';return;}
+    const rows=[...nav.querySelectorAll('.recent-project-list > li')];let animations=[],stopped=false;
+    nav.dataset.colorIntro='waiting';
+    const stop=()=>{
+      stopped=true;colorIntroPlayed.current=true;nav.dataset.colorIntro='complete';
+      revealObserver.disconnect();visibilityObserver.disconnect();animations.forEach(animation=>animation.cancel());
+      for(const event of ['pointerenter','pointerdown','focusin'])nav.removeEventListener(event,stop);
+      motion.removeEventListener('change',reduce);document.removeEventListener('visibilitychange',hide);
+    };
+    const check=()=>{
+      if(stopped||colorIntroPlayed.current||rows.some(row=>row.dataset.revealReady!=='true'))return;
+      const rect=nav.getBoundingClientRect();if(rect.bottom<=0||rect.top>=innerHeight)return;
+      colorIntroPlayed.current=true;nav.dataset.colorIntro='running';revealObserver.disconnect();visibilityObserver.disconnect();
+      animations=rows.map((row,index)=>row.animate([
+        {backgroundColor:'transparent'},
+        {offset:.23,backgroundColor:`color-mix(in srgb,${previews[row.dataset.project].accent} 32%,var(--scene-bg))`},
+        {backgroundColor:'transparent'},
+      ],{duration:420,delay:index*75,easing:'ease-out'}));
+      Promise.all(animations.map(animation=>animation.finished)).then(stop).catch(()=>{});
+    };
+    const reduce=()=>{if(motion.matches)stop()},hide=()=>{if(document.hidden)stop()};
+    const revealObserver=new MutationObserver(check),visibilityObserver=new IntersectionObserver(check);
+    revealObserver.observe(nav,{subtree:true,attributes:true,attributeFilter:['data-reveal-ready']});visibilityObserver.observe(nav);
+    for(const event of ['pointerenter','pointerdown','focusin'])nav.addEventListener(event,stop);
+    motion.addEventListener('change',reduce);document.addEventListener('visibilitychange',hide);check();
+    return stop;
+  },[hidden,dark]);
   const select=(id,index)=>{
     setPreview(current=>current.active===id&&current.visible?current:{active:id,visible:true,instant:canHover&&!hidden&&current.visible&&current.active!==id});const kind=previews[id]?.kind;
     if(kind==="film"||kind==="zine")setSeen(old=>old[kind]?old:{...old,[kind]:true});

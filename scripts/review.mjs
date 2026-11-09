@@ -112,11 +112,14 @@ try {
   if (args.hover) {
     const row = page.locator(`[data-project="${args.hover}"] .recent-project-link`);
     await row.hover();
+    const kind = await page.locator(".recent-preview-content").getAttribute("data-kind");
+    const ascii = kind === "zine" || kind === "film";
+    if (args.phase === "ascii" && !ascii) throw new Error("ASCII captures are available only for the zine and film previews.");
     if (args.phase === "settled") {
-      await expect(page.locator(".recent-preview-ascii")).toHaveAttribute("data-state", "complete", wait);
-      const kind = await page.locator(".recent-preview-content").getAttribute("data-kind");
+      if (ascii) await expect(page.locator(".recent-preview-ascii")).toHaveAttribute("data-state", "complete", wait);
       if (kind === "zine") await expect(page.locator(".zine-preview-scene")).toHaveAttribute("data-preview-intro", "settled", wait);
       if (kind === "film") await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-intro", "settled", wait);
+      if (!ascii) await page.locator('.recent-solid-visual').evaluate(async element => { await Promise.allSettled(element.getAnimations().map(animation => animation.finished)); });
     }
   }
   if (args.phase === "turn") {

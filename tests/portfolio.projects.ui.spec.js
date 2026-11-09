@@ -29,7 +29,7 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator(i===0?'.case-showcase-introduction':'.case-study-facts dd:last-child').last()).toContainText(i===0?'In 2026 I defined':/^I /);
+    await expect(page.locator(i===0?'.case-showcase-introduction':'.case-study-facts dd:last-child').last()).toContainText(i===0?'In 2026, I defined':/^I /);
     await expect(page.locator('.case-study-facts')).toHaveCount(i===0?0:1);
     await expect(page.locator('.case-study-cartridge')).toHaveCount(i===0?1:0);
     if(i===0)await expect(page.locator('.case-study .eyebrow')).toHaveCount(0);
@@ -41,9 +41,9 @@ test("recent projects use one column with native reader links and restore focus 
     expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.closest('.case-study-measure').querySelector('.case-star-story,.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(page.locator(i===0?'[data-showcase-section="problem"] > p':'[data-story-stage="task"] > p')).not.toBeEmpty();
     const story=page.locator(i===0?'.case-showcase-story':'.case-star-story');
-    await expect(story.locator(i===0?'[data-showcase-section="input"],[data-showcase-section="model"],[data-showcase-section="collapsed"]':'.case-decisions > li')).toHaveCount(3);
-    await expect(story.locator('.case-story-media')).toHaveCount(i===0?5:0);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?5:0);
+    await expect(story.locator(i===0?'[data-showcase-section="input"],[data-showcase-section="model"]':'.case-decisions > li')).toHaveCount(i===0?2:3);
+    await expect(story.locator('.case-story-media')).toHaveCount(i===0?4:0);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?4:0);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
@@ -148,7 +148,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   const bodyType={...subtext,font:[...subtext.font.slice(0,3),paragraphs[0].font[3]]};
   for(const paragraph of paragraphs)expect(paragraph).toEqual(bodyType);
   expect(bodyType.font[3]).not.toBe(subtext.font[3]);
-  await expect(study.locator('.case-showcase-introduction')).toHaveText('In 2026 I defined the design, principles, and triggering-logic for a follow-up system in Google Search, aligning 10+ product teams that previously used one-off patterns, into one approach.');
+  await expect(study.locator('.case-showcase-introduction')).toHaveText('In 2026, I defined the design, principles, and rules for a shared follow-up system across AI Overviews and AI Mode in Google Search—bringing 10+ product teams from one-off patterns onto one approach.');
   expect(await study.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(study.locator('.case-study-hero-media')).toHaveCSS('border-top-left-radius','24px');
   const center=await study.locator('.case-study-measure').boundingBox(),cart=await cartridge.boundingBox();expect(cart.x+cart.width/2).toBeCloseTo(center.x+center.width/2,0);
@@ -159,16 +159,16 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await page.mouse.move(2,2);
   await page.screenshot({path:testInfo.outputPath('nudges-centered-header-desktop.png')});
   await expect(study.locator('.case-study-hero-figure figcaption')).toHaveCount(0);
-  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a question written as plain text, requiring people to 1) know what they wanted to ask, and 2) type the follow-up question manually.');
-  await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain conversational text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for choices like budget, dates, or points that could use refinement');
-  await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
-  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a different approach that uses post-processing');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
+  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a suggested next step written as plain text, forcing people to retype the suggestion or phrase the next question themselves. Meanwhile, 10+ vertical teams—across Shopping, Travel, Finance, and Education—were each designing separate buttons, chips, and quizzes at the bottom of answers.');
+  await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for narrowing down choices like budget, pace, or dates');
+  await expect(study.locator('.case-showcase-passage')).toHaveCount(4);
+  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"Something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a lightweight post-processing step');await expect(study.locator('[data-showcase-section="collapsed"]')).toHaveCount(0);
   await expect(study.locator('[data-showcase-section="result"] p')).toHaveCount(2);
   await expect(study.locator('[data-showcase-section="result"] p').first()).toContainText('Inline nudges launched globally');
   await expect(study.locator('[data-showcase-section="result"] p').last()).toContainText('Before this project, 10+ teams');
   await expect(study.locator('[data-showcase-section="result"]')).not.toContainText(/1\.50%|21\.9%|3\.87%|1\.84%/);
   await expect(study.locator('[data-showcase-section="result"] .case-outcome-grid,.case-measurement-note')).toHaveCount(0);
-  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(5);
+  await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(4);
   for(const passage of await study.locator('.case-showcase-passage').all()) {
     await expect(passage.locator('.case-story-media-placeholder')).toHaveCount(1);
     expect(await passage.locator('p').first().evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('figure'))&Node.DOCUMENT_POSITION_PRECEDING))).toBe(true);
@@ -230,7 +230,7 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   });
   await page.goto('/?project=ai-mode-nudges&view=case-study');
   const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button'),media=reader.locator('[data-media-label], [data-takeaways]');
-  await expect(buttons).toHaveCount(7);await expect(rail.locator('.case-media-nav-track')).toHaveAttribute('data-reveal-ready','true');
+  await expect(buttons).toHaveCount(6);await expect(rail.locator('.case-media-nav-track')).toHaveAttribute('data-reveal-ready','true');
   expect(await page.evaluate(()=>window.mediaNavGate.some(state=>state.ready==='false'&&state.inert))).toBe(true);
   const labels=await media.evaluateAll(elements=>elements.map(el=>`Jump to ${el.dataset.mediaLabel||'Takeaways'}`));
   for(let i=0;i<labels.length;i++)await expect(buttons.nth(i)).toHaveAccessibleName(labels[i]);
@@ -259,7 +259,7 @@ test('touch media navigation fits the gutter and makes reduced-motion jumps belo
   try{
     const page=await context.newPage();await disableWebGL(page);await page.route('**/api/listening',route=>route.fulfill({status:204}));await page.route('**/api/weather',route=>route.fulfill({status:204}));
     await page.goto('http://127.0.0.1:3000/?project=ai-mode-nudges&view=case-study');
-    const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(7);
+    const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(6);
     for(const width of [390,320]){
       await page.setViewportSize({width,height:844});const bounds=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(measure.x+.5);
       const track=await rail.locator('.case-media-nav-track').boundingBox();expect(track.y+track.height/2).toBeCloseTo(422,0);
@@ -302,7 +302,7 @@ test('case studies reuse the home footer with one music widget and working histo
 test('all current pages expose a working header theme toggle and preserve the selection',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});let mode='light';
   for(const path of ['/','/?project=ai-mode-nudges&view=case-study','/?project=search-labs&view=case-study','/?project=stadia-store-redesign&view=case-study','/resume/','/after-hours/','/photos/']){
-    await page.goto(path);await expect(page.locator('html')).toHaveAttribute('data-color-mode',mode);
+    await page.goto(path);await expect(page.locator('html')).toHaveAttribute('data-color-mode',mode);await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',mode==='dark'?'#101110':'#f0f0f0');
     const header=path.includes('case-study')?page.locator('.case-study-nav'):page.locator('header').first();
     const next=mode==='light'?'dark':'light';await header.getByRole('button',{name:`Switch to ${next} mode`,exact:true}).click();
     await expect(page.locator('html')).toHaveAttribute('data-color-mode',next);
@@ -517,7 +517,7 @@ test('hover previews are fifty percent larger, stay inside narrow viewports and 
  await page.getByRole('button',{name:'Switch to dark mode'}).click();await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
 });
 
-test('each hover preview resolves through ASCII, replays on return and stays static for reduced motion',async({page})=>{
+test('only zine and film resolve through ASCII, replay on return and stay static for reduced motion',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.asciiReveals=[];new MutationObserver(records=>{for(const {target}of records){if(!target.matches?.('.recent-preview-ascii')||target.dataset.state!=='revealing')continue;const pixels=target.getContext('2d').getImageData(0,0,target.width,target.height).data;window.asciiReveals.push({kind:target.closest('.recent-preview-content').dataset.kind,painted:pixels.some((v,i)=>i%4===3&&v>0)})}}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-state']});
@@ -525,18 +525,18 @@ test('each hover preview resolves through ASCII, replays on return and stays sta
  const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
  for(const link of await links.all()){
   await page.mouse.move(2,2);
-  await link.hover();const ascii=nav.locator('.recent-project-preview .recent-preview-ascii'),kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000});await expect(ascii).toBeHidden();expect(await page.evaluate(kind=>window.asciiReveals.some(entry=>entry.kind===kind&&entry.painted),kind)).toBe(true);
+  await link.hover();const ascii=nav.locator('.recent-project-preview .recent-preview-ascii'),kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');if(!['film','zine'].includes(kind)){await expect(ascii).toHaveCount(0);continue}await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000});await expect(ascii).toBeHidden();expect(await page.evaluate(kind=>window.asciiReveals.some(entry=>entry.kind===kind&&entry.painted),kind)).toBe(true);
  }
- const before=await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='ai').length);await page.mouse.move(2,2);await links.first().hover();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');expect(await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='ai').length)).toBeGreaterThan(before);
- await page.emulateMedia({reducedMotion:'reduce'});await links.nth(1).hover();await expect(nav.locator('.recent-preview-ascii')).toBeHidden();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');
+ const before=await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='film').length);await page.mouse.move(2,2);await links.last().hover();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');expect(await page.evaluate(()=>window.asciiReveals.filter(entry=>entry.kind==='film').length)).toBeGreaterThan(before);
+ await page.emulateMedia({reducedMotion:'reduce'});await links.nth(3).hover();await expect(nav.locator('.recent-preview-ascii')).toBeHidden();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');
 });
 
-test('case-study ASCII previews use source pixels and crossfade uniformly over 0.6 seconds',async({page})=>{
+test('film ASCII uses source pixels and crossfades uniformly over 1.2 seconds',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.dissolve={};new MutationObserver(()=>{
-   const visual=document.querySelector('.recent-solid-visual[data-visual="search"]');
-   if(visual&&!visual.firstChild){const source=document.createElement('canvas');source.width=360;source.height=200;source.style.cssText='width:100%;height:100%';const ctx=source.getContext('2d');ctx.fillStyle='#111';ctx.fillRect(30,40,100,120);ctx.fillStyle='#eee';ctx.beginPath();ctx.arc(280,100,40,0,Math.PI*2);ctx.fill();visual.append(source)}
+   const visual=document.querySelector('.recent-preview-content[data-kind="film"] .recent-preview-source');
+   if(visual&&!visual.querySelector('[data-test-source]')){const source=document.createElement('canvas');source.width=360;source.height=200;source.dataset.testSource='true';source.style.cssText='position:absolute;inset:0;width:100%;height:100%';const ctx=source.getContext('2d');ctx.fillStyle='#111';ctx.fillRect(30,40,100,120);ctx.fillStyle='#eee';ctx.beginPath();ctx.arc(280,100,40,0,Math.PI*2);ctx.fill();visual.prepend(source)}
    const ascii=document.querySelector('.recent-preview-ascii[data-source="content"]');if(!ascii)return;
    const state=window.dissolve,opacity=Number(ascii.style.opacity),content=Number(ascii.parentElement.style.getPropertyValue('--preview-content-opacity'));
    if(ascii.dataset.state==='revealing'){
@@ -545,55 +545,47 @@ test('case-study ASCII previews use source pixels and crossfade uniformly over 0
     if(content>.5&&opacity<.5&&!state.fadeOut)state.fadeOut=ascii.toDataURL();
    }else if(ascii.dataset.state==='complete')state.duration??=performance.now()-state.start;
   }).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['data-state','style','data-source']});
- });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="search-labs"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Search Labs/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
- const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(580);expect(result.duration).toBeLessThan(1100);
+ });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Say cheese!/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
+ const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
  const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
 });
 
-test('case-study previews switch instantly between rows and replay their entrance after leaving',async({page})=>{
- await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
- await page.addInitScript(()=>{
-  window.previewEntries=[];let previous;
-  new MutationObserver(()=>{
-   const art=document.querySelector('.recent-project-preview .recent-preview-content'),ascii=art?.querySelector('.recent-preview-ascii');
-   if(!ascii||ascii===previous)return;previous=ascii;
-   window.previewEntries.push({kind:art.dataset.kind,state:ascii.dataset.state,hidden:ascii.hidden,opacity:getComputedStyle(art.querySelector('.recent-preview-source')).opacity});
-  }).observe(document,{subtree:true,childList:true});
- });
- await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),ascii=nav.locator('.recent-preview-ascii');
+test('case-study previews switch instantly between rows and fade on first entry',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),visual=nav.locator('.recent-solid-visual');
  await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
- await links.nth(1).hover();await expect(ascii).toHaveAttribute('data-state','revealing');
- // Interrupt the first entrance: no leftover opacity or delayed reveal may carry into the next row.
- await links.nth(2).hover();await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toBeHidden();await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
- await links.first().hover();await expect(ascii).toHaveAttribute('data-state','complete');
- const entries=await page.evaluate(()=>window.previewEntries);
- for(const kind of ['stadia','ai'])expect(entries.find(entry=>entry.kind===kind)).toEqual({kind,state:'complete',hidden:true,opacity:'1'});
+ await links.nth(1).hover();await expect(visual).toHaveAttribute('data-entry','gradual');await expect(visual).toHaveCSS('animation-name','preview-media-enter');
+ // An interrupted entrance must never carry opacity or a delayed reveal into another row.
+ for(const link of [links.nth(2),links.first()]){await link.hover();await expect(visual).toHaveAttribute('data-entry','instant');await expect(visual).toHaveCSS('opacity','1');await expect(visual).toHaveCSS('animation-name','none');await expect(nav.locator('.recent-preview-ascii')).toHaveCount(0)}
  await page.mouse.move(2,2);await expect(nav).toHaveAttribute('data-preview-active','false');
- await links.nth(1).hover();await expect(ascii).toHaveAttribute('data-state','revealing');
- await expect(ascii).toHaveAttribute('data-state','complete');
- // Keyboard browsing uses the same immediate swaps, while the special previews retain ASCII.
- await page.keyboard.press('Tab');await links.nth(2).focus();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toBeHidden();
- for(const link of [links.nth(3),links.nth(4)]){await link.focus();await expect(ascii).toHaveAttribute('data-state','revealing');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000})}
+ await links.nth(1).hover();await expect(visual).toHaveAttribute('data-entry','gradual');
+ // Keyboard browsing shares immediate swaps; special previews still use ASCII.
+ await page.keyboard.press('Tab');await links.nth(2).focus();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');await expect(visual).toHaveAttribute('data-entry','instant');
+ for(const link of [links.nth(3),links.nth(4)]){await link.focus();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','revealing');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000})}
 });
 
-test('Stadia plays its animated GIF after the ASCII dissolve and uses a still for reduced motion',async({page})=>{
- await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'});await nav.getByRole('link',{name:/Stadia Store Redesign/}).hover();
- const image=nav.locator('.recent-preview-image');await expect(image).toBeVisible();await expect(image).toHaveJSProperty('complete',true);await expect(image).toHaveJSProperty('naturalWidth',640);
- await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete',{timeout:15000});await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-source','content');
- expect(await image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign\.gif$/);const box=await image.boundingBox();expect(box.width/box.height).toBeCloseTo(640/429,2);
- const first=await image.screenshot();await expect.poll(async()=>!(await image.screenshot()).equals(first),{timeout:17000,intervals:[250,500,1000]}).toBe(true);
- await page.emulateMedia({reducedMotion:'reduce'});await expect.poll(()=>image.evaluate(el=>el.currentSrc)).toMatch(/stadia-store-redesign-still\.webp$/);await expect(image).toHaveJSProperty('complete',true);
+test('Search Labs and Stadia use uniform solid placeholders in both themes without requesting old media',async({page})=>{
+ const requests=[];page.on('request',request=>{if(request.url().includes('stadia-store-redesign.'))requests.push(request.url())});
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'});
+ for(const dark of [false,true]){
+  if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
+  for(const name of [/Search Labs/,/Stadia Store Redesign/]){
+   await nav.getByRole('link',{name}).hover();const visual=nav.locator('.recent-solid-visual');await expect(visual).toBeVisible();await expect(visual).toHaveAttribute('data-placeholder','true');await expect(visual).toHaveCSS('background-image','none');await expect(visual.locator('img,video,canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-ascii')).toHaveCount(0);
+   expect(await visual.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+  }
+ }
+ expect(requests).toEqual([]);
 });
 
-test('Nudges hover video loads on demand, resolves through ASCII and resets when leaving',async({page})=>{
+test('Nudges hover video loads on demand without ASCII and resets when leaving',async({page})=>{
  const requests=[];page.on('request',request=>{if(request.url().includes('/videos/nudges/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.getByRole('link',{name:/AI Mode Nudges/});await expect(row).toBeVisible();expect(requests).toEqual([]);
  await row.hover();const video=nav.locator('.loop-video video'),art=nav.locator('.recent-preview-art');
  await expect.poll(()=>video.evaluate(el=>el.readyState)).toBeGreaterThanOrEqual(2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(27);
- await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-source','content');
+ await expect(nav.locator('.recent-preview-ascii')).toHaveCount(0);
  const frame=await art.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(frame.height).toBeCloseTo(489/1.8,0);
  expect(await video.evaluate(el=>({muted:el.muted,loop:el.loop,inline:el.playsInline,controls:el.controls}))).toEqual({muted:true,loop:true,inline:true,controls:false});
  await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeGreaterThan(0);
@@ -616,26 +608,55 @@ test('Nudges hero uses responsive video sources, pauses offscreen and shows its 
  await page.reload();await expect(page.locator('.case-study-hero-media .loop-video-poster')).toBeVisible();await expect(page.locator('.case-study-hero-media video')).not.toHaveAttribute('src');expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('Stadia preview hugs its media without changing the preview height or right alignment',async({page,browser})=>{
+test('solid preview fills its container and retains height, right alignment and mobile layout',async({page,browser})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),art=nav.locator('.recent-preview-content');
  for(const viewport of [{width:1440,height:1000},{width:900,height:800},{width:1440,height:600}]){
   await page.setViewportSize(viewport);await nav.getByRole('link',{name:/Stadia Store Redesign/}).hover();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');
-  const image=nav.locator('.recent-preview-image');await expect(image).toHaveJSProperty('complete',true);
+  const image=nav.locator('.recent-solid-visual');await expect(image).toBeVisible();
   await expect.poll(async()=>(await art.boundingBox()).height).toBeCloseTo((viewport.width>=1100?489:450)/1.8,0);
   const frame=await art.boundingBox(),media=await image.boundingBox(),bounds=await nav.boundingBox();
-  expect(frame.width/frame.height).toBeCloseTo(640/429,2);expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(media.x).toBeCloseTo(frame.x,1);
+  expect(frame.width/frame.height).toBeCloseTo(1.8,2);expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(media.x).toBeCloseTo(frame.x,1);
   expect(frame.x+frame.width).toBeCloseTo(bounds.x+bounds.width,1);
  }
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
  try{
   const mobile=await context.newPage();await disableWebGL(mobile);await mobile.route('**/api/listening',route=>route.fulfill({status:204}));await mobile.route('**/api/weather',route=>route.fulfill({status:204}));await mobile.goto(new URL('/',page.url()).href);
   const navigation=mobile.getByRole('navigation',{name:'Recent projects'});
-  await navigation.getByRole('button',{name:/Stadia Store Redesign/}).tap();const image=navigation.locator('.recent-preview-image');await expect(image).toHaveJSProperty('complete',true);
+  await navigation.getByRole('button',{name:/Stadia Store Redesign/}).tap();const image=navigation.locator('.recent-solid-visual');await expect(image).toBeVisible();
   const content=navigation.locator('.recent-preview-content'),inline=navigation.locator('.recent-inline-preview');
   await expect.poll(async()=>(await content.boundingBox()).height).toBeCloseTo((await inline.boundingBox()).width/1.8,0);
   const frame=await content.boundingBox(),media=await image.boundingBox();
   expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(frame.x+frame.width).toBeLessThanOrEqual(390);
   await expect(navigation.getByRole('link',{name:'Open project'})).toBeVisible();
  }finally{await context.close()}
+});
+
+test('project colors ripple once after the rows finish loading without opening previews',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.addInitScript(()=>{
+  window.rowPulses=[];const animate=Element.prototype.animate;
+  Element.prototype.animate=function(frames,options){
+   if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor){window.rowPulses.push({project:this.dataset.project,ready:[...this.parentElement.children].every(row=>row.dataset.revealReady==='true'),delay:options.delay,color:frames[1].backgroundColor})}
+   return animate.call(this,frames,options);
+  };
+ });
+ await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','complete');
+ const pulses=await page.evaluate(()=>window.rowPulses);expect(pulses.map(p=>p.project)).toEqual(['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film']);expect(pulses.every(p=>p.ready)).toBe(true);expect(pulses.map(p=>p.delay)).toEqual([0,75,150,225,300]);expect(new Set(pulses.map(p=>p.color)).size).toBe(5);
+ await expect(nav).toHaveAttribute('data-preview-active','false');await expect(nav.locator('.recent-preview-ascii,.loop-video video')).toHaveCount(0);
+ for(const row of await nav.locator('.recent-project-list > li').all())await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+ await nav.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(page.locator('.case-study')).toHaveCount(0);expect(await page.evaluate(()=>window.rowPulses.length)).toBe(5);
+});
+
+test('project color intros yield to interaction and stay off for reduced motion',async({page})=>{
+ await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.addInitScript(()=>{
+  const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){const animation=animate.call(this,frames,options);if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor)animation.pause();return animation};
+ });
+ await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','running');
+ const highlights=await nav.locator('li').evaluateAll(rows=>rows.map(row=>{const animation=row.getAnimations().find(animation=>animation.effect.getKeyframes()[0]?.backgroundColor);animation.currentTime=animation.effect.getTiming().delay+100;return getComputedStyle(row).backgroundColor}));expect(new Set(highlights).size).toBe(5);expect(highlights.every(color=>color!=='rgba(0, 0, 0, 0)')).toBe(true);
+ await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav).toHaveAttribute('data-color-intro','complete');await expect(nav).toHaveAttribute('data-active-project','search-labs');
+ expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
+ await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await expect(nav).toHaveAttribute('data-color-intro','complete');
+ expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
 });

@@ -14,10 +14,7 @@ import { zineNotes } from "../content/zine-notes";
 import { NoteDialog } from "./NoteDialog";
 import { loadPaperPhysics } from "../book/paper-physics";
 import { PhysicsPanel } from "./PhysicsPanel";
-
-function ThemeIcon({ dark }) {
-  return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" />}</svg>;
-}
+import { ThemeToggle } from "../ThemeToggle";
 
 function AfterHours() {
   const content = useRef(null);
@@ -35,9 +32,6 @@ function AfterHours() {
   useEffect(()=>{engine.current?.setOverlayOpen(pageExit.exiting||noteOpen.current)},[pageExit.exiting]);
   useContentReveal(content, `${ready}:${fallback}`, ready);
   useEffect(() => {
-    document.documentElement.dataset.colorMode = dark ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#101110" : "#f0f0f0");
-    try { localStorage.setItem("cartridge-color-mode", dark ? "dark" : "light"); } catch {}
     engine.current?.setDarkMode(dark);
   }, [dark]);
   useEffect(() => {
@@ -85,7 +79,7 @@ function AfterHours() {
   return <main ref={content} onClick={pageExit.onLinkClick} data-exiting={pageExit.exiting} inert={pageExit.exiting} data-reveal-flow="page" data-ready={ready} className={`after-hours${fallback ? " is-fallback" : ""}`}>
     <header className="zine-header-shell"><nav data-reveal data-reveal-at="0" className="zine-header" aria-label="Main navigation">
       <a className="after-hours-back" href="/" aria-label="Home"><span className="link-copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>Home</span></a>
-      <button className="tool-button" type="button" onClick={() => setDark(value => !value)} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><ThemeIcon dark={dark} /></button>
+      <ThemeToggle dark={dark} onToggle={setDark} />
     </nav></header>
     <h1 className="sr-only">Extracurriculars</h1>
     <p id="zine-help" className="sr-only">Five original flyers, one per page. Drag to rotate. Click the pages to turn them, or tap a sticky note to read it. Use the left and right arrows to turn pages, or R to restart.</p>

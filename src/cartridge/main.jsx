@@ -15,6 +15,7 @@ import { useContentReveal } from "../useContentReveal";
 import { usePageExit } from "../usePageExit";
 import { LocationMeta } from "./LocationMeta";
 import { RecentProjects } from "./RecentProjects";
+import { ThemeToggle } from "../ThemeToggle";
 import "./style.css";
 import "./reader.css";
 
@@ -96,9 +97,6 @@ function App() {
     return () => { alive.current = false; scene?.dispose(); engine.current = null; };
   }, []);
   useEffect(() => {
-    document.documentElement.dataset.colorMode = dark ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#101110" : "#f0f0f0");
-    try { localStorage.setItem("cartridge-color-mode", dark ? "dark" : "light"); } catch {}
     engine.current?.setTheme(dark);
   }, [dark]);
   useLayoutEffect(() => { engine.current?.setSelected(selected); }, [selected]);
@@ -131,7 +129,7 @@ function App() {
   }, []);
   return <>
     <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-project-browsing={Boolean(previewingProject)} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
-      <header className="collection-header"><LocationMeta /><button data-reveal className="tool-button" aria-label={`Switch to ${dark ? "light" : "dark"} mode`} onClick={() => setDark(!dark)}><Icon type={dark ? "sun" : "moon"} /></button></header>
+      <header className="collection-header"><LocationMeta /><ThemeToggle data-reveal dark={dark} onToggle={setDark} /></header>
       <section className="collection-hero" aria-label="Introduction and cartridge collection">
         <Intro active={presented && !previewingProject} />
         <div className="collection-display" aria-label="Interactive 3D cartridge collection">
@@ -145,7 +143,7 @@ function App() {
       <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
       {presented && !reading && <PortfolioFooter dismissHistory={Boolean(previewingProject || hovered)} />}
     </main>
-    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={()=>setDark(value=>!value)} footer={<PortfolioFooter />} />}
+    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={setDark} footer={<PortfolioFooter />} />}
   </>;
 }
 createRoot(document.getElementById("root")).render(<App />);

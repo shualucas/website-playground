@@ -1,14 +1,40 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
-export function ThemeToggle({ dark:controlledDark, onToggle }) {
+export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
   const [localDark, setLocalDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
+  const transition = useRef(null);
+  useEffect(() => {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',document.documentElement.dataset.colorMode==='dark'?'#101110':'#f0f0f0');
+    return () => transition.current?.skipTransition();
+  }, []);
   const dark = controlledDark ?? localDark;
-  const toggle = () => {
-    if (onToggle) { onToggle(); return; }
-    const next = !dark; setLocalDark(next);
-    document.documentElement.dataset.colorMode = next ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#101110" : "#f0f0f0");
-    try { localStorage.setItem("cartridge-color-mode", next ? "dark" : "light"); } catch {}
+  const toggle = event => {
+    if (transition.current) return;
+    const next = !dark, root = document.documentElement;
+    const update = () => {
+      root.dataset.colorMode = next ? "dark" : "light";
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#101110" : "#f0f0f0");
+      try { localStorage.setItem("cartridge-color-mode", next ? "dark" : "light"); } catch {}
+      if (onToggle) onToggle(next); else setLocalDark(next);
+    };
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+    if (!document.startViewTransition || motion.matches) { update(); return; }
+    // Capture both themes once, then reveal the new page from the dot's center.
+    const box = event.currentTarget.getBoundingClientRect(), x = box.left + box.width / 2, y = box.top + box.height / 2;
+    root.style.setProperty('--theme-origin-x', `${x}px`); root.style.setProperty('--theme-origin-y', `${y}px`);
+    root.style.setProperty('--theme-radius', `${Math.hypot(Math.max(x, innerWidth-x), Math.max(y, innerHeight-y)) + 32}px`);
+    root.classList.add('theme-transition');
+    const wipe = document.startViewTransition(() => flushSync(update));
+    transition.current = wipe;
+    const settle = () => wipe.skipTransition(), reduce = () => { if (motion.matches) settle(); };
+    motion.addEventListener('change', reduce); window.addEventListener('resize', settle);
+    const cleanup = () => {
+      transition.current = null; root.classList.remove('theme-transition');
+      for (const property of ['--theme-origin-x','--theme-origin-y','--theme-radius']) root.style.removeProperty(property);
+      motion.removeEventListener('change', reduce); window.removeEventListener('resize', settle);
+    };
+    wipe.ready.catch(() => {}); wipe.finished.then(cleanup, cleanup);
   };
-  return <button className="tool-button icon-button" type="button" onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" />}</svg></button>;
+  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" /></button>;
 }
