@@ -56,8 +56,6 @@ export const aiModeCaseStudy = {
   results: {
     title: "Shipped, and still evolving",
     copy: "Inline nudges launched globally in AI Overviews in October 2026, increasing follow-up engagement and bringing more people into AI Mode.",
-    guardrail: "Clicks to external websites held steady.",
-    testing: "Early vertical testing of selectable quiz options informed the clarification-card framework now in testing.",
   },
   next: "Before this project, 10+ teams were each inventing their own way to ask follow-up questions. Today, they share one set of rules for when to use plain text, tappable in-line elements, and when to show an interactive question. The biggest takeaway for me was restraint: when an AI interface tries too hard to help, it crowds the answer. The best follow-up stays small, keeps one clear place to type, and makes the next step frictionless.",
 };

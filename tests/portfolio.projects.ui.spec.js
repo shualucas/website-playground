@@ -163,8 +163,9 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain conversational text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for choices like budget, dates, or points that could use refinement');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(5);
   await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a different approach that uses post-processing');await expect(study.locator('[data-showcase-section="collapsed"]')).toContainText('Coded prototypes');
-  await expect(study.locator('[data-showcase-section="result"]')).toContainText('Clicks to external websites held steady');
-  await expect(study.locator('[data-showcase-section="result"]')).toContainText(/early vertical testing/i);
+  await expect(study.locator('[data-showcase-section="result"] p')).toHaveCount(2);
+  await expect(study.locator('[data-showcase-section="result"] p').first()).toContainText('Inline nudges launched globally');
+  await expect(study.locator('[data-showcase-section="result"] p').last()).toContainText('Before this project, 10+ teams');
   await expect(study.locator('[data-showcase-section="result"]')).not.toContainText(/1\.50%|21\.9%|3\.87%|1\.84%/);
   await expect(study.locator('[data-showcase-section="result"] .case-outcome-grid,.case-measurement-note')).toHaveCount(0);
   await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(5);

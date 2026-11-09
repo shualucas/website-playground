@@ -13,12 +13,7 @@ export function CaseStudyShowcase({ study }) {
         <h2 id="case-result-title">{study.results.title}</h2>
         <p>{study.results.copy}</p>
       </div>
-      <div data-reveal className="case-showcase-copy">
-        <p>{study.results.guardrail}</p>
-        <p>{study.results.testing}</p>
-        {study.results.note && <p className="case-measurement-note">{study.results.note}</p>}
-      </div>
+      <p data-reveal className="case-showcase-copy case-showcase-next">{study.next}</p>
     </section>
-    <p data-reveal className="case-showcase-copy case-showcase-next">{study.next}</p>
   </div>;
 }

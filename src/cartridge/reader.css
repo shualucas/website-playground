@@ -440,7 +440,6 @@
 .case-showcase-story .case-story-media figcaption { max-width:620px; margin:12px auto 0; font-size:11px; line-height:1.5; color:color-mix(in srgb,var(--ui-muted) 55%,var(--scene-bg)); }
 .case-showcase-results { margin-top:72px; padding-top:40px; border-top:1px solid var(--line); }
 .case-showcase-results h2 { font-size:inherit; margin-bottom:12px; color:var(--ui-text); }
-.case-showcase-results > .case-showcase-copy + .case-showcase-copy { margin-top:20px; }
 .case-showcase-next { margin-top:32px; }
 .case-showcase-copy .case-measurement-note { padding-left:16px; border-left:1px solid var(--line); }
 @media(max-width:879px) { .case-study-editorial .case-study-nav,.case-study-editorial .case-study-content { padding-inline:24px; } }
