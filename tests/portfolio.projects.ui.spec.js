@@ -168,7 +168,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   const bodyType={...subtext,font:[...subtext.font.slice(0,3),paragraphs[0].font[3]]};
   for(const paragraph of paragraphs)expect(paragraph).toEqual(bodyType);
   expect(bodyType.font[3]).not.toBe(subtext.font[3]);
-  await expect(study.locator('.case-showcase-introduction')).toHaveText('In 2026, I defined the design, principles, and rules for a shared follow-up system across AI Overviews and AI Mode in Google Search—bringing 10+ product teams from one-off patterns onto one approach.');
+  await expect(study.locator('.case-showcase-introduction')).toHaveText('In 2026, I defined the design, principles, and rules for a shared follow-up system across AI Overviews and AI Mode in Google Search, bringing 10+ product teams from one-off patterns onto one approach.');
   expect(await study.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(study.locator('.case-study-hero-media')).toHaveCSS('border-top-left-radius','24px');
   const center=await study.locator('.case-study-measure').boundingBox(),cart=await cartridge.boundingBox();expect(cart.x+cart.width/2).toBeCloseTo(center.x+center.width/2,0);
@@ -179,7 +179,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await page.mouse.move(2,2);
   await page.screenshot({path:testInfo.outputPath('nudges-centered-header-desktop.png')});
   await expect(study.locator('.case-study-hero-figure figcaption')).toHaveCount(0);
-  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a suggested next step written as plain text, forcing people to retype the suggestion or phrase the next question themselves. Meanwhile, 10+ vertical teams—across Shopping, Travel, Finance, and Education—were each designing separate buttons, chips, and quizzes at the bottom of answers.');
+  await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a suggested next step written as plain text, forcing people to retype the suggestion or phrase the next question themselves. Meanwhile, 10+ vertical teams across Shopping, Travel, Finance, and Education were each designing separate buttons, chips, and quizzes at the bottom of answers.');
   await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for narrowing down choices like budget, pace, or dates');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(4);
   await expect(study.locator('[data-showcase-section="input"]')).toContainText('"Something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a lightweight post-processing step');await expect(study.locator('[data-showcase-section="collapsed"]')).toHaveCount(0);
