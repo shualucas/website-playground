@@ -5,6 +5,7 @@ import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyShowcase } from "./CaseStudyShowcase";
 import { CaseStudyMetrics } from "./CaseStudyMetrics";
+import { CaseStudyMediaNav } from "./CaseStudyMediaNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoopVideo } from "./LoopVideo";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
@@ -53,6 +54,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       <header className="case-study-nav">
         {editorial ? <div className="case-study-nav-inner">{navigation}</div> : navigation}
       </header>
+      {study && <CaseStudyMediaNav key={project.id} scope={content} projectId={project.id} />}
       <article className="case-study-content">
         <div className="case-study-measure">
         <div className={showcase ? "case-showcase-cover" : undefined}>
@@ -94,7 +96,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           </div>}
         </header>
         </div>
-        {study?.hero && <figure data-reveal className="case-study-hero-figure">
+        {study?.hero && <figure data-reveal className="case-study-hero-figure" data-media-label="Overview">
           <div className="case-study-hero-media"><LoopVideo {...study.hero} /></div>
           {study.hero.caption && <figcaption>{study.hero.caption}</figcaption>}
         </figure>}

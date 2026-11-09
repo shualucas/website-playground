@@ -8,7 +8,7 @@ export function CaseStudyMedia({ media }) {
     const element = player.current;
     return () => element?.pause();
   }, [media.src, type]);
-  return <figure className="case-story-media" data-media-type={type}>
+  return <figure className="case-story-media" data-media-type={type} data-media-label={media.title}>
     {media.src ? type === "video" ?
       <video ref={player} controls playsInline preload="metadata" poster={media.poster || undefined} aria-label={media.title}>
         <source src={media.src} />

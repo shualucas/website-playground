@@ -202,6 +202,57 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
 
+test('media rail tracks the reader, labels each stop, and jumps without navigating',async({page},testInfo)=>{
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.addInitScript(()=>{
+    window.mediaNavGate=[];window.readerScrolls=[];
+    new MutationObserver(records=>{for(const {target}of records)if(target.matches?.('.case-media-nav-track'))window.mediaNavGate.push({ready:target.dataset.revealReady,inert:target.inert})}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-reveal-ready']});
+    document.addEventListener('scroll',event=>{if(event.target.matches?.('.case-study'))window.readerScrolls.push(event.target.scrollTop)},{capture:true});
+  });
+  await page.goto('/?project=ai-mode-nudges&view=case-study');
+  const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button'),media=reader.locator('[data-media-label]');
+  await expect(buttons).toHaveCount(6);await expect(rail.locator('.case-media-nav-track')).toHaveAttribute('data-reveal-ready','true');
+  expect(await page.evaluate(()=>window.mediaNavGate.some(state=>state.ready==='false'&&state.inert))).toBe(true);
+  const labels=await media.evaluateAll(elements=>elements.map(el=>`Jump to ${el.dataset.mediaLabel}`));
+  for(let i=0;i<labels.length;i++)await expect(buttons.nth(i)).toHaveAccessibleName(labels[i]);
+  await expect(buttons.first()).toHaveAttribute('aria-current','location');
+  const initial=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(initial.x).toBeGreaterThanOrEqual(measure.x+measure.width);
+  await buttons.nth(3).hover();await expect(buttons.nth(3).locator('.case-media-nav-label')).toHaveCSS('opacity','1');
+  await page.screenshot({path:testInfo.outputPath('media-rail-desktop.png')});
+  const before=await page.evaluate(()=>({url:location.href,history:history.length,windowY:scrollY}));
+  const aligned=index=>media.nth(index).evaluate(el=>{const reader=el.closest('.case-study'),header=reader.querySelector('.case-study-nav').getBoundingClientRect();return Math.abs(el.getBoundingClientRect().top-header.bottom-16)});
+  await buttons.nth(3).click();await expect.poll(()=>aligned(3)).toBeLessThan(2);await expect(buttons.nth(3)).toHaveAttribute('aria-current','location');
+  expect(await page.evaluate(()=>window.readerScrolls.length)).toBeGreaterThan(2);
+  await media.last().evaluate(el=>{el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-200});await expect(buttons.last()).toHaveAttribute('aria-current','location');
+  const scrolled=await rail.boundingBox();expect(scrolled.x).toBeCloseTo(initial.x,0);expect(scrolled.y).toBeCloseTo(initial.y,0);
+  await page.mouse.move(2,2);await page.keyboard.press('Tab');await buttons.first().focus();await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('opacity','1');await buttons.first().press('Enter');await expect.poll(()=>aligned(0)).toBeLessThan(2);
+  expect(await page.evaluate(()=>({url:location.href,history:history.length,windowY:scrollY}))).toEqual(before);
+  for(const width of [900,600]){await page.setViewportSize({width,height:1000});const railBox=await rail.boundingBox(),content=await reader.locator('.case-study-measure').boundingBox();expect(railBox.x).toBeGreaterThanOrEqual(content.x+content.width-.5);expect(railBox.x+railBox.width).toBeLessThanOrEqual(width)}
+  await page.setViewportSize({width:1440,height:1000});
+  await reader.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(reader).toHaveCount(0);
+  await page.getByRole('link',{name:/Search Labs/}).click();await expect(page.locator('.case-media-nav')).toBeHidden();
+});
+
+test('touch media navigation fits the gutter and makes reduced-motion jumps below the header',async({browser},testInfo)=>{
+  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
+  try{
+    const page=await context.newPage();await disableWebGL(page);await page.route('**/api/listening',route=>route.fulfill({status:204}));await page.route('**/api/weather',route=>route.fulfill({status:204}));
+    await page.goto('http://127.0.0.1:3000/?project=ai-mode-nudges&view=case-study');
+    const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(6);
+    for(const width of [390,320]){
+      await page.setViewportSize({width,height:844});const bounds=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(measure.x+measure.width-.5);expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
+      for(const button of await buttons.all()){const box=await button.boundingBox();expect(box.width).toBeGreaterThanOrEqual(24);expect(box.height).toBeGreaterThanOrEqual(24)}
+      await buttons.nth(4).tap();await expect(buttons.nth(4)).toHaveAttribute('aria-current','location');
+      await expect.poll(()=>reader.locator('[data-media-label]').nth(4).evaluate(el=>Math.abs(el.getBoundingClientRect().top-el.closest('.case-study').querySelector('.case-study-nav').getBoundingClientRect().bottom-16))).toBeLessThan(2);
+      expect(await reader.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);expect(await page.evaluate(()=>scrollY)).toBe(0);
+      await buttons.first().tap();await expect(buttons.first()).toHaveAttribute('aria-current','location');
+    }
+    await reader.locator('.case-study-nav').getByRole('button',{name:'Switch to dark mode'}).tap();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
+    await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('background-color','rgb(16, 17, 16)');
+    await page.screenshot({path:testInfo.outputPath('media-rail-mobile-dark.png')});
+  }finally{await context.close()}
+});
+
 test('case studies reuse the home footer with one music widget and working history controls',async({page})=>{
   await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
   const track={title:'Footer track',artist:'Footer artist',url:'https://www.last.fm/music/footer',artwork:'/cartridges/labels/search-tonal.svg',playing:true};
