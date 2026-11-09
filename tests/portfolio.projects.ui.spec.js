@@ -203,6 +203,24 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
 
+test('project headers reveal a centered title past the hero over a fading blur scrim',async({page},testInfo)=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  for(const [id,title,width,height]of[['ai-mode-nudges','AI Mode Nudges',1440,1000],['ai-mode-nudges','AI Mode Nudges',390,844],['stadia-store-redesign','Stadia Store Redesign',320,844],['search-labs','Search Labs',1440,700]]){
+    await page.setViewportSize({width,height});await page.goto(`/?project=${id}&view=case-study`);
+    const reader=page.locator('.case-study'),header=reader.locator('.case-study-nav'),name=header.locator('.case-study-nav-title');
+    await expect(name).toHaveCSS('opacity','0');await expect(name).toHaveAttribute('aria-hidden','true');
+    const appearance=await header.evaluate(el=>{const style=getComputedStyle(el),scrim=getComputedStyle(el,'::before');return{top:style.paddingTop,bottom:style.paddingBottom,fill:style.backgroundColor,gradient:scrim.backgroundImage,blur:scrim.backdropFilter,mask:scrim.maskImage}});
+    expect(appearance.top).toBe(appearance.bottom);expect(appearance.fill).toBe('rgba(0, 0, 0, 0)');expect(appearance.gradient).toContain('linear-gradient');expect(appearance.blur).toContain('blur(');expect(appearance.mask).toContain('linear-gradient');
+    await reader.evaluate(el=>{el.scrollTop+=el.querySelector('.case-study-hero').getBoundingClientRect().bottom-el.querySelector('.case-study-nav').getBoundingClientRect().bottom+4});
+    await expect(name).toHaveCSS('opacity','1');await expect(name).toHaveText(title);await expect(name).toHaveAttribute('aria-hidden','false');
+    const navBox=await header.boundingBox(),titleBox=await name.boundingBox();expect(titleBox.x+titleBox.width/2).toBeCloseTo(navBox.x+navBox.width/2,0);expect(titleBox.y+titleBox.height/2).toBeCloseTo(navBox.y+navBox.height/2,0);
+    for(const button of await header.getByRole('button').all()){const box=await button.boundingBox();expect(box.y+box.height/2).toBeCloseTo(navBox.y+navBox.height/2,0)}
+    expect(await reader.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+    if(width===1440&&id==='ai-mode-nudges')await page.screenshot({path:testInfo.outputPath('project-nav-scrolled-desktop.png')});
+    await reader.evaluate(el=>el.scrollTop=0);await expect(name).toHaveCSS('opacity','0');
+  }
+});
+
 test('media rail tracks the reader, labels each stop, and jumps without navigating',async({page},testInfo)=>{
   await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
   await page.addInitScript(()=>{
@@ -211,10 +229,10 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
     document.addEventListener('scroll',event=>{if(event.target.matches?.('.case-study'))window.readerScrolls.push(event.target.scrollTop)},{capture:true});
   });
   await page.goto('/?project=ai-mode-nudges&view=case-study');
-  const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button'),media=reader.locator('[data-media-label]');
-  await expect(buttons).toHaveCount(6);await expect(rail.locator('.case-media-nav-track')).toHaveAttribute('data-reveal-ready','true');
+  const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button'),media=reader.locator('[data-media-label], [data-takeaways]');
+  await expect(buttons).toHaveCount(7);await expect(rail.locator('.case-media-nav-track')).toHaveAttribute('data-reveal-ready','true');
   expect(await page.evaluate(()=>window.mediaNavGate.some(state=>state.ready==='false'&&state.inert))).toBe(true);
-  const labels=await media.evaluateAll(elements=>elements.map(el=>`Jump to ${el.dataset.mediaLabel}`));
+  const labels=await media.evaluateAll(elements=>elements.map(el=>`Jump to ${el.dataset.mediaLabel||'Takeaways'}`));
   for(let i=0;i<labels.length;i++)await expect(buttons.nth(i)).toHaveAccessibleName(labels[i]);
   await expect(buttons.first()).toHaveAttribute('aria-current','location');
   const initial=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(initial.x+initial.width).toBeLessThanOrEqual(measure.x);
@@ -225,7 +243,8 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   const aligned=index=>media.nth(index).evaluate(el=>{const reader=el.closest('.case-study'),header=reader.querySelector('.case-study-nav').getBoundingClientRect();return Math.abs(el.getBoundingClientRect().top-header.bottom-16)});
   await buttons.nth(3).click();await expect.poll(()=>aligned(3)).toBeLessThan(2);await expect(buttons.nth(3)).toHaveAttribute('aria-current','location');
   expect(await page.evaluate(()=>window.readerScrolls.length)).toBeGreaterThan(2);
-  await media.last().evaluate(el=>{el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-200});await expect(buttons.last()).toHaveAttribute('aria-current','location');
+  await media.nth(5).evaluate(el=>{el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-200});await expect(buttons.nth(5)).toHaveAttribute('aria-current','location');
+  await buttons.last().click();await expect(buttons.last()).toHaveAccessibleName('Jump to Takeaways');await expect(buttons.last()).toHaveAttribute('aria-current','location');await expect(reader.locator('[data-takeaways] p').last()).toBeVisible();
   const scrolled=await rail.boundingBox();expect(scrolled.x).toBeCloseTo(initial.x,0);expect(scrolled.y).toBeCloseTo(initial.y,0);
   await page.mouse.move(2,2);await page.keyboard.press('Tab');await buttons.first().focus();await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('opacity','1');await buttons.first().press('Enter');await expect.poll(()=>aligned(0)).toBeLessThan(2);
   expect(await page.evaluate(()=>({url:location.href,history:history.length,windowY:scrollY}))).toEqual(before);
@@ -240,7 +259,7 @@ test('touch media navigation fits the gutter and makes reduced-motion jumps belo
   try{
     const page=await context.newPage();await disableWebGL(page);await page.route('**/api/listening',route=>route.fulfill({status:204}));await page.route('**/api/weather',route=>route.fulfill({status:204}));
     await page.goto('http://127.0.0.1:3000/?project=ai-mode-nudges&view=case-study');
-    const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(6);
+    const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(7);
     for(const width of [390,320]){
       await page.setViewportSize({width,height:844});const bounds=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(measure.x+.5);
       const track=await rail.locator('.case-media-nav-track').boundingBox();expect(track.y+track.height/2).toBeCloseTo(422,0);
@@ -250,6 +269,8 @@ test('touch media navigation fits the gutter and makes reduced-motion jumps belo
       expect(await reader.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);expect(await page.evaluate(()=>scrollY)).toBe(0);
       await buttons.first().tap();await expect(buttons.first()).toHaveAttribute('aria-current','location');
     }
+    await buttons.last().tap();await expect(buttons.last()).toHaveAccessibleName('Jump to Takeaways');await expect(buttons.last()).toHaveAttribute('aria-current','location');await expect(reader.locator('[data-takeaways] p').last()).toBeVisible();
+    await expect(reader.locator('.case-study-nav-title')).toHaveCSS('opacity','1');
     await reader.locator('.case-study-nav').getByRole('button',{name:'Switch to dark mode'}).tap();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
     await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('background-color','rgb(16, 17, 16)');
     await page.screenshot({path:testInfo.outputPath('media-rail-mobile-dark.png')});

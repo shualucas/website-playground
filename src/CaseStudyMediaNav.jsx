@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useContentReveal } from "./useContentReveal";
 
-/** A quiet index of the media actually rendered in the current reader. */
+/** A quiet index of the reader's media and closing takeaways. */
 export function CaseStudyMediaNav({ scope, projectId }) {
   const navigation = useRef(null);
   const [items, setItems] = useState([]), [active, setActive] = useState(0);
@@ -9,7 +9,7 @@ export function CaseStudyMediaNav({ scope, projectId }) {
   useEffect(() => {
     const reader = scope.current;
     if (!reader) return;
-    const media = [...reader.querySelectorAll("[data-media-label]")].map(element => ({ element, label:element.dataset.mediaLabel }));
+    const media = [...reader.querySelectorAll("[data-media-label], [data-takeaways]")].map(element => ({ element, label:element.dataset.mediaLabel || "Takeaways" }));
     setItems(media);
     if (!media.length) return;
     let frame = 0;
@@ -23,6 +23,7 @@ export function CaseStudyMediaNav({ scope, projectId }) {
         if (media[index].element.getBoundingClientRect().top > readingLine) break;
         current = index;
       }
+      if (reader.scrollTop + reader.clientHeight >= reader.scrollHeight - 2) current = media.length - 1;
       setActive(current);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { projectTheme } from "./book/themes";
 import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
@@ -9,6 +9,20 @@ import { CaseStudyMediaNav } from "./CaseStudyMediaNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoopVideo } from "./LoopVideo";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
+
+function ScrolledProjectTitle({ scope, title }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const reader = scope.current, hero = reader?.querySelector(".case-study-hero"), header = reader?.querySelector(".case-study-nav");
+    if (!reader || !hero || !header || !window.IntersectionObserver) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setVisible(entry.boundingClientRect.bottom <= header.getBoundingClientRect().bottom + 1);
+    }, { root:reader, rootMargin:`-${header.offsetHeight}px 0px 0px 0px`, threshold:0 });
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [scope]);
+  return <span className="case-study-nav-title" data-visible={visible} aria-hidden={!visible} title={title}>{title}</span>;
+}
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
 export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas", dark, onToggleTheme, footer }) {
@@ -34,6 +48,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       <span className="link-copy"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>{backLabel}</span>
     </button>
     {identity && <span data-reveal>{identity.toUpperCase()}</span>}
+    {study && <ScrolledProjectTitle key={project.id} scope={content} title={project.label} />}
     <span data-reveal><ThemeToggle dark={dark} onToggle={onToggleTheme} /></span>
   </>;
   return (

@@ -8,7 +8,7 @@ export function CaseStudyShowcase({ study }) {
       <div data-reveal><CaseStudyMedia media={passage.visual} /></div>
       <p data-reveal className="case-showcase-copy">{passage.copy}</p>
     </section>)}
-    <section className="case-showcase-results" data-showcase-section="result" aria-labelledby="case-result-title">
+    <section className="case-showcase-results" data-showcase-section="result" aria-labelledby="case-result-title" data-takeaways>
       <div data-reveal className="case-showcase-copy">
         <h2 id="case-result-title">{study.results.title}</h2>
         <p>{study.results.copy}</p>

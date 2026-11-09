@@ -35,7 +35,7 @@ export function CaseStudyNarrative({ study }) {
         {visuals.filter(media => media.afterDecision === index).map(media => <CaseStudyMedia key={media.title} media={media} />)}
       </li>)}</ol>
     </section>
-    {study.results && <section data-reveal className="case-editorial-section" data-story-stage="result" aria-labelledby="case-result-title">
+    {study.results && <section data-reveal className="case-editorial-section" data-story-stage="result" aria-labelledby="case-result-title" data-takeaways={!study.next || undefined}>
       <h2 id="case-result-title">{study.results.title}</h2>
       <div className="case-section-content">
         <p>{study.results.copy}</p>
@@ -45,7 +45,7 @@ export function CaseStudyNarrative({ study }) {
         {study.results.note && <p className="case-measurement-note">{study.results.note}</p>}
       </div>
     </section>}
-    {study.next && <section data-reveal className="case-editorial-section" data-story-stage="next" aria-labelledby="case-next-title">
+    {study.next && <section data-reveal className="case-editorial-section" data-story-stage="next" aria-labelledby="case-next-title" data-takeaways>
       <h2 id="case-next-title">What’s next</h2><p>{study.next}</p>
     </section>}
   </div>;
