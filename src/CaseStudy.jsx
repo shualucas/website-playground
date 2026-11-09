@@ -10,7 +10,7 @@ import { LoopVideo } from "./LoopVideo";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
-export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas", dark, onToggleTheme }) {
+export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", identity = "Josh Lucas", dark, onToggleTheme, footer }) {
   const content = useRef(null);
   const pageExit=usePageExit(content);
   const study = project.caseStudy;
@@ -130,11 +130,11 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
             come.
           </p>
         )}
-        <footer data-reveal>
+        {footer || <footer data-reveal>
           <button className="back-to-zine" onClick={()=>pageExit.run(onBack,{navigation:true})}>
             ← {backLabel}
           </button>
-        </footer>
+        </footer>}
         </div>
       </article>
     </section>

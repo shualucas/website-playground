@@ -13,13 +13,10 @@ export function CaseStudyShowcase({ study }) {
         <h2 id="case-result-title">{study.results.title}</h2>
         <p>{study.results.copy}</p>
       </div>
-      {study.results.outcomes && <dl data-reveal className="case-outcome-grid" aria-label="Project impact">
-        {study.results.outcomes.map(outcome => <div key={outcome.label}><dt>{outcome.label}</dt><dd>{outcome.value}</dd></div>)}
-      </dl>}
       <div data-reveal className="case-showcase-copy">
         <p>{study.results.guardrail}</p>
         <p>{study.results.testing}</p>
-        <p className="case-measurement-note">{study.results.note}</p>
+        {study.results.note && <p className="case-measurement-note">{study.results.note}</p>}
       </div>
     </section>
     <p data-reveal className="case-showcase-copy case-showcase-next">{study.next}</p>

@@ -110,9 +110,9 @@ test("footer and reader content reveal on entry and stay immediate for reduced m
   await page.getByRole("button",{name:"Open Stadia cartridge",exact:true}).click();
   const reader=page.getByRole("region",{name:"Stadia case study"});
   await expect(reader.locator("h1")).toHaveAttribute("data-reveal-state","visible");
-  await reader.locator("footer").scrollIntoViewIfNeeded(); await expect(reader.locator("footer")).toHaveAttribute("data-reveal-state","visible");
+  await reader.locator("footer").scrollIntoViewIfNeeded(); await expect(reader.locator(".footer-links")).toHaveAttribute("data-reveal-state","visible");
   await page.emulateMedia({reducedMotion:"reduce"});
-  expect(await reader.locator("footer").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
+  expect(await reader.locator(".footer-links").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
 });
 
 test("the page entrance continues from the hero into the footer on one timeline", async ({ page }) => {

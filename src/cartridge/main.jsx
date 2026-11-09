@@ -39,8 +39,8 @@ function App() {
   const pageExit=usePageExit(content);
   const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);
   const [selected, setSelected] = useState(null), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
-  useContentReveal(content, `${status}:${selected || ""}`);
   const [reading, setReading] = useState(readRoute);
+  useContentReveal(content, `${status}:${selected || ""}:${reading || ""}`);
   const [previewingProject,setPreviewingProject]=useState(null);
   const currentSelection = useRef(null); currentSelection.current = selected;
   const [cartInteractive, setCartInteractive] = useState(false);
@@ -143,9 +143,9 @@ function App() {
         </div>
       </section>
       <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} />
-      {presented && <PortfolioFooter hidden={Boolean(reading)} dismissHistory={Boolean(previewingProject || hovered || reading)} />}
+      {presented && !reading && <PortfolioFooter dismissHistory={Boolean(previewingProject || hovered)} />}
     </main>
-    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={()=>setDark(value=>!value)} />}
+    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={()=>setDark(value=>!value)} footer={<PortfolioFooter />} />}
   </>;
 }
 createRoot(document.getElementById("root")).render(<App />);

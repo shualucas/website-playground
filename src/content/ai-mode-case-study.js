@@ -56,9 +56,8 @@ export const aiModeCaseStudy = {
   results: {
     title: "Shipped, and still evolving",
     copy: "Inline nudges launched globally in AI Overviews in October 2026, increasing follow-up engagement and bringing more people into AI Mode.",
-    guardrail: "Multi-turn conversations increased 1.50%. Clicks to external websites held steady.",
-    testing: "Separately, early vertical testing of selectable quiz options reduced manual query retyping by 21.9%, informing the clarification-card framework now in testing.",
-    note: "Measurement details to add: experiment window, metric definitions, and whether the percentage lifts are relative increases.",
+    guardrail: "Clicks to external websites held steady.",
+    testing: "Early vertical testing of selectable quiz options informed the clarification-card framework now in testing.",
   },
   next: "Next, I’m exploring visited states for earlier turns and ways to combine a selected card option with a typed detail, so people can refine their intent without starting over.",
 };
