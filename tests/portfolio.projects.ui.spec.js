@@ -217,7 +217,8 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   const labels=await media.evaluateAll(elements=>elements.map(el=>`Jump to ${el.dataset.mediaLabel}`));
   for(let i=0;i<labels.length;i++)await expect(buttons.nth(i)).toHaveAccessibleName(labels[i]);
   await expect(buttons.first()).toHaveAttribute('aria-current','location');
-  const initial=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(initial.x).toBeGreaterThanOrEqual(measure.x+measure.width);
+  const initial=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(initial.x+initial.width).toBeLessThanOrEqual(measure.x);
+  const track=await rail.locator('.case-media-nav-track').boundingBox();expect(track.y+track.height/2).toBeCloseTo(500,0);
   await buttons.nth(3).hover();await expect(buttons.nth(3).locator('.case-media-nav-label')).toHaveCSS('opacity','1');
   await page.screenshot({path:testInfo.outputPath('media-rail-desktop.png')});
   const before=await page.evaluate(()=>({url:location.href,history:history.length,windowY:scrollY}));
@@ -228,7 +229,7 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   const scrolled=await rail.boundingBox();expect(scrolled.x).toBeCloseTo(initial.x,0);expect(scrolled.y).toBeCloseTo(initial.y,0);
   await page.mouse.move(2,2);await page.keyboard.press('Tab');await buttons.first().focus();await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('opacity','1');await buttons.first().press('Enter');await expect.poll(()=>aligned(0)).toBeLessThan(2);
   expect(await page.evaluate(()=>({url:location.href,history:history.length,windowY:scrollY}))).toEqual(before);
-  for(const width of [900,600]){await page.setViewportSize({width,height:1000});const railBox=await rail.boundingBox(),content=await reader.locator('.case-study-measure').boundingBox();expect(railBox.x).toBeGreaterThanOrEqual(content.x+content.width-.5);expect(railBox.x+railBox.width).toBeLessThanOrEqual(width)}
+  for(const width of [900,600]){await page.setViewportSize({width,height:1000});const railBox=await rail.boundingBox(),content=await reader.locator('.case-study-measure').boundingBox();expect(railBox.x).toBeGreaterThanOrEqual(0);expect(railBox.x+railBox.width).toBeLessThanOrEqual(content.x+.5)}
   await page.setViewportSize({width:1440,height:1000});
   await reader.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(reader).toHaveCount(0);
   await page.getByRole('link',{name:/Search Labs/}).click();await expect(page.locator('.case-media-nav')).toBeHidden();
@@ -241,7 +242,8 @@ test('touch media navigation fits the gutter and makes reduced-motion jumps belo
     await page.goto('http://127.0.0.1:3000/?project=ai-mode-nudges&view=case-study');
     const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(6);
     for(const width of [390,320]){
-      await page.setViewportSize({width,height:844});const bounds=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(measure.x+measure.width-.5);expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
+      await page.setViewportSize({width,height:844});const bounds=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(measure.x+.5);
+      const track=await rail.locator('.case-media-nav-track').boundingBox();expect(track.y+track.height/2).toBeCloseTo(422,0);
       for(const button of await buttons.all()){const box=await button.boundingBox();expect(box.width).toBeGreaterThanOrEqual(24);expect(box.height).toBeGreaterThanOrEqual(24)}
       await buttons.nth(4).tap();await expect(buttons.nth(4)).toHaveAttribute('aria-current','location');
       await expect.poll(()=>reader.locator('[data-media-label]').nth(4).evaluate(el=>Math.abs(el.getBoundingClientRect().top-el.closest('.case-study').querySelector('.case-study-nav').getBoundingClientRect().bottom-16))).toBeLessThan(2);
