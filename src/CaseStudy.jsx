@@ -16,7 +16,7 @@ function ScrolledProjectTitle({ scope, title }) {
     const reader = scope.current, hero = reader?.querySelector(".case-study-hero"), header = reader?.querySelector(".case-study-nav");
     if (!reader || !hero || !header || !window.IntersectionObserver) return;
     const observer = new IntersectionObserver(([entry]) => {
-      setVisible(entry.boundingClientRect.bottom <= header.getBoundingClientRect().bottom + 1);
+      setVisible(!entry.isIntersecting && entry.boundingClientRect.bottom <= header.getBoundingClientRect().bottom);
     }, { root:reader, rootMargin:`-${header.offsetHeight}px 0px 0px 0px`, threshold:0 });
     observer.observe(hero);
     return () => observer.disconnect();

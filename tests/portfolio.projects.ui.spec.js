@@ -217,6 +217,9 @@ test('project headers reveal a centered title past the hero over a fading blur s
     for(const button of await header.getByRole('button').all()){const box=await button.boundingBox();expect(box.y+box.height/2).toBeCloseTo(navBox.y+navBox.height/2,0)}
     expect(await reader.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
     if(width===1440&&id==='ai-mode-nudges')await page.screenshot({path:testInfo.outputPath('project-nav-scrolled-desktop.png')});
+    // Hide as soon as the hero re-enters, including its first pixel below the sticky header.
+    await reader.evaluate(el=>{el.scrollTop=Math.floor(el.scrollTop+el.querySelector('.case-study-hero').getBoundingClientRect().bottom-el.querySelector('.case-study-nav').getBoundingClientRect().bottom)});
+    await expect(name).toHaveCSS('opacity','0');await expect(name).toHaveAttribute('aria-hidden','true');
     await reader.evaluate(el=>el.scrollTop=0);await expect(name).toHaveCSS('opacity','0');
   }
 });
