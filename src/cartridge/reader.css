@@ -1,5 +1,4 @@
 /* Shared reader and gallery presentation, independent of the preserved zine stylesheet. */
-@font-face { font-family:"Portfolio Metrics"; font-style:normal; font-weight:500; font-display:swap; src:url('/fonts/portfolio-metrics-500.woff') format('woff'); unicode-range:U+0030-0039; }
 .case-study {
   position: fixed;
   inset: 0;
@@ -417,9 +416,9 @@
 .case-study-showcase .case-highlight-grid > div:last-child { grid-column:auto; flex-direction:column; align-items:stretch; gap:1px; }
 .case-study-showcase .case-highlight-grid dt { font-size:12px; line-height:1.4; }
 .case-study-showcase .case-highlight-grid dd { font-size:clamp(18px,2vw,20px); }
-.case-metric-value { display:inline-grid; white-space:nowrap; color:var(--metric-positive); font-family:"Portfolio Metrics","DM Sans",Arial,sans-serif; font-variant-numeric:tabular-nums; }
-/* Reserve the final number's natural width without assigning widths to digits. */
-.case-metric-value::before { content:attr(data-final); visibility:hidden; grid-area:1 / 1; }
+.case-metric-value { display:inline-grid; white-space:nowrap; color:var(--metric-positive); font-variant-numeric:tabular-nums; }
+/* Reserve the whole value using DM Sans's widest numeral, keeping its natural spacing. */
+.case-metric-value::before { content:attr(data-measure); visibility:hidden; grid-area:1 / 1; }
 .case-metric-value::after { content:attr(data-value); grid-area:1 / 1; }
 .case-highlight-grid > [data-metric-state="waiting"] { opacity:0; transform:translateY(8px); }
 .case-highlight-grid > [data-metric-state="counting"] { animation:case-metric-enter 400ms cubic-bezier(.22,1,.36,1) both; }

@@ -71,7 +71,7 @@ export function CaseStudyMetrics({ outcomes }) {
   return <dl ref={root} data-reveal className="case-outcome-grid case-highlight-grid" aria-label="Project impact" style={{"--metric-duration":`${duration}ms`}}>
     {outcomes.map(outcome => <div key={outcome.label} data-metric-state="waiting">
       <dt>{outcome.label}</dt>
-      <dd><span className="sr-only">{outcome.value}</span><span className="case-metric-value" aria-hidden="true" data-value={outcome.value} data-final={outcome.value} /></dd>
+      <dd><span className="sr-only">{outcome.value}</span><span className="case-metric-value" aria-hidden="true" data-value={outcome.value} data-measure={outcome.value.replace(/\d/g,"0")} /></dd>
     </div>)}
   </dl>;
 }
