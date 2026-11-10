@@ -184,7 +184,7 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('.case-showcase-passage')).toHaveCount(4);
   await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a lightweight post-processing step');await expect(study.locator('[data-showcase-section="collapsed"]')).toHaveCount(0);
   await expect(study.locator('[data-showcase-section="result"] p')).toHaveCount(2);
-  await expect(study.locator('[data-showcase-section="result"] p').first()).toContainText('Inline nudges launched globally');
+  await expect(study.locator('[data-showcase-section="result"] p').first()).toContainText('Nudges launched globally in Search');
   await expect(study.locator('[data-showcase-section="result"] p').last()).toContainText('Before this project, 10+ teams');
   await expect(study.locator('[data-showcase-section="result"]')).not.toContainText(/1\.50%|21\.9%|3\.87%|1\.84%/);
   await expect(study.locator('[data-showcase-section="result"] .case-outcome-grid,.case-measurement-note')).toHaveCount(0);

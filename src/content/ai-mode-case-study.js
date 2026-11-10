@@ -49,7 +49,7 @@ export const aiModeCaseStudy = {
   ],
   results: {
     title: "Shipped, and still evolving",
-    copy: "Inline nudges launched globally in AI Overviews in October 2026, increasing follow-up engagement and driving more multi-turn conversations into AI Mode while keeping clicks to external websites steady. Meanwhile, AI Mode inline nudges and clarification cards moved into live testing.",
+    copy: "Nudges launched globally in Search in October 2026, increasing follow-up engagement and driving more multi-turn conversations into AI Mode.",
   },
-  next: "Before this project, 10+ teams were each inventing their own way to ask follow-up questions. Today, they share one set of rules for when to use plain text, when to use inline nudges, and when to show a clarification card. The biggest takeaway for me was restraint: when an AI interface tries too hard to help, it crowds the answer. The best follow-up stays small, keeps one clear place to type, and makes the next step effortless.",
+  next: "Before this project, 10+ teams were each inventing their own way to ask follow-up questions. Today, they share one set of rules for when to trigger plain text, when to trigger tappable nudges, and when to trigger a clarification card.",
 };
