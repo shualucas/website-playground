@@ -136,7 +136,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
               onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;if(!canHover){event.preventDefault();toggle(item.id,index)}else open(event,item)}}>
               <span className="recent-project-index" aria-hidden="true">{String(index+1).padStart(2,"0")}</span>
               <span className="recent-project-copy"><span className="recent-project-name">{item.label}</span><span id={`recent-summary-${item.id}`} className={`recent-project-summary${previews[item.id].kind==="zine"?" sr-only":""}`} aria-hidden="true">{item.description}</span></span>
-              <span className="recent-project-team">{previews[item.id].team}</span><svg className="recent-project-arrow" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span className="recent-project-team">{previews[item.id].team}</span>
             </a>}
           {!canHover&&showing&&active===item.id&&<div className="recent-inline-preview" id={`preview-${item.id}`} role="region" aria-label={`${item.label} preview`}>
             <PreviewArt project={item} showing={showing} seen={seen} dark={dark} setCameraTarget={setCameraTarget} retainZine={false}/>

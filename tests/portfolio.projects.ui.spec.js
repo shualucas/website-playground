@@ -59,7 +59,7 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
   const before=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));
   await expect(navigation.locator('.recent-project-preview')).toHaveCSS('opacity','1');
-  await expect(links.first().locator('.recent-project-arrow')).toHaveCSS('opacity','1');
+  await expect(navigation.locator('.recent-project-arrow')).toHaveCount(0);
   await expect(links.nth(1)).toHaveCSS('opacity','0.4');
   const copyBox=()=>links.first().locator('.recent-project-copy').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y+scrollY,width:r.width,height:r.height}});
   const titleBefore=await copyBox();
@@ -692,14 +692,15 @@ test('project color intros yield to interaction and stay off for reduced motion'
  expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
 });
 
-test('project navigation blurs underlying detail across its full height',async({page})=>{
+test('project navigation blurs beneath the bar and leaves content immediately below sharp',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/?project=ai-mode-nudges&view=case-study');
  await expect(page.locator('.case-study-nav .back-to-zine')).toBeVisible();
  await page.locator('.case-study').evaluate(reader=>{const pattern=document.createElement('div');pattern.style.cssText='position:fixed;inset:0 0 auto;height:180px;z-index:1;pointer-events:none;background:repeating-linear-gradient(90deg,#111 0 4px,#fff 4px 8px)';reader.prepend(pattern)});
  const screenshot=await page.screenshot();
- const [blurred,unblurred]=await page.evaluate(async encoded=>{
+ const height=await page.locator('.case-study-nav').evaluate(el=>Math.round(el.getBoundingClientRect().height));
+ const [blurred,below,unblurred]=await page.evaluate(async({encoded,height})=>{
   const image=new Image();image.src=`data:image/png;base64,${encoded}`;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);
-  return [72,175].map(y=>{const pixels=context.getImageData(16,y,160,1).data;let contrast=0;for(let i=4;i<pixels.length;i+=4)contrast+=Math.abs(pixels[i]-pixels[i-4]);return contrast/159});
- },screenshot.toString('base64'));
- expect(unblurred).toBeGreaterThan(3);expect(blurred).toBeLessThan(unblurred*.1);
+  return [40,height+8,175].map(y=>{const pixels=context.getImageData(16,y,160,1).data;let contrast=0;for(let i=4;i<pixels.length;i+=4)contrast+=Math.abs(pixels[i]-pixels[i-4]);return contrast/159});
+ },{encoded:screenshot.toString('base64'),height});
+ expect(unblurred).toBeGreaterThan(3);expect(blurred).toBeLessThan(unblurred*.1);expect(below).toBeCloseTo(unblurred,1);
 });

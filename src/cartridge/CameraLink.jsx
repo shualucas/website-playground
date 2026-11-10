@@ -92,7 +92,7 @@ export function CameraLink({ dark, hidden, ready, rowTitle, rowIndex, rowTeam, e
       <span className={rowTitle ? "recent-project-copy recent-camera-copy" : undefined}>
       {rowTitle && <span className="recent-project-name">{rowTitle}</span>}
       {!hasPreview && cameraModel}</span>
-      {rowTitle && <><span className="recent-project-team">{rowTeam ?? "Film"}</span><svg className="recent-project-arrow" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></>}
+      {rowTitle && <span className="recent-project-team">{rowTeam ?? "Film"}</span>}
     </a>
     {previewTarget && previewSeen && createPortal(cameraModel,previewTarget)}
     <span id="camera-help" className="sr-only">{hasPreview ? "Open film photographs." : "Drag to rotate the camera. Use arrow keys to rotate, R to reset, or Enter to explore."}</span>
