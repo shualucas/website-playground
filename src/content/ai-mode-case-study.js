@@ -37,8 +37,8 @@ export const aiModeCaseStudy = {
     {
       id: "input",
       label: "One place to type",
-      copy: "Early clarification cards included a \"Something else\" text box and a \"Skip\" button. We removed both to avoid competing with the main \"Ask anything\" input bar and keep the card short enough to sit above the action bar and web links, before people stop scrolling on mobile.",
-      visual: { title: "One clear input", caption: "An early card with a second text box versus the current compact card above the action bar.", type: "image", src: "/images/nudges/03-one-clear-input.jpg", alt: "An early clarification card with selectable tennis racquet features, a Something else text field, and a Skip button above the main Ask anything input.", width: 1280, height: 727 },
+      copy: "Early clarification cards included a \"something else\" answer, while also being attached to the \"Ask anything\" input bar. This was confusing to users when seeing two different places to type. We removed the \"something else\" option, and expanded the card inline to avoid covering the response.",
+      visual: { title: "One clear input", caption: "An early card with a second text box versus the current compact card above the action bar.", type: "image", src: "/images/nudges/03-clarification-cards-before-after.jpg", alt: "Before and after: an early clarification card with Something else and Skip above the Ask anything input, followed by an expanded inline card with tennis racquet preferences and budget choices.", width: 1280, height: 727 },
     },
     {
       id: "model",

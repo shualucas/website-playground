@@ -182,14 +182,14 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('[data-showcase-section="problem"] > p')).toHaveText('AI answers often ended with a suggested next step written as plain text, forcing people to retype the suggestion or phrase the next question themselves. Meanwhile, 10+ vertical teams across Shopping, Travel, Finance, and Education were each designing separate buttons, chips, and quizzes at the bottom of answers.');
   await expect(study.locator('[data-showcase-section="system"]')).toContainText('plain text for open-ended replies');await expect(study.locator('[data-showcase-section="system"]')).toContainText('clarification cards for narrowing down choices like budget, pace, or dates');
   await expect(study.locator('.case-showcase-passage')).toHaveCount(4);
-  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"Something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a lightweight post-processing step');await expect(study.locator('[data-showcase-section="collapsed"]')).toHaveCount(0);
+  await expect(study.locator('[data-showcase-section="input"]')).toContainText('"something else"');await expect(study.locator('[data-showcase-section="model"]')).toContainText('a lightweight post-processing step');await expect(study.locator('[data-showcase-section="collapsed"]')).toHaveCount(0);
   await expect(study.locator('[data-showcase-section="result"] p')).toHaveCount(2);
   await expect(study.locator('[data-showcase-section="result"] p').first()).toContainText('Inline nudges launched globally');
   await expect(study.locator('[data-showcase-section="result"] p').last()).toContainText('Before this project, 10+ teams');
   await expect(study.locator('[data-showcase-section="result"]')).not.toContainText(/1\.50%|21\.9%|3\.87%|1\.84%/);
   await expect(study.locator('[data-showcase-section="result"] .case-outcome-grid,.case-measurement-note')).toHaveCount(0);
   await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(4);
-  const imageFiles=['01-conversation-stopped.jpg','02-three-patterns.jpg','03-one-clear-input.jpg','04-answer-to-action.jpg'];
+  const imageFiles=['01-conversation-stopped.jpg','02-three-patterns.jpg','03-clarification-cards-before-after.jpg','04-answer-to-action.jpg'];
   for(const [i,passage] of (await study.locator('.case-showcase-passage').all()).entries()) {
     await expect(passage.locator('.case-story-media-placeholder')).toHaveCount(0);
     const image=passage.locator('.case-story-media > img');
