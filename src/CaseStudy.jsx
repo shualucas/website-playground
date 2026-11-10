@@ -9,9 +9,11 @@ import { CaseStudyMediaNav } from "./CaseStudyMediaNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoopVideo } from "./LoopVideo";
 import { CaseStudyCartridge } from "./cartridge/CaseStudyCartridge";
+import { cartridges } from "./cartridge/config";
 
-function ScrolledProjectTitle({ scope, title }) {
+function ScrolledProjectTitle({ scope, title, cartridgeId }) {
   const [visible, setVisible] = useState(false);
+  const cartridge = cartridges.find(item => item.id === cartridgeId);
   useEffect(() => {
     const reader = scope.current, hero = reader?.querySelector(".case-study-hero"), header = reader?.querySelector(".case-study-nav");
     if (!reader || !hero || !header || !window.IntersectionObserver) return;
@@ -21,7 +23,10 @@ function ScrolledProjectTitle({ scope, title }) {
     observer.observe(hero);
     return () => observer.disconnect();
   }, [scope]);
-  return <span className="case-study-nav-title" data-visible={visible} aria-hidden={!visible} title={title}>{title}</span>;
+  return <span className="case-study-nav-title" data-visible={visible} aria-hidden={!visible} title={title}>
+    {cartridge && <span className="case-study-nav-cartridge" data-cartridge={cartridge.id} style={{"--cartridge-shell":cartridge.shell}} aria-hidden="true"><img src={cartridge.label} alt="" decoding="async" /></span>}
+    <span className="case-study-nav-title-text">{title}</span>
+  </span>;
 }
 
 /** Readable HTML destination; the 3D phone is an entrance, not the reading surface. */
@@ -48,7 +53,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       <span className="link-copy"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6" /></svg>{backLabel}</span>
     </button>
     {identity && <span data-reveal>{identity.toUpperCase()}</span>}
-    {study && <ScrolledProjectTitle key={project.id} scope={content} title={project.label} />}
+    {study && <ScrolledProjectTitle key={project.id} scope={content} title={project.label} cartridgeId={project.cartridgeId || study.heroCartridge} />}
     <span data-reveal><ThemeToggle dark={dark} onToggle={onToggleTheme} /></span>
   </>;
   return (

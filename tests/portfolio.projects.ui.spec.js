@@ -233,10 +233,16 @@ test('project headers reveal a centered title past the hero over a fading blur s
     expect(appearance.top).toBe(appearance.bottom);expect(appearance.fill).toBe('rgba(0, 0, 0, 0)');expect(appearance.gradient).toContain('linear-gradient');expect(appearance.blur).toContain('blur(');expect(appearance.mask).toContain('linear-gradient');
     await reader.evaluate(el=>{el.scrollTop+=el.querySelector('.case-study-hero').getBoundingClientRect().bottom-el.querySelector('.case-study-nav').getBoundingClientRect().bottom+4});
     await expect(name).toHaveCSS('opacity','1');await expect(name).toHaveText(title);await expect(name).toHaveAttribute('aria-hidden','false');
+    const cartridge=name.locator('.case-study-nav-cartridge');await expect(cartridge).toHaveAttribute('data-cartridge',id==='stadia-store-redesign'?'stadia':'search');await expect(cartridge.locator('img')).toHaveJSProperty('complete',true);expect(await cartridge.locator('img').evaluate(el=>el.naturalWidth)).toBeGreaterThan(0);
+    const cartridgeBox=await cartridge.boundingBox(),textBox=await name.locator('.case-study-nav-title-text').boundingBox();expect(cartridgeBox.x+cartridgeBox.width).toBeLessThan(textBox.x);expect(cartridgeBox.y+cartridgeBox.height/2).toBeCloseTo(textBox.y+textBox.height/2,0);
     const navBox=await header.boundingBox(),titleBox=await name.boundingBox();expect(titleBox.x+titleBox.width/2).toBeCloseTo(navBox.x+navBox.width/2,0);expect(titleBox.y+titleBox.height/2).toBeCloseTo(navBox.y+navBox.height/2,0);
     for(const button of await header.getByRole('button').all()){const box=await button.boundingBox();expect(box.y+box.height/2).toBeCloseTo(navBox.y+navBox.height/2,0)}
     expect(await reader.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
-    if(width===1440&&id==='ai-mode-nudges')await page.screenshot({path:testInfo.outputPath('project-nav-scrolled-desktop.png')});
+    if(width===1440&&id==='ai-mode-nudges'){
+      await page.screenshot({path:testInfo.outputPath('project-nav-scrolled-desktop.png')});
+      await header.getByRole('button',{name:'Switch to dark mode'}).click();await page.screenshot({path:testInfo.outputPath('project-nav-scrolled-dark.png')});
+    }
+    if(width===320)await page.screenshot({path:testInfo.outputPath('project-nav-scrolled-mobile.png')});
     // Hide as soon as the hero re-enters, including its first pixel below the sticky header.
     await reader.evaluate(el=>{el.scrollTop=Math.floor(el.scrollTop+el.querySelector('.case-study-hero').getBoundingClientRect().bottom-el.querySelector('.case-study-nav').getBoundingClientRect().bottom)});
     await expect(name).toHaveCSS('opacity','0');await expect(name).toHaveAttribute('aria-hidden','true');
@@ -656,31 +662,44 @@ test('solid preview fills its container and retains height, right alignment and 
  }finally{await context.close()}
 });
 
-test('project colors ripple once after the rows finish loading without opening previews',async({page})=>{
+test('project colors ripple once during the row entrance without opening previews',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
  await page.addInitScript(()=>{
   window.rowPulses=[];const animate=Element.prototype.animate;
   Element.prototype.animate=function(frames,options){
-   if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor){window.rowPulses.push({project:this.dataset.project,ready:[...this.parentElement.children].every(row=>row.dataset.revealReady==='true'),delay:options.delay,color:frames[1].backgroundColor})}
+   if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor){window.rowPulses.push({project:this.dataset.project,revealing:[...this.parentElement.children].every(row=>row.dataset.revealState==='visible'),ready:this.dataset.revealReady==='true',delay:options.delay,color:frames[1].backgroundColor})}
    return animate.call(this,frames,options);
   };
  });
  await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','complete');
- const pulses=await page.evaluate(()=>window.rowPulses);expect(pulses.map(p=>p.project)).toEqual(['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film']);expect(pulses.every(p=>p.ready)).toBe(true);expect(pulses.map(p=>p.delay)).toEqual([0,150,300,450,600]);expect(new Set(pulses.map(p=>p.color)).size).toBe(5);
+ const pulses=await page.evaluate(()=>window.rowPulses);expect(pulses.map(p=>p.project)).toEqual(['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film']);expect(pulses.every(p=>p.revealing)).toBe(true);expect(pulses.some(p=>!p.ready)).toBe(true);expect(pulses.map(p=>Math.round(p.delay-pulses[0].delay))).toEqual([0,120,240,360,480]);expect(new Set(pulses.map(p=>p.color)).size).toBe(5);
  await expect(nav).toHaveAttribute('data-preview-active','false');await expect(nav.locator('.recent-preview-ascii,.loop-video video')).toHaveCount(0);
  for(const row of await nav.locator('.recent-project-list > li').all())await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
  await nav.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(page.locator('.case-study')).toHaveCount(0);expect(await page.evaluate(()=>window.rowPulses.length)).toBe(5);
 });
 
-test('project color intros yield to interaction and stay off for reduced motion',async({page})=>{
+test('project color intros yield to interaction and stay off for reduced motion',async({page},testInfo)=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
  await page.addInitScript(()=>{
   const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){const animation=animate.call(this,frames,options);if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor)animation.pause();return animation};
  });
  await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','running');
- const highlights=await nav.locator('li').evaluateAll(rows=>rows.map(row=>{const animation=row.getAnimations().find(animation=>animation.effect.getKeyframes()[0]?.backgroundColor);animation.currentTime=animation.effect.getTiming().delay+100;return getComputedStyle(row).backgroundColor}));expect(new Set(highlights).size).toBe(5);expect(highlights.every(color=>color!=='rgba(0, 0, 0, 0)')).toBe(true);
+ const highlights=await nav.locator('li').evaluateAll(rows=>{const animations=rows.map(row=>row.getAnimations().find(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)),time=animations[0].effect.getTiming().delay+500;return rows.map((row,index)=>{animations[index].currentTime=time;return getComputedStyle(row).backgroundColor})});expect(new Set(highlights).size).toBe(5);expect(highlights.every(color=>color!=='rgba(0, 0, 0, 0)')).toBe(true);
+ await expect(nav.locator('li').last()).toHaveAttribute('data-reveal-ready','true');await page.screenshot({path:testInfo.outputPath('project-color-ripple.png')});
  await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav).toHaveAttribute('data-color-intro','complete');await expect(nav).toHaveAttribute('data-active-project','search-labs');
  expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await expect(nav).toHaveAttribute('data-color-intro','complete');
  expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
+});
+
+test('project navigation blurs underlying detail across its full height',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/?project=ai-mode-nudges&view=case-study');
+ await expect(page.locator('.case-study-nav .back-to-zine')).toBeVisible();
+ await page.locator('.case-study').evaluate(reader=>{const pattern=document.createElement('div');pattern.style.cssText='position:fixed;inset:0 0 auto;height:180px;z-index:1;pointer-events:none;background:repeating-linear-gradient(90deg,#111 0 4px,#fff 4px 8px)';reader.prepend(pattern)});
+ const screenshot=await page.screenshot();
+ const [blurred,unblurred]=await page.evaluate(async encoded=>{
+  const image=new Image();image.src=`data:image/png;base64,${encoded}`;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);
+  return [72,175].map(y=>{const pixels=context.getImageData(16,y,160,1).data;let contrast=0;for(let i=4;i<pixels.length;i+=4)contrast+=Math.abs(pixels[i]-pixels[i-4]);return contrast/159});
+ },screenshot.toString('base64'));
+ expect(unblurred).toBeGreaterThan(3);expect(blurred).toBeLessThan(unblurred*.1);
 });

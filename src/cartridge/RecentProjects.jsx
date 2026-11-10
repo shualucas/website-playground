@@ -57,19 +57,22 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
       motion.removeEventListener('change',reduce);document.removeEventListener('visibilitychange',hide);
     };
     const check=()=>{
-      if(stopped||colorIntroPlayed.current||rows.some(row=>row.dataset.revealReady!=='true'))return;
+      if(stopped||colorIntroPlayed.current||rows.some(row=>row.dataset.revealState!=='visible'))return;
       const rect=nav.getBoundingClientRect();if(rect.bottom<=0||rect.top>=innerHeight)return;
+      // Share the first row's actual entrance clock rather than waiting for every fade to finish.
+      const entranceAnimation=rows[0].getAnimations().find(animation=>animation.animationName==='content-reveal');
+      const lead=entranceAnimation?Math.max(0,Number(entranceAnimation.effect.getTiming().delay)-Number(entranceAnimation.currentTime??0)):0;
       colorIntroPlayed.current=true;nav.dataset.colorIntro='running';revealObserver.disconnect();visibilityObserver.disconnect();
       animations=rows.map((row,index)=>row.animate([
+        {backgroundColor:'transparent',easing:'ease-in-out'},
+        {offset:.5,backgroundColor:`color-mix(in srgb,${previews[row.dataset.project].accent} 32%,var(--scene-bg))`,easing:'ease-in-out'},
         {backgroundColor:'transparent'},
-        {offset:.23,backgroundColor:`color-mix(in srgb,${previews[row.dataset.project].accent} 32%,var(--scene-bg))`},
-        {backgroundColor:'transparent'},
-      ],{duration:840,delay:index*150,easing:'ease-out'}));
+      ],{duration:1000,delay:lead+index*120}));
       Promise.all(animations.map(animation=>animation.finished)).then(stop).catch(()=>{});
     };
     const reduce=()=>{if(motion.matches)stop()},hide=()=>{if(document.hidden)stop()};
     const revealObserver=new MutationObserver(check),visibilityObserver=new IntersectionObserver(check);
-    revealObserver.observe(nav,{subtree:true,attributes:true,attributeFilter:['data-reveal-ready']});visibilityObserver.observe(nav);
+    revealObserver.observe(nav,{subtree:true,attributes:true,attributeFilter:['data-reveal-state']});visibilityObserver.observe(nav);
     for(const event of ['pointerenter','pointerdown','focusin'])nav.addEventListener(event,stop);
     motion.addEventListener('change',reduce);document.addEventListener('visibilitychange',hide);check();
     return stop;
