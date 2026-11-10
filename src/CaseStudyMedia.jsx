@@ -15,7 +15,7 @@ export function CaseStudyMedia({ media }) {
         {media.captionsSrc && <track kind="captions" src={media.captionsSrc} srcLang="en" label="English" default />}
       </video> : type === "audio" ?
       <audio ref={player} controls preload="none" src={media.src} aria-label={media.title} /> :
-      <img src={media.src} alt={media.alt || media.title} loading="lazy" decoding="async" /> :
+      <img src={media.src} alt={media.alt || media.title} width={media.width} height={media.height} loading="lazy" decoding="async" /> :
       <div className="case-story-media-placeholder"><span>{type === "video" ? "Video" : type === "audio" ? "Audio" : "Image"} to add</span><span>{media.title}</span></div>}
     <figcaption>{media.caption}</figcaption>
     {media.transcript && <p className="case-media-transcript">{media.transcript}</p>}

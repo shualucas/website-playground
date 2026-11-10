@@ -43,7 +43,7 @@ test("recent projects use one column with native reader links and restore focus 
     const story=page.locator(i===0?'.case-showcase-story':'.case-star-story');
     await expect(story.locator(i===0?'[data-showcase-section="input"],[data-showcase-section="model"]':'.case-decisions > li')).toHaveCount(i===0?2:3);
     await expect(story.locator('.case-story-media')).toHaveCount(i===0?4:0);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?4:0);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(0);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
@@ -189,8 +189,16 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(study.locator('[data-showcase-section="result"]')).not.toContainText(/1\.50%|21\.9%|3\.87%|1\.84%/);
   await expect(study.locator('[data-showcase-section="result"] .case-outcome-grid,.case-measurement-note')).toHaveCount(0);
   await expect(study.locator('.case-study-preview,.case-study-note')).toHaveCount(0);await expect(study.locator('.case-story-media')).toHaveCount(4);
-  for(const passage of await study.locator('.case-showcase-passage').all()) {
-    await expect(passage.locator('.case-story-media-placeholder')).toHaveCount(1);
+  const imageFiles=['01-conversation-stopped.jpg','02-three-patterns.jpg','03-one-clear-input.jpg','04-answer-to-action.jpg'];
+  for(const [i,passage] of (await study.locator('.case-showcase-passage').all()).entries()) {
+    await expect(passage.locator('.case-story-media-placeholder')).toHaveCount(0);
+    const image=passage.locator('.case-story-media > img');
+    await expect(image).toHaveAttribute('src',`/images/nudges/${imageFiles[i]}`);
+    await image.scrollIntoViewIfNeeded();
+    await expect(image).toHaveJSProperty('naturalWidth',1280);
+    await expect(image).toHaveJSProperty('naturalHeight',727);
+    await expect(image).toHaveCSS('border-top-left-radius','24px');
+    const imageBox=await image.boundingBox();expect(imageBox.width/imageBox.height).toBeCloseTo(1280/727,2);
     expect(await passage.locator('p').first().evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('figure'))&Node.DOCUMENT_POSITION_PRECEDING))).toBe(true);
   }
   const system=study.locator('[data-showcase-section="system"]');
