@@ -37,6 +37,7 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   await expect(footer).toContainText("Fixture artist"); await expect(footer.locator(".listening-indicator")).toHaveCount(1);
   await expect(footer.locator("img")).toHaveAttribute("src","/cartridges/labels/search-tonal.svg");
   const toggle=page.getByRole("button",{name:"Show last five songs"}); await toggle.scrollIntoViewIfNeeded();
+  await expect(toggle.locator("svg")).toHaveCSS("width","12px");await expect(toggle.locator("svg")).toHaveCSS("height","12px");
   await page.evaluate(()=>document.fonts.ready);await expect(page.locator('.listening-current')).toHaveAttribute('data-reveal-ready','true');await toggle.focus();
   const before=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
   await toggle.click();

@@ -19,7 +19,7 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-project-year')).toHaveCount(0);
   await expect(links.first()).toHaveAttribute('href','/?project=ai-mode-nudges&view=case-study');
   for(const selector of ['.recent-project-name','.recent-project-summary']) {
-    expect(await links.locator(selector).first().evaluate(el=>getComputedStyle(el).fontWeight)).toBe('400');
+    expect(await links.locator(selector).first().evaluate(el=>getComputedStyle(el).fontWeight)).toBe(selector==='.recent-project-name'?'500':'300');
   }
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
   expect(rows.every((row,i)=>row.x===rows[0].x && (!i || row.y>rows[i-1].y))).toBe(true);
@@ -450,7 +450,7 @@ test('compact project rows keep equal typography and solid previews switch off w
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
   for(const height of await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height)))expect(height).toBeCloseTo(38*1.1,1);
-  const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
+  const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['18px']);
   await page.evaluate(()=>document.fonts.ready);
   const checkColumns=async()=>{
     const positions=await links.evaluateAll(rows=>rows.map(row=>{const number=row.querySelector('.recent-project-index').getBoundingClientRect(),title=row.querySelector('.recent-project-name').getBoundingClientRect(),team=row.querySelector('.recent-project-team').getBoundingClientRect();return[number.left,title.left,team.right]}));
@@ -458,14 +458,14 @@ test('compact project rows keep equal typography and solid previews switch off w
   };
   await checkColumns();
   expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
-  expect(await nav.locator('.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='400'))).toBe(true);
-  expect(await page.evaluate(()=>document.fonts.check('300 15px "Roboto Mono"'))).toBe(true);
+  expect(await nav.locator('.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
+  expect(await page.evaluate(()=>document.fonts.check('300 18px "Roboto Mono"'))).toBe(true);
   await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
-  expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
+  expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='18px'))).toBe(true);
   expect(await page.locator('.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='9.375px'))).toBe(true);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
-    await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','400');
+    await link.hover();await expect(link.locator('.recent-project-name')).toHaveCSS('font-weight','500');
     if(await nav.locator('.motion-mesh').count())await expect(nav.locator('.motion-mesh')).toHaveCSS('animation-name','none');
     await expect(nav.locator('.motion-grid,.motion-signal,.motion-orb')).toHaveCount(0);
     if(await link.locator('.recent-project-team').textContent()==='Fun')await expect(nav.locator('.recent-preview-content p')).toHaveCount(0);
@@ -536,9 +536,25 @@ test('touch projects expand inline, show full descriptions and navigate only thr
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await labsPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeVisible();await context.close();
 });
 
-test('narrow desktop previews hug the content right edge and follow the pointer vertically',async({page})=>{
- await page.setViewportSize({width:900,height:800});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('.recent-project-link').first(),preview=nav.locator('.recent-project-preview');await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();await page.mouse.move(r.x+100,r.y+r.height/2);await expect(preview).toBeVisible();await expect(preview).toHaveAttribute('data-follow-cursor','true');await expect(preview).toHaveCSS('position','fixed');const before=await preview.boundingBox();await page.mouse.move(r.x+180,r.y+r.height/2+10);await expect.poll(()=>preview.boundingBox().then(b=>Math.abs(b.y-before.y))).toBeGreaterThan(5);const after=await preview.boundingBox();expect(after.x).toBeCloseTo(before.x,1);const content=await nav.boundingBox();expect(after.x+after.width).toBeCloseTo(content.x+content.width,1);expect(after.x).toBeGreaterThanOrEqual(0);expect(after.x+after.width).toBeLessThanOrEqual(900);expect(after.y).toBeGreaterThanOrEqual(0);expect(after.y+after.height).toBeLessThanOrEqual(800);await page.setViewportSize({width:850,height:800});await expect.poll(async()=>{const art=await nav.locator('.recent-preview-art').boundingBox(),bounds=await nav.boundingBox();return Math.abs(art.x+art.width-bounds.x-bounds.width)}).toBeLessThan(1);await page.mouse.move(2,2);await expect(preview).toHaveAttribute('data-visible','false');
+test('project previews center on the pointer and hug the content right edge across desktop sizes',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),preview=nav.locator('.recent-project-preview'),art=nav.locator('.recent-preview-art');
+ for(const [width,height] of [[1440,1000],[900,800],[850,800],[1440,600]]){
+  await page.setViewportSize({width,height});
+  for(const row of [nav.locator('.recent-project-link').nth(0),nav.locator('.recent-project-link').nth(1)]){
+   await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();
+   for(const y of [r.y+8,r.y+r.height-8]){
+    await page.mouse.move(r.x+100,y);await expect(preview).toBeVisible();
+    await expect(preview).toHaveAttribute('data-follow-cursor',String(width<1100||height<=700));
+    await expect.poll(async()=>{const frame=await art.boundingBox(),center=Math.max(16+frame.height/2,Math.min(height-16-frame.height/2,y));return Math.abs(frame.y+frame.height/2-center)}).toBeLessThan(1);
+    const frame=await art.boundingBox(),content=await nav.boundingBox();
+    expect(frame.x+frame.width).toBeCloseTo(content.x+content.width,1);
+    expect(frame.x).toBeGreaterThanOrEqual(0);expect(frame.x+frame.width).toBeLessThanOrEqual(width);
+    expect(frame.y).toBeGreaterThanOrEqual(15);expect(frame.y+frame.height).toBeLessThanOrEqual(height-15);
+   }
+  }
+ }
+ await page.mouse.move(2,2);await expect(preview).toHaveAttribute('data-visible','false');
 });
 
 test('project hover surfaces fade as one solid color with identical thumbnail fills in both themes',async({page})=>{

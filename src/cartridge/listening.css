@@ -18,7 +18,7 @@
 .listening-history-toggle { position:relative; display:grid; place-items:center; width:27.5px; min-height:27.5px; flex-shrink:0; padding:0; border-radius:4.375px; }
 .listening-history-toggle::after { content:""; position:absolute; width:44px; height:44px; top:50%; left:50%; transform:translate(-50%,-50%); }
 .listening-history-toggle:is(:hover,:focus-visible) { color:var(--ui-text); }
-.listening-history-toggle svg { width:10px; height:10px; transition:transform 180ms ease,color 180ms ease; }
+.listening-history-toggle svg { width:12px; height:12px; transition:transform 180ms ease,color 180ms ease; }
 .listening-history-toggle[aria-expanded="true"] svg { transform:rotate(180deg); }
 .listening-history { position:absolute; z-index:5; isolation:isolate; inset:auto 0 calc(100% + var(--listening-track-gap)); padding:0; opacity:1; filter:blur(0); transform:translateY(0); transition:opacity 220ms ease-out,filter 220ms ease-out,transform 220ms ease-out; }
 .listening-history::before { content:""; position:absolute; inset:-7.5px -6.25px -5px; z-index:-1; background:var(--scene-bg); filter:blur(7.5px); pointer-events:none; }

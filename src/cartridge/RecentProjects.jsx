@@ -88,11 +88,11 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   const toggle=(id,index)=>{if(active===id&&visible)dismiss();else select(id,index)};
   const track=event=>{
     if(!canHover||(!pointer.current&&!focus.current)||event.pointerType==="touch"||!browser.current)return;
-    const bounds=browser.current.getBoundingClientRect(),y=Math.max(0,Math.min(bounds.height,event.clientY-bounds.top));
-    navigation.current?.style.setProperty("--preview-offset",`${(y-bounds.height/2)*.45}px`);
-    const width=Math.min(innerWidth>=1100?489:450,innerWidth-48,(innerHeight-32)*1.8),height=width/1.8;
-    const top=event.clientY+height+20>innerHeight-16?event.clientY-height-18:event.clientY+18;
-    navigation.current?.style.setProperty("--preview-client-y",`${Math.max(16,Math.min(innerHeight-height-16,top))}px`);
+    const bounds=browser.current.getBoundingClientRect();
+    const height=browser.current.querySelector(".recent-preview-art")?.getBoundingClientRect().height??0;
+    const center=Math.max(16+height/2,Math.min(innerHeight-16-height/2,event.clientY));
+    navigation.current?.style.setProperty("--preview-offset",`${center-bounds.top-bounds.height/2}px`);
+    navigation.current?.style.setProperty("--preview-client-y",`${center-height/2}px`);
   };
   useLayoutEffect(()=>{
     const nav=navigation.current;if(!canHover||!nav)return;
@@ -101,7 +101,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
     return()=>{observer.disconnect();window.removeEventListener("resize",align)};
   },[canHover]);
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
-  const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.bottom,pointerType:"keyboard"})}};
+  const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.top+rect.height/2,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
   const previewAspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
   const surface=showing?`color-mix(in srgb,color-mix(in srgb,${preview.accent} 70%,#000) 20%,var(--scene-bg))`:"var(--scene-bg)";

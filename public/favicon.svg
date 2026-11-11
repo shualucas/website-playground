@@ -1,6 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>J in Bagel Fat One</title>
-  <metadata>Bagel Fat One, licensed under SIL OFL 1.1. See /fonts/Bagel-Fat-One-OFL.txt.</metadata>
-  <rect width="64" height="64" rx="14" fill="#000"/>
-  <path d="M32.51 54Q28.068 54 24.286 52.409Q20.505 50.819 18.254 47.487Q16.003 44.156 16.003 38.993Q16.003 35.452 17.714 33.591Q19.424 31.73 22.366 31.73Q25.367 31.73 27.018 33.321Q28.668 34.911 28.668 38.093Q28.668 40.974 29.719 42.025Q30.769 43.075 32.27 43.075Q33.771 43.075 34.731 42.025Q35.692 40.974 35.692 38.093V33.951Q35.692 30.889 36.502 28.909Q37.312 26.928 38.393 25.817Q39.473 24.707 40.314 24.347L40.014 23.206H24.947Q22.065 23.206 20.355 21.495Q18.644 19.784 18.524 16.723Q18.464 13.722 20.265 11.861Q22.065 10 24.947 10H42.235Q45.056 10 46.527 11.891Q47.997 13.782 47.997 16.783V38.993Q47.997 44.156 45.986 47.487Q43.975 50.819 40.464 52.409Q36.952 54 32.51 54Z" fill="#fff"/>
+  <title>A stack of four game cartridges</title>
+  <defs>
+    <g id="cartridge">
+      <path d="M2 0h38l2 3v14l-2 3H2l-2-3V3Z" fill="currentColor"/>
+      <path d="M2 3h38v4H2Z" fill="#fff" opacity=".24"/>
+      <path d="M0 16h42l-2 4H2Z" fill="#000" opacity=".2"/>
+      <path d="M3 8v7m36-7v7" fill="none" stroke="#000" stroke-opacity=".12"/>
+      <path d="M5 2h4v2H5Zm28 0h4v2h-4Z" fill="#000" opacity=".15"/>
+    </g>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="1" stdDeviation=".8" flood-opacity=".18"/>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#fff"/>
+  <g filter="url(#shadow)">
+    <g transform="translate(12 7) rotate(2 21 10)" color="#ddd7ca">
+      <use href="#cartridge"/>
+      <rect x="5" y="8" width="32" height="8" rx=".7" fill="#fff"/>
+      <path d="M11 11h20" stroke="#4285f4" stroke-width="2"/>
+      <path d="M16 11h5" stroke="#ea4335" stroke-width="2"/>
+      <path d="M21 11h5" stroke="#fbbc05" stroke-width="2"/>
+      <path d="M26 11h5" stroke="#34a853" stroke-width="2"/>
+    </g>
+    <g transform="translate(10 18) rotate(-2 21 10)" color="#e95920">
+      <use href="#cartridge"/>
+      <rect x="5" y="8" width="32" height="8" rx=".7" fill="#fb4828"/>
+      <path d="m8 11 5-1-2 2 3 1-5 1 1-2Z" fill="#fff"/>
+      <path d="M17 11h13m-13 3h8" stroke="#fff" stroke-width="1.4"/>
+    </g>
+    <g transform="translate(12 29) rotate(1 21 10)" color="#aa1d48">
+      <use href="#cartridge"/>
+      <rect x="5" y="8" width="32" height="8" rx=".7" fill="#f1e4db"/>
+      <path d="M10 15v-5l4 3 4-3v5" fill="none" stroke="#bd2549" stroke-width="1.6"/>
+      <path d="M22 11h11m-11 3h8" stroke="#9b6770" stroke-width="1"/>
+    </g>
+    <g transform="translate(10 40) rotate(-2 21 10)" color="#244da1">
+      <use href="#cartridge"/>
+      <rect x="5" y="8" width="32" height="8" rx=".7" fill="#173571"/>
+      <path d="m10 10 2 4 2-4 2 4 2-4m3 0v4h3m2-4 2 4 2-4 2 4" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/>
+    </g>
+  </g>
 </svg>
