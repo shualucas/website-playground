@@ -29,14 +29,15 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','As the core product designer','In 2022, I led the redesign'][i]);
+    await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','From 2023 to 2025, I was one of two designers','In 2022, I led the redesign'][i]);
+    if(i===1)await expect(page.locator('.case-showcase-introduction')).toContainText('Another designer owned the brand');
     await expect(page.locator('.case-study-facts,.case-study .eyebrow,.case-star-story')).toHaveCount(0);
     await expect(page.locator('.case-study-cartridge')).toHaveCount(1);
     await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',i===2?'stadia':'search');
     await expect(page.locator('.case-study-hero')).toHaveCSS('text-align','center');
     await expect(page.locator('.case-study-deck')).toHaveText(['Helping people follow-up on answers across Google Search.','From a waitlist to a global AI playground.','Helping players choose their next game.'][i]);
     await expect(page.locator('.case-study .case-outcome-grid dd')).toHaveText([
-      ['+3.87%','+1.84%','21.9%'],['48M+','5M','20+'],['+12.7%','+20%','+5%']
+      ['+3.87%','+1.84%','21.9%'],['+47M','5M'],['+12.7%','+20%','+5%']
     ][i]);
     for(const card of await page.locator('.case-highlight-grid > div').all()){
       await expect(card).toHaveCSS('background-color','rgb(255, 255, 255)');
@@ -44,12 +45,16 @@ test("recent projects use one column with native reader links and restore focus 
     }
     expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.closest('.case-study-measure').querySelector('.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     expect(await page.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    await expect(page.locator('[data-showcase-section="problem"] > p')).not.toBeEmpty();
-    if(i===1)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('The goal was');
+    await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).not.toBeEmpty();
+    if(i===1){
+      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).toContainText('Google needed a way to test unfinished AI in public');
+      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy > p')).toHaveCount(2);
+      await expect(page.locator('[data-showcase-section="opt-in"] > .case-showcase-copy > p')).toHaveCount(3);
+    }
     if(i===2)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('We moved the sign-in wall behind the store');
     const story=page.locator('.case-showcase-story');
     await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
-    await expect(story.getByRole('heading')).toHaveCount(i===2?0:1);
+    await expect(story.getByRole('heading')).toHaveCount(i===0?1:0);
     await expect(story.locator('.case-story-media')).toHaveCount(4);
     await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:4);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
@@ -60,6 +65,13 @@ test("recent projects use one column with native reader links and restore focus 
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
     });expect(sizes).toEqual(['21px','11px']);
     if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-desktop.png`)});
+    if(i===1){
+      const metricGrid=await page.locator('.case-highlight-grid').boundingBox(),lastMetric=await page.locator('.case-highlight-grid > div').last().boundingBox();
+      expect(lastMetric.x+lastMetric.width).toBeCloseTo(metricGrid.x+metricGrid.width,0);
+      await story.locator('[data-showcase-section="problem"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
+      await page.screenshot({path:testInfo.outputPath('search-labs-story-desktop.png')});
+      await page.locator('.case-study').evaluate(el=>el.scrollTop=0);
+    }
     if(i===2){
       await expect(story.locator('[data-takeaways] p').first()).toContainText(await page.locator('.case-highlight-grid .sr-only').first().textContent());
       await story.locator('[data-showcase-section="controller"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
@@ -70,6 +82,11 @@ test("recent projects use one column with native reader links and restore focus 
     const measure=await page.locator('.case-study-measure').boundingBox(),cartridge=await page.locator('.case-study-cartridge').boundingBox();
     expect(cartridge.x+cartridge.width/2).toBeCloseTo(measure.x+measure.width/2,0);
     if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-mobile.png`)});
+    if(i===1){
+      const metricRows=await page.locator('.case-highlight-grid > div').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().top));expect(metricRows[0]).toBe(metricRows[1]);
+      await story.locator('[data-showcase-section="try-example"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
+      await page.screenshot({path:testInfo.outputPath('search-labs-story-mobile.png')});
+    }
     if(i===2){
       await story.locator('[data-showcase-section="age-gating"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
       await page.screenshot({path:testInfo.outputPath('stadia-story-mobile.png')});
@@ -775,4 +792,50 @@ test('project navigation blurs beneath the bar and leaves content immediately be
   return [40,height+8,175].map(y=>{const pixels=context.getImageData(16,y,160,1).data;let contrast=0;for(let i=4;i<pixels.length;i+=4)contrast+=Math.abs(pixels[i]-pixels[i-4]);return contrast/159});
  },{encoded:screenshot.toString('base64'),height});
  expect(unblurred).toBeGreaterThan(3);expect(blurred).toBeLessThan(unblurred*.1);expect(below).toBeCloseTo(unblurred,1);
+});
+
+test('scrolling navigation keeps contrast over opposite-theme media on desktop and mobile',async({page},testInfo)=>{
+ await page.emulateMedia({reducedMotion:'reduce'});
+ for(const [name,path,container,header] of [
+  ['project','/?project=ai-mode-nudges&view=case-study','.case-study','.case-study-nav'],
+  ['resume','/resume/','.resume-page','.resume-nav'],
+ ]){
+  await page.goto(path);
+  const nav=page.locator(header);
+  if(name==='resume'){
+   await page.getByRole('button',{name:'Read',exact:true}).click();
+   await expect(page.locator(container)).toHaveAttribute('data-view','read');
+  }
+  await page.locator(container).evaluate(el=>{
+   const media=document.createElement('div');media.dataset.navContrastMedia='';
+   media.style.cssText='position:fixed;inset:0 0 auto;height:180px;z-index:1;pointer-events:none';el.prepend(media);
+  });
+  for(const [width,height] of [[1440,900],[390,844]]){
+   await page.setViewportSize({width,height});
+   if(name==='project'){
+    await page.locator('.case-showcase-introduction').scrollIntoViewIfNeeded();
+    await expect(nav.locator('.case-study-nav-title')).toHaveAttribute('data-visible','true');
+   }
+   for(const theme of ['light','dark']){
+    if(await page.locator('html').getAttribute('data-color-mode')!==theme)await nav.getByRole('button',{name:`Switch to ${theme} mode`}).click();
+    await page.locator('[data-nav-contrast-media]').evaluate((el,color)=>el.style.background=color,theme==='dark'?'#fff':'#000');
+    await page.mouse.move(2,2);
+    const screenshot=await page.screenshot({path:testInfo.outputPath(`nav-contrast-${name}-${theme}-${width}.png`)});
+    const contrasts=await page.evaluate(async({encoded,header})=>{
+     const image=new Image();image.src=`data:image/png;base64,${encoded}`;await image.decode();
+     const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+     const context=canvas.getContext('2d');context.drawImage(image,0,0);
+     const luminance=rgb=>rgb.slice(0,3).map(value=>{const c=value/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4}).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
+     return [...document.querySelector(header).querySelectorAll('button,.case-study-nav-title-text')].filter(el=>getComputedStyle(el).opacity!=='0'&&!el.closest('[aria-hidden="true"]')).map(el=>{
+      const box=el.getBoundingClientRect(),background=luminance(Array.from(context.getImageData(16,Math.round(box.y+box.height/2),1,1).data));
+      context.fillStyle=getComputedStyle(el).color;context.fillRect(0,0,1,1);
+      const foreground=luminance(Array.from(context.getImageData(0,0,1,1).data));
+      return {name:el.getAttribute('aria-label')||el.textContent,ratio:(Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05)};
+     });
+    },{encoded:screenshot.toString('base64'),header});
+    expect(contrasts.length).toBe(name==='project'?3:2);
+    for(const result of contrasts)expect(result.ratio,`${name} ${theme} ${width}: ${result.name}`).toBeGreaterThanOrEqual(4.5);
+   }
+  }
+ }
 });

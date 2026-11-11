@@ -6,7 +6,9 @@ export function CaseStudyShowcase({ study }) {
   return <div className="case-showcase-story">
     {study.story.map(passage => <section className="case-showcase-passage" data-showcase-section={passage.id} aria-label={passage.label} key={passage.id}>
       <div data-reveal><CaseStudyMedia media={passage.visual} /></div>
-      <p data-reveal className="case-showcase-copy">{passage.copy}</p>
+      {Array.isArray(passage.copy) ? <div data-reveal className="case-showcase-copy">
+        {passage.copy.map(copy => <p key={copy}>{copy}</p>)}
+      </div> : <p data-reveal className="case-showcase-copy">{passage.copy}</p>}
     </section>)}
     <section className="case-showcase-results" data-showcase-section="result" aria-labelledby={study.results.title ? "case-result-title" : undefined} aria-label={study.results.title ? undefined : "Takeaways"} data-takeaways>
       <div data-reveal className="case-showcase-copy">
