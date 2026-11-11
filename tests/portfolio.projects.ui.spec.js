@@ -38,6 +38,10 @@ test("recent projects use one column with native reader links and restore focus 
     await expect(page.locator('.case-study .case-outcome-grid dd')).toHaveText([
       ['+3.87%','+1.84%','21.9%'],['48M+','5M','20+'],['+12%','2','~6 mo.']
     ][i]);
+    for(const card of await page.locator('.case-highlight-grid > div').all()){
+      await expect(card).toHaveCSS('background-color','rgb(255, 255, 255)');
+      await expect(card.locator('.case-metric-value')).toHaveCSS('color','rgb(0, 0, 0)');
+    }
     expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.closest('.case-study-measure').querySelector('.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     expect(await page.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(page.locator('[data-showcase-section="problem"] > p')).not.toBeEmpty();
@@ -390,7 +394,7 @@ test('hero metrics count upward with a left-to-right blur entrance and honor red
     await expect(values.nth(i)).toHaveAttribute('aria-hidden','true');
     await expect(values.nth(i)).toHaveCSS('font-family',await values.nth(i).evaluate(el=>getComputedStyle(el.parentElement).fontFamily));
     await expect(values.nth(i)).toHaveCSS('filter','none');
-    await expect(values.nth(i)).toHaveCSS('color','rgb(35, 122, 66)');expect(entrances[i].color).not.toBe('rgb(35, 122, 66)');
+    await expect(values.nth(i)).toHaveCSS('color','rgb(0, 0, 0)');expect(entrances[i].color).toBe('rgb(35, 122, 66)');
     expect((await values.nth(i).boundingBox()).width).toBeCloseTo(entrances[i].width,0);
   }
   // A preference change during the count must reveal every exact value immediately.
@@ -400,7 +404,11 @@ test('hero metrics count upward with a left-to-right blur entrance and honor red
   await expect.poll(()=>cards.evaluateAll(elements=>elements.every(el=>el.dataset.metricState==='complete'))).toBe(true);
   for(let i=0;i<final.length;i++){await expect(values.nth(i)).toHaveAttribute('data-value',final[i]);await expect(values.nth(i)).toHaveCSS('filter','none');await expect(values.nth(i)).toHaveCSS('animation-name','none')}
   await page.locator('.case-study-nav').getByRole('button',{name:'Switch to dark mode'}).click();
-  for(const value of await values.all())await expect(value).toHaveCSS('color','rgb(98, 214, 141)');
+  for(const card of await cards.all()){
+    await expect(card).toHaveCSS('background-color','rgb(255, 255, 255)');
+    await expect(card.locator('.case-metric-value')).toHaveCSS('color','rgb(0, 0, 0)');
+    await expect(card.locator('dt')).toHaveCSS('color','rgb(98, 98, 106)');
+  }
 });
 
 test('project previews follow movement inside a row, dim other content and wash the background by project',async({page})=>{
