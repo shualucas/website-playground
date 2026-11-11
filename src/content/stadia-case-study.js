@@ -8,9 +8,9 @@ export const stadiaCaseStudy = {
   scope: "Storefront strategy, product detail pages & controller UX",
   summary: "I led the storefront and game-page redesign, opened signed-out browsing, and designed controller navigation and purchase flows.",
   highlights: [
-    { value: "+12%", label: "Game sales" },
-    { value: "2", label: "Major milestones" },
-    { value: "~6 mo.", label: "Redesign timeline" },
+    { value: "+12.7%", label: "Game sales" },
+    { value: "+20%", label: "Store traffic" },
+    { value: "+5%", label: "New accounts" },
   ],
   hero: {
     src: "/videos/stadia/lilycove-hero-1920.mp4",

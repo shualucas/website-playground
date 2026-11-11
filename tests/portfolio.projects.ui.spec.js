@@ -36,7 +36,7 @@ test("recent projects use one column with native reader links and restore focus 
     await expect(page.locator('.case-study-hero')).toHaveCSS('text-align','center');
     await expect(page.locator('.case-study-deck')).toHaveText(['Helping people follow-up on answers across Google Search.','From a waitlist to a global AI playground.','Helping players choose their next game.'][i]);
     await expect(page.locator('.case-study .case-outcome-grid dd')).toHaveText([
-      ['+3.87%','+1.84%','21.9%'],['48M+','5M','20+'],['+12%','2','~6 mo.']
+      ['+3.87%','+1.84%','21.9%'],['48M+','5M','20+'],['+12.7%','+20%','+5%']
     ][i]);
     for(const card of await page.locator('.case-highlight-grid > div').all()){
       await expect(card).toHaveCSS('background-color','rgb(255, 255, 255)');
