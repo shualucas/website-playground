@@ -49,7 +49,7 @@ test("recent projects use one column with native reader links and restore focus 
     if(i===2)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('We moved the sign-in wall behind the store');
     const story=page.locator('.case-showcase-story');
     await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
-    await expect(story.locator('.case-showcase-passage-heading')).toHaveText(i===2?['Selling games behind a locked door','One page per game (finally)','Designing for the D-pad first','Blurring the explosions, not the buy button']:[]);
+    await expect(story.getByRole('heading')).toHaveCount(i===2?0:1);
     await expect(story.locator('.case-story-media')).toHaveCount(4);
     await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:4);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
@@ -61,7 +61,6 @@ test("recent projects use one column with native reader links and restore focus 
     });expect(sizes).toEqual(['21px','11px']);
     if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-desktop.png`)});
     if(i===2){
-      await expect(story.locator('.case-showcase-passage-heading').first()).toHaveCSS('font-size',await page.locator('.case-showcase-introduction').evaluate(el=>getComputedStyle(el).fontSize));
       await expect(story.locator('[data-takeaways] p').first()).toContainText(await page.locator('.case-highlight-grid .sr-only').first().textContent());
       await story.locator('[data-showcase-section="controller"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
       await page.screenshot({path:testInfo.outputPath('stadia-story-desktop.png')});
