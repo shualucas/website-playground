@@ -367,7 +367,7 @@ test('all current pages expose a working header theme toggle and preserve the se
   }
 });
 
-test('hero metrics count upward with a left-to-right blur entrance and honor reduced motion',async({page})=>{
+test('hero metrics count upward with a left-to-right blur entrance and honor reduced motion',async({page},testInfo)=>{
   await page.emulateMedia({reducedMotion:'no-preference'});await page.setViewportSize({width:1440,height:1000});
   await page.addInitScript(()=>{
     window.metricEntrances=[];
@@ -405,10 +405,16 @@ test('hero metrics count upward with a left-to-right blur entrance and honor red
   for(let i=0;i<final.length;i++){await expect(values.nth(i)).toHaveAttribute('data-value',final[i]);await expect(values.nth(i)).toHaveCSS('filter','none');await expect(values.nth(i)).toHaveCSS('animation-name','none')}
   await page.locator('.case-study-nav').getByRole('button',{name:'Switch to dark mode'}).click();
   for(const card of await cards.all()){
-    await expect(card).toHaveCSS('background-color','rgb(255, 255, 255)');
-    await expect(card.locator('.case-metric-value')).toHaveCSS('color','rgb(0, 0, 0)');
-    await expect(card.locator('dt')).toHaveCSS('color','rgb(98, 98, 106)');
+    await expect(card).toHaveCSS('background-color','rgb(36, 37, 36)');
+    await expect(card.locator('.case-metric-value')).toHaveCSS('color','rgb(238, 238, 238)');
+    await expect(card.locator('dt')).toHaveCSS('color','rgb(177, 177, 182)');
   }
+  await page.emulateMedia({reducedMotion:'no-preference'});await page.reload();
+  await expect(cards.locator('dd')).toHaveText(final);
+  await expect.poll(()=>cards.evaluateAll(elements=>elements.every(el=>el.dataset.metricState==='complete'))).toBe(true);
+  expect(await page.evaluate(()=>window.metricEntrances.map(entry=>entry.color))).toEqual(Array(3).fill('rgb(98, 214, 141)'));
+  for(const value of await values.all())await expect(value).toHaveCSS('color','rgb(238, 238, 238)');
+  await page.screenshot({path:testInfo.outputPath('dark-metric-cards.png')});
 });
 
 test('project previews follow movement inside a row, dim other content and wash the background by project',async({page})=>{

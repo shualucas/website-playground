@@ -407,7 +407,8 @@
 .case-study-editorial .case-study-content footer:not(.collection-footer) { margin-top:40px; }
 .case-study-content .collection-footer { margin-top:40px; text-align:left; }
 /* Visual-led studies alternate a short reading measure with full-width work. */
-.case-study-showcase { --case-top-inset:32px; --case-video-gap:48px; --metric-positive:#237a42; --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); }
+.case-study-showcase { --case-top-inset:32px; --case-video-gap:48px; --metric-positive:#237a42; --metric-surface:#fff; --metric-text:#000; --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); }
+:root[data-color-mode="dark"] .case-study-showcase { --metric-positive:#62d68d; --metric-surface:#242524; --metric-text:var(--ui-text); }
 .case-study-showcase .case-study-content { text-align:center; }
 .case-showcase-cover { min-height:calc(100svh - 80px - var(--case-top-inset) - var(--case-video-gap) - 140px); display:flex; flex-direction:column; justify-content:center; }
 .case-study-showcase .case-study-cartridge { margin-bottom:12px; }
@@ -417,11 +418,11 @@
 .case-showcase-introduction,.case-showcase-copy { line-height:1.45; color:var(--case-copy); }
 .case-study-showcase .case-study-deck { margin:0 auto; }
 .case-study-showcase .case-highlight-grid { max-width:600px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:28px auto 0; }
-.case-highlight-grid > div { gap:1px; padding:10px; border-radius:14px; background:#fff; }
+.case-highlight-grid > div { gap:1px; padding:10px; border-radius:14px; background:var(--metric-surface); }
 .case-study-showcase .case-highlight-grid > div:last-child { grid-column:auto; flex-direction:column; align-items:stretch; gap:1px; }
-.case-study-showcase .case-highlight-grid dt { font-size:12px; line-height:1.4; color:#62626a; }
+.case-study-showcase .case-highlight-grid dt { font-size:12px; line-height:1.4; color:var(--ui-muted); }
 .case-study-showcase .case-highlight-grid dd { font-size:clamp(18px,2vw,20px); }
-.case-metric-value { display:inline-grid; white-space:nowrap; color:#000; font-variant-numeric:tabular-nums; transition:color 240ms ease; }
+.case-metric-value { display:inline-grid; white-space:nowrap; color:var(--metric-text); font-variant-numeric:tabular-nums; transition:color 240ms ease; }
 /* Reserve the whole value using DM Sans's widest numeral, keeping its natural spacing. */
 .case-metric-value::before { content:attr(data-measure); visibility:hidden; grid-area:1 / 1; }
 .case-metric-value::after { content:attr(data-value); grid-area:1 / 1; }
