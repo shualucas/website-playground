@@ -819,20 +819,24 @@ test('scrolling navigation keeps contrast over opposite-theme media on desktop a
    for(const theme of ['light','dark']){
     if(await page.locator('html').getAttribute('data-color-mode')!==theme)await nav.getByRole('button',{name:`Switch to ${theme} mode`}).click();
     await page.locator('[data-nav-contrast-media]').evaluate((el,color)=>el.style.background=color,theme==='dark'?'#fff':'#000');
+    await expect(page.locator('[data-nav-contrast-media]')).toHaveCSS('background-color',theme==='dark'?'rgb(255, 255, 255)':'rgb(0, 0, 0)');
     await page.mouse.move(2,2);
     const screenshot=await page.screenshot({path:testInfo.outputPath(`nav-contrast-${name}-${theme}-${width}.png`)});
-    const contrasts=await page.evaluate(async({encoded,header})=>{
+    const {contrasts,mediaColor}=await page.evaluate(async({encoded,header})=>{
      const image=new Image();image.src=`data:image/png;base64,${encoded}`;await image.decode();
      const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
      const context=canvas.getContext('2d');context.drawImage(image,0,0);
      const luminance=rgb=>rgb.slice(0,3).map(value=>{const c=value/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4}).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
-     return [...document.querySelector(header).querySelectorAll('button,.case-study-nav-title-text')].filter(el=>getComputedStyle(el).opacity!=='0'&&!el.closest('[aria-hidden="true"]')).map(el=>{
+     const mediaColor=Array.from(context.getImageData(16,150,1,1).data).slice(0,3);
+     const contrasts=[...document.querySelector(header).querySelectorAll('button,.case-study-nav-title-text')].filter(el=>getComputedStyle(el).opacity!=='0'&&!el.closest('[aria-hidden="true"]')).map(el=>{
       const box=el.getBoundingClientRect(),background=luminance(Array.from(context.getImageData(16,Math.round(box.y+box.height/2),1,1).data));
       context.fillStyle=getComputedStyle(el).color;context.fillRect(0,0,1,1);
       const foreground=luminance(Array.from(context.getImageData(0,0,1,1).data));
       return {name:el.getAttribute('aria-label')||el.textContent,ratio:(Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05)};
      });
+     return {contrasts,mediaColor};
     },{encoded:screenshot.toString('base64'),header});
+    expect(mediaColor,`${name} ${theme} ${width}: opposite-theme media rendered`).toEqual(theme==='dark'?[255,255,255]:[0,0,0]);
     expect(contrasts.length).toBe(name==='project'?3:2);
     for(const result of contrasts)expect(result.ratio,`${name} ${theme} ${width}: ${result.name}`).toBeGreaterThanOrEqual(4.5);
    }

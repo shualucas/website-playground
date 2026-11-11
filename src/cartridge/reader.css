@@ -20,7 +20,7 @@
   background: transparent;
   isolation: isolate;
 }
-.case-study-nav::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(to bottom,color-mix(in srgb,var(--scene-bg) 96%,transparent),color-mix(in srgb,var(--scene-bg) 94%,transparent) 65%,color-mix(in srgb,var(--scene-bg) 65%,transparent) 82%,color-mix(in srgb,var(--scene-bg) 24%,transparent) 94%,transparent); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); -webkit-mask-image:linear-gradient(#000 calc(100% - 12px),transparent); mask-image:linear-gradient(#000 calc(100% - 12px),transparent); }
+.case-study-nav::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(to bottom,color-mix(in srgb,var(--scene-bg) 78%,transparent),color-mix(in srgb,var(--scene-bg) 72%,transparent) 65%,color-mix(in srgb,var(--scene-bg) 45%,transparent) 82%,color-mix(in srgb,var(--scene-bg) 12%,transparent) 94%,transparent); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); -webkit-mask-image:linear-gradient(#000 calc(100% - 12px),transparent); mask-image:linear-gradient(#000 calc(100% - 12px),transparent); }
 .case-study-nav-inner { position:relative; display:flex; align-items:center; justify-content:space-between; width:100%; }
 .case-study-nav .case-study-nav-title { position:absolute; left:50%; top:50%; max-width:calc(100% - 160px); display:flex; align-items:center; gap:8px; overflow:hidden; white-space:nowrap; pointer-events:none; font:500 clamp(13px,3.6vw,15px)/1.3 "DM Sans",Arial,sans-serif; letter-spacing:0; color:var(--ui-text); opacity:0; filter:blur(2px); transform:translate(-50%,calc(-50% + 4px)); transition:opacity 220ms ease,filter 220ms ease,transform 220ms ease; }
 .case-study-nav-title-text { min-width:0; overflow:hidden; text-overflow:ellipsis; }
@@ -344,7 +344,7 @@
 .case-study-editorial .case-study-nav { max-width:none; padding:18px 60px; margin:auto; border:0; }
 .case-study-editorial .case-study-nav-inner,.case-study-editorial .case-study-measure { max-width:calc(772px + var(--hero-gap)); margin-inline:auto; }
 .case-study-editorial .back-to-zine { font-size:var(--case-body); }
-.case-study-nav .back-to-zine { color:var(--ui-muted); }
+.case-study-nav .back-to-zine { color:var(--ui-text); }
 .case-study-nav .back-to-zine:hover { color:var(--ui-text); }
 .case-study-editorial .case-study-content { max-width:1280px; padding:32px 60px 64px; }
 .case-study-editorial .case-study-hero { max-width:none; }
