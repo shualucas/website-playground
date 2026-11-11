@@ -2,6 +2,37 @@ import { test, expect, funFacts, names, dates, body, load, choose, point } from 
 
 test.use({ webgl: false });
 
+test("favicon slowly cycles a rounded square while preserving the white J on every current page", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:"no-preference"});
+  await page.clock.install();
+  const icon=page.locator('link[rel="icon"]');
+  const pixels=()=>icon.evaluate(async el=>{
+    const image=new Image();image.src=el.href;await image.decode();
+    const canvas=document.createElement("canvas");canvas.width=canvas.height=64;
+    const context=canvas.getContext("2d");context.drawImage(image,0,0);
+    const pixel=(x,y)=>Array.from(context.getImageData(x,y,1,1).data);
+    return {corner:pixel(0,0),background:pixel(10,10),letter:pixel(40,35)};
+  });
+  for(const path of ["/","/resume/","/after-hours/","/photos/"]) {
+    await page.goto(path);
+    await expect(icon).toHaveAttribute("href",/^data:image\/png;base64,/);
+    const before=await pixels();
+    expect(before.corner[3]).toBe(0);expect(before.background[3]).toBe(255);
+    expect(before.letter).toEqual([255,255,255,255]);
+    await page.clock.fastForward(11000);
+    expect((await pixels()).background).not.toEqual(before.background);
+  }
+  // Hidden tabs hold their current color and resume without skipping ahead.
+  await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:true});document.dispatchEvent(new Event("visibilitychange"))});
+  const paused=await icon.getAttribute("href");await page.clock.fastForward(10000);
+  await expect(icon).toHaveAttribute("href",paused);
+  await page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event("visibilitychange"))});
+  await page.clock.fastForward(3000);expect(await icon.getAttribute("href")).not.toBe(paused);
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await expect(icon).toHaveAttribute("href","/favicon.svg");await expect(icon).toHaveAttribute("type","image/svg+xml");
+  await page.clock.fastForward(10000);await expect(icon).toHaveAttribute("href","/favicon.svg");
+});
+
 test("Josh and roles are passive medium-weight text with a stable reduced-motion label", async ({ page }) => {
   await page.emulateMedia({reducedMotion:'reduce'});
 
