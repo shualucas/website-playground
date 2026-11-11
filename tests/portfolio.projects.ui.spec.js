@@ -449,19 +449,20 @@ test('compact project rows keep equal typography and solid previews switch off w
 
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
-  for(const height of await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height)))expect(height).toBeCloseTo(38*1.1,1);
-  const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['18px']);
+  for(const height of await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height)))expect(height).toBeCloseTo(49,1);
+  const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual([await page.locator('.intro-title').evaluate(el=>getComputedStyle(el).fontSize)]);
+  for(const row of await links.all())await expect(row).toHaveCSS('font-family',await page.locator('.intro-title').evaluate(el=>getComputedStyle(el).fontFamily));
+  expect(await nav.locator('li').evaluateAll(els=>els.every(el=>getComputedStyle(el,'::after').content==='none'))).toBe(true);
   await page.evaluate(()=>document.fonts.ready);
   const checkColumns=async()=>{
     const positions=await links.evaluateAll(rows=>rows.map(row=>{const number=row.querySelector('.recent-project-index').getBoundingClientRect(),title=row.querySelector('.recent-project-name').getBoundingClientRect(),team=row.querySelector('.recent-project-team').getBoundingClientRect();return[number.left,title.left,team.right]}));
     for(let column=0;column<3;column++){const values=positions.map(row=>row[column]);expect(Math.max(...values)-Math.min(...values)).toBeLessThan(.1)}
   };
   await checkColumns();
-  expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
+  expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
   expect(await nav.locator('.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
-  expect(await page.evaluate(()=>document.fonts.check('300 18px "Roboto Mono"'))).toBe(true);
   await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
-  expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='18px'))).toBe(true);
+  expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
   expect(await page.locator('.listening-current .now-playing-copy > span').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='9.375px'))).toBe(true);
   await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');await expect(page.locator('.portfolio-name')).toHaveCSS('font-weight','500');
   for(const link of await links.all()){
@@ -474,7 +475,8 @@ test('compact project rows keep equal typography and solid previews switch off w
   const fill=nav.locator('.recent-solid-visual');await expect(fill).toHaveCSS('background-image','none');await expect(fill).toHaveCSS('animation-name','none');
   await page.mouse.move(2,2);await expect(nav.locator('.recent-project-preview')).toHaveAttribute('data-visible','false');
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
-  await expect.poll(()=>nav.locator('li').evaluateAll(els=>Math.max(...els.map(el=>Math.abs(el.getBoundingClientRect().height-47*1.1))))).toBeLessThan(.05);
+  await expect.poll(()=>nav.locator('li').evaluateAll(els=>Math.max(...els.map(el=>Math.abs(el.getBoundingClientRect().height-57))))).toBeLessThan(.05);
+  await expect(links.first()).toHaveCSS('font-size','23px');
   await checkColumns();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
