@@ -12,7 +12,7 @@ test("career collection uses exact bio and four individually visible cartridges 
   await expect(page.locator(".collection-content,.content-row")).toHaveCount(0);
   await expect(page.locator(".cartridge-keyboard")).toHaveCount(4);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-view", "tilted-top-edge");
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2.4");
+  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-magnification", "2.64");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-rest-pitch", "72");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-shadow", "soft-silhouette");
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-model", "external-glb");
@@ -383,7 +383,7 @@ test('cartridge browsing follows only the exposed tops and rocks with the contac
   await expect(caption.locator(':scope > span').first()).toHaveCSS('font-weight','400');
   expect(await caption.locator(':scope > span').first().evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
   await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-contact-pose0','0.0000,0.0000,0.0000');
-  await expect(stage).toHaveAttribute('data-magnification','2.4');await expect(stage).toHaveAttribute('data-intersections','0');expect(errors).toEqual([]);
+  await expect(stage).toHaveAttribute('data-magnification','2.64');await expect(stage).toHaveAttribute('data-intersections','0');expect(errors).toEqual([]);
 });
 
 test('zine hover spins the closed cover without turning pages and replays on return',async({page})=>{
@@ -434,7 +434,7 @@ test('cartridge swipe direction reverses top motion while its bottom edge remain
  let movement=(await stage.getAttribute('data-contact-motion1')).split(',').map(Number);expect(movement[0]).toBeLessThan(.00001);expect(movement[1]).toBeGreaterThan(.025);
  [top,bottom]=await strip();await page.mouse.move(bottom.x,bottom.y,{steps:3});await expect(stage).toHaveAttribute('data-swipe-direction','down');await expect.poll(()=>stage.getAttribute('data-contact-pose1').then(value=>Number(value.split(',')[1]))).toBeGreaterThan(.012);
  movement=(await stage.getAttribute('data-contact-motion1')).split(',').map(Number);expect(movement[0]).toBeLessThan(.00001);expect(movement[1]).toBeGreaterThan(.025);await expect(stage).toHaveAttribute('data-intersections','0');
- await page.mouse.move(2,2);await expect(stage).toHaveAttribute('data-swipe-direction','none');await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-contact-pose1','0.0000,0.0000,0.0000');await expect(stage).toHaveAttribute('data-magnification','2.4');
+ await page.mouse.move(2,2);await expect(stage).toHaveAttribute('data-swipe-direction','none');await page.emulateMedia({reducedMotion:'reduce'});await expect(stage).toHaveAttribute('data-contact-pose1','0.0000,0.0000,0.0000');await expect(stage).toHaveAttribute('data-magnification','2.64');
 });
 
 test('3D cartridge input stays locked until both its fade and physical arrival have finished',async({page})=>{

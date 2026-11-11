@@ -1,9 +1,8 @@
 export const funFacts = [
-  "A random fact about me: I owe a surprising amount of my career to World of Warcraft.",
-  "A random thing about me: I have an ongoing obsession with orange wine.",
-  "A random thing about me: The first celebrity I met was Akon back when I worked at a movie theater.",
-  "A random fact about me: I played percussion for 5 years which has caused a need for me to paradiddle on surfaces constantly.",
-  "A random fact about me: I've won numerous fantasy football championships.",
+  "A fun fact about me: I owe a huge amount of my career to World of Warcraft.",
+  "A fun fact about me: I have won multiple football championships (in fantasy land)",
+  "A fun fact about me: I have an ongoing obsession with orange wine.",
+  "A fun fact about me: My most listened to artist all-time is Above & Beyond.",
 ];
 
 /** Pick once per load, avoiding the previous fact when session storage is available. */

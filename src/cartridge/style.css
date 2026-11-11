@@ -1,7 +1,9 @@
 @import "../site.css";
 
+@font-face { font-family:"Roboto Mono"; font-style:normal; font-weight:300; font-display:swap; src:url("/fonts/roboto-mono-latin-300.woff2") format("woff2"); }
+
 @property --project-surface { syntax:"<color>"; inherits:true; initial-value:transparent; }
-.collection { --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); --project-type:23px; }
+.collection { --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); --project-type:15px; }
 .collection:not([data-status="fallback"]) { --hero-trim:172px; }
 .recent-projects,.collection-footer { width:100%; max-width:calc(772px + var(--hero-gap)); margin-inline:auto; }
 .location-meta { display:flex; flex-wrap:wrap; align-items:baseline; gap:3px 10px; padding-top:12px; max-width:calc(100% - 60px); color:var(--ui-muted); font-size:12px; line-height:1.5; font-variant-numeric:tabular-nums; }
@@ -57,10 +59,10 @@
 .recent-project-list li:first-child::before { content:""; position:absolute; left:0; right:0; top:0; height:1px; background:var(--row-divider); }
 .recent-project-list li { position:relative; border-bottom:1px solid var(--row-divider); }
 .recent-project-list li:focus-within { animation:none; opacity:1; filter:none; }
-.recent-project-link { position:relative; display:grid; grid-template-columns:32px minmax(0,1fr) auto; column-gap:12px; align-items:center; min-height:48px; padding:8px 0; font:300 var(--project-type)/1.3 "DM Sans",Arial,sans-serif; letter-spacing:-.015em; transition:opacity 320ms ease; }
-.recent-project-index { font-family:inherit; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 320ms ease; }
+.recent-project-link { position:relative; display:grid; grid-template-columns:32px minmax(0,1fr) auto; column-gap:12px; align-items:center; min-height:48px; padding:8px 0; font:400 var(--project-type)/1.45 "DM Sans",Arial,sans-serif; letter-spacing:normal; transition:opacity 320ms ease; }
+.recent-project-index { font-family:"Roboto Mono",monospace; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 320ms ease; }
 .recent-project-copy { display:flex; align-items:baseline; gap:12px; min-width:0; }
-.recent-project-name { flex-shrink:0; color:var(--ui-text); font-weight:500; transition:color 320ms ease; }
+.recent-project-name { flex-shrink:0; color:var(--ui-text); font-weight:inherit; transition:color 320ms ease; }
 .recent-project-summary:not(.sr-only) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--project-muted); }
 .recent-project-team { color:var(--project-muted); font-size:inherit; white-space:nowrap; }
 .recent-projects[data-preview-active="true"] .recent-project-list li:not([data-active="true"]) .recent-project-link { opacity:.4; }
@@ -92,7 +94,7 @@
 .cartridge-fallback { position:absolute; inset:15px 0; display:grid; grid-template-columns:1fr 1fr; gap:24px 18px; align-content:start; justify-items:center; }
 .cartridge-fallback button { width:min(100%,180px); padding:0; text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:13px; }
 .cartridge-fallback button > span:not(.fallback-shell):not(.cartridge-years) { font-weight:400; }
-.fallback-shell { display:block; width:100%; aspect-ratio:2.4/1.6; background:var(--shell); padding:26px 12px 16px; border-radius:6px; box-shadow:2px 4px 0 color-mix(in srgb,var(--shell) 75%,#000),5px 10px 16px #0002; margin-bottom:8px; scale:.9; }
+.fallback-shell { display:block; width:100%; aspect-ratio:2.4/1.6; background:var(--shell); padding:26px 12px 16px; border-radius:6px; box-shadow:2px 4px 0 color-mix(in srgb,var(--shell) 75%,#000),5px 10px 16px #0002; margin-bottom:8px; scale:.99; }
 .cartridge-fallback img { width:100%; display:block; border-radius:4px; }
 .cartridge-fallback [data-cartridge="gmail"] img { filter:saturate(.9) brightness(.9); }
 

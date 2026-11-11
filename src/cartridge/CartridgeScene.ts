@@ -316,7 +316,7 @@ export class CartridgeScene {
     // Give the four-object desktop fan a compact, stable inspection size.
     // Selection/drag never alters the camera or its zoom.
     const span = 17.2;
-    this.camera.zoom = this.mobile ? .9 * .75 * Math.min(4, span * this.camera.aspect / 3.2) : Math.min(2.4, span * this.camera.aspect / 2.95);
+    this.camera.zoom = 1.1 * (this.mobile ? .9 * .75 * Math.min(4, span * this.camera.aspect / 3.2) : Math.min(2.4, span * this.camera.aspect / 2.95));
     const distance = span / (2 * Math.tan(7 * Math.PI / 180));
     this.camera.position.set(0, 0, distance);
     // Preserve depth precision for the recessed paper and shell seam. A near
