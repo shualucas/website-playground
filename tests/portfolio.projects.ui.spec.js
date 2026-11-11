@@ -29,7 +29,7 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','As the core product designer','I led the storefront'][i]);
+    await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','As the core product designer','In 2022, I led the redesign'][i]);
     await expect(page.locator('.case-study-facts,.case-study .eyebrow,.case-star-story')).toHaveCount(0);
     await expect(page.locator('.case-study-cartridge')).toHaveCount(1);
     await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',i===2?'stadia':'search');
@@ -45,9 +45,11 @@ test("recent projects use one column with native reader links and restore focus 
     expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.closest('.case-study-measure').querySelector('.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     expect(await page.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(page.locator('[data-showcase-section="problem"] > p')).not.toBeEmpty();
-    if(i>0)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('The goal was');
+    if(i===1)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('The goal was');
+    if(i===2)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('We moved the sign-in wall behind the store');
     const story=page.locator('.case-showcase-story');
     await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
+    await expect(story.locator('.case-showcase-passage-heading')).toHaveText(i===2?['Selling games behind a locked door','One page per game (finally)','Designing for the D-pad first','Blurring the explosions, not the buy button']:[]);
     await expect(story.locator('.case-story-media')).toHaveCount(4);
     await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:4);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
@@ -58,10 +60,21 @@ test("recent projects use one column with native reader links and restore focus 
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
     });expect(sizes).toEqual(['21px','11px']);
     if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-desktop.png`)});
+    if(i===2){
+      await expect(story.locator('.case-showcase-passage-heading').first()).toHaveCSS('font-size',await page.locator('.case-showcase-introduction').evaluate(el=>getComputedStyle(el).fontSize));
+      await expect(story.locator('[data-takeaways] p').first()).toContainText(await page.locator('.case-highlight-grid .sr-only').first().textContent());
+      await story.locator('[data-showcase-section="controller"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
+      await page.screenshot({path:testInfo.outputPath('stadia-story-desktop.png')});
+      await page.locator('.case-study').evaluate(el=>el.scrollTop=0);
+    }
     await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
     const measure=await page.locator('.case-study-measure').boundingBox(),cartridge=await page.locator('.case-study-cartridge').boundingBox();
     expect(cartridge.x+cartridge.width/2).toBeCloseTo(measure.x+measure.width/2,0);
     if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-mobile.png`)});
+    if(i===2){
+      await story.locator('[data-showcase-section="age-gating"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
+      await page.screenshot({path:testInfo.outputPath('stadia-story-mobile.png')});
+    }
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
   await expect(page.locator('.collection-hero')).toHaveCSS('min-height','480px');
