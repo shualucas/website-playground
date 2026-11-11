@@ -4,6 +4,7 @@ import { usePageExit } from "./usePageExit";
 import { useContentReveal } from "./useContentReveal";
 import { CaseStudyNarrative } from "./CaseStudyNarrative";
 import { CaseStudyShowcase } from "./CaseStudyShowcase";
+import { CaseStudyMedia } from "./CaseStudyMedia";
 import { CaseStudyMetrics } from "./CaseStudyMetrics";
 import { CaseStudyMediaNav } from "./CaseStudyMediaNav";
 import { ThemeToggle } from "./ThemeToggle";
@@ -36,7 +37,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
   const study = project.caseStudy;
   const editorial = Boolean(study || project.minimal);
   const showcase = study?.layout === "showcase";
-  const deck = study ? study.overview : project.subtitle;
+  const deck = study ? study.overview || study.subtitle : project.subtitle;
   useContentReveal(content, project.id);
   const heading = useRef(null),
     theme = projectTheme(project.theme);
@@ -116,10 +117,10 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
           </div>}
         </header>
         </div>
-        {study?.hero && <figure data-reveal className="case-study-hero-figure" data-media-label="Overview">
+        {study?.hero && (study.hero.type ? <CaseStudyMedia media={study.hero} className="case-study-hero-figure" reveal /> : <figure data-reveal className="case-study-hero-figure" data-media-label="Overview">
           <div className="case-study-hero-media"><LoopVideo {...study.hero} /></div>
           {study.hero.caption && <figcaption>{study.hero.caption}</figcaption>}
-        </figure>}
+        </figure>)}
         {showcase && <p data-reveal className="case-showcase-introduction">{study.summary}</p>}
         {study ? showcase ? <CaseStudyShowcase study={study} /> : <CaseStudyNarrative study={study} /> : <><div data-reveal className="case-study-preview">
           <Media project={project} controls />

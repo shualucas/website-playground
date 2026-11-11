@@ -3,7 +3,7 @@ import { test, expect, disableWebGL, funFacts, names, dates, body, load, choose,
 test.use({ webgl: false });
 const nudgesTitle = 'AI Mode Nudges';
 
-test("recent projects use one column with native reader links and restore focus on Back", async ({ page }) => {
+test("recent projects use one column with native reader links and restore focus on Back", async ({ page }, testInfo) => {
   await page.emulateMedia({reducedMotion:"reduce"});
 
   await page.goto("/");
@@ -29,27 +29,35 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
-    await expect(page.locator(i===0?'.case-showcase-introduction':'.case-study-facts dd:last-child').last()).toContainText(i===0?'In 2026, I defined':/^I /);
-    await expect(page.locator('.case-study-facts')).toHaveCount(i===0?0:1);
-    await expect(page.locator('.case-study-cartridge')).toHaveCount(i===0?1:0);
-    if(i===0)await expect(page.locator('.case-study .eyebrow')).toHaveCount(0);
-    else expect(await page.locator('.case-study .eyebrow').evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
-    await expect(page.locator('.case-star-story > section > h2')).toHaveText(i===0?[]:['Problem','Goal','What I did']);
+    await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','As the core product designer','I led the storefront'][i]);
+    await expect(page.locator('.case-study-facts,.case-study .eyebrow,.case-star-story')).toHaveCount(0);
+    await expect(page.locator('.case-study-cartridge')).toHaveCount(1);
+    await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',i===2?'stadia':'search');
+    await expect(page.locator('.case-study-hero')).toHaveCSS('text-align','center');
+    await expect(page.locator('.case-study-deck')).toHaveText(['Helping people follow-up on answers across Google Search.','From a waitlist to a global AI playground.','Helping players choose their next game.'][i]);
     await expect(page.locator('.case-study .case-outcome-grid dd')).toHaveText([
       ['+3.87%','+1.84%','21.9%'],['48M+','5M','20+'],['+12%','2','~6 mo.']
     ][i]);
-    expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.closest('.case-study-measure').querySelector('.case-star-story,.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    await expect(page.locator(i===0?'[data-showcase-section="problem"] > p':'[data-story-stage="task"] > p')).not.toBeEmpty();
-    const story=page.locator(i===0?'.case-showcase-story':'.case-star-story');
-    await expect(story.locator(i===0?'[data-showcase-section="input"],[data-showcase-section="model"]':'.case-decisions > li')).toHaveCount(i===0?2:3);
-    await expect(story.locator('.case-story-media')).toHaveCount(i===0?4:0);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(0);
+    expect(await page.locator('.case-study-hero').evaluate(el=>Boolean(el.compareDocumentPosition(el.closest('.case-study-measure').querySelector('.case-showcase-story'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    expect(await page.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    await expect(page.locator('[data-showcase-section="problem"] > p')).not.toBeEmpty();
+    if(i>0)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('The goal was');
+    const story=page.locator('.case-showcase-story');
+    await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
+    await expect(story.locator('.case-story-media')).toHaveCount(4);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:4);
+    for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    await expect(story.locator('[data-takeaways] p')).toHaveCount(2);
+    await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(6);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];
-    });expect(sizes).toEqual(i===0?['21px','11px']:['16px']);
+    });expect(sizes).toEqual(['21px','11px']);
+    if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-desktop.png`)});
     await page.setViewportSize({width:390,height:844});expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
-    if(i!==0)await expect(page.locator('.case-study-facts dd').first()).toHaveText(titles[i]==='Search Labs'?'Core Product Designer':'Lead Product Designer');
+    const measure=await page.locator('.case-study-measure').boundingBox(),cartridge=await page.locator('.case-study-cartridge').boundingBox();
+    expect(cartridge.x+cartridge.width/2).toBeCloseTo(measure.x+measure.width/2,0);
+    if(i>0)await page.screenshot({path:testInfo.outputPath(`showcase-${i}-mobile.png`)});
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
   await expect(page.locator('.collection-hero')).toHaveCSS('min-height','480px');
@@ -288,7 +296,10 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   for(const width of [900,600]){await page.setViewportSize({width,height:1000});const railBox=await rail.boundingBox(),content=await reader.locator('.case-study-measure').boundingBox();expect(railBox.x).toBeGreaterThanOrEqual(0);expect(railBox.x+railBox.width).toBeLessThanOrEqual(content.x+.5)}
   await page.setViewportSize({width:1440,height:1000});
   await reader.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(reader).toHaveCount(0);
-  await page.getByRole('link',{name:/Search Labs/}).click();await expect(page.locator('.case-media-nav')).toBeHidden();
+  await page.getByRole('link',{name:/Search Labs/}).click();await expect(page.locator('.case-media-nav')).toBeVisible();
+  await expect(page.locator('.case-media-nav').getByRole('button')).toHaveCount(6);
+  await page.locator('.case-media-nav').getByRole('button',{name:'Jump to Takeaways'}).click();
+  await expect(page.locator('.case-study [data-takeaways] p').last()).toBeVisible();
 });
 
 test('touch media navigation fits the gutter and makes reduced-motion jumps below the header',async({browser},testInfo)=>{
