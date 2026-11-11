@@ -10,7 +10,7 @@ import {LoopVideo} from "../LoopVideo";
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
   "search-labs":{team:"Search",accent:"#b759ba",kind:"search",placeholder:true},
-  "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",placeholder:true},
+  "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",video:"/videos/stadia/lilycove-hero-1280.mp4",poster:"/videos/stadia/lilycove-hero-poster.jpg",label:"Stadia Store Redesign motion study",width:1280,height:800},
   "rave-flyer-zine":{team:"Fun",accent:"#e48dae",kind:"zine"},
   film:{team:"Fun",accent:"#b69272",kind:"film"},
 };
@@ -30,7 +30,7 @@ function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,ret
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
       {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind} data-placeholder={preview.placeholder} data-entry={instant?"instant":"gradual"}>
-        {preview.video&&<LoopVideo src={preview.video} poster={preview.poster} label="Tapping a follow-up nudge in AI Mode" active={showing}/>}
+        {preview.video&&<LoopVideo src={preview.video} poster={preview.poster} label={preview.label||"Tapping a follow-up nudge in AI Mode"} active={showing}/>}
         {preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}
       </div>}
       </div>

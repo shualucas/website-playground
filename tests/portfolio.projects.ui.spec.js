@@ -619,27 +619,29 @@ test('case-study previews switch instantly between rows and fade on first entry'
  for(const link of [links.nth(3),links.nth(4)]){await link.focus();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','revealing');await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000})}
 });
 
-test('Search Labs and Stadia use uniform solid placeholders in both themes without requesting old media',async({page})=>{
+test('Search Labs uses a uniform solid placeholder in both themes without requesting old media',async({page})=>{
  const requests=[];page.on('request',request=>{if(request.url().includes('stadia-store-redesign.'))requests.push(request.url())});
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'});
  for(const dark of [false,true]){
   if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
-  for(const name of [/Search Labs/,/Stadia Store Redesign/]){
-   await nav.getByRole('link',{name}).hover();const visual=nav.locator('.recent-solid-visual');await expect(visual).toBeVisible();await expect(visual).toHaveAttribute('data-placeholder','true');await expect(visual).toHaveCSS('background-image','none');await expect(visual.locator('img,video,canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-ascii')).toHaveCount(0);
-   expect(await visual.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
-  }
+  await nav.getByRole('link',{name:/Search Labs/}).hover();const visual=nav.locator('.recent-solid-visual');await expect(visual).toBeVisible();await expect(visual).toHaveAttribute('data-placeholder','true');await expect(visual).toHaveCSS('background-image','none');await expect(visual.locator('img,video,canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-ascii')).toHaveCount(0);
+  expect(await visual.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
  }
  expect(requests).toEqual([]);
 });
 
-test('Nudges hover video loads on demand without ASCII and resets when leaving',async({page})=>{
- const requests=[];page.on('request',request=>{if(request.url().includes('/videos/nudges/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
+for(const {id,name,folder,file,minDuration} of [
+ {id:'ai-mode-nudges',name:'Nudges',folder:'nudges',file:'nudges-hero',minDuration:27},
+ {id:'stadia-store-redesign',name:'Stadia',folder:'stadia',file:'lilycove-hero',minDuration:21},
+]){
+test(`${name} hover video loads on demand without ASCII and resets when leaving`,async({page})=>{
+ const requests=[];page.on('request',request=>{if(request.url().includes(`/videos/${folder}/`)&&request.url().endsWith('.mp4'))requests.push(request.url())});
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.getByRole('link',{name:/AI Mode Nudges/});await expect(row).toBeVisible();expect(requests).toEqual([]);
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator(`[data-project="${id}"] > .recent-project-link`);await expect(row).toBeVisible();expect(requests).toEqual([]);
  await row.hover();const video=nav.locator('.loop-video video'),art=nav.locator('.recent-preview-art');
  await expect.poll(()=>video.evaluate(el=>el.readyState)).toBeGreaterThanOrEqual(2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
- expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(27);
+ expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(minDuration);
  await expect(nav.locator('.recent-preview-ascii')).toHaveCount(0);
  const frame=await art.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(frame.height).toBeCloseTo(489/1.8,0);
  expect(await video.evaluate(el=>({muted:el.muted,loop:el.loop,inline:el.playsInline,controls:el.controls}))).toEqual({muted:true,loop:true,inline:true,controls:false});
@@ -647,23 +649,24 @@ test('Nudges hover video loads on demand without ASCII and resets when leaving',
  await page.mouse.move(2,2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeLessThan(.1); // The MP4's first presentation timestamp is 0.041s.
  await row.hover();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(video).not.toHaveAttribute('src');await expect(video).toHaveAttribute('data-ready','false');await expect(nav.locator('.loop-video-poster')).toBeVisible();
- expect(requests.every(url=>url.endsWith('/nudges-hero-1280.mp4'))).toBe(true);
+ expect(requests.every(url=>url.endsWith(`/${file}-1280.mp4`))).toBe(true);
 });
 
-test('Nudges hero uses responsive video sources, pauses offscreen and shows its poster for reduced motion',async({page})=>{
+test(`${name} hero uses responsive video sources, pauses offscreen and shows its poster for reduced motion`,async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/?project=ai-mode-nudges&view=case-study');
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(`/?project=${id}&view=case-study`);
  const hero=page.locator('.case-study-hero-media'),video=hero.locator('video');await hero.scrollIntoViewIfNeeded();
- await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toMatch(/nudges-hero-1920\.mp4$/);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toContain(`/${file}-1920.mp4`);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  const frame=await hero.boundingBox(),measure=await page.locator('.case-study-measure').boundingBox();expect(frame.width).toBeCloseTo(measure.width,1);expect(frame.width/frame.height).toBeCloseTo(1.6,2);
  await page.setViewportSize({width:1440,height:600});await page.locator('.case-study-content footer').scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);
- await page.setViewportSize({width:390,height:844});await hero.scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toMatch(/nudges-hero-1280\.mp4$/);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ await page.setViewportSize({width:390,height:844});await hero.scrollIntoViewIfNeeded();await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toContain(`/${file}-1280.mp4`);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(video).not.toHaveAttribute('src');await expect(hero.locator('.loop-video-poster')).toBeVisible();await expect(video).toHaveAttribute('data-ready','false');
- const requests=[];page.on('request',request=>{if(request.url().includes('/videos/nudges/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
+ const requests=[];page.on('request',request=>{if(request.url().includes(`/videos/${folder}/`)&&request.url().endsWith('.mp4'))requests.push(request.url())});
  await page.reload();await expect(page.locator('.case-study-hero-media .loop-video-poster')).toBeVisible();await expect(page.locator('.case-study-hero-media video')).not.toHaveAttribute('src');expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
+}
 
-test('solid preview fills its container and retains height, right alignment and mobile layout',async({page,browser})=>{
+test('Stadia video preview fills its container and retains height, right alignment and mobile layout',async({page,browser})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),art=nav.locator('.recent-preview-content');
  for(const viewport of [{width:1440,height:1000},{width:900,height:800},{width:1440,height:600}]){
@@ -671,7 +674,7 @@ test('solid preview fills its container and retains height, right alignment and 
   const image=nav.locator('.recent-solid-visual');await expect(image).toBeVisible();
   await expect.poll(async()=>(await art.boundingBox()).height).toBeCloseTo((viewport.width>=1100?489:450)/1.8,0);
   const frame=await art.boundingBox(),media=await image.boundingBox(),bounds=await nav.boundingBox();
-  expect(frame.width/frame.height).toBeCloseTo(1.8,2);expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(media.x).toBeCloseTo(frame.x,1);
+  expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(media.x).toBeCloseTo(frame.x,1);
   expect(frame.x+frame.width).toBeCloseTo(bounds.x+bounds.width,1);
  }
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
@@ -681,7 +684,7 @@ test('solid preview fills its container and retains height, right alignment and 
   await navigation.getByRole('button',{name:/Stadia Store Redesign/}).tap();const image=navigation.locator('.recent-solid-visual');await expect(image).toBeVisible();
   const content=navigation.locator('.recent-preview-content'),inline=navigation.locator('.recent-inline-preview');
   await expect.poll(async()=>(await content.boundingBox()).height).toBeCloseTo((await inline.boundingBox()).width/1.8,0);
-  const frame=await content.boundingBox(),media=await image.boundingBox();
+  const frame=await content.boundingBox(),media=await image.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);
   expect(media.width).toBeCloseTo(frame.width,1);expect(media.height).toBeCloseTo(frame.height,1);expect(frame.x+frame.width).toBeLessThanOrEqual(390);
   await expect(navigation.getByRole('link',{name:'Open project'})).toBeVisible();
  }finally{await context.close()}

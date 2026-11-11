@@ -12,7 +12,12 @@ export const stadiaCaseStudy = {
     { value: "2", label: "Major milestones" },
     { value: "~6 mo.", label: "Redesign timeline" },
   ],
-  hero: { title: "Stadia storefront overview", type: "image", src: "" },
+  hero: {
+    src: "/videos/stadia/lilycove-hero-1920.mp4",
+    srcSmall: "/videos/stadia/lilycove-hero-1280.mp4",
+    poster: "/videos/stadia/lilycove-hero-poster.jpg",
+    label: "Stadia Store Redesign motion study",
+  },
   story: [
     {
       id: "problem", label: "The problem",
