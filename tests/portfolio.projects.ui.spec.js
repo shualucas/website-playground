@@ -57,6 +57,7 @@ test("recent projects use one column with native reader links and restore focus 
       await expect(paragraph.locator('em')).toHaveText('Red Dead Redemption 2');
       await expect(paragraph.locator('em')).toHaveCSS('font-style','italic');
       await expect(page.locator('[data-showcase-section="problem"] figcaption')).toHaveText('Before: old game details page');
+      expect(await page.locator('.case-showcase-passage').evaluateAll(sections=>sections.map(section=>section.dataset.showcaseSection))).toEqual(['problem','controller','game-page','store-access']);
     }
     const story=page.locator('.case-showcase-story');
     await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
@@ -94,7 +95,7 @@ test("recent projects use one column with native reader links and restore focus 
       await page.screenshot({path:testInfo.outputPath('search-labs-story-mobile.png')});
     }
     if(i===2){
-      await story.locator('[data-showcase-section="age-gating"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
+      await story.locator('[data-showcase-section="store-access"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
       await page.screenshot({path:testInfo.outputPath('stadia-story-mobile.png')});
     }
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();

@@ -21,24 +21,24 @@ export const stadiaCaseStudy = {
   },
   story: [
     {
-      id: "problem", label: "Selling games behind a locked door",
+      id: "problem", label: "The old game details page",
       copy: "In fairness to the old game page, it launched with Stadia and did what a launch version has to do: give the user a way to buy the game. It just never got the quality-of-life love a store needs once the game catalog increases. Every game edition or bundle had its own separate page, so comparing two editions meant going back and forth remembering what was in each one. A few major games couldn't even be bought by themselves, only inside a bundle, which meant you could land on the main page for *Red Dead Redemption 2* and find no way to actually buy it.",
-      visual: { title: "Mandatory sign-in versus an open game page", caption: "Before: old game details page", type: "image", src: "" },
-    },
-    {
-      id: "game-page", label: "One page per game (finally)",
-      copy: "Once you got past the login screen, every edition, bundle, and add-on lived on its own separate page. A few major games couldn't even be bought by themselves, only inside a bundle, which meant you could land on the main page for Red Dead Redemption 2 and find no way to actually buy it. I collapsed everything into one parent page per game. The left rail holds every way in, whether that's a free trial, a Pro claim, a Ubisoft+ subscription, or a standard purchase, and all the editions sit right below it.",
-      visual: { title: "Game Details: free trial, Pro claim, Ubisoft+, and bundle states", caption: "One parent page per game, with every way to play or buy in the left column.", type: "image", src: "" },
+      visual: { title: "Old game details page", caption: "Before: old game details page", type: "image", src: "" },
     },
     {
       id: "controller", label: "Designing for the D-pad first",
-      copy: "The store had to work with a mouse, a phone screen, and a TV controller, and engineering definitely did not want to maintain three separate stores. So I designed the whole page around a D-pad grid first. The primary buttons stay locked in the exact same spot from game to game, even when a long title wraps to two lines and grows upward, and selected bundles get a loud orange outline you can see from a couch. Product and engineering were nervous that inline bundle switching would confuse people, so I threw together a prototype with user research, proved people actually preferred it, and got the feature unblocked.",
-      visual: { title: "Controller focus grid and bundle edition switcher", caption: "Buttons stay pinned in the same spot across games, whether you're using a mouse, a phone, or a controller.", type: "image", src: "" },
+      copy: "Before deciding what the new page looked like, I had to decide what it was allowed to assume. The store had to work with a mouse, a phone screen, and a TV controller, and engineering definitely did not want to maintain 3 separate stores. So I designed it prioritizing a d-pad first experience. The primary buttons stayed above the fold, in the exact same spot from SKU to SKU, even when a long title wrapped to two or more lines. If the layout worked well with four arrows and one button, it was going to work across the board.",
+      visual: { title: "Controller focus grid", caption: "Buttons stay pinned in the same spot across games, whether you're using a mouse, a phone, or a controller.", type: "image", src: "" },
     },
     {
-      id: "age-gating", label: "Blurring the explosions, not the buy button",
-      copy: "Making the store public meant we also had to fix years of overdue age-rating compliance for mature games. The standard move is a full-screen age gate, which is a great way to make people close the tab immediately. Instead, I only gated the mature trailers and screenshots inside the media carousel. Visitors could still read about the game, see the price, and compare editions right away. The rating board liked the approach enough that they asked to show our mocks to other studios as a reference.",
-      visual: { title: "Inline blurred trailer with the purchase rail visible", caption: "Gating mature trailers inline instead of blocking the entire store page.", type: "image", src: "" },
+      id: "game-page", label: "One parent page per game",
+      copy: "With that grid in place, I kept what worked on the old page and collapsed the rest into one parent page per game. The left rail holds every way in, whether that's a free trial, a Pro claim, a Ubisoft+ subscription, or a standard purchase. All editions sit right below it so you can compare them without leaving the page, and selecting one updates the pricing in the rail. Product and engineering were nervous that switching bundles inline would confuse people, so I built a prototype, ran it through a UXR study, and the results settled the argument; it was intuitive.",
+      visual: { title: "Game Details: free trial, Pro claim, Ubisoft+, and bundle states", caption: "One parent page per game, with every way to play or buy in the left column.", type: "image", src: "" },
+    },
+    {
+      id: "store-access", label: "Opening the store to the public",
+      copy: "A better game page doesn't help much if nobody can reach it. For the first couple of years, Stadia had a funny way of running a store: you weren't allowed to look inside until you made an account. Because the entire catalog lived behind a login screen, Stadia games weren't showing up in Google Search, and marketing had to build custom landing pages for every big release. We moved the sign-in wall behind the store and gave every game a normal, readable URL, so people could search for a game, land on it's page, watch the trailers, check the price, and try a free demo before deciding they wanted to sign-up.",
+      visual: { title: "Four points of friction to get into a game page", caption: "Before: 4 points of friction to get into a game page", type: "image", src: "" },
     },
   ],
   results: {
