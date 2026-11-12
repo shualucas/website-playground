@@ -1,6 +1,5 @@
 @import "../site.css";
 
-@font-face { font-family:"Roboto Mono"; font-style:normal; font-weight:300; font-display:swap; src:url("/fonts/roboto-mono-latin-300.woff2") format("woff2"); }
 
 @property --project-surface { syntax:"<color>"; inherits:true; initial-value:transparent; }
 .collection { --copy-muted:color-mix(in srgb,var(--ui-muted) 72%,var(--scene-bg)); --project-type:15px; }
@@ -60,7 +59,7 @@
 .recent-project-list li { position:relative; border-bottom:1px solid var(--row-divider); }
 .recent-project-list li:focus-within { animation:none; opacity:1; filter:none; }
 .recent-project-link { position:relative; display:grid; grid-template-columns:32px minmax(0,1fr) auto; column-gap:12px; align-items:center; min-height:48px; padding:8px 0; font:400 var(--project-type)/1.45 "DM Sans",Arial,sans-serif; letter-spacing:normal; transition:opacity 320ms ease; }
-.recent-project-index { font-family:"Roboto Mono",monospace; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 320ms ease; }
+.recent-project-index { font-family:inherit; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 320ms ease; }
 .recent-project-copy { display:flex; align-items:baseline; gap:12px; min-width:0; }
 .recent-project-name { flex-shrink:0; color:var(--ui-text); font-weight:inherit; transition:color 320ms ease; }
 .recent-project-summary:not(.sr-only) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--project-muted); }
@@ -114,6 +113,10 @@
 }
 @media(min-width:640px) and (max-width:879px) { .collection-display { max-width:560px; margin-left:0; margin-right:auto; } }
 @media(max-width:560px) { .collection-display { height:760px; } .collection-footer { grid-template-columns:minmax(0,1fr); gap:18px; } .recent-project-name { flex-shrink:1; } .recent-project-summary { display:none; } .listening-widget { grid-column:1; grid-row:2; max-width:100%; } .footer-links { grid-column:1; grid-row:1; justify-self:start; gap:12px; font-size:inherit; } }
+@media(max-width:760px) {
+ .collection-footer { grid-template-columns:minmax(0,1fr); gap:0; text-align:center; }
+ .footer-links { justify-self:center; justify-content:center; }
+}
 
 .collection[data-status="fallback"] .collection-display { min-height:0; height:auto; align-self:center; }
 .collection[data-status="fallback"] .collection-hero { margin-bottom:0; }

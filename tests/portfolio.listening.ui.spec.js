@@ -2,7 +2,7 @@ import { test, expect, funFacts, names, dates, body, load, choose, point } from 
 
 test.use({ webgl: false });
 
-test("footer links and music stay usable on small screens without WebGL", async ({ page }) => {
+test("mobile footer links stay centered with music hidden without WebGL", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
 
@@ -20,7 +20,15 @@ test("footer links and music stay usable on small screens without WebGL", async 
   await expect(footer.locator(".now-playing")).toHaveAttribute("href", href);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   for (const link of await footer.locator('.profile-links a').all()) { const box=await link.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44); }
-  await page.setViewportSize({width:320,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  for(const width of [390,320,760]){
+    await page.setViewportSize({width,height:844});await footer.scrollIntoViewIfNeeded();
+    await expect(footer.locator('.listening-widget')).toBeHidden();
+    await expect(footer.getByRole('button',{name:'Show last five songs'})).toHaveCount(0);
+    const bounds=await footer.boundingBox(),links=await footer.locator('.footer-links').boundingBox();
+    expect(links.x+links.width/2).toBeCloseTo(bounds.x+bounds.width/2,0);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+  await page.setViewportSize({width:1024,height:844});await expect(footer.locator('.listening-widget')).toBeVisible();
 });
 
 test("Last.fm refreshes every 20 seconds and reveals history above the song without moving the page", async ({ page }) => {

@@ -34,3 +34,4 @@
 .listening-empty,.listening-history-note { font-size:inherit; line-height:1.5; margin:3.75px 0 6.25px; }
 @keyframes listening-text-in { from { opacity:0; filter:blur(0.9375px); transform:translateY(2.5px); } to { opacity:1; filter:blur(0); transform:translateY(0); } }
 @media(prefers-reduced-motion:reduce) { .listening-indicator { animation:none; opacity:.8; } .listening-history li .listening-artwork,.listening-history .listening-song > span,.now-playing-track.is-entering { animation:none; } .listening-history[data-state="closing"],.now-playing-outgoing { display:none; } }
+@media(max-width:760px) { .listening-widget { display:none; } }

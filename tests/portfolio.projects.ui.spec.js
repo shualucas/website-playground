@@ -333,7 +333,7 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   const scrolled=await rail.boundingBox();expect(scrolled.x).toBeCloseTo(initial.x,0);expect(scrolled.y).toBeCloseTo(initial.y,0);
   await page.mouse.move(2,2);await page.keyboard.press('Tab');await buttons.first().focus();await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('opacity','1');await buttons.first().press('Enter');await expect.poll(()=>aligned(0)).toBeLessThan(2);
   expect(await page.evaluate(()=>({url:location.href,history:history.length,windowY:scrollY}))).toEqual(before);
-  for(const width of [900,600]){await page.setViewportSize({width,height:1000});const railBox=await rail.boundingBox(),content=await reader.locator('.case-study-measure').boundingBox();expect(railBox.x).toBeGreaterThanOrEqual(0);expect(railBox.x+railBox.width).toBeLessThanOrEqual(content.x+.5)}
+  for(const width of [900,761]){await page.setViewportSize({width,height:1000});const railBox=await rail.boundingBox(),content=await reader.locator('.case-study-measure').boundingBox();expect(railBox.x).toBeGreaterThanOrEqual(0);expect(railBox.x+railBox.width).toBeLessThanOrEqual(content.x+.5)}
   await page.setViewportSize({width:1440,height:1000});
   await reader.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(reader).toHaveCount(0);
   await page.getByRole('link',{name:/Search Labs/}).click();await expect(page.locator('.case-media-nav')).toBeVisible();
@@ -342,13 +342,28 @@ test('media rail tracks the reader, labels each stop, and jumps without navigati
   await expect(page.locator('.case-study [data-takeaways] p').last()).toBeVisible();
 });
 
-test('touch media navigation fits the gutter and makes reduced-motion jumps below the header',async({browser},testInfo)=>{
+test('mobile projects hide the rail and music, center footers, and keep larger touch navigation usable',async({browser},testInfo)=>{
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
   try{
     const page=await context.newPage();await disableWebGL(page);await page.route('**/api/listening',route=>route.fulfill({status:204}));await page.route('**/api/weather',route=>route.fulfill({status:204}));
+    for(const id of ['ai-mode-nudges','search-labs','stadia-store-redesign']){
+      await page.goto(`http://127.0.0.1:3000/?project=${id}&view=case-study`);
+      const footer=page.locator('.case-study .collection-footer');
+      for(const width of [390,320,760]){
+        await page.setViewportSize({width,height:844});await footer.scrollIntoViewIfNeeded();
+        await expect(page.locator('.case-media-nav')).toBeHidden();
+        await expect(footer.locator('.listening-widget')).toBeHidden();
+        await expect(page.getByRole('navigation',{name:'Case study media'})).toHaveCount(0);
+        await expect(footer).toHaveCSS('text-align','center');
+        const bounds=await footer.boundingBox(),links=await footer.locator('.footer-links').boundingBox();
+        expect(links.x+links.width/2).toBeCloseTo(bounds.x+bounds.width/2,0);
+        expect(await page.locator('.case-study').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+      }
+    }
+    await page.setViewportSize({width:900,height:844});
     await page.goto('http://127.0.0.1:3000/?project=ai-mode-nudges&view=case-study');
     const reader=page.locator('.case-study'),rail=page.getByRole('navigation',{name:'Case study media'}),buttons=rail.getByRole('button');await expect(buttons).toHaveCount(6);
-    for(const width of [390,320]){
+    for(const width of [900,761]){
       await page.setViewportSize({width,height:844});const bounds=await rail.boundingBox(),measure=await reader.locator('.case-study-measure').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(measure.x+.5);
       const track=await rail.locator('.case-media-nav-track').boundingBox();expect(track.y+track.height/2).toBeCloseTo(422,0);
       for(const button of await buttons.all()){const box=await button.boundingBox();expect(box.width).toBeGreaterThanOrEqual(24);expect(box.height).toBeGreaterThanOrEqual(24)}
@@ -361,7 +376,7 @@ test('touch media navigation fits the gutter and makes reduced-motion jumps belo
     await expect(reader.locator('.case-study-nav-title')).toHaveCSS('opacity','1');
     await reader.locator('.case-study-nav').getByRole('button',{name:'Switch to dark mode'}).tap();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
     await expect(buttons.first().locator('.case-media-nav-label')).toHaveCSS('background-color','rgb(16, 17, 16)');
-    await page.screenshot({path:testInfo.outputPath('media-rail-mobile-dark.png')});
+    await page.screenshot({path:testInfo.outputPath('media-rail-tablet-dark.png')});
   }finally{await context.close()}
 });
 
@@ -509,7 +524,7 @@ test('compact project rows keep equal typography and solid previews switch off w
     for(let column=0;column<3;column++){const values=positions.map(row=>row[column]);expect(Math.max(...values)-Math.min(...values)).toBeLessThan(.1)}
   };
   await checkColumns();
-  expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('Roboto Mono')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
+  expect(await nav.locator('.recent-project-index').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='300'))).toBe(true);
   expect(await nav.locator('.recent-project-team').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontFamily.includes('DM Sans')&&getComputedStyle(el).fontWeight==='400'))).toBe(true);
   await expect(links.first()).toHaveCSS('grid-template-columns',/32px .+/);
   expect(await page.locator('.collection-footer .link-copy').evaluateAll(els=>els.every(el=>getComputedStyle(el).fontSize==='15px'))).toBe(true);
