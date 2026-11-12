@@ -47,7 +47,7 @@ test("recent projects use one column with native reader links and restore focus 
     expect(await page.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).not.toBeEmpty();
     if(i===1){
-      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).toContainText('Google needed a way to test unfinished AI in public');
+      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).toContainText('Google needed a way to test experimental AI features in public');
       await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy > p')).toHaveCount(2);
       await expect(page.locator('[data-showcase-section="opt-in"] > .case-showcase-copy > p')).toHaveCount(3);
     }

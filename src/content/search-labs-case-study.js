@@ -16,10 +16,10 @@ export const searchLabsCaseStudy = {
     {
       id: "problem", label: "Explorations and the shipped card system",
       copy: [
-        "In 2023, Google needed a way to test unfinished AI in public without breaking main Search (which, among other things, pays the bills). Search Labs was the place where curious people could opt in, try early versions of AI Overviews and AI Mode, and know up front that things might get weird.",
-        "Early on, I designed a bunch of richer, more expressive layouts that I really loved. Almost none of them survived. We had a tiny engineering team, a hard deadline, and more than twenty internal teams lined up waiting to launch their experiments. So the fancy mocks went on a shelf, and I built a strict, repeatable card system that teams could actually get out the door.",
+        "In 2023, Google needed a way to test experimental AI features in public without breaking the current experience. V1 of Search Labs was built in a sprint for Google I/O: a barebones waitlist full of switches to turn on one or experiments (AI Overviews). It did it's job for launch week, but the need for a scaleable platform was growing.",
+        "When our team of two designers stepped in to turn it into a real destination, I designed a bunch of richer, more expressive experiences that I really liked. Almost none of them survived as we had a tiny engineering team, a hard deadline, and more than twenty internal teams lined up waiting to launch their experimental features. So the richer versions of Search Labs went on a shelf, and I built a more minimal, less robust version that was miles better than the V1, and realistic enough to get launched in time.",
       ],
-      visual: { title: "Explorations and the shipped card system", caption: "Early editorial explorations next to the leaner card system we shipped.", type: "image", src: "" },
+      visual: { title: "Explorations and the shipped card system", caption: "The barebones I/O waitlist, richer explorations, and the leaner system we shipped", type: "image", src: "" },
     },
     {
       id: "opt-in", label: "Four opt-in models",
