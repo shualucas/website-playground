@@ -57,16 +57,16 @@ test("recent projects use one column with native reader links and restore focus 
       await expect(paragraph.locator('em')).toHaveText('Red Dead Redemption 2');
       await expect(paragraph.locator('em')).toHaveCSS('font-style','italic');
       await expect(page.locator('[data-showcase-section="problem"] figcaption')).toHaveText('Before: old game details page');
-      expect(await page.locator('.case-showcase-passage').evaluateAll(sections=>sections.map(section=>section.dataset.showcaseSection))).toEqual(['problem','controller','game-page','store-access']);
+      expect(await page.locator('.case-showcase-passage').evaluateAll(sections=>sections.map(section=>section.dataset.showcaseSection))).toEqual(['problem','controller','game-page','store-access','age-gating']);
     }
     const story=page.locator('.case-showcase-story');
-    await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
+    await expect(story.locator('.case-showcase-passage')).toHaveCount(i===2?5:4);
     await expect(story.getByRole('heading')).toHaveCount(i===0?1:0);
-    await expect(story.locator('.case-story-media')).toHaveCount(4);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:4);
+    await expect(story.locator('.case-story-media')).toHaveCount(i===2?5:4);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:i===2?5:4);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(story.locator('[data-takeaways] p')).toHaveCount(2);
-    await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(6);
+    await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(i===2?7:6);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
       return [...new Set(body.map(el=>getComputedStyle(el).fontSize))];

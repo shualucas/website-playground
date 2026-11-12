@@ -40,6 +40,11 @@ export const stadiaCaseStudy = {
       copy: "A better game page doesn't help much if nobody can reach it. For the first couple of years, Stadia had a funny way of running a store: you weren't allowed to look inside until you made an account. Because the entire catalog lived behind a login screen, Stadia games weren't showing up in Google Search, and marketing had to build custom landing pages for every big release. We moved the sign-in wall behind the store and gave every game a normal, readable URL, so people could search for a game, land on it's page, watch the trailers, check the price, and try a free demo before deciding they wanted to sign-up.",
       visual: { title: "Four points of friction to get into a game page", caption: "Before: 4 points of friction to get into a game page", type: "image", src: "" },
     },
+    {
+      id: "age-gating", label: "Age gating mature media",
+      copy: "Making the store public meant we also had to be age-rating compliant for mature games. The standard move is a full-screen age gate, which is a great way to make people close the tab immediately, or have them bend the truth. Instead, I only gated the mature media in the carousel. Visitors could still read about the game, see the price, and compare editions. The rating board liked the approach enough that they asked to show our mocks to other studios as a reference.",
+      visual: { title: "Inline age gating for mature media", caption: "Gating mature trailers inline instead of blocking the entire store page.", type: "image", src: "" },
+    },
   ],
   results: {
     copy: "Opening the store and cleaning up the game pages drove a +12.7% increase in game sales, alongside a projected +20% lift in store traffic and +5% increase in new accounts. It also meant marketing could finally stop building one-off promo pages from scratch.",
