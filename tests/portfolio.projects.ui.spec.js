@@ -51,7 +51,13 @@ test("recent projects use one column with native reader links and restore focus 
       await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy > p')).toHaveCount(2);
       await expect(page.locator('[data-showcase-section="opt-in"] > .case-showcase-copy > p')).toHaveCount(3);
     }
-    if(i===2)await expect(page.locator('[data-showcase-section="problem"] > p')).toContainText('We moved the sign-in wall behind the store');
+    if(i===2){
+      const paragraph=page.locator('[data-showcase-section="problem"] > p');
+      await expect(paragraph).toContainText('In fairness to the old game page, it launched with Stadia');
+      await expect(paragraph.locator('em')).toHaveText('Red Dead Redemption 2');
+      await expect(paragraph.locator('em')).toHaveCSS('font-style','italic');
+      await expect(page.locator('[data-showcase-section="problem"] figcaption')).toHaveText('Before: old game details page');
+    }
     const story=page.locator('.case-showcase-story');
     await expect(story.locator('.case-showcase-passage')).toHaveCount(4);
     await expect(story.getByRole('heading')).toHaveCount(i===0?1:0);

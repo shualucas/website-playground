@@ -22,8 +22,8 @@ export const stadiaCaseStudy = {
   story: [
     {
       id: "problem", label: "Selling games behind a locked door",
-      copy: "For the first couple of years, Stadia had a funny way of running a store: you weren't allowed to look inside until you made an account and handed over a payment method. Because the entire catalog lived behind a login screen, Stadia games didn't show up in Google Search, and marketing had to build custom landing pages by hand for every big release. We moved the sign-in wall behind the store and gave every game a normal, readable URL so people could watch trailers, check the price, and try a free demo before deciding if they wanted an account.",
-      visual: { title: "Mandatory sign-in versus an open game page", caption: "Before: clicking a Stadia link dropped you onto a login wall before you could see a single game or price.", type: "image", src: "" },
+      copy: "In fairness to the old game page, it launched with Stadia and did what a launch version has to do: give the user a way to buy the game. It just never got the quality-of-life love a store needs once the game catalog increases. Every game edition or bundle had its own separate page, so comparing two editions meant going back and forth remembering what was in each one. A few major games couldn't even be bought by themselves, only inside a bundle, which meant you could land on the main page for *Red Dead Redemption 2* and find no way to actually buy it.",
+      visual: { title: "Mandatory sign-in versus an open game page", caption: "Before: old game details page", type: "image", src: "" },
     },
     {
       id: "game-page", label: "One page per game (finally)",
