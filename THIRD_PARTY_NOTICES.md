@@ -67,3 +67,7 @@ The loader reuses the original clay film-camera geometry and adds independently 
 ## ASCII preview cell styling
 
 The project-preview ASCII dissolve adapts the centered semibold monospace glyphs, skin-density ramp, tonal cell backing, and unfilled silhouette edges from [`stackedlol/ascii-sharks`'s `src/renderer.ts`](https://github.com/stackedlol/ascii-sharks/blob/a0074c16a106f0abc665fe9712ca445f8f98ad8e/src/renderer.ts), copyright (c) 2026 drewdi, MIT. The local renderer samples the actual preview, uses one project-colored ink, and retains its uniform 1.2-second crossfade. The upstream shark geometry, simulation, wake effects, background, and multicolor shimmer are not included. Full license: `public/licenses/ascii-sharks-MIT.txt`.
+
+## Clove dither renderer
+
+The current project-row dither ports the Bayer thresholds, integer hash, value-noise clouds, per-cell heat and cooling, scan-front lighting, layered glow, and spring integration from [`keshav-exe/clove`](https://github.com/keshav-exe/clove/tree/61de2b1fbf5c7bcc4c07f8d728c90eccb509a84d/Clove/Features/Storage), `StorageBarRenderer.swift` and `StorageBarView.swift`, copyright (c) 2026 Keshav Bagaade (MIT). The camera and zine previews reuse the thresholds, noise and per-cell cooling over their sampled silhouettes. The Canvas adaptation uses larger cells, project colors, a fading right edge, pale highlights in both themes, and an in-place hover-out dissolve. The upstream rising particles, storage UI, and application logic are omitted. Full license: `public/licenses/clove-MIT.txt`.

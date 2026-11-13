@@ -116,6 +116,7 @@ try {
     const dither = kind === "zine" || kind === "film";
     if (args.phase === "dither" && !dither) throw new Error("dither captures are available only for the zine and film previews.");
     if (args.phase === "settled") {
+      if(args.motion!=="reduce")await expect(page.locator('.project-dither-surface')).toHaveAttribute('data-filled','true',wait);
       if (dither) await expect(page.locator(".recent-preview-dither")).toHaveAttribute("data-state", "complete", wait);
       if (kind === "zine") await expect(page.locator(".zine-preview-scene")).toHaveAttribute("data-preview-intro", "settled", wait);
       if (kind === "film") await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-intro", "settled", wait);

@@ -655,7 +655,7 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
-test('project hover dither grows from a pale left origin with larger stationary pixels',async({page},testInfo)=>{
+test('Clove dither brightens on entry, cools into color, and dissolves in place',async({page},testInfo)=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.project-dither-surface');
  const sample=()=>dots.evaluate(el=>{
@@ -665,9 +665,10 @@ test('project hover dither grows from a pale left origin with larger stationary 
   for(let i=3;i<pixels.length;i+=4){
    // Hash the body of the fill, so drifting edge particles alone cannot pass the motion check.
    if(i>=Math.floor(el.height/2)*el.width*4)hash=Math.imul(hash^pixels[i],16777619);
-   if(pixels[i]){painted++;bands[Math.min(3,Math.floor(((i-3)/4%el.width)/el.width*4))]++;}
+   if(pixels[i])painted++;
+   if(pixels[i]>60)bands[Math.min(3,Math.floor(((i-3)/4%el.width)/el.width*4))]++;
    const x=(i-3)/4%el.width,section=x<40?0:x>160&&x<260?1:-1;
-   if(section>=0&&pixels[i]>30){luma[section]+=pixels[i-3]*.2126+pixels[i-2]*.7152+pixels[i-1]*.0722;counts[section]++;}
+   if(section>=0&&pixels[i]>60){luma[section]+=pixels[i-3]*.2126+pixels[i-2]*.7152+pixels[i-1]*.0722;counts[section]++;}
   }
   for(let y=0;y<el.height;y++){let run=0;for(let x=0;x<el.width;x++){run=pixels[(y*el.width+x)*4+3]>30?run+1:0;maxRun=Math.max(maxRun,run);}}
   return {hash,painted,coverage:painted/(el.width*el.height),bands,luma:luma.map((value,i)=>value/counts[i]),maxRun};
@@ -678,20 +679,22 @@ test('project hover dither grows from a pale left origin with larger stationary 
   await expect(dots).toHaveCount(1);await expect(dots).toHaveAttribute('data-state','playing');
   await expect(dots).toHaveCSS('pointer-events','none');
   await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);
+  const hot=await sample();
   // Verify real pixel motion after the old 400ms entrance would have ended.
-  await page.waitForTimeout(650);const held=await sample();
-  // The pale core stays on the left, the colored tail thins to the right, and pixels are visibly larger.
+  await page.waitForTimeout(1400);const held=await sample();
+  // New cells brighten, then cool into the project hue while the cloud field keeps changing.
   expect(held.coverage).toBeGreaterThan(.07);expect(held.bands[0]).toBeGreaterThan(held.bands[1]);expect(held.bands[3]).toBe(0);
-  expect(held.luma[0]).toBeGreaterThan(held.luma[1]+20);expect(held.maxRun).toBeGreaterThanOrEqual(3);
+  expect(hot.luma[0]).toBeGreaterThan(held.luma[0]+5);expect(held.maxRun).toBeGreaterThanOrEqual(3);
   const row=nav.locator('li[data-active="true"] .recent-project-link'),bounds=await dots.boundingBox(),rowBounds=await row.boundingBox();
-  expect(bounds.y).toBeCloseTo(rowBounds.y,0);expect(bounds.height).toBeCloseTo(rowBounds.height,0);
+  expect(bounds.x).toBeCloseTo(rowBounds.x,0);expect(bounds.y).toBeCloseTo(rowBounds.y,0);expect(bounds.height).toBeCloseTo(rowBounds.height,0);
   await expect.poll(async()=>(await sample()).hash,{intervals:[100,150]}).not.toBe(held.hash);
  }
  await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
  await page.emulateMedia({reducedMotion:'reduce'});
  await expect(dots).toHaveAttribute('data-state','reduced');await expect(dots).toBeHidden();
  await page.emulateMedia({reducedMotion:'no-preference'});await expect(dots).toHaveAttribute('data-state','playing');
- await page.mouse.move(2,2);await expect(dots).toHaveCount(0);
+ await page.mouse.move(2,2);await expect(dots).toHaveAttribute('data-state','idle');await expect(dots).toBeHidden();
+ const idle=await sample();expect(idle.painted).toBe(0);
 });
 
 test('browsing projects lets an entering role finish before its rotation pauses',async({page})=>{

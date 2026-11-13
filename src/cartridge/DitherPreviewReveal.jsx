@@ -1,8 +1,7 @@
 import React, { useLayoutEffect, useRef } from "react";
+import { bayer, clamp, hotPalette, lightLevel, smooth } from "./clove-dither";
 
-const bayer4 = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
 const pitch = 4;
-const smooth = value => { const p = Math.max(0, Math.min(1, value)); return p * p * (3 - 2 * p); };
 
 /** Sample the real preview into an ordered pixel silhouette, then resolve into the original. */
 export function DitherPreviewReveal({ active, kind, instant = false }) {
@@ -14,6 +13,7 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
     const sample = document.createElement("canvas"), pixels = sample.getContext("2d", { willReadFrequently:true });
     const duration = ["film", "zine"].includes(kind) ? 1200 : 600;
     let frame = 0, start = null, source = null, lastSample = -Infinity, stopped = false, complete = false, progress = 0;
+    let heat=new Float32Array(0),present=new Uint8Array(0),palette=[],paletteInk='';
     const releaseSource = () => {
       source?.removeEventListener("preview-capture-frame", capture);
       source?.removeAttribute("data-preview-capture");
@@ -34,11 +34,13 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
       const width = Math.max(1, Math.round(art.clientWidth)), height = Math.max(1, Math.round(art.clientHeight));
       if (surface.width !== width || surface.height !== height) { surface.width = width; surface.height = height; }
       sample.width = Math.ceil(width / pitch); sample.height = Math.ceil(height / pitch);
+      if(heat.length!==sample.width*sample.height){heat=new Float32Array(sample.width*sample.height);present=new Uint8Array(heat.length);}
       return { width, height };
     };
     function capture() {
       const now = performance.now();
       if (stopped || complete || now - lastSample < 1000 / 18) return;
+      const cool=Math.exp(-(Number.isFinite(lastSample)?(now-lastSample)/1000:0)/.42);
       lastSample = now;
       const { width, height } = dimensions();
       const flat = !source;
@@ -61,20 +63,23 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
       catch { finish(); return; } // A future cross-origin image must not block the preview.
       context.clearRect(0, 0, width, height);
       const ink = getComputedStyle(art.closest(".recent-projects")).getPropertyValue("--preview-accent").trim() || "#666";
-      context.fillStyle = ink;
+      if(paletteInk!==ink){paletteInk=ink;palette=hotPalette(ink);}
       const dissolve = smooth((progress-.35)/.55);
       for (let row = 0; row < sample.height; row++) for (let col = 0; col < sample.width; col++) {
         const i = (row * sample.width + col) * 4, alpha = data[i + 3] / 255;
-        if (alpha < .04) continue;
+        const cell=row*sample.width+col;
+        if (alpha < .04) {present[cell]=0;continue;}
+        heat[cell]=present[cell]?heat[cell]*cool:1;present[cell]=1;
         const shade = 1 - (data[i] * .2126 + data[i + 1] * .7152 + data[i + 2] * .0722) / 255;
-        const rank=(bayer4[(row&3)*4+(col&3)]+.5)/16;
-        const density=(flat?.2:.3+shade*.65)*alpha;
-        const coverage=smooth((density-rank)*3+.5);
+        const rank=bayer[(row&3)*4+(col&3)];
+        const level=lightLevel(col,row,progress*duration/1000,0,heat[cell],.5,0)*(.45+.55*shade);
+        const lit=level>rank;
         // Each square dissolves in its own cell. Transparent gaps in the source stay empty.
         const resolve=1-smooth((dissolve-rank)/.35);
-        if(coverage*resolve<.025)continue;
-        const size=2.4+coverage*.8;
-        context.globalAlpha=(flat?.15:.8)*alpha*coverage*resolve;
+        if(resolve<.025)continue;
+        const size=lit?3:1.5;
+        context.fillStyle=lit?palette[Math.round(clamp(heat[cell]*.95+.05)*63)]:ink;
+        context.globalAlpha=(flat?.12:lit?.88:.22)*alpha*resolve;
         context.fillRect(col*pitch,row*pitch,size,size);
       }
       context.globalAlpha = 1;
