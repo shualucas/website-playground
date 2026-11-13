@@ -655,25 +655,35 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
-test('project hover dots keep moving while active and stop on dismissal or reduced motion',async({page},testInfo)=>{
+test('project hover dither fills the row and keeps moving until dismissal or reduced motion',async({page},testInfo)=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.project-dither-particles');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.project-dither-surface');
  const sample=()=>dots.evaluate(el=>{
   const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;
   let hash=2166136261,painted=0;
-  for(let i=3;i<pixels.length;i+=4){hash=Math.imul(hash^pixels[i],16777619);if(pixels[i])painted++;}
-  return {hash,painted};
+  const bands=[0,0,0,0];
+  for(let i=3;i<pixels.length;i+=4){
+   // Hash the body of the fill, so drifting edge particles alone cannot pass the motion check.
+   if(i>=Math.floor(el.height/2)*el.width*4)hash=Math.imul(hash^pixels[i],16777619);
+   if(pixels[i]){painted++;bands[Math.min(3,Math.floor(((i-3)/4%el.width)/el.width*4))]++;}
+  }
+  return {hash,painted,coverage:painted/(el.width*el.height),bands};
  });
- for(const name of [/AI Mode Nudges/,/Search Labs/]){
+ for(const [name,dark] of [[/AI Mode Nudges/,false],[/Search Labs/,true]]){
+  if(dark){await page.mouse.move(2,2);await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).not.toHaveClass(/theme-transition/);}
   await nav.getByRole('link',{name}).hover();
   await expect(dots).toHaveCount(1);await expect(dots).toHaveAttribute('data-state','playing');
   await expect(dots).toHaveCSS('pointer-events','none');
   await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);
   // Verify real pixel motion after the old 400ms entrance would have ended.
   await page.waitForTimeout(650);const held=await sample();
+  // A filled, distributed lattice must not regress to a sparse cloud or an entrance-only texture.
+  expect(held.coverage).toBeGreaterThan(.15);expect(held.bands.every(count=>count>200)).toBe(true);
+  const row=nav.locator('li[data-active="true"] .recent-project-link'),bounds=await dots.boundingBox(),rowBounds=await row.boundingBox();
+  expect(bounds.y).toBeCloseTo(rowBounds.y,0);expect(bounds.height).toBeCloseTo(rowBounds.height,0);
   await expect.poll(async()=>(await sample()).hash,{intervals:[100,150]}).not.toBe(held.hash);
  }
- await page.screenshot({path:testInfo.outputPath('project-hover-particles.png')});
+ await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
  await page.emulateMedia({reducedMotion:'reduce'});
  await expect(dots).toHaveAttribute('data-state','reduced');await expect(dots).toBeHidden();
  await page.emulateMedia({reducedMotion:'no-preference'});await expect(dots).toHaveAttribute('data-state','playing');

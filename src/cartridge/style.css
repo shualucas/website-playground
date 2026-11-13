@@ -59,8 +59,8 @@
 .recent-project-list li { position:relative; isolation:isolate; border-bottom:1px solid var(--row-divider); }
 .recent-project-list li:focus-within { animation:none; opacity:1; filter:none; }
 .recent-project-link { position:relative; display:grid; grid-template-columns:32px minmax(0,1fr) auto; column-gap:12px; align-items:center; min-height:48px; padding:8px 0; font:400 var(--project-type)/1.45 "DM Sans",Arial,sans-serif; letter-spacing:normal; transition:opacity 320ms ease; }
-.project-dither-particles { position:absolute; z-index:-1; top:-28px; left:0; width:100%; height:80px; pointer-events:none; }
-@media(prefers-reduced-motion:reduce) { .project-dither-particles { display:none; } }
+.project-dither-surface { position:absolute; z-index:-1; top:0; left:0; width:100%; height:48px; pointer-events:none; }
+@media(prefers-reduced-motion:reduce) { .project-dither-surface { display:none; } }
 .recent-project-index { font-family:inherit; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 320ms ease; }
 .recent-project-copy { display:flex; align-items:baseline; gap:12px; min-width:0; }
 .recent-project-name { flex-shrink:0; color:var(--ui-text); font-weight:inherit; transition:color 320ms ease; }
