@@ -23,7 +23,7 @@ export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
     // Capture both themes once, then reveal the new page from the dot's center.
     const box = event.currentTarget.getBoundingClientRect(), x = box.left + box.width / 2, y = box.top + box.height / 2;
     root.style.setProperty('--theme-origin-x', `${x}px`); root.style.setProperty('--theme-origin-y', `${y}px`);
-    root.style.setProperty('--theme-radius', `${Math.hypot(Math.max(x, innerWidth-x), Math.max(y, innerHeight-y)) + 32}px`);
+    root.style.setProperty('--theme-radius', `${Math.hypot(Math.max(x, innerWidth-x), Math.max(y, innerHeight-y)) * 1.06 + 32}px`);
     root.classList.add('theme-transition');
     const wipe = document.startViewTransition(() => flushSync(update));
     transition.current = wipe;

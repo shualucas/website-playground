@@ -2,6 +2,7 @@ import { filmPhotos } from "../src/content/film-photos.js";
 import { test, expect, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
 test('Nudges opens with the Google cartridge spinning into an ambient float',async({page},testInfo)=>{
+ const shaderErrors=[];page.on('console',message=>{if(message.type()==='error'&&/THREE.WebGLProgram|VALIDATE_STATUS|shader error/i.test(message.text()))shaderErrors.push(message.text())});
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
  await page.addInitScript(()=>{
   window.cartridgeEntrances=[];
@@ -46,6 +47,7 @@ test('Nudges opens with the Google cartridge spinning into an ambient float',asy
  expect(await page.locator('.case-study').evaluate(el=>el.scrollTop)).toBe(scroll);
  await reset();await touch.detach();
  await page.screenshot({path:testInfo.outputPath('nudges-google-cartridge-mobile.png')});
+ expect(shaderErrors).toEqual([]);
 });
 
 test("the camera loads only in its hover preview and pauses when that preview is hidden", async ({page})=>{

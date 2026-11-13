@@ -2,7 +2,7 @@ import {test,expect} from './support/portfolio.js';
 
 test.use({webgl:false});
 
-test('the theme dot reveals either theme from its center with tonal rings and preserves the choice',async({page},testInfo)=>{
+test('the theme dot reveals either theme through a dithered edge and preserves the choice',async({page},testInfo)=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
   await page.addInitScript(()=>{
@@ -21,9 +21,20 @@ test('the theme dot reveals either theme from its center with tonal rings and pr
       const root=document.documentElement,style=getComputedStyle(root,'::view-transition-new(root)');
       return {origin:[parseFloat(root.style.getPropertyValue('--theme-origin-x')),parseFloat(root.style.getPropertyValue('--theme-origin-y'))],radius:parseFloat(style.getPropertyValue('--theme-reveal')),mask:style.maskImage,duration:animation.effect.getTiming().duration};
     });
-    expect(wipe.origin[0]).toBeCloseTo(box.x+box.width/2,0);expect(wipe.origin[1]).toBeCloseTo(box.y+box.height/2,0);expect(wipe.radius).toBeGreaterThan(100);expect(wipe.mask).toContain('radial-gradient');expect(wipe.mask).toContain('0.733');expect(wipe.duration).toBe(650);
+    expect(wipe.origin[0]).toBeCloseTo(box.x+box.width/2,0);expect(wipe.origin[1]).toBeCloseTo(box.y+box.height/2,0);expect(wipe.radius).toBeGreaterThan(100);expect(decodeURIComponent(wipe.mask)).toContain('<pattern');expect(wipe.duration).toBe(650);
     await expect(page.locator('html')).toHaveAttribute('data-color-mode',mode);
-    if(mode==='dark')await page.screenshot({path:testInfo.outputPath('theme-circular-wipe.png')});
+    const screenshot=await page.screenshot({path:testInfo.outputPath('theme-dither-wipe-'+mode+'.png')});
+    const pixels=await page.evaluate(async({encoded,origin,radius})=>{
+      const image=new Image();image.src='data:image/png;base64,'+encoded;await image.decode();
+      const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+      const context=canvas.getContext('2d');context.drawImage(image,0,0);
+      const sample=(x,y)=>context.getImageData(x,y,1,1).data[0];
+      const edge=context.getImageData(Math.round(origin[0]-radius*.982)-6,8,12,16).data;
+      const values=Array.from(edge).filter((_,i)=>i%4===0);
+      return {left:sample(16,16),right:sample(canvas.width-16,16),edgeRange:Math.max(...values)-Math.min(...values)};
+    },{encoded:screenshot.toString('base64'),origin:wipe.origin,radius:wipe.radius});
+    expect(pixels.left).toBe(mode==='dark'?240:16);expect(pixels.right).toBe(mode==='dark'?16:240);
+    expect(pixels.edgeRange).toBeGreaterThan(100);
     // A repeated activation cannot start a second transition or invert the theme mid-wipe.
     await button.press('Enter');await expect(page.locator('html')).toHaveAttribute('data-color-mode',mode);
     await page.evaluate(async()=>{for(const animation of document.getAnimations())if(animation.animationName==='theme-circle')animation.finish();await window.themeWipe.finished});

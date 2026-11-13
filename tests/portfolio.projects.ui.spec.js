@@ -655,6 +655,25 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
+test('project hover dithering is brief, replays per project and skips reduced motion',async({page},testInfo)=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),active=()=>nav.locator('li[data-active="true"] .recent-project-link');
+ for(const name of [/AI Mode Nudges/,/Search Labs/]){
+  await nav.getByRole('link',{name}).hover();
+  const pattern=await active().evaluate(el=>{
+   const animation=el.getAnimations({subtree:true}).find(animation=>animation.animationName==='project-dither');
+   animation.pause();animation.currentTime=100;
+   const style=getComputedStyle(el,'::before');return {mask:style.maskImage,duration:animation.effect.getTiming().duration};
+  });
+  expect(pattern.mask).toContain('image/svg+xml');expect(pattern.duration).toBe(400);
+ }
+ await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
+ await active().evaluate(el=>el.getAnimations({subtree:true}).find(animation=>animation.animationName==='project-dither').finish());
+ expect(await active().evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('0');
+ await page.emulateMedia({reducedMotion:'reduce'});
+ expect(await active().evaluate(el=>getComputedStyle(el,'::before').display)).toBe('none');
+});
+
 test('browsing projects lets an entering role finish before its rotation pauses',async({page})=>{
  await page.goto('/');await expect(page.locator('.role-rotator')).toHaveAttribute('data-ready','true');
  await page.locator('.role-label').evaluate(el=>el.getAnimations().forEach(animation=>animation.currentTime=1));await page.locator('.recent-project-link').first().hover();await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');await expect(page.locator('.role-label')).toHaveCSS('opacity','1');await expect(page.locator('.role-label')).toHaveCSS('animation-play-state','running');
@@ -682,7 +701,7 @@ test('only zine and film resolve through ASCII, replay on return and stay static
  await page.emulateMedia({reducedMotion:'reduce'});await links.nth(3).hover();await expect(nav.locator('.recent-preview-ascii')).toBeHidden();await expect(nav.locator('.recent-preview-ascii')).toHaveAttribute('data-state','complete');
 });
 
-test('film ASCII uses source pixels and crossfades uniformly over 1.2 seconds',async({page})=>{
+test('film ASCII uses source pixels and dissolves through ordered dots over 1.2 seconds',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.dissolve={};new MutationObserver(()=>{
@@ -697,7 +716,8 @@ test('film ASCII uses source pixels and crossfades uniformly over 1.2 seconds',a
    }else if(ascii.dataset.state==='complete')state.duration??=performance.now()-state.start;
   }).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['data-state','style','data-source']});
  });await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');await nav.getByRole('link',{name:/Say cheese!/}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-state','complete');await expect(ascii).toHaveAttribute('data-source','content');
- const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
+ const result=await page.evaluate(()=>window.dissolve);expect(result.visiblePixels).toBe(true);expect(result.fadeIn).toBeTruthy();expect(result.fadeOut).not.toBe(result.fadeIn);expect(result.duration).toBeGreaterThanOrEqual(1180);expect(result.duration).toBeLessThan(2500);
+ await expect(ascii).toHaveAttribute('data-dither','ordered');
  const shape=await ascii.evaluate(el=>{const {data,width,height}=el.getContext('2d').getImageData(0,0,el.width,el.height);let left=0,right=0,gap=0;for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(!data[(y*width+x)*4+3])continue;if(x<width*.4)left++;else if(x>width*.65)right++;else if(x>width*.42&&x<width*.62)gap++}return{left,right,gap}});expect(shape.left).toBeGreaterThan(100);expect(shape.right).toBeGreaterThan(100);expect(shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
 });
 

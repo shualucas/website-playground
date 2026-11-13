@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2048" viewBox="0 0 2048 2048">
+  <defs>
+    <pattern id="quarter" width="8" height="8" patternUnits="userSpaceOnUse">
+      <path fill="white" d="M0 0h2v2H0zM4 0h2v2H4zM0 4h2v2H0zM4 4h2v2H4z"/>
+    </pattern>
+    <pattern id="half" width="8" height="8" patternUnits="userSpaceOnUse">
+      <path fill="white" d="M0 0h2v2H0zM4 0h2v2H4zM0 4h2v2H0zM4 4h2v2H4zM2 2h2v2H2zM6 2h2v2H6zM2 6h2v2H2zM6 6h2v2H6z"/>
+    </pattern>
+    <pattern id="three-quarters" width="8" height="8" patternUnits="userSpaceOnUse">
+      <path fill="white" d="M0 0h8v2H0zM0 4h8v2H0zM2 2h2v2H2zM6 2h2v2H6zM2 6h2v2H2zM6 6h2v2H6z"/>
+    </pattern>
+  </defs>
+  <circle cx="1024" cy="1024" r="1024" fill="url(#quarter)"/>
+  <circle cx="1024" cy="1024" r="1012" fill="url(#half)"/>
+  <circle cx="1024" cy="1024" r="1000" fill="url(#three-quarters)"/>
+  <circle cx="1024" cy="1024" r="988" fill="white"/>
+</svg>

@@ -3,6 +3,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { cartridgeModel, cartridges, type CartridgeId } from "./config";
 import { loadExternalShell, makeCartridge } from "./model";
 import { applyCartridgeTheme } from "./cartridge-theme";
+import { ditherShadow } from "./dither-shadow";
 import { makeBounds, updateBounds, Separation, type RigidBounds } from "./separation";
 
 type Callbacks = {
@@ -74,7 +75,7 @@ export class CartridgeScene {
   private inView = true;
   private mobile = false;
   private grain: THREE.CanvasTexture;
-  private shadowMaterial = new THREE.ShadowMaterial({ opacity: .085, depthWrite: false });
+  private shadowMaterial = ditherShadow(new THREE.ShadowMaterial({ opacity: .085, depthWrite: false }));
   private key = new THREE.DirectionalLight("#fffefb", .85);
   private separation = new Separation();
   private correction = new THREE.Vector3();

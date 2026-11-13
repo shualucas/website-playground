@@ -59,6 +59,11 @@
 .recent-project-list li { position:relative; border-bottom:1px solid var(--row-divider); }
 .recent-project-list li:focus-within { animation:none; opacity:1; filter:none; }
 .recent-project-link { position:relative; display:grid; grid-template-columns:32px minmax(0,1fr) auto; column-gap:12px; align-items:center; min-height:48px; padding:8px 0; font:400 var(--project-type)/1.45 "DM Sans",Arial,sans-serif; letter-spacing:normal; transition:opacity 320ms ease; }
+.recent-project-link { isolation:isolate; }
+.recent-project-link::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:var(--preview-accent); mask-image:url("../effects/dither-tile.svg"),linear-gradient(90deg,transparent,#000 12%,#000 65%,transparent); mask-size:8px 8px,100% 100%; mask-repeat:repeat,no-repeat; mask-composite:intersect; opacity:0; }
+.recent-project-list li[data-active="true"] .recent-project-link::before { animation:project-dither 400ms ease-out both; }
+@keyframes project-dither { 0% { opacity:0; } 25% { opacity:.18; } 100% { opacity:0; } }
+@media(prefers-reduced-motion:reduce) { .recent-project-link::before { display:none; animation:none; } }
 .recent-project-index { font-family:inherit; font-size:inherit; font-weight:300; font-variant-numeric:tabular-nums; color:var(--project-muted); transition:color 320ms ease; }
 .recent-project-copy { display:flex; align-items:baseline; gap:12px; min-width:0; }
 .recent-project-name { flex-shrink:0; color:var(--ui-text); font-weight:inherit; transition:color 320ms ease; }

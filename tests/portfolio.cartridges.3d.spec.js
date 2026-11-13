@@ -1,6 +1,7 @@
 import { test, expect, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
 test("career collection uses exact bio and four individually visible cartridges in a compact diagonal stack", async ({ page, request }) => {
+  const shaderErrors=[];page.on('console',message=>{if(message.type()==='error'&&/THREE.WebGLProgram|VALIDATE_STATUS|shader error/i.test(message.text()))shaderErrors.push(message.text())});
   await load(page);
   await expect(page.locator(".miniature-loader")).toHaveCount(0);
   await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
@@ -46,6 +47,7 @@ test("career collection uses exact bio and four individually visible cartridges 
     expect(await label.text()).toMatch(/<title[^>]*>.+<\/title>/);
     expect(await label.text()).not.toMatch(/Josh|Lucas|1997|2011/);
   }
+  expect(shaderErrors).toEqual([]);
 });
 
 test("career captions retain team and dates while the archived early reader remains accessible", async ({ page }) => {

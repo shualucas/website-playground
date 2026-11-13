@@ -29,7 +29,10 @@ svg { display:block; flex-shrink:0; }
 .theme-transition::view-transition-old(root),.theme-transition::view-transition-new(root) { animation:none; mix-blend-mode:normal; }
 .theme-transition::view-transition-new(root) {
   animation:theme-circle 650ms cubic-bezier(.65,0,.35,1) both;
-  mask-image:radial-gradient(circle at var(--theme-origin-x) var(--theme-origin-y),#000 max(0px,calc(var(--theme-reveal) - 24px)),#000b 0 max(0px,calc(var(--theme-reveal) - 16px)),#0006 0 max(0px,calc(var(--theme-reveal) - 8px)),#0003 0 var(--theme-reveal),transparent 0);
+  mask-image:url("./effects/dither-circle.svg");
+  mask-size:calc(var(--theme-reveal) * 2) calc(var(--theme-reveal) * 2);
+  mask-position:calc(var(--theme-origin-x) - var(--theme-reveal)) calc(var(--theme-origin-y) - var(--theme-reveal));
+  mask-repeat:no-repeat;
 }
 .theme-transition::view-transition { pointer-events:none; }
 @keyframes theme-circle { from { --theme-reveal:0px; } to { --theme-reveal:var(--theme-radius); } }

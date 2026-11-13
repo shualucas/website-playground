@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { applyCartridgeTheme } from "./cartridge-theme";
+import { ditherShadow } from "./dither-shadow";
 import { cartridges } from "./config";
 import { loadExternalShell } from "./model";
 
@@ -16,7 +17,7 @@ export class CaseStudyCartridgeScene {
   private environment: THREE.WebGLRenderTarget;
   private pmrem: THREE.PMREMGenerator;
   private background = new THREE.Color();
-  private shadow = new THREE.ShadowMaterial({opacity:.085,depthWrite:false});
+  private shadow = ditherShadow(new THREE.ShadowMaterial({opacity:.085,depthWrite:false}));
   private receiver = new THREE.Mesh(new THREE.PlaneGeometry(8,8),this.shadow);
   private key = new THREE.DirectionalLight("#fffefb",.85);
   private size = new THREE.Vector3(2.4,1.8,.5);
