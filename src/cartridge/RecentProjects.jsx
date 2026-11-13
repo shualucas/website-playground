@@ -3,7 +3,7 @@ import {createPortal} from "react-dom";
 import {recentProjects} from "./projects";
 import {entrance} from "./entrance";
 import {ZinePreview} from "./ZinePreview";
-import {AsciiPreviewReveal} from "./AsciiPreviewReveal";
+import {DitherPreviewReveal} from "./DitherPreviewReveal";
 import {CameraLink} from "./CameraLink";
 import {LoopVideo} from "../LoopVideo";
 import {ProjectDither} from "./ProjectDither";
@@ -17,6 +17,7 @@ const previews={
 };
 const film={id:"film",label:"Say cheese!",description:"Film photographs",href:"/photos/"};
 const projects=[...recentProjects,film];
+const projectAccent=(color,dark)=>dark?color:'#'+color.match(/[a-f\d]{2}/gi).map(value=>Math.round(parseInt(value,16)*.86+255*.14).toString(16).padStart(2,'0')).join('');
 function useMedia(query){
   const [matches,setMatches]=useState(()=>matchMedia(query).matches);
   useEffect(()=>{const media=matchMedia(query),update=()=>setMatches(media.matches);media.addEventListener("change",update);update();return()=>media.removeEventListener("change",update)},[query]);
@@ -35,7 +36,7 @@ function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,ret
         {preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}
       </div>}
       </div>
-      {project&&["film","zine"].includes(preview.kind)&&<AsciiPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
+      {project&&["film","zine"].includes(preview.kind)&&<DitherPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
     </div>
   </div>;
 }
@@ -66,7 +67,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
       colorIntroPlayed.current=true;nav.dataset.colorIntro='running';revealObserver.disconnect();visibilityObserver.disconnect();
       animations=rows.map((row,index)=>row.animate([
         {backgroundColor:'transparent',easing:'ease-in-out'},
-        {offset:.5,backgroundColor:`color-mix(in srgb,${previews[row.dataset.project].accent} 32%,var(--scene-bg))`,easing:'ease-in-out'},
+        {offset:.5,backgroundColor:`color-mix(in srgb,${projectAccent(previews[row.dataset.project].accent,dark)} 32%,var(--scene-bg))`,easing:'ease-in-out'},
         {backgroundColor:'transparent'},
       ],{duration:1000,delay:lead+index*120}));
       Promise.all(animations.map(animation=>animation.finished)).then(stop).catch(()=>{});
@@ -105,7 +106,8 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.top+rect.height/2,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
   const previewAspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
-  const surface=showing?`color-mix(in srgb,color-mix(in srgb,${preview.accent} 70%,#000) 20%,var(--scene-bg))`:"var(--scene-bg)";
+  const accent=projectAccent(preview?.accent??"#6988d8",dark);
+  const surface=showing?`color-mix(in srgb,color-mix(in srgb,${accent} ${dark?70:82}%,${dark?'#000':'#fff'}) 20%,var(--scene-bg))`:"var(--scene-bg)";
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
     root.style.setProperty("--project-surface",surface);
@@ -123,15 +125,15 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
     event.preventDefault();onOpen(item.id);
   };
   return <>
-    {createPortal(<div className="project-hue-wash" aria-hidden="true" data-active={showing} data-exiting={Boolean(exiting)} style={{"--project-surface":surface}}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":item.accent}}/>)}</div>,document.body)}
-    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":preview?.accent??"#6988d8","--preview-width-scale":previewAspect/1.8}}
+    {createPortal(<div className="project-hue-wash" aria-hidden="true" data-active={showing} data-exiting={Boolean(exiting)} style={{"--project-surface":surface}}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":projectAccent(item.accent,dark)}}/>)}</div>,document.body)}
+    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":accent,"--preview-width-scale":previewAspect/1.8}}
       onPointerLeave={()=>{pointer.current=null;release()}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){focus.current=null;release()}}}
       onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();dismiss();navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
       <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>
       <div ref={browser} className="recent-project-browser"><ul className="recent-project-list" onPointerMove={track} onPointerLeave={()=>{pointer.current=null;release()}}>
         {projects.map((item,index)=><li key={item.id} className={item.id==="film"?"recent-camera-row":undefined} data-project={item.id} data-active={showing&&active===item.id}
           onPointerEnter={event=>browse(event,item.id,index)} onFocus={event=>focused(event,item.id,index)} data-reveal data-reveal-at={entrance.projectsStart+(index+1)*60}>
-          {showing&&active===item.id&&!exiting&&<ProjectDither color={previews[item.id].accent} dark={dark}/>}
+          {showing&&active===item.id&&!exiting&&<ProjectDither color={accent} dark={dark}/>}
           {item.id==="film"?<CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={index+1} rowTeam="Fun" entranceAt={0} previewMode previewTarget={cameraTarget} previewActive={showing&&active==="film"} previewSeen={seen.film} openAction={cameraAction} onPreviewTap={!canHover?()=>toggle(item.id,index):undefined} expanded={!canHover&&showing&&active===item.id}/>
             :<a className="recent-project-link" href={item.href||`/?project=${item.id}&view=case-study`} role={canHover?undefined:"button"} aria-expanded={canHover?undefined:showing&&active===item.id} aria-controls={canHover?undefined:`preview-${item.id}`} aria-describedby={`recent-summary-${item.id}`}
               onKeyDown={event=>{if(!canHover&&event.key===" "){event.preventDefault();event.currentTarget.click()}}}

@@ -3,7 +3,7 @@ import React, { useLayoutEffect, useRef } from "react";
 const ranks = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
 const clamp = value => Math.max(0,Math.min(1,value));
 const smooth = value => {const t=clamp(value);return t*t*(3-2*t)};
-const pitch = 3;
+const pitch = 5;
 
 /** A fixed pixel lattice with a moving fill density and a dissolving edge. */
 export function ProjectDither({ color, dark }) {
@@ -14,29 +14,26 @@ export function ProjectDither({ color, dark }) {
     if (!context || !link) return;
     let width=0, height=0, frame=0, previous=0, lastPaint=-Infinity, time=0, visible=true;
     let columns=[];
+    const channels=color.match(/[a-f\d]{2}/gi).map(value=>parseInt(value,16));
+    const palette=Array.from({length:16},(_,index)=>`rgb(${channels.map(value=>Math.round(value+(255-value)*index/15*(dark?.78:.9))).join(',')})`);
     const draw=()=>{
-      context.clearRect(0,0,width,height);context.fillStyle=color;
-      const entry=1-Math.pow(1-clamp(time/.48),3), front=-24+(width+48)*entry;
-      for(const {x,index,envelope} of columns){
-        const reveal=smooth((front-x)/24);
-        if(!reveal)continue;
-        // The lattice stays still. Broad waves change its coverage, rather than scrolling a texture.
-        const wave=Math.sin(x*.024-time*1.8)*.3+Math.sin(x*.009+time*.95)*.16;
-        const edge=height*.16+Math.sin(x*.028-time*1.35)*3+Math.sin(x*.011+time*.8)*2;
+      context.clearRect(0,0,width,height);
+      const reach=Math.min(width,480),entry=1-Math.pow(1-clamp(time/.48),3),front=(reach+70)*entry;
+      for(const {x,index} of columns){
+        const wave=(Math.sin(x*.025-time*1.6)*.13+Math.sin(x*.011+time*.85)*.08)*smooth(x/50);
+        const density=clamp((1-x/reach+wave)*smooth((front-x)/70));
+        if(!density)continue;
+        // A pale, dense origin at the left gives way to a colored, sparse tail.
+        context.fillStyle=palette[Math.round(smooth((density-.5)/.5)*15)];
         for(let row=0,y=1;y<height-1;row++,y+=pitch){
-          const density=(.62+wave+Math.sin(y*.12+x*.014-time*1.15)*.09)*smooth((y-edge)/13)*envelope*reveal;
+          const vertical=.86+.14*Math.sin(y/height*Math.PI);
           const rank=(ranks[(row%4)*4+index%4]+.5)/16;
-          const coverage=smooth((density-rank)*3+.5);
+          const coverage=smooth((density*vertical-rank)*3+.5);
           if(coverage<.025)continue;
-          const size=1.1+coverage*.85;
-          context.globalAlpha=(dark?.48:.34)*coverage;
-          context.fillRect(x+(2-size)/2,y+(2-size)/2,size,size);
-        }
-        // A few pixels lift directly from the moving boundary; the body remains a connected field.
-        if(index%9===0){
-          const progress=(time*.55+index*.071)%1;
-          context.globalAlpha=(dark?.48:.34)*Math.sin(progress*Math.PI)*envelope*reveal;
-          context.fillRect(x,edge+5-progress*11,1.4,1.4);
+          const size=3.2+coverage*.6;
+          context.globalAlpha=(dark?.38:.48)*coverage;
+          // Pixel positions never drift. They form and dissolve within their own cells.
+          context.fillRect(x,y,size,size);
         }
       }
       context.globalAlpha=1;
@@ -60,10 +57,7 @@ export function ProjectDither({ color, dark }) {
       const ratio=Math.min(devicePixelRatio,2);
       surface.width=Math.round(width*ratio);surface.height=Math.round(height*ratio);
       surface.style.height=height+'px';context.setTransform(ratio,0,0,ratio,0,0);
-      columns=Array.from({length:Math.ceil(width/pitch)},(_,index)=>{
-        const x=1+index*pitch;
-        return {x,index,envelope:smooth(x/15)*smooth((width-x)/40)};
-      });
+      columns=Array.from({length:Math.ceil(Math.min(width,480)/pitch)},(_,index)=>({x:index*pitch,index}));
       if(!motion.matches)draw();
     };
     const dimensions=new ResizeObserver(resize);dimensions.observe(link);resize();

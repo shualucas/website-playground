@@ -39,10 +39,16 @@ test('photos use a loose Polaroid spread and retain the zine at its own address'
   expect(errors).toEqual([]);
 });
 
-test('camera and zine ASCII sample their live render and release capture after revealing',async({page})=>{
- test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await load(page);await page.emulateMedia({reducedMotion:'no-preference'});const nav=page.getByRole('navigation',{name:'Recent projects'});
+test('camera and zine dither sample their live render and release capture after revealing',async({page})=>{
+ test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});
+ await page.addInitScript(()=>{window.previewCoverage={};new MutationObserver(()=>{
+  const el=document.querySelector('.recent-preview-dither[data-source="content"][data-state="revealing"]');if(!el)return;
+  const kind=el.closest('.recent-preview-content').dataset.kind,pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;
+  window.previewCoverage[kind]=Math.max(window.previewCoverage[kind]||0,pixels.filter((v,i)=>i%4===3&&v>0).length/(el.width*el.height));
+ }).observe(document,{subtree:true,attributes:true,attributeFilter:['data-state','data-source']})});
+ await load(page);await page.emulateMedia({reducedMotion:'no-preference'});const nav=page.getByRole('navigation',{name:'Recent projects'});
  for(const name of [/Say cheese!/,/Zine of Extracurriculars/]){
-  await nav.getByRole('link',{name}).hover();const ascii=nav.locator('.recent-preview-ascii');await expect(ascii).toHaveAttribute('data-source','content',{timeout:60000});await expect(ascii).toHaveAttribute('data-state','complete',{timeout:15000});await expect(nav.locator('[data-ascii-capture]')).toHaveCount(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
-  const coverage=await ascii.evaluate(el=>{const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;return pixels.filter((v,i)=>i%4===3&&v>0).length/(el.width*el.height)});expect(coverage).toBeGreaterThan(.005);expect(coverage).toBeLessThan(.3);
+  await nav.getByRole('link',{name}).hover();const dither=nav.locator('.recent-preview-dither');await expect(dither).toHaveAttribute('data-source','content',{timeout:60000});await expect(dither).toHaveAttribute('data-state','complete',{timeout:15000});await expect(nav.locator('[data-preview-capture]')).toHaveCount(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
+  const coverage=await dither.evaluate(el=>window.previewCoverage[el.closest('.recent-preview-content').dataset.kind]);expect(coverage).toBeGreaterThan(.005);expect(coverage).toBeLessThan(.3);
  }
 });

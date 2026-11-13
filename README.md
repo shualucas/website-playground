@@ -2,7 +2,7 @@
 
 Production: https://website-playground-eta.vercel.app/
 
-React 19, Vite, and imperative Three.js. The home page has four career cartridges, a rotating bio, recent projects with ASCII/3D hover previews, and server-backed Last.fm listening. Current pages:
+React 19, Vite, and imperative Three.js. The home page has four career cartridges, a rotating bio, recent projects with dither/3D hover previews, and server-backed Last.fm listening. Current pages:
 
 | Route | Entry and main files |
 | --- | --- |
@@ -49,7 +49,7 @@ One command starts or reuses Vite, shares the test browser configuration, waits 
 
 ```sh
 npm run review -- --page home
-npm run review -- --page home --hover rave-flyer-zine --phase ascii --theme dark
+npm run review -- --page home --hover rave-flyer-zine --phase dither --theme dark
 npm run review -- --page zine --phase turn
 npm run review -- --page resume --width 390 --height 844
 npm run review -- --page photos --motion reduce

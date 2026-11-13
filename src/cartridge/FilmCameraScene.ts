@@ -151,7 +151,7 @@ export class FilmCameraScene {
     this.host.dataset.strapAnchor = JSON.stringify(strap.anchor); this.host.dataset.strapBottom = String(strap.bottom);
     this.host.dataset.strapStretch = strap.stretch.toFixed(4); this.host.dataset.strapPhysics = "world-gravity-verlet";
     this.renderer.render(this.scene, this.camera);
-    if(this.renderer.domElement.hasAttribute("data-ascii-capture"))this.renderer.domElement.dispatchEvent(new Event("ascii-preview-frame"));
+    if(this.renderer.domElement.hasAttribute("data-preview-capture"))this.renderer.domElement.dispatchEvent(new Event("preview-capture-frame"));
     // Keep the small DOM glow attached to the modeled LED during float/drag,
     // and hide it when that face turns away from the viewer.
     const link = this.host.parentElement!;
