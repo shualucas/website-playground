@@ -1,6 +1,6 @@
 import { test, expect, disableWebGL, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
-test.use({ webgl: false });
+test.use({ webgl: false, ignoreHTTPSErrors:Boolean(process.env.PORTFOLIO_REVIEW_URL) });
 const nudgesTitle = 'AI Mode Nudges';
 
 test("recent projects use one column with native reader links and restore focus on Back", async ({ page }, testInfo) => {
@@ -655,8 +655,8 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
-test('project hover dithering is brief, replays per project and skips reduced motion',async({page},testInfo)=>{
- await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+test('project hover dithering stays visible while active and skips reduced motion',async({page},testInfo)=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),active=()=>nav.locator('li[data-active="true"] .recent-project-link');
  for(const name of [/AI Mode Nudges/,/Search Labs/]){
   await nav.getByRole('link',{name}).hover();
@@ -667,9 +667,9 @@ test('project hover dithering is brief, replays per project and skips reduced mo
   });
   expect(pattern.mask).toContain('image/svg+xml');expect(pattern.duration).toBe(400);
  }
- await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
  await active().evaluate(el=>el.getAnimations({subtree:true}).find(animation=>animation.animationName==='project-dither').finish());
- expect(await active().evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('0');
+ expect(await active().evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('0.3');
+ await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
  await page.emulateMedia({reducedMotion:'reduce'});
  expect(await active().evaluate(el=>getComputedStyle(el,'::before').display)).toBe('none');
 });

@@ -1,6 +1,6 @@
 import {test,expect} from './support/portfolio.js';
 
-test.use({webgl:false});
+test.use({webgl:false,ignoreHTTPSErrors:Boolean(process.env.PORTFOLIO_REVIEW_URL)});
 
 test('the theme dot reveals either theme through a dithered edge and preserves the choice',async({page},testInfo)=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -9,7 +9,7 @@ test('the theme dot reveals either theme through a dithered edge and preserves t
     const start=document.startViewTransition.bind(document);
     document.startViewTransition=update=>{window.themeWipe=start(update);return window.themeWipe};
   });
-  await page.goto('/');const button=page.locator('.collection-header .theme-toggle');await expect(button).toHaveAttribute('data-reveal-ready','true');
+  await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');const button=page.locator('.collection-header .theme-toggle');await expect(button).toHaveAttribute('data-reveal-ready','true');
   await expect(button.locator('svg')).toHaveCount(0);await expect(button.locator('.theme-dot')).toHaveCSS('width','12px');
   const box=await button.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);
   for(const mode of ['dark','light']){
