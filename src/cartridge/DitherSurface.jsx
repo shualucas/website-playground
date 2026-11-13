@@ -1,14 +1,14 @@
 import React, { useLayoutEffect, useRef } from "react";
 import { CloveDither } from "./clove-dither";
 
-/** One clock for the active row, including its short in-place dissolve on dismissal. */
-export function ProjectDither({ active, color, dark }) {
+/** A pointer-transparent pixel backdrop with its own visibility-aware clock. */
+export function DitherSurface({ active, color, dark, padding=0 }) {
   const canvas=useRef(null),live=useRef(active),wake=useRef(()=>{});live.current=active;
   useLayoutEffect(() => {
-    const surface = canvas.current, link = surface.parentElement.querySelector('.recent-project-link');
+    const surface=canvas.current,host=surface.parentElement;
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
     const renderer=new CloveDither(surface,color,dark);
-    if(!renderer.context||!link)return;
+    if(!renderer.context||!host)return;
     let frame=0,previous=0,lastPaint=-Infinity,lastDraw=0,time=0,visible=true;
     const paint=now=>{
       frame=0;
@@ -30,11 +30,11 @@ export function ProjectDither({ active, color, dark }) {
       else if(motion.matches)renderer.clear();
     };
     const resize=()=>{
-      renderer.resize(link.clientWidth,link.clientHeight);
+      renderer.resize(host.clientWidth+padding*2,host.clientHeight+padding*2);
       if(!motion.matches)renderer.draw(0,time,live.current);
     };
-    const dimensions=new ResizeObserver(resize);dimensions.observe(link);resize();
-    const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;sync()});observer.observe(link);
+    const dimensions=new ResizeObserver(resize);dimensions.observe(host);resize();
+    const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;sync()});observer.observe(host);
     wake.current=sync;
     motion.addEventListener('change',sync);document.addEventListener('visibilitychange',sync);sync();
     return()=>{
@@ -42,7 +42,7 @@ export function ProjectDither({ active, color, dark }) {
       motion.removeEventListener('change',sync);document.removeEventListener('visibilitychange',sync);
       wake.current=()=>{};
     };
-  },[color,dark]);
+  },[color,dark,padding]);
   useLayoutEffect(()=>wake.current(),[active]);
-  return <canvas ref={canvas} className="project-dither-surface" data-state="idle" aria-hidden="true" />;
+  return <canvas ref={canvas} className="dither-surface thumbnail-dither" data-state="idle" aria-hidden="true" style={{left:-padding,top:-padding,width:`calc(100% + ${padding*2}px)`}} />;
 }

@@ -49,6 +49,7 @@ One command starts or reuses Vite, shares the test browser configuration, waits 
 
 ```sh
 npm run review -- --page home
+npm run review -- --page home --control '.footer-links a:first-child'
 npm run review -- --page home --hover rave-flyer-zine --phase dither --theme dark
 npm run review -- --page zine --phase turn
 npm run review -- --page resume --width 390 --height 844

@@ -9,7 +9,7 @@ test("recent projects use one column with native reader links and restore focus 
   await page.goto("/");
   await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');await page.evaluate(()=>document.fonts.ready);
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
-  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
+  const titles=['AI Mode Nudges','Search Labs','Store Redesign','Zine of Extracurriculars'];
   await expect(links).toHaveCount(4);
   await expect(links.locator('.recent-project-name')).toHaveText(titles);
   await expect(navigation.getByRole('link')).toHaveCount(5);
@@ -27,7 +27,7 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(links.locator('.recent-project-team')).toHaveText(['Search','Search','Stadia','Fun']);
   await expect(navigation.locator('.recent-camera-row .recent-project-team')).toHaveText('Fun');
   for(let i=0;i<titles.length-1;i++) {
-    await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:titles[i],exact:true})).toBeFocused();
+    await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:i===2?'Stadia Store Redesign':titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','From 2023 to 2025, I was one of two designers','In 2022, I led the redesign'][i]);
     if(i===1)await expect(page.locator('.case-showcase-introduction')).toContainText('Another designer owned the brand');
     await expect(page.locator('.case-study-facts,.case-study .eyebrow,.case-star-story')).toHaveCount(0);
@@ -526,7 +526,7 @@ test('compact project rows keep equal typography and solid previews switch off w
 
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
-  for(const height of await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height)))expect(height).toBeCloseTo(49,1);
+  for(const height of await nav.locator('li').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height)))expect(height).toBeCloseTo(45,1);
   const sizes=await nav.locator('.recent-project-index,.recent-project-name,.recent-project-team').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontSize))]);expect(sizes).toEqual(['15px']);
   for(const row of await links.all())await expect(row).toHaveCSS('font-family',await page.locator('.intro-title').evaluate(el=>getComputedStyle(el).fontFamily));
   expect(await nav.locator('li').evaluateAll(els=>els.every(el=>getComputedStyle(el,'::after').content==='none'))).toBe(true);
@@ -552,7 +552,7 @@ test('compact project rows keep equal typography and solid previews switch off w
   const fill=nav.locator('.recent-solid-visual');await expect(fill).toHaveCSS('background-image','none');await expect(fill).toHaveCSS('animation-name','none');
   await page.mouse.move(2,2);await expect(nav.locator('.recent-project-preview')).toHaveAttribute('data-visible','false');
   await page.setViewportSize({width:390,height:844});await nav.scrollIntoViewIfNeeded();
-  await expect.poll(()=>nav.locator('li').evaluateAll(els=>Math.max(...els.map(el=>Math.abs(el.getBoundingClientRect().height-57))))).toBeLessThan(.05);
+  await expect.poll(()=>nav.locator('li').evaluateAll(els=>Math.max(...els.map(el=>Math.abs(el.getBoundingClientRect().height-53))))).toBeLessThan(.05);
   await expect(links.first()).toHaveCSS('font-size','15px');
   await checkColumns();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -657,50 +657,29 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
-test('Clove dither brightens on entry, cools into color, and dissolves in place',async({page},testInfo)=>{
+test('Clove dither animates the thumbnail frame while rows stay plain',async({page},testInfo)=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.project-dither-surface');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.thumbnail-dither');
  const sample=()=>dots.evaluate(el=>{
-  const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;
-  let hash=2166136261,painted=0;
-  const bands=[0,0,0,0],luma=[0,0],counts=[0,0];let maxRun=0;
-  for(let i=3;i<pixels.length;i+=4){
-   // Hash the body of the fill, so drifting edge particles alone cannot pass the motion check.
-   if(i>=Math.floor(el.height/2)*el.width*4)hash=Math.imul(hash^pixels[i],16777619);
-   if(pixels[i])painted++;
-   if(pixels[i]>60)bands[Math.min(3,Math.floor(((i-3)/4%el.width)/el.width*4))]++;
-   const x=(i-3)/4%el.width,section=x<40?0:x>160&&x<260?1:-1;
-   if(section>=0&&pixels[i]>60){luma[section]+=pixels[i-3]*.2126+pixels[i-2]*.7152+pixels[i-1]*.0722;counts[section]++;}
-  }
-  for(let y=0;y<el.height;y++){let run=0;for(let x=0;x<el.width;x++){run=pixels[(y*el.width+x)*4+3]>30?run+1:0;maxRun=Math.max(maxRun,run);}}
-  return {hash,painted,coverage:painted/(el.width*el.height),bands,luma:luma.map((value,i)=>value/counts[i]),maxRun};
+  const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;let hash=2166136261,painted=0,luma=0,lit=0;
+  for(let i=3;i<pixels.length;i+=4){hash=Math.imul(hash^pixels[i],16777619);if(pixels[i])painted++;const x=(i-3)/4%el.width;if(x<40&&pixels[i]>60){luma+=pixels[i-3]*.2126+pixels[i-2]*.7152+pixels[i-1]*.0722;lit++;}}
+  return {hash,painted,luma:luma/lit};
  });
- for(const [name,dark] of [[/AI Mode Nudges/,false],[/Search Labs/,true]]){
+ for(const [name,dark]of [[/AI Mode Nudges/,false],[/Search Labs/,true]]){
   if(dark){await page.mouse.move(2,2);await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).not.toHaveClass(/theme-transition/);}
-  await nav.getByRole('link',{name}).hover();
-  await expect(dots).toHaveCount(1);await expect(dots).toHaveAttribute('data-state','playing');
-  await expect(dots).toHaveCSS('pointer-events','none');
-  const activeRow=nav.locator('li[data-active="true"]');
-  await expect(activeRow.locator('.recent-project-index')).toHaveCSS('color',await activeRow.locator('.recent-project-name').evaluate(el=>getComputedStyle(el).color));
-  await expect(activeRow.locator('.recent-project-index')).toHaveCSS('font-weight','500');
-  expect(await dots.evaluate(el=>getComputedStyle(el).maskImage)).toContain('32px');
-  await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);
-  const hot=await sample();
-  // Verify real pixel motion after the old 400ms entrance would have ended.
-  await page.waitForTimeout(1400);const held=await sample();
-  // New cells brighten, then cool into the project hue while the cloud field keeps changing.
-  expect(held.coverage).toBeGreaterThan(.07);expect(held.bands[0]).toBeGreaterThan(held.bands[1]);expect(held.bands[3]).toBe(0);
-  expect(hot.luma[0]).toBeGreaterThan(held.luma[0]+5);expect(held.maxRun).toBeGreaterThanOrEqual(3);
-  const row=nav.locator('li[data-active="true"] .recent-project-link'),bounds=await dots.boundingBox(),rowBounds=await row.boundingBox();
-  expect(bounds.x).toBeCloseTo(rowBounds.x,0);expect(bounds.y).toBeCloseTo(rowBounds.y,0);expect(bounds.height).toBeCloseTo(rowBounds.height,0);
-  await expect.poll(async()=>(await sample()).hash,{intervals:[100,150]}).not.toBe(held.hash);
+  await nav.getByRole('link',{name}).hover();await expect(dots).toHaveAttribute('data-state','playing');await expect(dots).toHaveCSS('pointer-events','none');
+  await expect(nav.locator('.recent-project-list .dither-surface')).toHaveCount(0);
+  const row=nav.locator('li[data-active="true"]');await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await expect(row.locator('.recent-project-index')).toHaveCSS('color',await row.locator('.recent-project-name').evaluate(el=>getComputedStyle(el).color));
+  await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);const hot=await sample();await page.waitForTimeout(1400);const held=await sample();
+  expect(hot.luma).toBeGreaterThan(held.luma+5);await expect.poll(async()=>(await sample()).hash).not.toBe(held.hash);
+  const frame=await nav.locator('.recent-preview-content').boundingBox(),bounds=await dots.boundingBox();
+  expect(bounds.x).toBeCloseTo(frame.x-12,0);expect(bounds.y).toBeCloseTo(frame.y-12,0);expect(bounds.width).toBeCloseTo(frame.width+24,0);expect(bounds.height).toBeCloseTo(frame.height+24,0);
  }
- await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
- await page.emulateMedia({reducedMotion:'reduce'});
- await expect(dots).toHaveAttribute('data-state','reduced');await expect(dots).toBeHidden();
+ await page.screenshot({path:testInfo.outputPath('thumbnail-dither.png')});
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(dots).toHaveAttribute('data-state','reduced');await expect(dots).toBeHidden();
  await page.emulateMedia({reducedMotion:'no-preference'});await expect(dots).toHaveAttribute('data-state','playing');
- await page.mouse.move(2,2);await expect(dots).toHaveAttribute('data-state','idle');await expect(dots).toBeHidden();
- const idle=await sample();expect(idle.painted).toBe(0);
+ await page.mouse.move(2,2);await expect(dots).toHaveAttribute('data-state','idle');expect((await sample()).painted).toBe(0);
 });
 
 test('browsing projects lets an entering role finish before its rotation pauses',async({page})=>{
@@ -859,7 +838,7 @@ test('Stadia video preview fills its container and retains height, right alignme
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),art=nav.locator('.recent-preview-content');
  for(const viewport of [{width:1440,height:1000},{width:900,height:800},{width:1440,height:600}]){
-  await page.setViewportSize(viewport);await nav.getByRole('link',{name:/Stadia Store Redesign/}).hover();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');
+  await page.setViewportSize(viewport);await nav.getByRole('link',{name:/Store Redesign/}).hover();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');
   const image=nav.locator('.recent-solid-visual');await expect(image).toBeVisible();
   await expect.poll(async()=>(await art.boundingBox()).height).toBeCloseTo((viewport.width>=1100?489:450)/1.8,0);
   const frame=await art.boundingBox(),media=await image.boundingBox(),bounds=await nav.boundingBox();
@@ -870,7 +849,7 @@ test('Stadia video preview fills its container and retains height, right alignme
  try{
   const mobile=await context.newPage();await disableWebGL(mobile);await mobile.route('**/api/listening',route=>route.fulfill({status:204}));await mobile.route('**/api/weather',route=>route.fulfill({status:204}));await mobile.goto(new URL('/',page.url()).href);
   const navigation=mobile.getByRole('navigation',{name:'Recent projects'});
-  await navigation.getByRole('button',{name:/Stadia Store Redesign/}).tap();const image=navigation.locator('.recent-solid-visual');await expect(image).toBeVisible();
+  await navigation.getByRole('button',{name:/Store Redesign/}).tap();const image=navigation.locator('.recent-solid-visual');await expect(image).toBeVisible();
   const content=navigation.locator('.recent-preview-content'),inline=navigation.locator('.recent-inline-preview');
   await expect.poll(async()=>(await content.boundingBox()).height).toBeCloseTo((await inline.boundingBox()).width/1.8,0);
   const frame=await content.boundingBox(),media=await image.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);
@@ -879,34 +858,21 @@ test('Stadia video preview fills its container and retains height, right alignme
  }finally{await context.close()}
 });
 
-test('project colors ripple once during the row entrance without opening previews',async({page})=>{
+test('project load shimmer stays disabled without opening previews',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
- await page.addInitScript(()=>{
-  window.rowPulses=[];const animate=Element.prototype.animate;
-  Element.prototype.animate=function(frames,options){
-   if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor){window.rowPulses.push({project:this.dataset.project,revealing:[...this.parentElement.children].every(row=>row.dataset.revealState==='visible'),ready:this.dataset.revealReady==='true',delay:options.delay,color:frames[1].backgroundColor})}
-   return animate.call(this,frames,options);
-  };
- });
- await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','complete');
- const pulses=await page.evaluate(()=>window.rowPulses);expect(pulses.map(p=>p.project)).toEqual(['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film']);expect(pulses.every(p=>p.revealing)).toBe(true);expect(pulses.some(p=>!p.ready)).toBe(true);expect(pulses.map(p=>Math.round(p.delay-pulses[0].delay))).toEqual([0,120,240,360,480]);expect(new Set(pulses.map(p=>p.color)).size).toBe(5);
- await expect(nav).toHaveAttribute('data-preview-active','false');await expect(nav.locator('.recent-preview-dither,.loop-video video')).toHaveCount(0);
- for(const row of await nav.locator('.recent-project-list > li').all())await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
- await nav.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(page.locator('.case-study')).toHaveCount(0);expect(await page.evaluate(()=>window.rowPulses.length)).toBe(5);
+ await page.addInitScript(()=>{window.rowPulses=[];const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor)window.rowPulses.push(this.dataset.project);return animate.call(this,frames,options)};});
+ await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','disabled');await expect(nav.locator('li').last()).toHaveAttribute('data-reveal-ready','true');
+ expect(await page.evaluate(()=>window.rowPulses)).toEqual([]);await expect(nav).toHaveAttribute('data-preview-active','false');
+ for(const row of await nav.locator('li').all())await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+ await nav.getByRole('link',{name:/AI Mode Nudges/}).click();await expect(page.locator('.case-study')).toBeVisible();await page.locator('.case-study-nav').getByRole('button',{name:'Home',exact:true}).click();await expect(page.locator('.case-study')).toHaveCount(0);expect(await page.evaluate(()=>window.rowPulses)).toEqual([]);
 });
 
-test('project color intros yield to interaction and stay off for reduced motion',async({page},testInfo)=>{
- await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});
- await page.addInitScript(()=>{
-  const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){const animation=animate.call(this,frames,options);if(this.matches('.recent-project-list > li')&&frames[0]?.backgroundColor)animation.pause();return animation};
- });
- await page.goto('/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-color-intro','running');
- const highlights=await nav.locator('li').evaluateAll(rows=>{const animations=rows.map(row=>row.getAnimations().find(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)),time=animations[0].effect.getTiming().delay+500;return rows.map((row,index)=>{animations[index].currentTime=time;return getComputedStyle(row).backgroundColor})});expect(new Set(highlights).size).toBe(5);expect(highlights.every(color=>color!=='rgba(0, 0, 0, 0)')).toBe(true);
- await expect(nav.locator('li').last()).toHaveAttribute('data-reveal-ready','true');await page.screenshot({path:testInfo.outputPath('project-color-ripple.png')});
- await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav).toHaveAttribute('data-color-intro','complete');await expect(nav).toHaveAttribute('data-active-project','search-labs');
+test('project hover keeps plain rows and respects reduced motion with shimmer disabled',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'});await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav).toHaveAttribute('data-active-project','search-labs');
+ await expect(nav.locator('.recent-project-list canvas')).toHaveCount(0);await expect(nav.locator('.thumbnail-dither')).toHaveAttribute('data-state','playing');
  expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
- await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await expect(nav).toHaveAttribute('data-color-intro','complete');
- expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
+ await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await expect(nav).toHaveAttribute('data-color-intro','disabled');await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav.locator('.thumbnail-dither')).toBeHidden();
 });
 
 test('project navigation blurs beneath the bar and leaves content immediately below sharp',async({page})=>{

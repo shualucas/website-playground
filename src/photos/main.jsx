@@ -8,6 +8,7 @@ import './style.css';
 import {useContentReveal} from '../useContentReveal';
 import {usePageExit} from '../usePageExit';
 import {ThemeToggle} from '../ThemeToggle';
+import {useDitherHovers} from '../useDitherHovers';
 import {filmPhotos} from '../content/film-photos';
 import {FloatingEnvelope} from './FloatingEnvelope';
 
@@ -15,6 +16,7 @@ const placeholders=Array.from({length:6},(_,index)=>({id:`placeholder-${index}`,
 const frames=filmPhotos.length?filmPhotos:placeholders;
 const angles=[-7,4,-3,5,-5,6];
 function Photos(){
+  useDitherHovers();
   const page=useRef(null),spread=useRef(null),stage=useRef(null),envelope=useRef(null),motion=useRef(null);
   const entry=useRef(window.__cameraEntry||null);
   const [phase,setPhase]=useState('closed'),[captionVisible,setCaptionVisible]=useState(Boolean(entry.current));

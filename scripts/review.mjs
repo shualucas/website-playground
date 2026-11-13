@@ -10,12 +10,12 @@ const { values: args } = parseArgs({ options: {
   page:{ type:"string", default:"home" }, path:{ type:"string" },
   width:{ type:"string", default:"1440" }, height:{ type:"string", default:"1000" },
   theme:{ type:"string", default:"light" }, motion:{ type:"string", default:"normal" },
-  hover:{ type:"string" }, cartridge:{ type:"string" }, phase:{ type:"string", default:"settled" },
+  hover:{ type:"string" }, control:{ type:"string" }, cartridge:{ type:"string" }, phase:{ type:"string", default:"settled" },
   output:{ type:"string" }, port:{ type:"string", default:"3000" }, help:{ type:"boolean" },
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--cartridge 'Stadia'] [--phase settled|dither|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
   process.exit(0);
 }
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
@@ -116,7 +116,7 @@ try {
     const dither = kind === "zine" || kind === "film";
     if (args.phase === "dither" && !dither) throw new Error("dither captures are available only for the zine and film previews.");
     if (args.phase === "settled") {
-      if(args.motion!=="reduce")await expect(page.locator('.project-dither-surface')).toHaveAttribute('data-filled','true',wait);
+      if(args.motion!=="reduce")await expect(page.locator('.thumbnail-dither')).toHaveAttribute('data-filled','true',wait);
       if (dither) await expect(page.locator(".recent-preview-dither")).toHaveAttribute("data-state", "complete", wait);
       if (kind === "zine") await expect(page.locator(".zine-preview-scene")).toHaveAttribute("data-preview-intro", "settled", wait);
       if (kind === "film") await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-intro", "settled", wait);
@@ -132,6 +132,10 @@ try {
   }
   if (args.phase !== "settled") await expect.poll(() => page.evaluate(() => window.__review.frozen), wait).toBe(true);
   else await page.evaluate(async () => { const root = document.querySelector(".collection"); if (root) await Promise.allSettled(root.getAnimations().map(animation => animation.finished)); });
+  if(args.control){
+    const control=page.locator(args.control);await control.hover();
+    if(args.motion!=="reduce")await expect(control.locator('.control-dither')).toHaveAttribute('data-filled','true',wait);
+  }
   await mkdir(dirname(output), { recursive:true }); await page.screenshot({ path:output });
   console.log(`Saved ${output}`);
   if (errors.length) throw new Error(errors.join("\n"));

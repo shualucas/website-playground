@@ -72,7 +72,7 @@ export class CloveDither {
     ink.fillStyle=this.color;ink.globalAlpha=this.dark?.10:.12;ink.fillRect(0,0,end,height);
     for(let col=0;col<this.cols;col++){
       const cx=(col+.5)*pitch,want=cx<end,front=scan*Math.exp(-(end-cx)/22);
-      const tail=smooth((reach-cx)/110);
+      const tail=smooth((reach-cx)/Math.min(110,reach*.45));
       const leftDensity=.42*(1-smooth(cx/(reach*.7)));
       for(let row=0;row<this.rows;row++){
         const n=row*this.cols+col,was=this.present[n];

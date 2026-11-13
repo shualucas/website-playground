@@ -16,6 +16,7 @@ import { usePageExit } from "../usePageExit";
 import { LocationMeta } from "./LocationMeta";
 import { RecentProjects } from "./RecentProjects";
 import { ThemeToggle } from "../ThemeToggle";
+import { useDitherHovers } from "../useDitherHovers";
 import "./style.css";
 import "./reader.css";
 
@@ -36,6 +37,7 @@ function ProjectMedia({ project, controls }) {
   return <div className="collection-media-placeholder">Project preview</div>;
 }
 function App() {
+  useDitherHovers();
   const content = useRef(null);
   const pageExit=usePageExit(content);
   const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);

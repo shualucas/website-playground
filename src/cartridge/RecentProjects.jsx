@@ -6,7 +6,7 @@ import {ZinePreview} from "./ZinePreview";
 import {DitherPreviewReveal} from "./DitherPreviewReveal";
 import {CameraLink} from "./CameraLink";
 import {LoopVideo} from "../LoopVideo";
-import {ProjectDither} from "./ProjectDither";
+import {DitherSurface} from "./DitherSurface";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
@@ -16,7 +16,7 @@ const previews={
   film:{team:"Fun",accent:"#b69272",kind:"film"},
 };
 const film={id:"film",label:"Say cheese!",description:"Film photographs",href:"/photos/"};
-const projects=[...recentProjects,film];
+const projects=[...recentProjects.map(project=>project.id==="stadia-store-redesign"?{...project,label:"Store Redesign"}:project),film];
 const projectAccent=(color,dark)=>dark?color:'#'+color.match(/[a-f\d]{2}/gi).map(value=>Math.round(parseInt(value,16)*.86+255*.14).toString(16).padStart(2,'0')).join('');
 function useMedia(query){
   const [matches,setMatches]=useState(()=>matchMedia(query).matches);
@@ -45,40 +45,6 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   const [{active,visible,instant},setPreview]=useState({active:null,visible:false,instant:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
-  const colorIntroPlayed=useRef(false);
-  useEffect(()=>{
-    const nav=navigation.current;if(!nav||hidden||colorIntroPlayed.current)return;
-    const motion=matchMedia('(prefers-reduced-motion: reduce)');
-    if(motion.matches){colorIntroPlayed.current=true;nav.dataset.colorIntro='complete';return;}
-    const rows=[...nav.querySelectorAll('.recent-project-list > li')];let animations=[],stopped=false;
-    nav.dataset.colorIntro='waiting';
-    const stop=()=>{
-      stopped=true;colorIntroPlayed.current=true;nav.dataset.colorIntro='complete';
-      revealObserver.disconnect();visibilityObserver.disconnect();animations.forEach(animation=>animation.cancel());
-      for(const event of ['pointerenter','pointerdown','focusin'])nav.removeEventListener(event,stop);
-      motion.removeEventListener('change',reduce);document.removeEventListener('visibilitychange',hide);
-    };
-    const check=()=>{
-      if(stopped||colorIntroPlayed.current||rows.some(row=>row.dataset.revealState!=='visible'))return;
-      const rect=nav.getBoundingClientRect();if(rect.bottom<=0||rect.top>=innerHeight)return;
-      // Share the first row's actual entrance clock rather than waiting for every fade to finish.
-      const entranceAnimation=rows[0].getAnimations().find(animation=>animation.animationName==='content-reveal');
-      const lead=entranceAnimation?Math.max(0,Number(entranceAnimation.effect.getTiming().delay)-Number(entranceAnimation.currentTime??0)):0;
-      colorIntroPlayed.current=true;nav.dataset.colorIntro='running';revealObserver.disconnect();visibilityObserver.disconnect();
-      animations=rows.map((row,index)=>row.animate([
-        {backgroundColor:'transparent',easing:'ease-in-out'},
-        {offset:.5,backgroundColor:`color-mix(in srgb,${projectAccent(previews[row.dataset.project].accent,dark)} 32%,var(--scene-bg))`,easing:'ease-in-out'},
-        {backgroundColor:'transparent'},
-      ],{duration:1000,delay:lead+index*120}));
-      Promise.all(animations.map(animation=>animation.finished)).then(stop).catch(()=>{});
-    };
-    const reduce=()=>{if(motion.matches)stop()},hide=()=>{if(document.hidden)stop()};
-    const revealObserver=new MutationObserver(check),visibilityObserver=new IntersectionObserver(check);
-    revealObserver.observe(nav,{subtree:true,attributes:true,attributeFilter:['data-reveal-state']});visibilityObserver.observe(nav);
-    for(const event of ['pointerenter','pointerdown','focusin'])nav.addEventListener(event,stop);
-    motion.addEventListener('change',reduce);document.addEventListener('visibilitychange',hide);check();
-    return stop;
-  },[hidden,dark]);
   const select=(id,index)=>{
     setPreview(current=>current.active===id&&current.visible?current:{active:id,visible:true,instant:canHover&&!hidden&&current.visible&&current.active!==id});const kind=previews[id]?.kind;
     if(kind==="film"||kind==="zine")setSeen(old=>old[kind]?old:{...old,[kind]:true});
@@ -119,14 +85,13 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   };
   return <>
     {createPortal(<div className="project-hue-wash" aria-hidden="true" data-active={showing} data-exiting={Boolean(exiting)} style={{"--project-surface":surface}}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":projectAccent(item.accent,dark)}}/>)}</div>,document.body)}
-    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} style={{"--preview-accent":accent,"--preview-width-scale":previewAspect/1.8}}
+    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} data-color-intro="disabled" style={{"--preview-accent":accent,"--preview-width-scale":previewAspect/1.8}}
       onPointerLeave={()=>{pointer.current=null;release()}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){focus.current=null;release()}}}
       onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();dismiss();navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
       <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>
       <div ref={browser} className="recent-project-browser"><ul className="recent-project-list" onPointerMove={track} onPointerLeave={()=>{pointer.current=null;release()}}>
         {projects.map((item,index)=><li key={item.id} className={item.id==="film"?"recent-camera-row":undefined} data-project={item.id} data-active={showing&&active===item.id}
           onPointerEnter={event=>browse(event,item.id,index)} onFocus={event=>focused(event,item.id,index)} data-reveal data-reveal-at={entrance.projectsStart+(index+1)*60}>
-          {active===item.id&&<ProjectDither active={showing&&!exiting} color={accent} dark={dark}/>}
           {item.id==="film"?<CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={index+1} rowTeam="Fun" entranceAt={0} previewMode previewTarget={cameraTarget} previewActive={showing&&active==="film"} previewSeen={seen.film} openAction={cameraAction} onPreviewTap={!canHover?()=>toggle(item.id,index):undefined} expanded={!canHover&&showing&&active===item.id}/>
             :<a className="recent-project-link" href={item.href||`/?project=${item.id}&view=case-study`} role={canHover?undefined:"button"} aria-expanded={canHover?undefined:showing&&active===item.id} aria-controls={canHover?undefined:`preview-${item.id}`}
               onKeyDown={event=>{if(!canHover&&event.key===" "){event.preventDefault();event.currentTarget.click()}}}
@@ -141,7 +106,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
           </div>}
         </li>)}
       </ul>
-      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing}><div className="recent-preview-frame"><PreviewArt project={project} showing={showing} instant={instant} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
+      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing}><div className="recent-preview-frame"><DitherSurface active={showing&&!exiting} color={accent} dark={dark} padding={12}/><PreviewArt project={project} showing={showing} instant={instant} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
       </div>
     </nav>
   </>;
