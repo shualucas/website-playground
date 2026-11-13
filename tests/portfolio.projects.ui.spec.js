@@ -10,15 +10,14 @@ test("recent projects use one column with native reader links and restore focus 
   await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');await page.evaluate(()=>document.fonts.ready);
   const navigation=page.getByRole("navigation",{name:"Recent projects"}),links=navigation.locator('.recent-project-list > li:not(.recent-camera-row) > a');
   const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign','Zine of Extracurriculars'];
-  const descriptions=['Helping users go from initial search to task completion','Launching AI experiments on Search to 48M+ users','Guiding users towards an informed game purchase','Flyers for music, coffee, and community'];
   await expect(links).toHaveCount(4);
   await expect(links.locator('.recent-project-name')).toHaveText(titles);
   await expect(navigation.getByRole('link')).toHaveCount(5);
   await expect(navigation.getByRole('link',{name:'Say cheese! Explore film photographs'})).toHaveAttribute('href','/photos/');
-  await expect(navigation.locator('.recent-project-summary')).toHaveText(descriptions);
+  await expect(navigation.locator('.recent-project-summary')).toHaveCount(0);
   await expect(navigation.locator('.recent-project-year')).toHaveCount(0);
   await expect(links.first()).toHaveAttribute('href','/?project=ai-mode-nudges&view=case-study');
-  for(const selector of ['.recent-project-name','.recent-project-summary']) {
+  for(const selector of ['.recent-project-name']) {
     expect(await links.locator(selector).first().evaluate(el=>getComputedStyle(el).fontWeight)).toBe('400');
   }
   const rows=await links.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y};}));
@@ -508,7 +507,7 @@ test('project previews follow movement inside a row, dim other content and wash 
   await expect(links.first()).toHaveCSS('opacity','1');
   for(let i=1;i<await links.count();i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
   const ids=['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
-  const hues=['#6988d8','#b759ba','#e5633d','#e48dae','#b69272'];
+  const hues=['#7e99dd','#c170c4','#e97958','#e89db9','#c0a186'];
   const wash=page.locator('.project-hue-wash');await expect(wash).toHaveCSS('pointer-events','none');
   for(let i=0;i<ids.length;i++){
     await links.nth(i).hover();await expect(navigation).toHaveAttribute('data-active-project',ids[i]);
@@ -566,31 +565,33 @@ test('project heading matches the row numbers and its divider fades with the fir
  for(const property of ['font-size','font-weight'])await expect(heading).toHaveCSS(property,await number.evaluate((el,p)=>getComputedStyle(el).getPropertyValue(p),property));
  await expect(nav.locator('ul')).toHaveCSS('border-top-width','0px');const first=nav.locator('li').first();
  await expect(heading).toHaveCSS('color',await number.evaluate(el=>getComputedStyle(el).color));
- await expect(number).toHaveCSS('color',await nav.locator('.recent-project-summary:not(.sr-only)').first().evaluate(el=>getComputedStyle(el).color));
+ await expect(number).toHaveCSS('color',await nav.locator('.recent-project-team').first().evaluate(el=>getComputedStyle(el).color));
  expect(await first.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).not.toBe(await number.evaluate(el=>getComputedStyle(el).color));
  expect(await first.evaluate(el=>getComputedStyle(el,'::before').height)).toBe('1px');await expect(first).toHaveCSS('opacity','0');
  await page.emulateMedia({reducedMotion:'reduce'});await expect(first).toHaveCSS('opacity','1');
 });
 
-test('project rows span the content width and floating previews leave the full row clickable',async({page})=>{
+test('project rows use half the content width with previews beside them and clear clickable titles',async({page})=>{
   await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});
 
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),preview=nav.locator('.recent-project-preview');
   const content=await nav.boundingBox();
-  for(const link of await links.all()){const r=await link.boundingBox();expect(r.x).toBeCloseTo(content.x,1);expect(r.width).toBeCloseTo(content.width,1)}
-  for(const i of [0,4,5]){
+  await expect(nav.locator('.recent-project-summary')).toHaveCount(0);
+  for(const link of await links.all()){const r=await link.boundingBox();expect(r.x).toBeCloseTo(content.x,1);expect(r.width).toBeCloseTo(content.width/2,1)}
+  for(const i of [0,3,4]){
     await links.nth(i).hover();await expect(preview).toHaveAttribute('data-visible','true');await expect(preview).toHaveCSS('position','absolute');await expect(preview).toHaveCSS('pointer-events','none');
     const row=await links.nth(i).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
-    expect(art.x).toBeGreaterThan(row.x);expect(art.x+art.width).toBeCloseTo(row.x+row.width,1);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
+    expect(art.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(art.x+art.width).toBeCloseTo(content.x+content.width,1);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
     const surface=await page.locator('.project-hue-wash > span[data-active="true"]').evaluate(el=>getComputedStyle(el).backgroundColor);await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color',surface);await expect(nav.locator('.recent-preview-content')).toHaveCSS('background-color',surface);
   }
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await links.last().hover();await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color',await page.locator('.project-hue-wash > span[data-active="true"]').evaluate(el=>getComputedStyle(el).backgroundColor));
   const target=await links.nth(2).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
-  const point={x:art.x+art.width/2,y:target.y+target.height/2};
-  const href=await page.evaluate(p=>document.elementFromPoint(p.x,p.y)?.closest('a')?.getAttribute('href'),point);expect(href).toBe('/?project=search-labs&view=case-study');
-  await page.mouse.click(point.x,point.y);await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeFocused();
-  await page.goBack();await page.setViewportSize({width:390,height:844});await expect(preview).toHaveAttribute('data-follow-cursor','true');
+  expect(await page.evaluate(p=>document.elementFromPoint(p.x,p.y)?.closest('a')?.getAttribute('href')??null,{x:art.x+art.width/2,y:target.y+target.height/2})).toBe(null);
+  const point={x:target.x+target.width*.6,y:target.y+target.height/2};
+  const href=await page.evaluate(p=>document.elementFromPoint(p.x,p.y)?.closest('a')?.getAttribute('href'),point);expect(href).toBe('/?project=stadia-store-redesign&view=case-study');
+  await page.mouse.click(point.x,point.y);await expect(page.getByRole('heading',{name:'Stadia Store Redesign',exact:true})).toBeFocused();
+  await page.goBack();await page.setViewportSize({width:390,height:844});await expect(nav).toHaveAttribute('data-preview-mode','inline');await expect(preview).toHaveCount(0);
   await expect.poll(()=>nav.evaluate(el=>{const width=el.getBoundingClientRect().width;return Math.max(...[...el.querySelectorAll('.recent-project-link')].map(link=>Math.abs(link.getBoundingClientRect().width-width)))})).toBeLessThan(.1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
@@ -625,9 +626,10 @@ test('project previews center on the pointer and hug the content right edge acro
    await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();
    for(const y of [r.y+8,r.y+r.height-8]){
     await page.mouse.move(r.x+100,y);await expect(preview).toBeVisible();
-    await expect(preview).toHaveAttribute('data-follow-cursor',String(width<1100||height<=700));
+    await expect(preview).toHaveCSS('position','absolute');
     await expect.poll(async()=>{const frame=await art.boundingBox(),center=Math.max(16+frame.height/2,Math.min(height-16-frame.height/2,y));return Math.abs(frame.y+frame.height/2-center)}).toBeLessThan(1);
     const frame=await art.boundingBox(),content=await nav.boundingBox();
+    expect(frame.x).toBeGreaterThanOrEqual(r.x+r.width+31);
     expect(frame.x+frame.width).toBeCloseTo(content.x+content.width,1);
     expect(frame.x).toBeGreaterThanOrEqual(0);expect(frame.x+frame.width).toBeLessThanOrEqual(width);
     expect(frame.y).toBeGreaterThanOrEqual(15);expect(frame.y+frame.height).toBeLessThanOrEqual(height-15);
@@ -678,6 +680,10 @@ test('Clove dither brightens on entry, cools into color, and dissolves in place'
   await nav.getByRole('link',{name}).hover();
   await expect(dots).toHaveCount(1);await expect(dots).toHaveAttribute('data-state','playing');
   await expect(dots).toHaveCSS('pointer-events','none');
+  const activeRow=nav.locator('li[data-active="true"]');
+  await expect(activeRow.locator('.recent-project-index')).toHaveCSS('color',await activeRow.locator('.recent-project-name').evaluate(el=>getComputedStyle(el).color));
+  await expect(activeRow.locator('.recent-project-index')).toHaveCSS('font-weight','500');
+  expect(await dots.evaluate(el=>getComputedStyle(el).maskImage)).toContain('32px');
   await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);
   const hot=await sample();
   // Verify real pixel motion after the old 400ms entrance would have ended.
@@ -702,11 +708,15 @@ test('browsing projects lets an entering role finish before its rotation pauses'
  await page.locator('.role-label').evaluate(el=>el.getAnimations().forEach(animation=>animation.currentTime=1));await page.locator('.recent-project-link').first().hover();await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');await expect(page.locator('.role-label')).toHaveCSS('opacity','1');await expect(page.locator('.role-label')).toHaveCSS('animation-play-state','running');
 });
 
-test('hover previews are fifty percent larger, stay inside narrow viewports and Search Labs keeps its magenta hue',async({page})=>{
+test('hover previews fit the right column across desktop sizes and Search Labs keeps its magenta hue',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),labs=nav.getByRole('link',{name:/Search Labs/}),preview=nav.locator('.recent-project-preview');await labs.hover();const wide=await nav.locator('.recent-preview-art').boundingBox();expect(wide.width).toBeCloseTo(326*1.5,0);expect(wide.height).toBeCloseTo(326/1.8*1.5,0);expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#c170c4');
- await page.setViewportSize({width:900,height:650});await labs.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const narrow=await nav.locator('.recent-preview-art').boundingBox();expect(narrow.width).toBeCloseTo(450,0);expect(narrow.x).toBeGreaterThanOrEqual(0);expect(narrow.x+narrow.width).toBeLessThanOrEqual(900);expect(narrow.y+narrow.height).toBeLessThanOrEqual(650);
- await page.setViewportSize({width:1440,height:600});await labs.hover();await expect(preview).toHaveAttribute('data-follow-cursor','true');const short=await nav.locator('.recent-preview-art').boundingBox();expect(short.width).toBeCloseTo(489,0);expect(short.y+short.height).toBeLessThanOrEqual(600);
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),labs=nav.getByRole('link',{name:/Search Labs/}),preview=nav.locator('.recent-project-preview');
+ for(const [width,height]of [[1440,1000],[900,650],[1440,600]]){
+  await page.setViewportSize({width,height});await labs.hover();await expect(preview).toHaveCSS('position','absolute');
+  const frame=await nav.locator('.recent-preview-art').boundingBox(),content=await nav.boundingBox(),row=await labs.boundingBox();
+  expect(frame.width).toBeCloseTo(content.width/2-32,0);expect(frame.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(frame.y+frame.height).toBeLessThanOrEqual(height);
+ }
+ expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#c170c4');
  await page.getByRole('button',{name:'Switch to dark mode'}).click();await labs.hover();expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#b759ba');await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
 });
 

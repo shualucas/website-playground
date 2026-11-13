@@ -41,7 +41,7 @@ function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,ret
   </div>;
 }
 export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange}){
-  const canHover=useMedia("(hover:hover) and (pointer:fine)"),narrow=useMedia("(max-width:1099px), (max-height:700px)");
+  const canHover=useMedia("(min-width:761px) and (hover:hover) and (pointer:fine)");
   const [{active,visible,instant},setPreview]=useState({active:null,visible:false,instant:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
@@ -94,14 +94,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
     const height=browser.current.querySelector(".recent-preview-art")?.getBoundingClientRect().height??0;
     const center=Math.max(16+height/2,Math.min(innerHeight-16-height/2,event.clientY));
     navigation.current?.style.setProperty("--preview-offset",`${center-bounds.top-bounds.height/2}px`);
-    navigation.current?.style.setProperty("--preview-client-y",`${center-height/2}px`);
   };
-  useLayoutEffect(()=>{
-    const nav=navigation.current;if(!canHover||!nav)return;
-    const align=()=>nav.style.setProperty("--preview-client-right",`${Math.max(16,innerWidth-nav.getBoundingClientRect().right)}px`);
-    const observer=new ResizeObserver(align);observer.observe(nav);window.addEventListener("resize",align);align();
-    return()=>{observer.disconnect();window.removeEventListener("resize",align)};
-  },[canHover]);
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.top+rect.height/2,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
@@ -135,11 +128,11 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
           onPointerEnter={event=>browse(event,item.id,index)} onFocus={event=>focused(event,item.id,index)} data-reveal data-reveal-at={entrance.projectsStart+(index+1)*60}>
           {active===item.id&&<ProjectDither active={showing&&!exiting} color={accent} dark={dark}/>}
           {item.id==="film"?<CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={index+1} rowTeam="Fun" entranceAt={0} previewMode previewTarget={cameraTarget} previewActive={showing&&active==="film"} previewSeen={seen.film} openAction={cameraAction} onPreviewTap={!canHover?()=>toggle(item.id,index):undefined} expanded={!canHover&&showing&&active===item.id}/>
-            :<a className="recent-project-link" href={item.href||`/?project=${item.id}&view=case-study`} role={canHover?undefined:"button"} aria-expanded={canHover?undefined:showing&&active===item.id} aria-controls={canHover?undefined:`preview-${item.id}`} aria-describedby={`recent-summary-${item.id}`}
+            :<a className="recent-project-link" href={item.href||`/?project=${item.id}&view=case-study`} role={canHover?undefined:"button"} aria-expanded={canHover?undefined:showing&&active===item.id} aria-controls={canHover?undefined:`preview-${item.id}`}
               onKeyDown={event=>{if(!canHover&&event.key===" "){event.preventDefault();event.currentTarget.click()}}}
               onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;if(!canHover){event.preventDefault();toggle(item.id,index)}else open(event,item)}}>
               <span className="recent-project-index" aria-hidden="true">{String(index+1).padStart(2,"0")}</span>
-              <span className="recent-project-copy"><span className="recent-project-name">{item.label}</span><span id={`recent-summary-${item.id}`} className={`recent-project-summary${previews[item.id].kind==="zine"?" sr-only":""}`} aria-hidden="true">{item.description}</span></span>
+              <span className="recent-project-copy"><span className="recent-project-name">{item.label}</span></span>
               <span className="recent-project-team">{previews[item.id].team}</span>
             </a>}
           {!canHover&&showing&&active===item.id&&<div className="recent-inline-preview" id={`preview-${item.id}`} role="region" aria-label={`${item.label} preview`}>
@@ -148,7 +141,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
           </div>}
         </li>)}
       </ul>
-      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing} data-follow-cursor={narrow}><div className="recent-preview-frame"><PreviewArt project={project} showing={showing} instant={instant} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
+      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing}><div className="recent-preview-frame"><PreviewArt project={project} showing={showing} instant={instant} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
       </div>
     </nav>
   </>;
