@@ -41,7 +41,7 @@ export class CloveDither {
     this.glow=document.createElement('canvas');this.light=this.glow.getContext('2d');
   }
   resize(width,height) {
-    this.width=width;this.height=height;this.reach=Math.min(width,480);
+    this.width=width;this.height=height;this.reach=Math.min(width,300);
     this.ratio=Math.min(devicePixelRatio,2);
     this.surface.width=Math.round(width*this.ratio);this.surface.height=Math.round(height*this.ratio);
     this.surface.style.height=height+'px';this.context.setTransform(this.ratio,0,0,this.ratio,0,0);
@@ -50,7 +50,6 @@ export class CloveDither {
     this.cols=Math.ceil(this.reach/this.pitch);this.rows=Math.ceil(height/this.pitch);
     this.glow.width=this.cols;this.glow.height=this.rows;
     this.heat=new Float32Array(this.cols*this.rows);this.present=new Uint8Array(this.heat.length);
-    this.edgeLight=Array.from({length:this.rows},(_,row)=>Math.exp(-(Math.min((row+.5)*this.pitch,height-(row+.5)*this.pitch)-2)/5));
     this.mask=this.context.createLinearGradient(0,0,this.reach,0);
     this.mask.addColorStop(0,'#fff');this.mask.addColorStop(.58,'#fff');this.mask.addColorStop(1,'#fff0');
   }
@@ -73,14 +72,16 @@ export class CloveDither {
     ink.fillStyle=this.color;ink.globalAlpha=this.dark?.10:.12;ink.fillRect(0,0,end,height);
     for(let col=0;col<this.cols;col++){
       const cx=(col+.5)*pitch,want=cx<end,front=scan*Math.exp(-(end-cx)/22);
-      const tail=smooth((reach-cx)/145);
+      const tail=smooth((reach-cx)/110);
+      const leftDensity=.42*(1-smooth(cx/(reach*.7)));
       for(let row=0;row<this.rows;row++){
         const n=row*this.cols+col,was=this.present[n];
         if(want!==Boolean(was)){this.present[n]=Number(want);this.heat[n]=want?1:0;}
         else this.heat[n]*=cool;
         if(!want)continue;
         const heat=this.heat[n],rank=bayer[(row&3)*4+(col&3)];
-        const level=lightLevel(col,row,time,this.edgeLight[row],heat,1,front)*tail;
+        // Density comes from the left, with no extra lighting along the horizontal edges.
+        const level=(lightLevel(col,row,time,0,heat,1,front)+leftDensity)*tail;
         const glint=hash(n,Math.floor(time*1.6+hash(col,row)*7))>.994?1:0;
         const lit=level+glint*tail>rank;
         const wt=clamp(heat*.95+.1+front*.85+glint*.6);
