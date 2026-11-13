@@ -47,7 +47,7 @@
 .recent-projects { --preview-surface:var(--project-surface); --project-muted:var(--copy-muted); --row-divider:color-mix(in srgb,var(--project-muted) 24%,transparent); position:relative; z-index:1; margin-top:20px; margin-bottom:24px; }
 .recent-projects h2 { margin:0 0 10px; font-size:var(--project-type); font-weight:300; font-variant-numeric:tabular-nums; line-height:1.3; letter-spacing:-.015em; color:var(--project-muted); }
 /* Keep the viewport wash outside the translating/filtering content during exits. */
-.project-hue-wash { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; background:var(--project-surface); opacity:1; transition:--project-surface 750ms ease,opacity 300ms cubic-bezier(.4,0,.2,1); }
+.project-hue-wash { position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; background:var(--project-surface); opacity:1; transition:--project-surface 400ms ease-out,opacity 300ms cubic-bezier(.4,0,.2,1); }
 .project-hue-wash[data-exiting="true"] { opacity:0; }
 /* Keep the wash and preview fills on the same color and timing, including mid-fade. */
 .project-hue-wash > span { position:absolute; inset:0; display:none; background:var(--project-surface); }
