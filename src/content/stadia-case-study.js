@@ -24,8 +24,8 @@ export const stadiaCaseStudy = {
       id: "problem", label: "The old game details page",
       copy: "Stadia launched missing the quality-of-life love a storefront needs to be successful. Every game edition/bundle had a separate page, leaving users without a proper way to compare. A few major games couldn't even be bought by themselves, only inside a bundle, meaning you could land on the main page for *Red Dead Redemption 2* and find no way to actually buy it.",
       visual: { title: "Old game details page", caption: "Before: old game details page", type: "image", images: [
-        { src: "/images/stadia/old-game-bundles.png", alt: "Original Stadia game page showing separate Assassin's Creed Valhalla bundles and add-ons.", width: 4960, height: 2620 },
         { src: "/images/stadia/old-game-media.png", alt: "Original Stadia game page showing the Assassin's Creed Valhalla media carousel.", width: 4962, height: 2620 },
+        { src: "/images/stadia/old-game-bundles.png", alt: "Original Stadia game page showing separate Assassin's Creed Valhalla bundles and add-ons.", width: 4960, height: 2620 },
       ] },
     },
     {
