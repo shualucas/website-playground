@@ -6,6 +6,7 @@ import {ZinePreview} from "./ZinePreview";
 import {AsciiPreviewReveal} from "./AsciiPreviewReveal";
 import {CameraLink} from "./CameraLink";
 import {LoopVideo} from "../LoopVideo";
+import {ProjectDither} from "./ProjectDither";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
@@ -130,6 +131,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
       <div ref={browser} className="recent-project-browser"><ul className="recent-project-list" onPointerMove={track} onPointerLeave={()=>{pointer.current=null;release()}}>
         {projects.map((item,index)=><li key={item.id} className={item.id==="film"?"recent-camera-row":undefined} data-project={item.id} data-active={showing&&active===item.id}
           onPointerEnter={event=>browse(event,item.id,index)} onFocus={event=>focused(event,item.id,index)} data-reveal data-reveal-at={entrance.projectsStart+(index+1)*60}>
+          {showing&&active===item.id&&!exiting&&<ProjectDither color={previews[item.id].accent} dark={dark}/>}
           {item.id==="film"?<CameraLink dark={dark} ready={ready} hidden={hidden} rowTitle="Say cheese!" rowIndex={index+1} rowTeam="Fun" entranceAt={0} previewMode previewTarget={cameraTarget} previewActive={showing&&active==="film"} previewSeen={seen.film} openAction={cameraAction} onPreviewTap={!canHover?()=>toggle(item.id,index):undefined} expanded={!canHover&&showing&&active===item.id}/>
             :<a className="recent-project-link" href={item.href||`/?project=${item.id}&view=case-study`} role={canHover?undefined:"button"} aria-expanded={canHover?undefined:showing&&active===item.id} aria-controls={canHover?undefined:`preview-${item.id}`} aria-describedby={`recent-summary-${item.id}`}
               onKeyDown={event=>{if(!canHover&&event.key===" "){event.preventDefault();event.currentTarget.click()}}}

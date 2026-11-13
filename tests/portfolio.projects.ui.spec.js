@@ -655,23 +655,29 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
-test('project hover dithering stays visible while active and skips reduced motion',async({page},testInfo)=>{
+test('project hover dots keep moving while active and stop on dismissal or reduced motion',async({page},testInfo)=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),active=()=>nav.locator('li[data-active="true"] .recent-project-link');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.project-dither-particles');
+ const sample=()=>dots.evaluate(el=>{
+  const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;
+  let hash=2166136261,painted=0;
+  for(let i=3;i<pixels.length;i+=4){hash=Math.imul(hash^pixels[i],16777619);if(pixels[i])painted++;}
+  return {hash,painted};
+ });
  for(const name of [/AI Mode Nudges/,/Search Labs/]){
   await nav.getByRole('link',{name}).hover();
-  const pattern=await active().evaluate(el=>{
-   const animation=el.getAnimations({subtree:true}).find(animation=>animation.animationName==='project-dither');
-   animation.pause();animation.currentTime=100;
-   const style=getComputedStyle(el,'::before');return {mask:style.maskImage,duration:animation.effect.getTiming().duration};
-  });
-  expect(pattern.mask).toContain('image/svg+xml');expect(pattern.duration).toBe(400);
+  await expect(dots).toHaveCount(1);await expect(dots).toHaveAttribute('data-state','playing');
+  await expect(dots).toHaveCSS('pointer-events','none');
+  await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);
+  // Verify real pixel motion after the old 400ms entrance would have ended.
+  await page.waitForTimeout(650);const held=await sample();
+  await expect.poll(async()=>(await sample()).hash,{intervals:[100,150]}).not.toBe(held.hash);
  }
- await active().evaluate(el=>el.getAnimations({subtree:true}).find(animation=>animation.animationName==='project-dither').finish());
- expect(await active().evaluate(el=>getComputedStyle(el,'::before').opacity)).toBe('0.3');
- await page.screenshot({path:testInfo.outputPath('project-hover-dither.png')});
+ await page.screenshot({path:testInfo.outputPath('project-hover-particles.png')});
  await page.emulateMedia({reducedMotion:'reduce'});
- expect(await active().evaluate(el=>getComputedStyle(el,'::before').display)).toBe('none');
+ await expect(dots).toHaveAttribute('data-state','reduced');await expect(dots).toBeHidden();
+ await page.emulateMedia({reducedMotion:'no-preference'});await expect(dots).toHaveAttribute('data-state','playing');
+ await page.mouse.move(2,2);await expect(dots).toHaveCount(0);
 });
 
 test('browsing projects lets an entering role finish before its rotation pauses',async({page})=>{
