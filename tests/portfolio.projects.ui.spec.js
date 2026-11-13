@@ -53,7 +53,7 @@ test("recent projects use one column with native reader links and restore focus 
     }
     if(i===2){
       const paragraph=page.locator('[data-showcase-section="problem"] > p');
-      await expect(paragraph).toContainText('In fairness to the old game page, it launched with Stadia');
+      await expect(paragraph).toContainText('Stadia launched missing the quality-of-life love a storefront needs to be successful');
       await expect(paragraph.locator('em')).toHaveText('Red Dead Redemption 2');
       await expect(paragraph.locator('em')).toHaveCSS('font-style','italic');
       await expect(page.locator('[data-showcase-section="problem"] figcaption')).toHaveText('Before: old game details page');
@@ -80,7 +80,7 @@ test("recent projects use one column with native reader links and restore focus 
       await page.locator('.case-study').evaluate(el=>el.scrollTop=0);
     }
     if(i===2){
-      await expect(story.locator('[data-takeaways] p').first()).toContainText(await page.locator('.case-highlight-grid .sr-only').first().textContent());
+      await expect(story.locator('[data-takeaways] p').first()).toContainText((await page.locator('.case-highlight-grid .sr-only').first().textContent()).replace(/^\+/,''));
       await story.locator('[data-showcase-section="controller"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
       await page.screenshot({path:testInfo.outputPath('stadia-story-desktop.png')});
       await page.locator('.case-study').evaluate(el=>el.scrollTop=0);
