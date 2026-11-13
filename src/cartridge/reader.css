@@ -448,6 +448,8 @@
 .case-showcase-copy > p { margin:0; }
 .case-showcase-copy > p + p { margin-top:16px; }
 .case-showcase-story .case-story-media { margin-top:0; }
+.case-media-image-group { display:grid; gap:12px; padding:12px; overflow:hidden; border-radius:24px; background:var(--ui-fill); }
+.case-media-image-group > img { display:block; width:100%; height:auto; border-radius:8px; }
 .case-showcase-story .case-story-media > img,.case-study-showcase .case-study-hero-figure > img { height:auto; max-height:none; border-radius:24px; }
 .case-showcase-story .case-story-media > .loop-video { border-radius:24px; }
 .case-showcase-passage > .case-showcase-copy { margin-top:32px; }

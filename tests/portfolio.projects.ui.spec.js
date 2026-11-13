@@ -57,13 +57,20 @@ test("recent projects use one column with native reader links and restore focus 
       await expect(paragraph.locator('em')).toHaveText('Red Dead Redemption 2');
       await expect(paragraph.locator('em')).toHaveCSS('font-style','italic');
       await expect(page.locator('[data-showcase-section="problem"] figcaption')).toHaveText('Before: old game details page');
+      const mocks=page.locator('[data-showcase-section="problem"] .case-media-image-group');
+      await expect(mocks).toHaveCount(1);await expect(mocks.locator('img')).toHaveCount(2);
+      await expect(mocks).toHaveCSS('border-radius','24px');
+      for(const image of await mocks.locator('img').all()){
+        await image.scrollIntoViewIfNeeded();await expect(image).toHaveJSProperty('complete',true);
+        expect(await image.evaluate(el=>el.naturalWidth)).toBeGreaterThan(4900);
+      }
       expect(await page.locator('.case-showcase-passage').evaluateAll(sections=>sections.map(section=>section.dataset.showcaseSection))).toEqual(['problem','controller','game-page','store-access','age-gating']);
     }
     const story=page.locator('.case-showcase-story');
     await expect(story.locator('.case-showcase-passage')).toHaveCount(i===2?5:4);
     await expect(story.getByRole('heading')).toHaveCount(i===0?1:0);
     await expect(story.locator('.case-story-media')).toHaveCount(i===2?5:4);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:i===2?2:4);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===1?4:0);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(story.locator('[data-takeaways] p')).toHaveCount(2);
     await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(i===2?7:6);
@@ -81,6 +88,10 @@ test("recent projects use one column with native reader links and restore focus 
     }
     if(i===2){
       await expect(story.locator('[data-takeaways] p').first()).toContainText((await page.locator('.case-highlight-grid .sr-only').first().textContent()).replace(/^\+/,''));
+      await page.setViewportSize({width:1440,height:1200});
+      await story.locator('.case-media-image-group').scrollIntoViewIfNeeded();
+      await page.screenshot({path:testInfo.outputPath('stadia-old-page-desktop.png')});
+      await page.setViewportSize({width:1440,height:1000});
       await story.locator('[data-showcase-section="controller"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
       await page.screenshot({path:testInfo.outputPath('stadia-story-desktop.png')});
       await page.locator('.case-study').evaluate(el=>el.scrollTop=0);
@@ -95,6 +106,8 @@ test("recent projects use one column with native reader links and restore focus 
       await page.screenshot({path:testInfo.outputPath('search-labs-story-mobile.png')});
     }
     if(i===2){
+      await story.locator('.case-media-image-group').scrollIntoViewIfNeeded();
+      await page.screenshot({path:testInfo.outputPath('stadia-old-page-mobile.png')});
       await story.locator('[data-showcase-section="store-access"]').evaluate(el=>el.closest('.case-study').scrollTop+=el.getBoundingClientRect().top-96);
       await page.screenshot({path:testInfo.outputPath('stadia-story-mobile.png')});
     }
@@ -719,7 +732,7 @@ test('Stadia story comps play in order with responsive sources and pause offscre
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
  await page.goto('/?project=stadia-store-redesign&view=case-study');
  const story=page.locator('.case-showcase-story');
- const comps=[['controller','dpad',12],['game-page','onepage',12],['store-access','anon-browsing',18]];
+ const comps=[['controller','dpad',12],['game-page','onepage',12],['store-access','anon-browsing',18],['age-gating','agegate',9]];
  expect(await story.locator('.case-showcase-passage:has(.loop-video)').evaluateAll(sections=>sections.map(section=>section.dataset.showcaseSection))).toEqual(comps.map(([id])=>id));
  await expect(story.locator('video[src]')).toHaveCount(0);
  let previous;
@@ -730,6 +743,7 @@ test('Stadia story comps play in order with responsive sources and pause offscre
    await frame.scrollIntoViewIfNeeded();
    await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toContain('/lilycove-'+file+'-hero-'+size+'.mp4');
    await expect(video).toHaveAttribute('data-ready','true');await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+   await expect(section.locator(':scope > [data-reveal]').first()).toHaveCSS('opacity','1');
    expect(await video.evaluate(el=>el.muted&&el.loop&&el.playsInline)).toBe(true);
    expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(minDuration);
    const bounds=await frame.boundingBox();expect(bounds.width/bounds.height).toBeCloseTo(1.6,2);
@@ -737,14 +751,14 @@ test('Stadia story comps play in order with responsive sources and pause offscre
    await expect(frame.locator('.loop-video-poster')).toHaveAttribute('src','/videos/stadia/lilycove-'+file+'-ui-poster.jpg');
    if(previous)await expect.poll(()=>previous.evaluate(el=>el.paused)).toBe(true);
    previous=video;
-   if(id==='controller')await page.screenshot({path:testInfo.outputPath('stadia-dpad-'+width+'.png')});
+   if(id==='controller'||id==='age-gating')await page.screenshot({path:testInfo.outputPath('stadia-'+file+'-'+width+'.png')});
   }
   await page.locator('.case-study-content footer').scrollIntoViewIfNeeded();
   await expect.poll(()=>previous.evaluate(el=>el.paused)).toBe(true);previous=undefined;
  }
  await page.emulateMedia({reducedMotion:'reduce'});await expect(story.locator('video[src]')).toHaveCount(0);
- const requests=[];page.on('request',request=>{if(/lilycove-(dpad|onepage|anon-browsing).*\.mp4/.test(request.url()))requests.push(request.url())});
- await page.reload();await expect(story.locator('.loop-video-poster')).toHaveCount(3);
+ const requests=[];page.on('request',request=>{if(/lilycove-(dpad|onepage|anon-browsing|agegate).*\.mp4/.test(request.url()))requests.push(request.url())});
+ await page.reload();await expect(story.locator('.loop-video-poster')).toHaveCount(4);
  await expect(story.locator('video[src]')).toHaveCount(0);expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 
