@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { LoopVideo } from "./LoopVideo";
 
 /** Add a src to the story's media entry when the real asset is ready. */
 export function CaseStudyMedia({ media, className = "", reveal = false }) {
@@ -9,7 +10,7 @@ export function CaseStudyMedia({ media, className = "", reveal = false }) {
     return () => element?.pause();
   }, [media.src, type]);
   return <figure className={`case-story-media ${className}`.trim()} data-reveal={reveal ? "" : undefined} data-media-type={type} data-media-label={media.title}>
-    {media.src ? type === "video" ?
+    {media.src ? type === "video" ? media.loop ? <LoopVideo src={media.src} srcSmall={media.srcSmall} poster={media.poster} label={media.title} /> :
       <video ref={player} controls playsInline preload="metadata" poster={media.poster || undefined} aria-label={media.title}>
         <source src={media.src} />
         {media.captionsSrc && <track kind="captions" src={media.captionsSrc} srcLang="en" label="English" default />}

@@ -63,7 +63,7 @@ test("recent projects use one column with native reader links and restore focus 
     await expect(story.locator('.case-showcase-passage')).toHaveCount(i===2?5:4);
     await expect(story.getByRole('heading')).toHaveCount(i===0?1:0);
     await expect(story.locator('.case-story-media')).toHaveCount(i===2?5:4);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:i===2?5:4);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===0?0:i===2?2:4);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(story.locator('[data-takeaways] p')).toHaveCount(2);
     await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(i===2?7:6);
@@ -712,6 +712,40 @@ test('Search Labs uses a uniform solid placeholder in both themes without reques
   expect(await visual.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
  }
  expect(requests).toEqual([]);
+});
+
+test('Stadia story comps play in order with responsive sources and pause offscreen',async({page},testInfo)=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.goto('/?project=stadia-store-redesign&view=case-study');
+ const story=page.locator('.case-showcase-story');
+ const comps=[['controller','dpad',12],['game-page','onepage',12],['store-access','anon-browsing',18]];
+ expect(await story.locator('.case-showcase-passage:has(.loop-video)').evaluateAll(sections=>sections.map(section=>section.dataset.showcaseSection))).toEqual(comps.map(([id])=>id));
+ await expect(story.locator('video[src]')).toHaveCount(0);
+ let previous;
+ for(const [width,height,size] of [[1440,1000,1920],[390,844,1280]]){
+  await page.setViewportSize({width,height});
+  for(const [id,file,minDuration] of comps){
+   const section=story.locator('[data-showcase-section="'+id+'"]'),frame=section.locator('.loop-video'),video=frame.locator('video');
+   await frame.scrollIntoViewIfNeeded();
+   await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toContain('/lilycove-'+file+'-hero-'+size+'.mp4');
+   await expect(video).toHaveAttribute('data-ready','true');await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+   expect(await video.evaluate(el=>el.muted&&el.loop&&el.playsInline)).toBe(true);
+   expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(minDuration);
+   const bounds=await frame.boundingBox();expect(bounds.width/bounds.height).toBeCloseTo(1.6,2);
+   await expect(frame).toHaveCSS('border-radius','24px');
+   await expect(frame.locator('.loop-video-poster')).toHaveAttribute('src','/videos/stadia/lilycove-'+file+'-ui-poster.jpg');
+   if(previous)await expect.poll(()=>previous.evaluate(el=>el.paused)).toBe(true);
+   previous=video;
+   if(id==='controller')await page.screenshot({path:testInfo.outputPath('stadia-dpad-'+width+'.png')});
+  }
+  await page.locator('.case-study-content footer').scrollIntoViewIfNeeded();
+  await expect.poll(()=>previous.evaluate(el=>el.paused)).toBe(true);previous=undefined;
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(story.locator('video[src]')).toHaveCount(0);
+ const requests=[];page.on('request',request=>{if(/lilycove-(dpad|onepage|anon-browsing).*\.mp4/.test(request.url()))requests.push(request.url())});
+ await page.reload();await expect(story.locator('.loop-video-poster')).toHaveCount(3);
+ await expect(story.locator('video[src]')).toHaveCount(0);expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 
 for(const {id,name,folder,file,minDuration} of [

@@ -449,6 +449,7 @@
 .case-showcase-copy > p + p { margin-top:16px; }
 .case-showcase-story .case-story-media { margin-top:0; }
 .case-showcase-story .case-story-media > img,.case-study-showcase .case-study-hero-figure > img { height:auto; max-height:none; border-radius:24px; }
+.case-showcase-story .case-story-media > .loop-video { border-radius:24px; }
 .case-showcase-passage > .case-showcase-copy { margin-top:32px; }
 .case-showcase-story .case-story-media-placeholder,.case-study-showcase .case-study-hero-figure > .case-story-media-placeholder { min-height:0; aspect-ratio:16/9; align-items:center; text-align:center; padding:24px; border-radius:24px; }
 .case-showcase-story .case-story-media figcaption,.case-study-showcase .case-study-hero-figure figcaption { max-width:620px; margin:12px auto 0; font-size:11px; line-height:1.5; color:color-mix(in srgb,var(--ui-muted) 55%,var(--scene-bg)); }

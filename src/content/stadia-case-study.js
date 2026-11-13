@@ -28,17 +28,17 @@ export const stadiaCaseStudy = {
     {
       id: "controller", label: "Designing for the D-pad first",
       copy: "Before deciding what the new page looked like, I had to decide what it was allowed to assume. The store had to work with a mouse, a phone screen, and a TV controller, and engineering definitely did not want to maintain 3 separate stores. So I designed it prioritizing a d-pad first experience. The primary buttons stayed above the fold, in the exact same spot from SKU to SKU, even when a long title wrapped to two or more lines. If the layout worked well with four arrows and one button, it was going to work across the board.",
-      visual: { title: "Controller focus grid", caption: "Buttons stay pinned in the same spot across games, whether you're using a mouse, a phone, or a controller.", type: "image", src: "" },
+      visual: { title: "Controller focus grid", caption: "Buttons stay pinned in the same spot across games, whether you're using a mouse, a phone, or a controller.", type: "video", loop: true, src: "/videos/stadia/lilycove-dpad-hero-1920.mp4", srcSmall: "/videos/stadia/lilycove-dpad-hero-1280.mp4", poster: "/videos/stadia/lilycove-dpad-ui-poster.jpg" },
     },
     {
       id: "game-page", label: "One parent page per game",
       copy: "With that grid in place, I kept what worked on the old page and collapsed the rest into one parent page per game. The left rail holds every way in, whether that's a free trial, a Pro claim, a Ubisoft+ subscription, or a standard purchase. All editions sit right below it so you can compare them without leaving the page, and selecting one updates the pricing in the rail. Product and engineering were nervous that switching bundles inline would confuse people, so I built a prototype, ran it through a UXR study, and the results settled the argument; it was intuitive.",
-      visual: { title: "Game Details: free trial, Pro claim, Ubisoft+, and bundle states", caption: "One parent page per game, with every way to play or buy in the left column.", type: "image", src: "" },
+      visual: { title: "Game Details: free trial, Pro claim, Ubisoft+, and bundle states", caption: "One parent page per game, with every way to play or buy in the left column.", type: "video", loop: true, src: "/videos/stadia/lilycove-onepage-hero-1920.mp4", srcSmall: "/videos/stadia/lilycove-onepage-hero-1280.mp4", poster: "/videos/stadia/lilycove-onepage-ui-poster.jpg" },
     },
     {
       id: "store-access", label: "Opening the store to the public",
       copy: "A better game page doesn't help much if nobody can reach it. For the first couple of years, Stadia had a funny way of running a store: you weren't allowed to look inside until you made an account. Because the entire catalog lived behind a login screen, Stadia games weren't showing up in Google Search, and marketing had to build custom landing pages for every big release. We moved the sign-in wall behind the store and gave every game a normal, readable URL, so people could search for a game, land on it's page, watch the trailers, check the price, and try a free demo before deciding they wanted to sign-up.",
-      visual: { title: "Four points of friction to get into a game page", caption: "Before: 4 points of friction to get into a game page", type: "image", src: "" },
+      visual: { title: "Four points of friction to get into a game page", caption: "Before: 4 points of friction to get into a game page", type: "video", loop: true, src: "/videos/stadia/lilycove-anon-browsing-hero-1920.mp4", srcSmall: "/videos/stadia/lilycove-anon-browsing-hero-1280.mp4", poster: "/videos/stadia/lilycove-anon-browsing-ui-poster.jpg" },
     },
     {
       id: "age-gating", label: "Age gating mature media",
