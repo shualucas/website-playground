@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { applyCartridgeTheme } from "./cartridge-theme";
 import { ditherShadow } from "./dither-shadow";
+import { CartridgeDissolve } from "./cartridge-dissolve";
 import { cartridges } from "./config";
 import { loadExternalShell } from "./model";
 
@@ -31,6 +32,7 @@ export class CaseStudyCartridgeScene {
   private time = 0;
   private visible = true;
   private ready = false;
+  private dissolve = new CartridgeDissolve();
   private disposed = false;
   private control: HTMLElement;
   private ray = new THREE.Raycaster();
@@ -49,7 +51,8 @@ export class CaseStudyCartridgeScene {
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure=.95;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.VSMShadowMap;
-    this.renderer.domElement.setAttribute("aria-hidden","true");host.append(this.renderer.domElement);
+    this.renderer.domElement.setAttribute("aria-hidden","true");this.renderer.domElement.dataset.cartridgeRenderer='webgl';host.append(this.renderer.domElement);
+    this.dissolve.pixelSize.value=4*this.renderer.getPixelRatio();this.dissolve.apply(this.shadow);
     this.camera.position.set(0,0,8);this.camera.lookAt(0,0,0);
     this.camera.zoom=.9;
     this.pmrem=new THREE.PMREMGenerator(this.renderer);
@@ -86,6 +89,7 @@ export class CaseStudyCartridgeScene {
       model.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
         const materials=Array.isArray(object.material)?object.material:[object.material];
+        for(const material of materials)this.dissolve.apply(material);
         object.castShadow=!object.userData.label&&materials.some(material=>material.visible&&!((material as THREE.MeshPhysicalMaterial).transmission>.05));
         object.receiveShadow=Boolean(object.userData.label);
       });
@@ -100,6 +104,9 @@ export class CaseStudyCartridgeScene {
     const t=this.motion.matches?0:this.time;
     // Match the camera's one-turn entrance, then let this scene's same clock drift.
     const p=this.motion.matches?1:Math.min(1,t/1.1),ease=1-Math.pow(1-p,4);
+    this.dissolve.progress.value=p;
+    this.host.dataset.dissolve=p<1?'revealing':'complete';
+    this.host.dataset.revealProgress=p.toFixed(4);
     const turn=Math.max(0,t-1.1)*Math.PI*2/45;
     this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-Math.PI*2*(1-ease)+turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
     this.root.position.y=Math.sin(t*.7)*.055;
@@ -154,6 +161,7 @@ export class CaseStudyCartridgeScene {
     const dark=document.documentElement.dataset.colorMode==="dark";
     applyCartridgeTheme(this.root,dark);this.host.dataset.shellTheme=dark?"dark":"light";
     this.background.set(dark?"#101110":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
+    this.dissolve.ink.value.set(this.cartridge.id==='search'?'#6988d8':'#e5633d').multiplyScalar(dark?1:.65);
     if(this.ready)this.draw();
   };
   private resize=()=>{
@@ -211,5 +219,6 @@ export class CaseStudyCartridgeScene {
     delete this.host.dataset.motion;
     delete this.host.dataset.intro;delete this.host.dataset.float;
     delete this.host.dataset.rotation;delete this.host.dataset.dragging;delete this.host.dataset.interactive;
+    delete this.host.dataset.dissolve;delete this.host.dataset.revealProgress;
   }
 }

@@ -15,12 +15,13 @@ const { values: args } = parseArgs({ options: {
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
   process.exit(0);
 }
-if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
+if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
 if (args.phase !== "settled" && args.motion === "reduce") throw new Error("Mid-animation captures require --motion normal.");
 if (args.phase === "dither" && !args.hover || args.phase === "turn" && args.page !== "zine") throw new Error("dither requires --hover; a turn capture requires --page zine.");
+if(args.phase==='cartridge'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires a case-study --path.');
 const width = Number(args.width), height = Number(args.height), port = Number(args.port);
 if (![width, height, port].every(n => Number.isInteger(n) && n > 0) || port > 65535) throw new Error("Use positive integer dimensions and a valid port.");
 const baseURL = `http://127.0.0.1:${port}`;
@@ -64,17 +65,19 @@ try {
   await page.route("**/api/weather", route => route.fulfill({ status:204 }));
   await page.addInitScript(({ theme, phase }) => {
     localStorage.setItem("cartridge-color-mode", theme); localStorage.setItem("zine-color-mode", theme);
-    window.__review = { armed:false, frozen:false, held:[], phase };
+    window.__review = { armed:phase==='cartridge', frozen:false, held:[], phase };
     const raf = requestAnimationFrame.bind(window);
     window.requestAnimationFrame = callback => raf(now => {
       const state = window.__review;
       if (state.armed) {
         const dither = document.querySelector('.recent-preview-dither[data-state="revealing"]');
         const book = document.querySelector(".after-hours-book"), progress = Number(book?.dataset.turnProgress);
-        if (state.phase === "dither" && dither && Number(dither.style.opacity) > .7 || state.phase === "turn" && book?.dataset.phase === "turning" && progress > .35 && progress < .75) state.frozen = true;
+        const cartridge=document.querySelector('.case-cartridge-stage[data-dissolve="revealing"]'),reveal=Number(cartridge?.dataset.revealProgress);
+        if (state.phase === "dither" && dither && Number(dither.style.opacity) > .2 || state.phase === "turn" && book?.dataset.phase === "turning" && progress > .35 && progress < .75) state.frozen = true;
+        if(state.phase==='cartridge'&&cartridge&&reveal>.35&&reveal<.75)state.frozen=true;
       }
       // Freeze only the target animation, leaving Playwright/other RAFs alive.
-      const target = state.phase === "dither" ? "paint" : "frame";
+      const target = state.phase === "cartridge" ? "tick" : state.phase === "dither" ? "paint" : "frame";
       if (state.frozen && callback.name === target) { state.held.push(callback); return; }
       callback(now);
     });
@@ -114,10 +117,8 @@ try {
     await row.hover();
     const kind = await page.locator(".recent-preview-content").getAttribute("data-kind");
     const dither = kind === "zine" || kind === "film";
-    if (args.phase === "dither" && !dither) throw new Error("dither captures are available only for the zine and film previews.");
     if (args.phase === "settled") {
-      if(args.motion!=="reduce")await expect(page.locator('.thumbnail-dither')).toHaveAttribute('data-filled','true',wait);
-      if (dither) await expect(page.locator(".recent-preview-dither")).toHaveAttribute("data-state", "complete", wait);
+      await expect(page.locator(".recent-preview-dither")).toHaveAttribute("data-state", "complete", wait);
       if (kind === "zine") await expect(page.locator(".zine-preview-scene")).toHaveAttribute("data-preview-intro", "settled", wait);
       if (kind === "film") await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-intro", "settled", wait);
       if (!dither) await page.locator('.recent-solid-visual').evaluate(async element => { await Promise.allSettled(element.getAnimations().map(animation => animation.finished)); });

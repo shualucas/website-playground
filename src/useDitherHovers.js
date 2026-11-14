@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { CloveDither } from "./cartridge/clove-dither";
 
 // Explicit current-page controls; project rows and archived pages keep their own interactions.
-const targets='.profile-links a,.case-study-nav a,.case-study-nav button,.zine-header a,.zine-header button,.resume-nav a,.resume-nav button,.resume-toolbar a,.resume-toolbar button,.collection-header .theme-toggle';
+const targets='.profile-links a,.case-study-nav a,.case-study-nav button:not(.theme-toggle),.zine-header a,.zine-header button:not(.theme-toggle),.resume-home-link,.resume-page-back';
 
 /** Delegate decorative hover/focus backdrops without replacing native links, buttons or handlers. */
 export function useDitherHovers() {
@@ -37,7 +37,11 @@ export function useDitherHovers() {
         host.classList.add('dither-hover-target');host.append(canvas);
         const dark=document.documentElement.dataset.colorMode==='dark';
         renderer=new CloveDither(canvas,host.dataset.ditherColor||(dark?'#b2a1d9':'#a18cc9'),dark);
-        const resize=()=>renderer?.resize(host.clientWidth,host.clientHeight);
+        const resize=()=>{
+          if(!renderer||!host)return;
+          const height=Math.max(1,host.clientHeight*.5);
+          renderer.resize(host.clientWidth,height);canvas.style.top=(host.clientHeight-height)/2+'px';
+        };
         dimensions=new ResizeObserver(resize);dimensions.observe(host);resize();
       }
       active=true;wake();

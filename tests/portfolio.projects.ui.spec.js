@@ -505,7 +505,7 @@ test('project previews follow movement inside a row, dim other content and wash 
   await expect(navigation).toHaveAttribute('data-active-project','ai-mode-nudges');
   await expect(navigation.locator('.recent-preview-content')).toHaveCount(1);
   await expect(links.first()).toHaveCSS('opacity','1');
-  for(let i=1;i<await links.count();i++)await expect(links.nth(i)).toHaveCSS('opacity','0.4');
+  for(let i=1;i<await links.count();i++){await expect(links.nth(i)).toHaveCSS('opacity','1');await expect(links.nth(i).locator('.recent-project-copy')).toHaveCSS('opacity','0.4');}
   const ids=['ai-mode-nudges','search-labs','stadia-store-redesign','rave-flyer-zine','film'];
   const hues=['#7e99dd','#c170c4','#e97958','#e89db9','#c0a186'];
   const wash=page.locator('.project-hue-wash');await expect(wash).toHaveCSS('pointer-events','none');
@@ -657,29 +657,27 @@ test('project hover surfaces fade as one solid color with identical thumbnail fi
  }
 });
 
-test('Clove dither animates the thumbnail frame while rows stay plain',async({page},testInfo)=>{
- await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),dots=nav.locator('.thumbnail-dither');
- const sample=()=>dots.evaluate(el=>{
-  const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;let hash=2166136261,painted=0,luma=0,lit=0;
-  for(let i=3;i<pixels.length;i+=4){hash=Math.imul(hash^pixels[i],16777619);if(pixels[i])painted++;const x=(i-3)/4%el.width;if(x<40&&pixels[i]>60){luma+=pixels[i-3]*.2126+pixels[i-2]*.7152+pixels[i-1]*.0722;lit++;}}
-  return {hash,painted,luma:luma/lit};
- });
- for(const [name,dark]of [[/AI Mode Nudges/,false],[/Search Labs/,true]]){
-  if(dark){await page.mouse.move(2,2);await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).not.toHaveClass(/theme-transition/);}
-  await nav.getByRole('link',{name}).hover();await expect(dots).toHaveAttribute('data-state','playing');await expect(dots).toHaveCSS('pointer-events','none');
-  await expect(nav.locator('.recent-project-list .dither-surface')).toHaveCount(0);
-  const row=nav.locator('li[data-active="true"]');await expect(row).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
-  await expect(row.locator('.recent-project-index')).toHaveCSS('color',await row.locator('.recent-project-name').evaluate(el=>getComputedStyle(el).color));
-  await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);const hot=await sample();await page.waitForTimeout(1400);const held=await sample();
-  expect(hot.luma).toBeGreaterThan(held.luma+5);await expect.poll(async()=>(await sample()).hash).not.toBe(held.hash);
-  const frame=await nav.locator('.recent-preview-content').boundingBox(),bounds=await dots.boundingBox();
-  expect(bounds.x).toBeCloseTo(frame.x-12,0);expect(bounds.y).toBeCloseTo(frame.y-12,0);expect(bounds.width).toBeCloseTo(frame.width+24,0);expect(bounds.height).toBeCloseTo(frame.height+24,0);
+test('all thumbnails fade through dither in matching frames while row numbers stay unchanged',async({page},testInfo)=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.addInitScript(()=>{window.thumbnailReveals=[];new MutationObserver(()=>{
+  const el=document.querySelector('.recent-preview-dither');if(!el||el.dataset.state!=='revealing')return;
+  const pixels=el.getContext('2d').getImageData(0,0,el.width,el.height).data;
+  window.thumbnailReveals.push({kind:el.closest('.recent-preview-content').dataset.kind,painted:pixels.some((value,index)=>index%4===3&&value>0),content:Number(el.parentElement.style.getPropertyValue('--preview-content-opacity'))});
+ }).observe(document,{subtree:true,attributes:true,attributeFilter:['data-state','data-source','style']})});
+ await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');
+ const numbers=()=>nav.locator('.recent-project-index').evaluateAll(items=>items.map(el=>{const style=getComputedStyle(el);return [style.color,style.fontWeight,style.opacity,getComputedStyle(el.parentElement).opacity]}));
+ const before=await numbers();let reference;
+ for(const link of await links.all()){
+  await link.hover();const reveal=nav.locator('.recent-preview-dither');await expect(reveal).toHaveAttribute('data-state','complete',{timeout:15000});
+  await expect(nav.locator('.recent-project-list canvas,.thumbnail-dither')).toHaveCount(0);expect(await numbers()).toEqual(before);
+  const frame=await nav.locator('.recent-preview-art').boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);
+  reference??=frame;expect(frame.width).toBeCloseTo(reference.width,1);expect(frame.height).toBeCloseTo(reference.height,1);
+  const kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');
+  expect(await page.evaluate(kind=>window.thumbnailReveals.some(entry=>entry.kind===kind&&entry.painted&&entry.content<.5),kind)).toBe(true);
+  await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
  }
- await page.screenshot({path:testInfo.outputPath('thumbnail-dither.png')});
- await page.emulateMedia({reducedMotion:'reduce'});await expect(dots).toHaveAttribute('data-state','reduced');await expect(dots).toBeHidden();
- await page.emulateMedia({reducedMotion:'no-preference'});await expect(dots).toHaveAttribute('data-state','playing');
- await page.mouse.move(2,2);await expect(dots).toHaveAttribute('data-state','idle');expect((await sample()).painted).toBe(0);
+ await page.screenshot({path:testInfo.outputPath('matching-thumbnail-frames.png')});
+ await page.emulateMedia({reducedMotion:'reduce'});await links.first().hover();await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');await expect(nav.locator('.recent-preview-dither')).toBeHidden();
 });
 
 test('browsing projects lets an entering role finish before its rotation pauses',async({page})=>{
@@ -693,13 +691,13 @@ test('hover previews fit the right column across desktop sizes and Search Labs k
  for(const [width,height]of [[1440,1000],[900,650],[1440,600]]){
   await page.setViewportSize({width,height});await labs.hover();await expect(preview).toHaveCSS('position','absolute');
   const frame=await nav.locator('.recent-preview-art').boundingBox(),content=await nav.boundingBox(),row=await labs.boundingBox();
-  expect(frame.width).toBeCloseTo(content.width/2-32,0);expect(frame.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(frame.y+frame.height).toBeLessThanOrEqual(height);
+  expect(frame.width).toBeCloseTo((content.width/2-32)*1.6/1.8,0);expect(frame.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(frame.y+frame.height).toBeLessThanOrEqual(height);
  }
  expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#c170c4');
  await page.getByRole('button',{name:'Switch to dark mode'}).click();await labs.hover();expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#b759ba');await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
 });
 
-test('only zine and film resolve through dither, replay on return and stay static for reduced motion',async({page})=>{
+test('thumbnail dither replays on return and stays static for reduced motion',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>{
 
   window.ditherReveals=[];new MutationObserver(records=>{for(const {target}of records){if(!target.matches?.('.recent-preview-dither')||target.dataset.state!=='revealing')continue;const pixels=target.getContext('2d').getImageData(0,0,target.width,target.height).data;window.ditherReveals.push({kind:target.closest('.recent-preview-content').dataset.kind,painted:pixels.some((v,i)=>i%4===3&&v>0)})}}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-state']});
@@ -707,7 +705,7 @@ test('only zine and film resolve through dither, replay on return and stay stati
  const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
  for(const link of await links.all()){
   await page.mouse.move(2,2);
-  await link.hover();const dither=nav.locator('.recent-project-preview .recent-preview-dither'),kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');if(!['film','zine'].includes(kind)){await expect(dither).toHaveCount(0);continue}await expect(dither).toHaveAttribute('data-state','complete',{timeout:15000});await expect(dither).toBeHidden();expect(await page.evaluate(kind=>window.ditherReveals.some(entry=>entry.kind===kind&&entry.painted),kind)).toBe(true);
+  await link.hover();const dither=nav.locator('.recent-project-preview .recent-preview-dither'),kind=await nav.locator('.recent-preview-content').getAttribute('data-kind');await expect(dither).toHaveAttribute('data-state','complete',{timeout:15000});await expect(dither).toBeHidden();expect(await page.evaluate(kind=>window.ditherReveals.some(entry=>entry.kind===kind&&entry.painted),kind)).toBe(true);
  }
  const before=await page.evaluate(()=>window.ditherReveals.filter(entry=>entry.kind==='film').length);await page.mouse.move(2,2);await links.last().hover();await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');expect(await page.evaluate(()=>window.ditherReveals.filter(entry=>entry.kind==='film').length)).toBeGreaterThan(before);
  await page.emulateMedia({reducedMotion:'reduce'});await links.nth(3).hover();await expect(nav.locator('.recent-preview-dither')).toBeHidden();await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');
@@ -738,18 +736,12 @@ test('film dither uses source pixels and dissolves through ordered dots over 1.2
  expect(result.shape.left).toBeGreaterThan(100);expect(result.shape.right).toBeGreaterThan(100);expect(result.shape.gap).toBe(0);await expect(nav.locator('.recent-preview-source')).toHaveCSS('opacity','1');
 });
 
-test('case-study previews switch instantly between rows and fade on first entry',async({page})=>{
+test('thumbnail dither replays for row swaps and keyboard browsing',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
- const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link'),visual=nav.locator('.recent-solid-visual');
- await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
- await links.nth(1).hover();await expect(visual).toHaveAttribute('data-entry','gradual');await expect(visual).toHaveCSS('animation-name','preview-media-enter');
- // An interrupted entrance must never carry opacity or a delayed reveal into another row.
- for(const link of [links.nth(2),links.first()]){await link.hover();await expect(visual).toHaveAttribute('data-entry','instant');await expect(visual).toHaveCSS('opacity','1');await expect(visual).toHaveCSS('animation-name','none');await expect(nav.locator('.recent-preview-dither')).toHaveCount(0)}
- await page.mouse.move(2,2);await expect(nav).toHaveAttribute('data-preview-active','false');
- await links.nth(1).hover();await expect(visual).toHaveAttribute('data-entry','gradual');
- // Keyboard browsing shares immediate swaps; special previews still use dither.
- await page.keyboard.press('Tab');await links.nth(2).focus();await expect(nav).toHaveAttribute('data-active-project','stadia-store-redesign');await expect(visual).toHaveAttribute('data-entry','instant');
- for(const link of [links.nth(3),links.nth(4)]){await link.focus();const dither=nav.locator('.recent-preview-dither');await expect(dither).toHaveAttribute('data-state','revealing');await expect(dither).toHaveAttribute('data-state','complete',{timeout:15000})}
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),links=nav.locator('.recent-project-link');await expect(nav.locator('[data-project="film"]')).toHaveAttribute('data-reveal-ready','true');
+ for(const index of [1,2,0]){await links.nth(index).hover();const dither=nav.locator('.recent-preview-dither');await expect(dither).toHaveAttribute('data-state','revealing');await expect(dither).toHaveAttribute('data-state','complete');}
+ await page.mouse.move(2,2);await page.keyboard.press('Tab');
+ for(const index of [2,3,4]){await links.nth(index).focus();const dither=nav.locator('.recent-preview-dither');await expect(dither).toHaveAttribute('data-state','revealing');await expect(dither).toHaveAttribute('data-state','complete',{timeout:15000});}
 });
 
 test('Search Labs uses a uniform solid placeholder in both themes without requesting old media',async({page})=>{
@@ -758,7 +750,7 @@ test('Search Labs uses a uniform solid placeholder in both themes without reques
  const nav=page.getByRole('navigation',{name:'Recent projects'});
  for(const dark of [false,true]){
   if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
-  await nav.getByRole('link',{name:/Search Labs/}).hover();const visual=nav.locator('.recent-solid-visual');await expect(visual).toBeVisible();await expect(visual).toHaveAttribute('data-placeholder','true');await expect(visual).toHaveCSS('background-image','none');await expect(visual.locator('img,video,canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-dither')).toHaveCount(0);
+  await nav.getByRole('link',{name:/Search Labs/}).hover();const visual=nav.locator('.recent-solid-visual');await expect(visual).toBeVisible();await expect(visual).toHaveAttribute('data-placeholder','true');await expect(visual).toHaveCSS('background-image','none');await expect(visual.locator('img,video,canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-dither')).toBeHidden();
   expect(await visual.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
  }
  expect(requests).toEqual([]);
@@ -803,15 +795,15 @@ for(const {id,name,folder,file,minDuration} of [
  {id:'ai-mode-nudges',name:'Nudges',folder:'nudges',file:'nudges-hero',minDuration:27},
  {id:'stadia-store-redesign',name:'Stadia',folder:'stadia',file:'lilycove-hero',minDuration:21},
 ]){
-test(`${name} hover video loads on demand without dither and resets when leaving`,async({page})=>{
+test(`${name} hover video loads on demand, resolves through dither and resets when leaving`,async({page})=>{
  const requests=[];page.on('request',request=>{if(request.url().includes(`/videos/${folder}/`)&&request.url().endsWith('.mp4'))requests.push(request.url())});
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator(`[data-project="${id}"] > .recent-project-link`);await expect(row).toBeVisible();expect(requests).toEqual([]);
  await row.hover();const video=nav.locator('.loop-video video'),art=nav.locator('.recent-preview-art');
  await expect.poll(()=>video.evaluate(el=>el.readyState)).toBeGreaterThanOrEqual(2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  expect(await video.evaluate(el=>el.duration)).toBeGreaterThan(minDuration);
- await expect(nav.locator('.recent-preview-dither')).toHaveCount(0);
- const frame=await art.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(frame.height).toBeCloseTo(489/1.8,0);
+ await expect(nav.locator('.recent-preview-dither')).toBeHidden();
+ const frame=await art.boundingBox();expect(frame.width/frame.height).toBeCloseTo(1.6,2);expect(frame.width).toBeCloseTo(((await nav.boundingBox()).width/2-32)*1.6/1.8,0);
  expect(await video.evaluate(el=>({muted:el.muted,loop:el.loop,inline:el.playsInline,controls:el.controls}))).toEqual({muted:true,loop:true,inline:true,controls:false});
  await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeGreaterThan(0);
  await page.mouse.move(2,2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeLessThan(.1); // The MP4's first presentation timestamp is 0.041s.
@@ -870,9 +862,9 @@ test('project load shimmer stays disabled without opening previews',async({page}
 test('project hover keeps plain rows and respects reduced motion with shimmer disabled',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'});await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav).toHaveAttribute('data-active-project','search-labs');
- await expect(nav.locator('.recent-project-list canvas')).toHaveCount(0);await expect(nav.locator('.thumbnail-dither')).toHaveAttribute('data-state','playing');
+ await expect(nav.locator('.recent-project-list canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');
  expect(await nav.locator('li').evaluateAll(rows=>rows.every(row=>!row.getAnimations().some(animation=>animation.effect.getKeyframes()[0]?.backgroundColor)))).toBe(true);
- await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await expect(nav).toHaveAttribute('data-color-intro','disabled');await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav.locator('.thumbnail-dither')).toBeHidden();
+ await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await expect(nav).toHaveAttribute('data-color-intro','disabled');await nav.getByRole('link',{name:/Search Labs/}).hover();await expect(nav.locator('.recent-preview-dither')).toBeHidden();
 });
 
 test('project navigation blurs beneath the bar and leaves content immediately below sharp',async({page})=>{

@@ -4,7 +4,7 @@ import { bayer, clamp, hotPalette, lightLevel, smooth } from "./clove-dither";
 const pitch = 4;
 
 /** Sample the real preview into an ordered pixel silhouette, then resolve into the original. */
-export function DitherPreviewReveal({ active, kind, instant = false }) {
+export function DitherPreviewReveal({ active, kind, dark=false }) {
   const canvas = useRef(null);
   useLayoutEffect(() => {
     const surface = canvas.current, art = surface.parentElement;
@@ -24,9 +24,9 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
       art.style.removeProperty("--preview-content-opacity");
       releaseSource();
     };
-    surface.dataset.state = active && !instant && !motion.matches ? "waiting" : "complete";
+    surface.dataset.state = active && !motion.matches ? "waiting" : "complete";
     surface.dataset.source = "none";
-    surface.hidden = !active || instant || motion.matches || !context || !pixels;
+    surface.hidden = !active || motion.matches || !context || !pixels;
     surface.style.opacity = "0";
     if (surface.hidden) return;
     art.style.setProperty("--preview-content-opacity", "0");
@@ -63,7 +63,7 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
       catch { finish(); return; } // A future cross-origin image must not block the preview.
       context.clearRect(0, 0, width, height);
       const ink = getComputedStyle(art.closest(".recent-projects")).getPropertyValue("--preview-accent").trim() || "#666";
-      if(paletteInk!==ink){paletteInk=ink;palette=hotPalette(ink);}
+      if(paletteInk!==ink){paletteInk=ink;palette=hotPalette(ink,dark);}
       const dissolve = smooth((progress-.35)/.55);
       for (let row = 0; row < sample.height; row++) for (let col = 0; col < sample.width; col++) {
         const i = (row * sample.width + col) * 4, alpha = data[i + 3] / 255;
@@ -78,7 +78,7 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
         const resolve=1-smooth((dissolve-rank)/.35);
         if(resolve<.025)continue;
         const size=lit?3:1.5;
-        context.fillStyle=lit?palette[Math.round(clamp(heat[cell]*.95+.05)*63)]:ink;
+        context.fillStyle=lit?palette[Math.round(clamp(heat[cell]*.95+.05)*63)]:palette[0];
         context.globalAlpha=(flat?.12:lit?.88:.22)*alpha*resolve;
         context.fillRect(col*pitch,row*pitch,size,size);
       }
@@ -113,6 +113,6 @@ export function DitherPreviewReveal({ active, kind, instant = false }) {
     };
     frame = requestAnimationFrame(paint);
     return () => { stopped = true; cancelAnimationFrame(frame); releaseSource(); art.style.removeProperty("--preview-content-opacity"); };
-  }, [active, kind, instant]);
+  }, [active, kind,dark]);
   return <canvas ref={canvas} className="recent-preview-dither" data-dither="ordered" aria-hidden="true" hidden />;
 }

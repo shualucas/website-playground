@@ -79,7 +79,7 @@ export function CaseStudy({ project, onBack, Media, backLabel = "Back to zine", 
       <article className="case-study-content">
         <div className="case-study-measure">
         <div className={showcase ? "case-showcase-cover" : undefined}>
-        {study?.heroCartridge && <CaseStudyCartridge id={study.heroCartridge} />}
+        {study?.heroCartridge && <CaseStudyCartridge key={project.id} id={study.heroCartridge} />}
         <header className="case-study-hero">
           <div className="case-study-intro">
           {!showcase && <p data-reveal className="eyebrow">

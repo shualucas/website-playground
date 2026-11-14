@@ -13,13 +13,23 @@ test('footer and header hover dither animates without changing native controls',
   await expect.poll(async()=>(await sample()).painted).toBeGreaterThan(20);const held=await sample();
   await expect.poll(async()=>(await sample()).hash).not.toBe(held.hash);
   const after=await link.boundingBox();expect(after.width).toBeCloseTo(before.width,1);expect(after.height).toBeCloseTo(before.height,1);await expect(link).toHaveAttribute('href',href);await expect(link).toHaveAttribute('target','_blank');
+  const effect=await all.boundingBox();expect(effect.height).toBeCloseTo(after.height/2,1);expect(effect.y+effect.height/2).toBeCloseTo(after.y+after.height/2,1);
   await page.mouse.move(2,2);await expect(all).toHaveCount(0);
  }
  await page.keyboard.press('Tab');const resume=footer.getByRole('link',{name:'Résumé',exact:true});await resume.focus();
  await expect(resume.locator('.control-dither')).toHaveAttribute('data-state','playing');await expect(resume).toHaveAttribute('href','/resume/');
  await page.emulateMedia({reducedMotion:'reduce'});await expect(all).toHaveCount(0);
  await page.emulateMedia({reducedMotion:'no-preference'});await expect(resume.locator('.control-dither')).toHaveAttribute('data-state','playing');
- await page.getByRole('button',{name:'Switch to light mode'}).hover();await expect(page.locator('.collection-header .theme-toggle .control-dither')).toHaveAttribute('data-state','playing');await expect(all).toHaveCount(1);
+ await resume.evaluate(el=>el.blur());await page.getByRole('button',{name:'Switch to light mode'}).hover();await expect(page.locator('.theme-toggle .control-dither')).toHaveCount(0);await expect(all).toHaveCount(0);
+ const padding=await footer.locator('a').evaluateAll(links=>links.map(el=>Number.parseFloat(getComputedStyle(el).paddingLeft)));expect(new Set(padding).size).toBe(1);expect(padding[0]).toBeGreaterThanOrEqual(16);
+});
+
+test('resume only keeps dither on its back control',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/resume/');
+ const back=page.locator('.resume-home-link');await back.hover();await expect(back.locator('.control-dither')).toHaveAttribute('data-state','playing');
+ for(const target of [page.getByRole('button',{name:'Read',exact:true}),page.getByRole('link',{name:'Download PDF'}),page.locator('.theme-toggle')]){
+  await target.hover();await expect(page.locator('.control-dither')).toHaveCount(0);
+ }
 });
 
 test('current-page navigation gets dither while its native Home action remains usable',async({page})=>{

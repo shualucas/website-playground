@@ -1,18 +1,23 @@
 import { filmPhotos } from "../src/content/film-photos.js";
 import { test, expect, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
-test('Nudges opens with the Google cartridge spinning into an ambient float',async({page},testInfo)=>{
+test('project cartridges dissolve on the GPU and keep their spin, quality and native interaction',async({page},testInfo)=>{
  const shaderErrors=[];page.on('console',message=>{if(message.type()==='error'&&/THREE.WebGLProgram|VALIDATE_STATUS|shader error/i.test(message.text()))shaderErrors.push(message.text())});
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
  await page.addInitScript(()=>{
-  window.cartridgeEntrances=[];
-  new MutationObserver(changes=>{for(const {target} of changes)if(target.matches('.case-cartridge-stage'))window.cartridgeEntrances.push(target.dataset.intro)}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-intro']});
+  window.cartridgeEntrances=[];window.cartridgeDissolves=[];window.cartridgeReadbacks=0;
+  const read=WebGL2RenderingContext.prototype.readPixels;WebGL2RenderingContext.prototype.readPixels=function(...args){if(this.canvas.dataset.cartridgeRenderer)window.cartridgeReadbacks++;return read.apply(this,args)};
+  new MutationObserver(changes=>{for(const {target} of changes)if(target.matches('.case-cartridge-stage')){window.cartridgeEntrances.push(target.dataset.intro);window.cartridgeDissolves.push({state:target.dataset.dissolve,progress:Number(target.dataset.revealProgress)});}}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-intro','data-dissolve']});
  });
  await page.goto('/?project=ai-mode-nudges&view=case-study');
  const cartridge=page.getByRole('img',{name:'Google Search cartridge'}),stage=cartridge.locator('.case-cartridge-stage');
  const reset=async()=>{await page.keyboard.press('r');await expect.poll(async()=>Math.hypot(...(await stage.getAttribute('data-rotation')).split(',').map(Number))).toBeLessThan(.0001)};
  await expect(cartridge).toHaveAttribute('data-status','ready',{timeout:60000});await expect(stage.locator('canvas')).toHaveCount(1);
  await expect(stage).toHaveAttribute('data-intro','settled',{timeout:15000});expect(await page.evaluate(()=>window.cartridgeEntrances.includes('spinning'))).toBe(true);
+ await expect(stage).toHaveAttribute('data-dissolve','complete');
+ expect(await page.evaluate(()=>window.cartridgeDissolves.some(frame=>frame.state==='revealing'&&frame.progress>0&&frame.progress<1))).toBe(true);
+ expect(await page.evaluate(()=>window.cartridgeReadbacks)).toBe(0);
+ const quality=await stage.locator('canvas').evaluate(el=>({ratio:el.width/el.clientWidth,expected:Math.min(devicePixelRatio,1.5),antialias:el.getContext('webgl2').getContextAttributes().antialias}));expect(quality.ratio).toBeCloseTo(quality.expected,1);expect(quality.antialias).toBe(true);
  await expect(stage).toHaveAttribute('data-motion','ambient');const before=await stage.getAttribute('data-float');await expect.poll(()=>stage.getAttribute('data-float')).not.toBe(before);
  await expect(stage).toHaveAttribute('data-interactive','true');
  const bounds=await stage.boundingBox();expect(bounds.width).toBe(180);expect(bounds.height).toBe(130);
@@ -47,6 +52,13 @@ test('Nudges opens with the Google cartridge spinning into an ambient float',asy
  expect(await page.locator('.case-study').evaluate(el=>el.scrollTop)).toBe(scroll);
  await reset();await touch.detach();
  await page.screenshot({path:testInfo.outputPath('nudges-google-cartridge-mobile.png')});
+ for(const id of ['search-labs','stadia-store-redesign']){
+  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(`/?project=${id}&view=case-study`);
+  const model=page.locator('.case-study-cartridge'),view=model.locator('.case-cartridge-stage');await expect(model).toHaveAttribute('data-status','ready',{timeout:60000});await expect(view).toHaveAttribute('data-dissolve','complete',{timeout:15000});await expect(view.locator('canvas')).toHaveCount(1);
+  expect(await page.evaluate(()=>window.cartridgeDissolves.some(frame=>frame.state==='revealing'&&frame.progress>0&&frame.progress<1))).toBe(true);expect(await page.evaluate(()=>window.cartridgeReadbacks)).toBe(0);
+  const pose=await view.getAttribute('data-float');await expect.poll(()=>view.getAttribute('data-float')).not.toBe(pose);
+  await page.emulateMedia({reducedMotion:'reduce'});await expect(view).toHaveAttribute('data-reveal-progress','1.0000');
+ }
  expect(shaderErrors).toEqual([]);
 });
 

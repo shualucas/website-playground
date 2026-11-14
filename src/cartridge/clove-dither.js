@@ -26,17 +26,18 @@ export function cloud(column,row,time) {
 export function lightLevel(column,row,time,edgeLight,heat,focus,front) {
   return -.04+.66*edgeLight+.44*smooth((cloud(column,row,time)-.42)/.38)+.6*heat+.22*focus+.55*front;
 }
-export function hotPalette(color) {
-  const channels=color.match(/[a-f\d]{2}/gi).map(value=>parseInt(value,16));
-  // Keep the requested pale highlights in both themes; Clove darkens hot cells in its paper theme.
-  return Array.from({length:64},(_,index)=>`rgb(${channels.map(value=>Math.round(value+(255-value)*index/63*.95)).join(',')})`);
+export function hotPalette(color,dark=true) {
+  const hex=color.replace('#',''),full=hex.length===3?hex.split('').map(value=>value+value).join(''):hex;
+  const channels=full.match(/[a-f\d]{2}/gi).map(value=>parseInt(value,16)*(dark?1:.78));
+  // White highlights stay restrained on paper so the moving cells retain their contrast.
+  return Array.from({length:64},(_,index)=>`rgb(${channels.map(value=>Math.round(value+(255-value)*index/63*(dark?.95:.35))).join(',')})`);
 }
 
 /** Canvas port of Clove's fixed cells, per-cell heat, bright scan front and layered glow. */
 export class CloveDither {
   constructor(surface,color,dark) {
-    this.surface=surface;this.context=surface.getContext('2d');this.color=color;this.dark=dark;
-    this.palette=hotPalette(color);this.pitch=5;this.extent=0;this.velocity=0;
+    this.surface=surface;this.context=surface.getContext('2d');this.dark=dark;
+    this.palette=hotPalette(color,dark);this.color=this.palette[0];this.pitch=5;this.extent=0;this.velocity=0;
     this.cells=document.createElement('canvas');this.ink=this.cells.getContext('2d');
     this.glow=document.createElement('canvas');this.light=this.glow.getContext('2d');
   }
@@ -92,7 +93,7 @@ export class CloveDither {
         if(lit){light.fillStyle=color;light.globalAlpha=tail*(.55+.45*wt);light.fillRect(col,row,1,1);}
       }
     }
-    // The reference uses a coarse glow beneath crisp cells. Keep every layer inside this row.
+    // The reference uses a coarse glow beneath crisp cells. Keep every layer inside the control.
     ctx.save();ctx.globalAlpha=this.dark?.24:.10;ctx.filter='blur(8px)';
     ctx.drawImage(this.glow,0,0,reach,height);ctx.restore();
     ctx.drawImage(this.cells,0,0,reach,height);

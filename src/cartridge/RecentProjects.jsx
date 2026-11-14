@@ -6,7 +6,6 @@ import {ZinePreview} from "./ZinePreview";
 import {DitherPreviewReveal} from "./DitherPreviewReveal";
 import {CameraLink} from "./CameraLink";
 import {LoopVideo} from "../LoopVideo";
-import {DitherSurface} from "./DitherSurface";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
@@ -23,35 +22,35 @@ function useMedia(query){
   useEffect(()=>{const media=matchMedia(query),update=()=>setMatches(media.matches);media.addEventListener("change",update);update();return()=>media.removeEventListener("change",update)},[query]);
   return matches;
 }
-function PreviewArt({project,showing,instant=false,seen,dark,setCameraTarget,retainZine=true}){
+function PreviewArt({project,showing,seen,dark,setCameraTarget,retainZine=true}){
   const preview=previews[project?.id];
-  const aspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
+  const aspect=1.6;
   return <div className="recent-preview-content" data-kind={preview?.kind} style={{"--preview-aspect":aspect}}>
     <div className="recent-preview-art" data-motion={showing} style={{aspectRatio:aspect}}>
       <div className="recent-preview-source">
       <div ref={setCameraTarget} className="recent-special-preview" data-visible={showing&&preview?.kind==="film"}/>
       <div className="recent-special-preview" data-visible={showing&&preview?.kind==="zine"}>{seen.zine&&(retainZine||preview?.kind==="zine")&&<ZinePreview active={showing&&preview?.kind==="zine"} dark={dark}/>}</div>
-      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind} data-placeholder={preview.placeholder} data-entry={instant?"instant":"gradual"}>
+      {project&&!["film","zine"].includes(preview.kind)&&<div key={`visual-${project.id}`} className="recent-solid-visual" data-visual={preview.kind} data-placeholder={preview.placeholder}>
         {preview.video&&<LoopVideo src={preview.video} poster={preview.poster} label={preview.label||"Tapping a follow-up nudge in AI Mode"} active={showing}/>}
         {preview.image&&<picture>{preview.poster&&<source media="(prefers-reduced-motion: reduce)" srcSet={preview.poster}/>}<img className="recent-preview-image" src={preview.image} width={preview.width} height={preview.height} alt="Stadia store navigation and game browsing" decoding="async"/></picture>}
       </div>}
       </div>
-      {project&&["film","zine"].includes(preview.kind)&&<DitherPreviewReveal key={project.id} active={showing} kind={preview.kind}/>}
+      {project&&<DitherPreviewReveal key={project.id} active={showing} kind={preview.kind} dark={dark}/>}
     </div>
   </div>;
 }
 export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange}){
   const canHover=useMedia("(min-width:761px) and (hover:hover) and (pointer:fine)");
-  const [{active,visible,instant},setPreview]=useState({active:null,visible:false,instant:false});
+  const [{active,visible},setPreview]=useState({active:null,visible:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
   const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
   const select=(id,index)=>{
-    setPreview(current=>current.active===id&&current.visible?current:{active:id,visible:true,instant:canHover&&!hidden&&current.visible&&current.active!==id});const kind=previews[id]?.kind;
+    setPreview(current=>current.active===id&&current.visible?current:{active:id,visible:true});const kind=previews[id]?.kind;
     if(kind==="film"||kind==="zine")setSeen(old=>old[kind]?old:{...old,[kind]:true});
     const height=browser.current?.clientHeight??0;
     navigation.current?.style.setProperty("--preview-offset",`${((index+.5)/projects.length-.5)*height*.45}px`);
   };
-  const dismiss=()=>setPreview(current=>current.visible?{...current,visible:false,instant:false}:current);
+  const dismiss=()=>setPreview(current=>current.visible?{...current,visible:false}:current);
   const release=()=>{if(!canHover)return;const id=focus.current??pointer.current;if(id)select(id,projects.findIndex(p=>p.id===id));else dismiss()};
   const toggle=(id,index)=>{if(active===id&&visible)dismiss();else select(id,index)};
   const track=event=>{
@@ -64,7 +63,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.top+rect.height/2,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
-  const previewAspect=preview?.image||preview?.video?preview.width/preview.height:1.8;
+  const previewAspect=1.6;
   const accent=projectAccent(preview?.accent??"#6988d8",dark);
   const surface=showing?`color-mix(in srgb,color-mix(in srgb,${accent} ${dark?70:82}%,${dark?'#000':'#fff'}) 20%,var(--scene-bg))`:"var(--scene-bg)";
   useLayoutEffect(()=>{
@@ -106,7 +105,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
           </div>}
         </li>)}
       </ul>
-      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing}><div className="recent-preview-frame"><DitherSurface active={showing&&!exiting} color={accent} dark={dark} padding={12}/><PreviewArt project={project} showing={showing} instant={instant} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
+      {canHover&&<div className="recent-project-preview" aria-hidden="true" data-visible={showing}><div className="recent-preview-frame"><PreviewArt project={project} showing={showing} seen={seen} dark={dark} setCameraTarget={setCameraTarget}/></div></div>}
       </div>
     </nav>
   </>;

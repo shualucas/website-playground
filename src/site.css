@@ -14,7 +14,10 @@ svg { display:block; flex-shrink:0; }
 .dither-hover-target { position:relative; isolation:isolate; }
 .dither-hover-target:is(:hover,:focus-visible) { color:var(--ui-text); }
 .dither-surface { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
-.control-dither { z-index:-1; opacity:.55; border-radius:inherit; }
+.control-dither { z-index:-1; opacity:.85; border-radius:inherit; }
+:root[data-color-mode="dark"] .control-dither { opacity:.55; }
+.case-study-nav .back-to-zine,.zine-header .after-hours-back { padding-inline:16px; margin-inline-start:-16px; }
+.resume-home-link,.resume-page-back { padding-inline:16px; }
 .dither-surface[hidden] { display:none; }
 @media(prefers-reduced-motion:reduce) { .dither-surface { display:none; } }
 .collection { --project-surface:var(--scene-bg); transition:--project-surface 400ms ease-out; --hero-gap:clamp(40px,calc(100vw - 900px),140px); --hero-trim:0px; --caption-room:0px; --scene-fade:110px; max-width:1280px; margin:auto; min-height:100svh; padding:24px 60px 30px; }
