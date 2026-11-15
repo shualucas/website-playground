@@ -3,7 +3,7 @@ import { Color, type Material } from 'three';
 /** A screen-space ordered dissolve, evaluated by the existing material shaders and scene clock. */
 export class CartridgeDissolve {
   readonly progress={value:0};
-  readonly pixelSize={value:4};
+  readonly pixelSize={value:2};
   readonly ink={value:new Color('#6988d8')};
   private applied=new WeakSet<Material>();
 

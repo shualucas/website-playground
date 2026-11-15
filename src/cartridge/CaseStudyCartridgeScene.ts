@@ -52,7 +52,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.toneMappingExposure=.95;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.VSMShadowMap;
     this.renderer.domElement.setAttribute("aria-hidden","true");this.renderer.domElement.dataset.cartridgeRenderer='webgl';host.append(this.renderer.domElement);
-    this.dissolve.pixelSize.value=4*this.renderer.getPixelRatio();this.dissolve.apply(this.shadow);
+    this.dissolve.pixelSize.value=2*this.renderer.getPixelRatio();this.dissolve.apply(this.shadow);
     this.camera.position.set(0,0,8);this.camera.lookAt(0,0,0);
     this.camera.zoom=.9;
     this.pmrem=new THREE.PMREMGenerator(this.renderer);
