@@ -291,14 +291,14 @@ test('AI Mode case study shows the supplied story and outcomes at the home proje
   await expect(navigation.getByRole('link',{name:/AI Mode Nudges/})).toBeFocused();expect(errors).toEqual([]);
 });
 
-test('project headers reveal a centered title past the hero over a fading blur scrim',async({page},testInfo)=>{
+test('project headers reveal a centered title past the hero over a uniform frosted fill',async({page},testInfo)=>{
   await page.emulateMedia({reducedMotion:'reduce'});
   for(const [id,title,width,height]of[['ai-mode-nudges','AI Mode Nudges',1440,1000],['ai-mode-nudges','AI Mode Nudges',390,844],['stadia-store-redesign','Stadia Store Redesign',320,844],['search-labs','Search Labs',1440,700]]){
     await page.setViewportSize({width,height});await page.goto(`/?project=${id}&view=case-study`);
     const reader=page.locator('.case-study'),header=reader.locator('.case-study-nav'),name=header.locator('.case-study-nav-title');
     await expect(name).toHaveCSS('opacity','0');await expect(name).toHaveAttribute('aria-hidden','true');
     const appearance=await header.evaluate(el=>{const style=getComputedStyle(el),scrim=getComputedStyle(el,'::before');return{top:style.paddingTop,bottom:style.paddingBottom,fill:style.backgroundColor,gradient:scrim.backgroundImage,blur:scrim.backdropFilter,mask:scrim.maskImage}});
-    expect(appearance.top).toBe(appearance.bottom);expect(appearance.fill).toBe('rgba(0, 0, 0, 0)');expect(appearance.gradient).toContain('linear-gradient');expect(appearance.blur).toContain('blur(');expect(appearance.mask).toContain('linear-gradient');
+    expect(appearance.top).toBe(appearance.bottom);expect(appearance.fill).toBe('rgba(0, 0, 0, 0)');expect(appearance.gradient).toBe('none');expect(appearance.blur).toContain('blur(');expect(appearance.mask).toBe('none');
     await reader.evaluate(el=>{el.scrollTop+=el.querySelector('.case-study-hero').getBoundingClientRect().bottom-el.querySelector('.case-study-nav').getBoundingClientRect().bottom+4});
     await expect(name).toHaveCSS('opacity','1');await expect(name).toHaveText(title);await expect(name).toHaveAttribute('aria-hidden','false');
     const cartridge=name.locator('.case-study-nav-cartridge');await expect(cartridge).toHaveAttribute('data-cartridge',id==='stadia-store-redesign'?'stadia':'search');await expect(cartridge.locator('img')).toHaveJSProperty('complete',true);expect(await cartridge.locator('img').evaluate(el=>el.naturalWidth)).toBeGreaterThan(0);
