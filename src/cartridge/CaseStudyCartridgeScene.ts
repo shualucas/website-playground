@@ -7,6 +7,8 @@ import { type DisplayCartridge } from "./config";
 import { loadExternalShell } from "./model";
 
 type Callbacks = { onReady: () => void; onError: () => void };
+const entranceDuration=1.1*.75;
+const entranceTurn=Math.PI*2*.75;
 
 /** One original home-page cartridge, framed for a readable case-study introduction. */
 export class CaseStudyCartridgeScene {
@@ -116,7 +118,9 @@ export class CaseStudyCartridgeScene {
       if(this.disposed||!model||generation!==this.generation)return;
       this.cancelDrag();this.cartridge=cartridge;this.root.clear();this.root.add(model);
       this.spin.set(0,0);this.targetSpin.set(0,0);this.spinVelocity.set(0,0);this.time=0;this.last=0;
-      this.setPose();this.updateTheme();this.root.updateMatrixWorld(true);
+      this.setPose();this.updateTheme();
+      // Measure the resting pose so the entrance angle never changes camera framing.
+      this.root.rotation.set(.26,-.22,-.05);this.root.updateMatrixWorld(true);
       new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
       this.host.dataset.cartridge=cartridge.id;
       this.ready=true;this.draw();this.callbacks.onReady();this.sync();
@@ -128,13 +132,13 @@ export class CaseStudyCartridgeScene {
   }
   private setPose() {
     const t=this.motion.matches?0:this.time;
-    // Match the camera's one-turn entrance, then let this scene's same clock drift.
-    const p=this.motion.matches?1:Math.min(1,t/1.1),ease=1-Math.pow(1-p,4);
+    // A shorter three-quarter turn resolves into the same gentle ambient drift.
+    const p=this.motion.matches?1:Math.min(1,t/entranceDuration),ease=1-Math.pow(1-p,4);
     this.dissolve.progress.value=p;
     this.host.dataset.dissolve=p<1?'revealing':'complete';
     this.host.dataset.revealProgress=p.toFixed(4);
-    const turn=Math.max(0,t-1.1)*Math.PI*2/45;
-    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-Math.PI*2*(1-ease)+turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
+    const turn=Math.max(0,t-entranceDuration)*Math.PI*2/45;
+    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-entranceTurn*(1-ease)+turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
     this.root.position.y=Math.sin(t*.7)*.055;
     this.host.dataset.intro=p<1?"spinning":"settled";
     this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
@@ -142,7 +146,7 @@ export class CaseStudyCartridgeScene {
     this.host.dataset.interactive=String(this.canInteract());
   }
   private canInteract() {
-    return this.ready&&!this.disposed&&!this.paused&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=1.1)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
+    return this.ready&&!this.disposed&&!this.paused&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=entranceDuration)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
   }
   private down=(event:PointerEvent)=>{
     if(event.button!==0||!event.isPrimary||this.drag||!this.canInteract()||event.target!==this.renderer.domElement)return;
@@ -200,7 +204,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.setSize(w,h,false);if(this.ready)this.draw();
   };
   private draw() {if(!this.disposed&&this.host.clientWidth&&this.host.clientHeight){this.setPose();this.renderer.render(this.scene,this.camera)}}
-  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:1.1;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.sync()};
+  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.sync()};
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;

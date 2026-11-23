@@ -25,20 +25,20 @@ test("favicon shows a single cartridge with a black J on every current page", as
   await expect(icon).toHaveAttribute("href","/favicon.svg");await expect(icon).toHaveAttribute("type","image/svg+xml");
 });
 
-test("Josh and roles are passive medium-weight text with a stable reduced-motion label", async ({ page }) => {
+test("hero text uses one regular weight with a stable passive reduced-motion role", async ({ page }) => {
   await page.emulateMedia({reducedMotion:'reduce'});
 
   await page.goto('/');const role=page.locator('.role-rotator');
   await expect(page.locator('.intro-name')).toHaveText('Josh Lucas');expect(await role.evaluate(el=>el.tagName)).toBe('SPAN');
   await expect(role).not.toHaveAttribute('tabindex',/.+/);await expect(role).not.toHaveAttribute('aria-pressed',/.+/);
-  await expect(role).toHaveAttribute('data-role','product designer');await expect(role).toHaveCSS('font-weight','500');
+  await expect(role).toHaveAttribute('data-role','product designer');await expect(role).toHaveCSS('font-weight','400');
   await role.hover();await expect(role).toHaveCSS('opacity','1');await role.click();await expect(role).toHaveAttribute('data-role','product designer');
   expect(await role.evaluate(el=>getComputedStyle(el).cursor)).not.toBe('pointer');
-  expect(await page.locator('.portfolio-name').evaluate(el=>getComputedStyle(el).fontWeight)).toBe('500');
+  expect(await page.locator('.portfolio-name').evaluate(el=>getComputedStyle(el).fontWeight)).toBe('400');
   for(const width of [1440,390]) {
     await page.setViewportSize({width,height:1000});
     expect(await page.locator('.intro-title,.intro-name,.role-rotator,.bio-continuation,.random-fact').evaluateAll(els=>els.map(el=>getComputedStyle(el).fontSize))).toEqual(Array(5).fill('15px'));
-    await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');
+    const weights=await page.locator('.intro-title,.intro-title *,.random-fact,.random-fact *').evaluateAll(els=>[...new Set(els.map(el=>getComputedStyle(el).fontWeight))]);expect(weights).toEqual(['400']);
   }
   for(const dark of [false,true]) {
     if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
