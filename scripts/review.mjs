@@ -15,14 +15,15 @@ const { values: args } = parseArgs({ options: {
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
   process.exit(0);
 }
-if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
+if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
 if (args.phase !== "settled" && args.motion === "reduce") throw new Error("Mid-animation captures require --motion normal.");
 if (args.phase === "dither" && !args.hover || args.phase === "turn" && args.page !== "zine") throw new Error("dither requires --hover; a turn capture requires --page zine.");
 if(args.phase==='cartridge'&&args.page!=='home'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires the home page or a case-study --path.');
 if(args.phase==='cartridge'&&args.cartridge)throw new Error('Use --phase cartridge without --cartridge for the initial entrance; company swaps preserve the current motion.');
+if(args.phase==='fade'&&(!args.cartridge||args.page!=='home'||args.path?.includes('view=case-study')))throw new Error('A fade capture requires --page home and --cartridge.');
 const width = Number(args.width), height = Number(args.height), port = Number(args.port);
 if (![width, height, port].every(n => Number.isInteger(n) && n > 0) || port > 65535) throw new Error("Use positive integer dimensions and a valid port.");
 const baseURL = `http://127.0.0.1:${port}`;
@@ -77,9 +78,11 @@ try {
         const cartridge=document.querySelector('.case-cartridge-stage[data-dissolve="revealing"],.hero-cartridge-stage[data-dissolve="revealing"]'),reveal=Number(cartridge?.dataset.revealProgress);
         if (state.phase === "dither" && dither && Number(dither.style.opacity) > .2 || state.phase === "turn" && book?.dataset.phase === "turning" && progress > .35 && progress < .75) state.frozen = true;
         if(state.phase==='cartridge'&&cartridge&&(!state.company||cartridge.dataset.cartridge===state.company)&&reveal>.35&&reveal<.75)state.frozen=true;
+        const hero=document.querySelector('.hero-cartridge-stage'),fade=Number(hero?.dataset.fadeProgress);
+        if(state.phase==='fade'&&hero?.dataset.cartridge===state.company&&hero.dataset.appearanceState==='fading'&&fade>.25&&fade<.75)state.frozen=true;
       }
       // Freeze only the target animation, leaving Playwright/other RAFs alive.
-      const target = state.phase === "cartridge" ? "tick" : state.phase === "dither" ? "paint" : "frame";
+      const target = state.phase === "cartridge" || state.phase === "fade" ? "tick" : state.phase === "dither" ? "paint" : "frame";
       if (state.frozen && callback.name === target) { state.held.push(callback); return; }
       callback(now);
     });
@@ -118,6 +121,7 @@ try {
     if(args.phase==="settled"){
       await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-intro", "settled", wait);
       await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-turn-state", "settled", wait);
+      await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-appearance-state", "settled", wait);
     }
   }
   if (args.phase !== "settled") await page.evaluate(() => { window.__review.armed = true; });

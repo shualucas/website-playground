@@ -2,7 +2,7 @@
 
 Production: https://website-playground-eta.vercel.app/
 
-React 19, Vite, and imperative Three.js. The home page has a white dithered cartridge that swaps to four career cartridges through the company names in a rotating bio, recent projects with dither/3D hover previews, and server-backed Last.fm listening. Current pages:
+React 19, Vite, and imperative Three.js. The home page has a monochrome dithered cartridge (black in light mode, white in dark mode) that fades and spins into four career cartridges through the company names in a rotating bio. Leaving a company fades back to the default without another spin. Recent projects have dither/3D hover previews and server-backed Last.fm listening. Current pages:
 
 | Route | Entry and main files |
 | --- | --- |
@@ -50,6 +50,7 @@ One command starts or reuses Vite, shares the test browser configuration, waits 
 ```sh
 npm run review -- --page home
 npm run review -- --page home --cartridge Stadia
+npm run review -- --page home --cartridge Stadia --phase fade
 npm run review -- --page home --control '.footer-links a:first-child'
 npm run review -- --page home --hover rave-flyer-zine --phase dither --theme dark
 npm run review -- --path '/?project=ai-mode-nudges&view=case-study' --phase cartridge

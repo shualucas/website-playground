@@ -27,7 +27,7 @@ export function HeroCartridge({ id, active, onStatusChange }) {
   },[onStatusChange,requested]);
   useEffect(()=>{void engine.current?.setCartridge(cartridge)},[cartridge]);
   useEffect(()=>{engine.current?.setPaused(!active)},[active]);
-  return <div id="hero-cartridge" className="hero-cartridge" data-status={status} data-cartridge={cartridge.id} role="img" aria-label={cartridge.id==="personal"?"White dithered cartridge":`${cartridge.name} cartridge`} tabIndex={status==="ready"?0:undefined} aria-description={status==="ready"?"Drag or use the arrow keys to rotate. Press R to reset.":undefined} data-reveal>
+  return <div id="hero-cartridge" className="hero-cartridge" data-status={status} data-cartridge={cartridge.id} role="img" aria-label={cartridge.id==="personal"?"Dithered cartridge":`${cartridge.name} cartridge`} tabIndex={status==="ready"?0:undefined} aria-description={status==="ready"?"Drag or use the arrow keys to rotate. Press R to reset.":undefined} data-reveal>
     <div ref={host} className="hero-cartridge-stage" aria-hidden="true" />
     {status==="fallback"&&(cartridge.id==="personal"?<img className="hero-dither-fallback" src="/cartridges/dither-cartridge.svg" alt="" aria-hidden="true"/>:<div className="hero-cartridge-fallback" style={{"--cartridge-shell":cartridge.shell}} aria-hidden="true"><img src={cartridge.label} alt="" /></div>)}
   </div>;

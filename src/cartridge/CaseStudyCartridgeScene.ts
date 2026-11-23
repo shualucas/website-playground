@@ -8,6 +8,7 @@ import { loadExternalShell } from "./model";
 
 type Callbacks = { onReady: () => void; onError: () => void };
 type Options = { transparentBackground?:boolean; entranceScale?:number };
+type Appearance = { cartridge:DisplayCartridge; model:THREE.Group; dissolve:CartridgeDissolve; weight:number; from:number };
 
 /** One original home-page cartridge, framed for a readable case-study introduction. */
 export class CaseStudyCartridgeScene {
@@ -36,6 +37,7 @@ export class CaseStudyCartridgeScene {
   private turn = 0;
   private turnTarget = 0;
   private turnVelocity = 0;
+  private turnBraking = false;
   private visible = true;
   private ready = false;
   private dissolve = new CartridgeDissolve();
@@ -45,6 +47,8 @@ export class CaseStudyCartridgeScene {
   private generation = 0;
   private models = new Map<string,Promise<THREE.Group | null>>();
   private loaded = new Set<THREE.Group>();
+  private appearances = new Map<string,Appearance>();
+  private appearanceTime = .18;
   private control: HTMLElement;
   private ray = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
@@ -101,14 +105,16 @@ export class CaseStudyCartridgeScene {
       const model=await loadExternalShell(label,cartridge.shell,undefined,cartridge.finish,cartridge.id==="gmail");
       if(!model)throw new Error("Cartridge model unavailable");
       if(this.disposed){this.disposeModel(model);return null}
+      const dissolve=new CartridgeDissolve();dissolve.pixelSize.value=this.dissolve.pixelSize.value;
       model.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
         const materials=Array.isArray(object.material)?object.material:[object.material];
-        for(const material of materials)this.dissolve.apply(material);
+        for(const material of materials)dissolve.apply(material);
         object.castShadow=!object.userData.label&&materials.some(material=>material.visible&&!((material as THREE.MeshPhysicalMaterial).transmission>.05));
         object.receiveShadow=Boolean(object.userData.label);
       });
-      this.loaded.add(model);applyCartridgeTheme(model,document.documentElement.dataset.colorMode==="dark");
+      this.loaded.add(model);this.appearances.set(cartridge.id,{cartridge,model,dissolve,weight:0,from:0});
+      applyCartridgeTheme(model,document.documentElement.dataset.colorMode==="dark");
       await this.renderer.compileAsync(model,this.camera,this.scene);
       return this.disposed?null:model;
     })();
@@ -125,15 +131,19 @@ export class CaseStudyCartridgeScene {
       const model=await this.loadModel(cartridge);
       if(this.disposed||!model||generation!==this.generation)return;
       const initial=!this.ready;
-      this.cartridge=cartridge;this.root.clear();this.root.add(model);
+      // Blend from the currently visible mix, including when a quick hover interrupts a fade.
+      for(const appearance of this.appearances.values())appearance.from=appearance.weight;
+      this.cartridge=cartridge;this.appearanceTime=(initial||this.motion.matches) ? .18 : 0;
+      this.updateAppearance(0);
       if(initial){
         // Frame the shared geometry once; later swaps inherit the live pose and camera.
         this.root.rotation.set(.26,-.22,-.05);this.root.updateMatrixWorld(true);
         new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
       }
       if(!initial&&!this.motion.matches&&this.time>=this.entranceDuration){
-        // Aim for a readable full turn ahead without queuing a spin for every crossed link.
-        this.turnTarget=Math.ceil((this.turn+Math.PI/2)/(Math.PI*2))*Math.PI*2;
+        this.turnBraking=cartridge.id==='personal';
+        // Enter adds a turn from the live pose. Exit only settles the existing momentum.
+        this.turnTarget=this.turnBraking?this.turn+this.turnVelocity/24:Math.ceil((this.turn+Math.PI/2)/(Math.PI*2))*Math.PI*2;
       }
       this.host.dataset.cartridge=cartridge.id;
       this.updateTheme();
@@ -144,11 +154,28 @@ export class CaseStudyCartridgeScene {
     if(this.paused===paused)return;
     this.paused=paused;this.sync();
   }
+  private updateAppearance(dt:number) {
+    this.appearanceTime=Math.min(.18,this.appearanceTime+dt);
+    const p=this.appearanceTime/.18,ease=p*p*(3-2*p);
+    let edge=0;
+    // Disjoint ranges of the same Bayer pattern crossfade surfaces without alpha sorting.
+    for(const appearance of this.appearances.values()){
+      const {cartridge,model,dissolve,from}=appearance;
+      appearance.weight=THREE.MathUtils.lerp(from,cartridge.id===this.cartridge.id?1:0,ease);
+      dissolve.range.value.set(edge,edge+appearance.weight);edge+=appearance.weight;
+      model.visible=appearance.weight>0;
+      if(model.visible&&model.parent!==this.root){applyCartridgeTheme(model,document.documentElement.dataset.colorMode==='dark');this.root.add(model)}
+      else if(!model.visible&&model.parent===this.root)this.root.remove(model);
+    }
+    this.host.dataset.appearanceState=p<1?'fading':'settled';
+    this.host.dataset.fadeProgress=p.toFixed(4);
+  }
   private setPose() {
     const t=this.motion.matches?0:this.time;
     // Each surface has its own entrance, followed by the same gentle ambient drift.
     const p=this.motion.matches?1:Math.min(1,t/this.entranceDuration),ease=1-Math.pow(1-p,4);
     this.dissolve.progress.value=p;
+    for(const appearance of this.appearances.values())appearance.dissolve.progress.value=p;
     this.host.dataset.dissolve=p<1?'revealing':'complete';
     this.host.dataset.revealProgress=p.toFixed(4);
     const ambientTurn=Math.max(0,t-this.entranceDuration)*Math.PI*2/45;
@@ -206,13 +233,17 @@ export class CaseStudyCartridgeScene {
   private updateTheme=()=>{
     const dark=document.documentElement.dataset.colorMode==="dark";
     const personal=this.cartridge.id==='personal';
-    this.dissolve.persistent.value=personal?1:0;
     this.host.dataset.renderStyle=personal?'dither':'model';
     applyCartridgeTheme(this.root,dark);this.host.dataset.shellTheme=dark?"dark":"light";
     this.background.set(dark?"#101110":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
     if(this.transparentBackground)this.renderer.setClearColor(this.background,0);
-    const ink=personal?'#ffffff':this.cartridge.id==='search'?'#6988d8':this.cartridge.id==='stadia'?'#e5633d':this.cartridge.accent;
-    this.dissolve.ink.value.set(ink).multiplyScalar(dark||personal?1:.65);
+    for(const {cartridge,dissolve} of this.appearances.values()){
+      const monochrome=cartridge.id==='personal';
+      dissolve.persistent.value=monochrome?1:0;
+      const ink=monochrome?(dark?'#ffffff':'#000000'):cartridge.id==='search'?'#6988d8':cartridge.id==='stadia'?'#e5633d':cartridge.accent;
+      dissolve.ink.value.set(ink).multiplyScalar(dark||monochrome?1:.65);
+      if(cartridge.id===this.cartridge.id)this.dissolve.ink.value.copy(dissolve.ink.value);
+    }
     if(this.ready)this.draw();
   };
   private resize=()=>{
@@ -223,7 +254,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.setSize(w,h,false);if(this.ready)this.draw();
   };
   private draw() {if(!this.disposed&&this.host.clientWidth&&this.host.clientHeight){this.setPose();this.renderer.render(this.scene,this.camera)}}
-  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:this.entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.turnTarget=this.turn;this.turnVelocity=0;this.sync()};
+  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:this.entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.turnTarget=this.turn;this.turnVelocity=0;this.turnBraking=false;if(this.motion.matches)this.updateAppearance(.18);this.sync()};
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
@@ -237,10 +268,16 @@ export class CaseStudyCartridgeScene {
     this.frame=0;if(this.disposed)return;
     const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
     if(!this.drag)this.time+=dt;
+    this.updateAppearance(dt);
     if(!this.drag)for(let i=0;i<4;i++){
-      this.turnVelocity+=((this.turnTarget-this.turn)*140-this.turnVelocity*24)*dt/4;
-      this.turnVelocity=THREE.MathUtils.clamp(this.turnVelocity,-18,18);
-      this.turn+=this.turnVelocity*dt/4;
+      if(this.turnBraking){
+        const decay=Math.exp(-24*dt/4);
+        this.turn+=this.turnVelocity*(1-decay)/24;this.turnVelocity*=decay;
+      }else{
+        this.turnVelocity+=((this.turnTarget-this.turn)*140-this.turnVelocity*24)*dt/4;
+        this.turnVelocity=THREE.MathUtils.clamp(this.turnVelocity,-18,18);
+        this.turn+=this.turnVelocity*dt/4;
+      }
     }
     if(Math.abs(this.turnTarget-this.turn)<.005&&Math.abs(this.turnVelocity)<.05){this.turn=this.turnTarget;this.turnVelocity=0}
     // Direct manipulation while held; spring settling for keyboard changes.
@@ -271,7 +308,7 @@ export class CaseStudyCartridgeScene {
     this.host.removeEventListener("pointerup",this.up);this.host.removeEventListener("pointercancel",this.up);this.host.removeEventListener("lostpointercapture",this.up);
     this.control.removeEventListener("keydown",this.keydown);window.removeEventListener("blur",this.cancelDrag);
     this.renderer.domElement.removeEventListener("webglcontextlost",this.contextLost);
-    const models=new THREE.Group();for(const model of this.loaded)models.add(model);this.loaded.clear();this.models.clear();
+    const models=new THREE.Group();for(const model of this.loaded)models.add(model);this.loaded.clear();this.models.clear();this.appearances.clear();
     this.disposeModel(models);this.receiver.geometry.dispose();this.shadow.dispose();this.key.shadow.dispose();
     this.environment.dispose();this.pmrem.dispose();this.renderer.dispose();this.renderer.forceContextLoss();this.renderer.domElement.remove();
     delete this.host.dataset.motion;
@@ -281,5 +318,6 @@ export class CaseStudyCartridgeScene {
     delete this.host.dataset.cartridge;
     delete this.host.dataset.renderStyle;
     delete this.host.dataset.turn;delete this.host.dataset.turnState;
+    delete this.host.dataset.appearanceState;delete this.host.dataset.fadeProgress;
   }
 }
