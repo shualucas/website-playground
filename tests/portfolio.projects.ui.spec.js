@@ -583,10 +583,10 @@ test('project rows use half the content width with previews beside them and clea
   for(const i of [0,3,4]){
     await links.nth(i).hover();await expect(preview).toHaveAttribute('data-visible','true');await expect(preview).toHaveCSS('position','absolute');await expect(preview).toHaveCSS('pointer-events','none');
     const row=await links.nth(i).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
-    expect(art.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(art.x+art.width).toBeCloseTo(content.x+content.width,1);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
+    expect(art.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(art.x+art.width).toBeCloseTo(1440-24,1);expect(art.y).toBeLessThan(row.y+row.height);expect(art.y+art.height).toBeGreaterThan(row.y);
     const surface=await page.locator('.project-hue-wash > span[data-active="true"]').evaluate(el=>getComputedStyle(el).backgroundColor);await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color',surface);await expect(nav.locator('.recent-preview-content')).toHaveCSS('background-color',surface);
   }
-  await page.getByRole('button',{name:'Switch to dark mode'}).click();await links.last().hover();await expect(nav.locator('.recent-preview-art')).toHaveCSS('background-color',await page.locator('.project-hue-wash > span[data-active="true"]').evaluate(el=>getComputedStyle(el).backgroundColor));
+  await page.getByRole('button',{name:'Switch to dark mode'}).click();await links.last().hover();await expect.poll(()=>nav.evaluate(el=>getComputedStyle(el.querySelector('.recent-preview-art')).backgroundColor===getComputedStyle(document.querySelector('.project-hue-wash > span[data-active="true"]')).backgroundColor)).toBe(true);
   const target=await links.nth(2).boundingBox(),art=await nav.locator('.recent-preview-art').boundingBox();
   expect(await page.evaluate(p=>document.elementFromPoint(p.x,p.y)?.closest('a')?.getAttribute('href')??null,{x:art.x+art.width/2,y:target.y+target.height/2})).toBe(null);
   const point={x:target.x+target.width*.6,y:target.y+target.height/2};
@@ -618,10 +618,10 @@ test('touch projects expand inline, show full descriptions and navigate only thr
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await labsPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeVisible();await context.close();
 });
 
-test('project previews center on the pointer and hug the content right edge across desktop sizes',async({page})=>{
+test('project previews center on the pointer and fill the available right side without clipping',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'}),preview=nav.locator('.recent-project-preview'),art=nav.locator('.recent-preview-art');
- for(const [width,height] of [[1440,1000],[900,800],[850,800],[1440,600]]){
+ for(const [width,height] of [[1440,1000],[900,800],[850,800],[1440,600],[2560,500]]){
   await page.setViewportSize({width,height});
   for(const row of [nav.locator('.recent-project-link').nth(0),nav.locator('.recent-project-link').nth(1)]){
    await row.scrollIntoViewIfNeeded();const r=await row.boundingBox();
@@ -631,7 +631,7 @@ test('project previews center on the pointer and hug the content right edge acro
     await expect.poll(async()=>{const frame=await art.boundingBox(),center=Math.max(16+frame.height/2,Math.min(height-16-frame.height/2,y));return Math.abs(frame.y+frame.height/2-center)}).toBeLessThan(1);
     const frame=await art.boundingBox(),content=await nav.boundingBox();
     expect(frame.x).toBeGreaterThanOrEqual(r.x+r.width+31);
-    expect(frame.x+frame.width).toBeCloseTo(content.x+content.width,1);
+    expect(frame.width).toBeCloseTo(Math.min(width/2-56,(height-32)*1.6),1);
     expect(frame.x).toBeGreaterThanOrEqual(0);expect(frame.x+frame.width).toBeLessThanOrEqual(width);
     expect(frame.y).toBeGreaterThanOrEqual(15);expect(frame.y+frame.height).toBeLessThanOrEqual(height-15);
    }
@@ -692,10 +692,10 @@ test('hover previews fit the right column across desktop sizes and Search Labs k
  for(const [width,height]of [[1440,1000],[900,650],[1440,600]]){
   await page.setViewportSize({width,height});await labs.hover();await expect(preview).toHaveCSS('position','absolute');
   const frame=await nav.locator('.recent-preview-art').boundingBox(),content=await nav.boundingBox(),row=await labs.boundingBox();
-  expect(frame.width).toBeCloseTo((content.width/2-32)*1.6/1.8,0);expect(frame.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(frame.y+frame.height).toBeLessThanOrEqual(height);
+  expect(frame.width).toBeCloseTo(Math.min(width/2-56,(height-32)*1.6),0);expect(frame.x).toBeGreaterThanOrEqual(row.x+row.width+31);expect(frame.y+frame.height).toBeLessThanOrEqual(height);
  }
- expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#c170c4');
- await page.getByRole('button',{name:'Switch to dark mode'}).click();await labs.hover();expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#b759ba');await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
+ expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#d447e0');
+ await page.getByRole('button',{name:'Switch to dark mode'}).click();await labs.hover();expect(await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'))).toBe('#cd29db');await page.mouse.move(2,2);await expect(page.locator('html')).toHaveCSS('background-color','rgb(16, 17, 16)');
 });
 
 test('thumbnail dither replays on return and stays static for reduced motion',async({page})=>{

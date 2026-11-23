@@ -15,15 +15,15 @@ const { values: args } = parseArgs({ options: {
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000]");
   process.exit(0);
 }
-if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
+if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "resolve", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
 if (args.phase !== "settled" && args.motion === "reduce") throw new Error("Mid-animation captures require --motion normal.");
 if (args.phase === "dither" && !args.hover || args.phase === "turn" && args.page !== "zine") throw new Error("dither requires --hover; a turn capture requires --page zine.");
 if(args.phase==='cartridge'&&args.page!=='home'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires the home page or a case-study --path.');
 if(args.phase==='cartridge'&&args.cartridge)throw new Error('Use --phase cartridge without --cartridge for the initial entrance; company swaps preserve the current motion.');
-if(args.phase==='fade'&&(!args.cartridge||args.page!=='home'||args.path?.includes('view=case-study')))throw new Error('A fade capture requires --page home and --cartridge.');
+if(['fade','resolve'].includes(args.phase)&&(!args.cartridge||args.page!=='home'||args.path?.includes('view=case-study')))throw new Error('A fade or resolve capture requires --page home and --cartridge.');
 const width = Number(args.width), height = Number(args.height), port = Number(args.port);
 if (![width, height, port].every(n => Number.isInteger(n) && n > 0) || port > 65535) throw new Error("Use positive integer dimensions and a valid port.");
 const baseURL = `http://127.0.0.1:${port}`;
@@ -67,7 +67,7 @@ try {
   await page.route("**/api/weather", route => route.fulfill({ status:204 }));
   await page.addInitScript(({ theme, phase, company }) => {
     localStorage.setItem("cartridge-color-mode", theme); localStorage.setItem("zine-color-mode", theme);
-    const companyId=({Search:'search','Google Search':'search',Stadia:'stadia',Gmail:'gmail',Blizzard:'blizzard','Blizzard Entertainment':'blizzard'})[company];
+    const companyId=({Google:'search',Search:'search','Google Search':'search',Stadia:'stadia',Gmail:'gmail',Blizzard:'blizzard','Blizzard Entertainment':'blizzard'})[company];
     window.__review = { armed:phase==='cartridge'&&!company, frozen:false, held:[], phase, company:companyId };
     const raf = requestAnimationFrame.bind(window);
     window.requestAnimationFrame = callback => raf(now => {
@@ -80,9 +80,11 @@ try {
         if(state.phase==='cartridge'&&cartridge&&(!state.company||cartridge.dataset.cartridge===state.company)&&reveal>.35&&reveal<.75)state.frozen=true;
         const hero=document.querySelector('.hero-cartridge-stage'),fade=Number(hero?.dataset.fadeProgress);
         if(state.phase==='fade'&&hero?.dataset.cartridge===state.company&&hero.dataset.appearanceState==='fading'&&fade>.25&&fade<.75)state.frozen=true;
+        const surface=Number(hero?.dataset.surfaceReveal);
+        if(state.phase==='resolve'&&hero?.dataset.cartridge===state.company&&surface>.1&&surface<.6)state.frozen=true;
       }
       // Freeze only the target animation, leaving Playwright/other RAFs alive.
-      const target = state.phase === "cartridge" || state.phase === "fade" ? "tick" : state.phase === "dither" ? "paint" : "frame";
+      const target = ["cartridge","fade","resolve"].includes(state.phase) ? "tick" : state.phase === "dither" ? "paint" : "frame";
       if (state.frozen && callback.name === target) { state.held.push(callback); return; }
       callback(now);
     });
@@ -113,7 +115,7 @@ try {
     return !rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight || !!el.closest('[aria-hidden="true"]') || blocker && blocker.dataset.revealInert !== "true" || el.dataset.revealReady === "true";
   })), wait).toBe(true);
   if (args.cartridge) {
-    const name=({Search:"Google Search","Blizzard Entertainment":"Blizzard"})[args.cartridge]||args.cartridge;
+    const name=({Search:"Google","Google Search":"Google","Blizzard Entertainment":"Blizzard"})[args.cartridge]||args.cartridge;
     if(args.phase!=="settled")await page.evaluate(()=>{window.__review.armed=true});
     const control=page.getByRole("button", { name:`Show ${name} cartridge`, exact:true });
     await control.hover();
@@ -122,6 +124,7 @@ try {
       await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-intro", "settled", wait);
       await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-turn-state", "settled", wait);
       await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-appearance-state", "settled", wait);
+      await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-surface-reveal", "1.0000", wait);
     }
   }
   if (args.phase !== "settled") await page.evaluate(() => { window.__review.armed = true; });
@@ -133,7 +136,10 @@ try {
     if (args.phase === "settled") {
       await expect(page.locator(".recent-preview-dither")).toHaveAttribute("data-state", "complete", wait);
       if (kind === "zine") await expect(page.locator(".zine-preview-scene")).toHaveAttribute("data-preview-intro", "settled", wait);
-      if (kind === "film") await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-intro", "settled", wait);
+      if (kind === "film") {
+        await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-status", "ready", wait);
+        if(args.motion!=="reduce")await expect(page.locator(".film-camera-dock")).toHaveAttribute("data-intro", "settled", wait);
+      }
       if (!dither) await page.locator('.recent-solid-visual').evaluate(async element => { await Promise.allSettled(element.getAnimations().map(animation => animation.finished)); });
     }
   }

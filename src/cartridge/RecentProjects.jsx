@@ -8,11 +8,11 @@ import {CameraLink} from "./CameraLink";
 import {LoopVideo} from "../LoopVideo";
 
 const previews={
-  "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
-  "search-labs":{team:"Search",accent:"#b759ba",kind:"search",placeholder:true},
+  "ai-mode-nudges":{team:"Search",accent:"#e347bd",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
+  "search-labs":{team:"Search",accent:"#cd29db",kind:"search",placeholder:true},
   "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",video:"/videos/stadia/lilycove-hero-1280.mp4",poster:"/videos/stadia/lilycove-hero-poster.jpg",label:"Stadia Store Redesign motion study",width:1280,height:800},
-  "rave-flyer-zine":{team:"Fun",accent:"#e48dae",kind:"zine"},
-  film:{team:"Fun",accent:"#b69272",kind:"film"},
+  "rave-flyer-zine":{team:"Fun",accent:"#e5b840",kind:"zine"},
+  film:{team:"Fun",accent:"#429f68",kind:"film"},
 };
 const film={id:"film",label:"Say cheese!",description:"Film photographs",href:"/photos/"};
 const projects=[...recentProjects.map(project=>project.id==="stadia-store-redesign"?{...project,label:"Store Redesign"}:project),film];
@@ -43,7 +43,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   const canHover=useMedia("(min-width:761px) and (hover:hover) and (pointer:fine)");
   const [{active,visible},setPreview]=useState({active:null,visible:false});
   const [cameraTarget,setCameraTarget]=useState(null),[seen,setSeen]=useState({film:false,zine:false});
-  const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null);
+  const navigation=useRef(null),browser=useRef(null),pointer=useRef(null),focus=useRef(null),cameraAction=useRef(null),pointerY=useRef(null);
   const select=(id,index)=>{
     setPreview(current=>current.active===id&&current.visible?current:{active:id,visible:true});const kind=previews[id]?.kind;
     if(kind==="film"||kind==="zine")setSeen(old=>old[kind]?old:{...old,[kind]:true});
@@ -53,25 +53,35 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   const dismiss=()=>setPreview(current=>current.visible?{...current,visible:false}:current);
   const release=()=>{if(!canHover)return;const id=focus.current??pointer.current;if(id)select(id,projects.findIndex(p=>p.id===id));else dismiss()};
   const toggle=(id,index)=>{if(active===id&&visible)dismiss();else select(id,index)};
-  const track=event=>{
-    if(!canHover||(!pointer.current&&!focus.current)||event.pointerType==="touch"||!browser.current)return;
+  const positionPreview=y=>{
+    if(!browser.current)return;
     const bounds=browser.current.getBoundingClientRect();
     const height=browser.current.querySelector(".recent-preview-art")?.getBoundingClientRect().height??0;
-    const center=Math.max(16+height/2,Math.min(innerHeight-16-height/2,event.clientY));
+    const center=Math.max(16+height/2,Math.min(innerHeight-16-height/2,y));
     navigation.current?.style.setProperty("--preview-offset",`${center-bounds.top-bounds.height/2}px`);
+  };
+  const track=event=>{
+    if(!canHover||(!pointer.current&&!focus.current)||event.pointerType==="touch")return;
+    pointerY.current=event.clientY;positionPreview(event.clientY);
   };
   const browse=(event,id,index)=>{if(!canHover||event.pointerType==="touch")return;pointer.current=id;select(id,index);track(event)};
   const focused=(event,id,index)=>{if(canHover&&event.target.matches(":focus-visible")){focus.current=id;select(id,index);const rect=event.target.getBoundingClientRect();track({clientX:rect.right-60,clientY:rect.top+rect.height/2,pointerType:"keyboard"})}};
   const project=projects.find(p=>p.id===active),preview=previews[active],showing=visible&&!hidden;
-  const previewAspect=1.6;
   const accent=projectAccent(preview?.accent??"#6988d8",dark);
-  const surface=showing?`color-mix(in srgb,color-mix(in srgb,${accent} ${dark?70:82}%,${dark?'#000':'#fff'}) 20%,var(--scene-bg))`:"var(--scene-bg)";
+  const surface=showing?`color-mix(in srgb,color-mix(in srgb,${accent} ${dark?70:82}%,${dark?'#000':'#fff'}) 28%,var(--scene-bg))`:"var(--scene-bg)";
+  useLayoutEffect(()=>{
+    if(!canHover||!showing)return;
+    const place=()=>positionPreview(pointerY.current??innerHeight/2),observer=new ResizeObserver(place);
+    observer.observe(browser.current);const art=browser.current.querySelector('.recent-preview-art');if(art)observer.observe(art);
+    window.addEventListener('resize',place);window.addEventListener('scroll',place,{passive:true});place();
+    return()=>{observer.disconnect();window.removeEventListener('resize',place);window.removeEventListener('scroll',place)};
+  },[canHover,showing,active]);
   useLayoutEffect(()=>{
     const root=navigation.current?.closest(".collection");if(!root)return;
     root.style.setProperty("--project-surface",surface);
     return()=>root.style.removeProperty("--project-surface");
   },[surface]);
-  useEffect(()=>{onPreviewChange?.(showing?active:null)},[showing,active,onPreviewChange]);
+  useEffect(()=>{onPreviewChange?.(showing?{id:active,color:accent}:null)},[showing,active,accent,onPreviewChange]);
   useEffect(()=>{pointer.current=focus.current=null;dismiss()},[canHover]);
   useEffect(()=>{
     if(canHover||!showing)return;const outside=event=>{if(!navigation.current?.contains(event.target))dismiss()};
@@ -84,7 +94,7 @@ export function RecentProjects({onOpen,dark,ready,hidden,exiting,onPreviewChange
   };
   return <>
     {createPortal(<div className="project-hue-wash" aria-hidden="true" data-active={showing} data-exiting={Boolean(exiting)} style={{"--project-surface":surface}}>{Object.entries(previews).map(([id,item])=><span key={id} data-active={showing&&active===id} style={{"--wash-color":projectAccent(item.accent,dark)}}/>)}</div>,document.body)}
-    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} data-color-intro="disabled" style={{"--preview-accent":accent,"--preview-width-scale":previewAspect/1.8}}
+    <nav ref={navigation} className="recent-projects" aria-labelledby="recent-projects-title" data-preview-mode={canHover?"hover":"inline"} data-preview-active={showing} data-active-project={showing?active:""} data-color-intro="disabled" style={{"--preview-accent":accent,"--preview-width-scale":1}}
       onPointerLeave={()=>{pointer.current=null;release()}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget)){focus.current=null;release()}}}
       onKeyDown={event=>{if(!canHover&&showing&&event.key==="Escape"){event.preventDefault();event.stopPropagation();dismiss();navigation.current?.querySelector(`[data-project="${active}"] .recent-project-link`)?.focus({preventScroll:true})}}}>
       <h2 id="recent-projects-title" data-reveal data-reveal-at={entrance.projectsStart}>Recent projects</h2>

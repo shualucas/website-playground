@@ -2,7 +2,7 @@
 
 Production: https://website-playground-eta.vercel.app/
 
-React 19, Vite, and imperative Three.js. The home page has a monochrome dithered cartridge (black in light mode, white in dark mode) that fades and spins into four career cartridges through the company names in a rotating bio. Leaving a company fades back to the default without another spin. Recent projects have dither/3D hover previews and server-backed Last.fm listening. Current pages:
+React 19, Vite, and imperative Three.js. The home page has a monochrome dithered cartridge (black in light mode, white in dark mode) above a three-line rotating bio. Company hovers fade into a colored dither, resolve into the full cartridge, and settle with its label facing forward. Leaving a company fades back to the default without another spin. Recent project hovers tint the default silhouette and fill the available right side with a preview clamped inside the viewport. Listening is backed by Last.fm on the server. Current pages:
 
 | Route | Entry and main files |
 | --- | --- |
