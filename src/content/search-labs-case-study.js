@@ -6,7 +6,7 @@ export const searchLabsCaseStudy = {
   subtitle: "From a waitlist to a global AI playground.",
   role: "Core Product Designer",
   scope: "0-to-1 platform, design system & growth",
-  summary: "From 2023 to 2025, I was one of two designers on Google Search Labs. Another designer owned the brand, and I owned the UX, interaction framework, and design system. Together we took it from a ~1M US waitlist to 48M+ people testing early AI in Search.",
+  summary: "From 2023 to 2025, I was one of two designers on Google's Search Labs. While the other designer owned the brand, I owned the interaction framework and design system.",
   highlights: [
     { value: "+47M", label: "Net-new users" },
     { value: "5M", label: "Daily active users" },
@@ -15,37 +15,26 @@ export const searchLabsCaseStudy = {
   story: [
     {
       id: "problem", label: "Explorations and the shipped card system",
-      copy: [
-        "In 2023, Google needed a way to test experimental AI features in public without breaking the current experience. V1 of Search Labs was built in a sprint for Google I/O: a barebones waitlist full of switches to turn on one or experiments (AI Overviews). It did it's job for launch week, but the need for a scaleable platform was growing.",
-        "When our team of two designers stepped in to turn it into a real destination, I designed a bunch of richer, more expressive experiences that I really liked. Almost none of them survived as we had a tiny engineering team, a hard deadline, and more than twenty internal teams lined up waiting to launch their experimental features. So the richer versions of Search Labs went on a shelf, and I built a more minimal, less robust version that was miles better than the V1, and realistic enough to get launched in time.",
-      ],
-      visual: { title: "Explorations and the shipped card system", caption: "The barebones I/O waitlist, richer explorations, and the leaner system we shipped", type: "image", src: "" },
+      copy: "Search needed a place to test experimental AI features without disrupting the core experience. Version 1 of Search Labs was a scrappy waitlist and toggle built within a sprint for Google I/O. It worked for launch week, then ran out of room as there was increasing demand from teams to launch experiments on the platform. I designed richer layouts for Labs I really loved, but almost none survived the continuous re-scoping of the project. With a small engineering squad and many internal teams waiting to launch, the nice prototypes went on a shelf so we could build a launchable MVP instead.",
+      visual: { title: "Explorations and the shipped card system", caption: "The barebones I/O waitlist page, early cut explorations, and the shipped card system.", type: "image", src: "" },
     },
     {
       id: "opt-in", label: "Four opt-in models",
-      copy: [
-        "Most of the job here was not visual polish. It was surviving policy thrash.",
-        "Because putting experimental AI into Search made legal and leadership understandably nervous, the rules for opting in changed four times, and UX didn't get the final vote. First, people were going to turn on individual experiments a la carte. Then leadership wanted a \"membership\" that turned everything on at once. Then it was themed bundles. Then bundles died, and we landed on a single \"Turn on\" button (in the header or on any card) that enabled every active experiment at once, with individual off-switches tucked away in Settings.",
-        "After the second pivot, I built the cards so the content and the opt-in controls lived separately. Every time the rules changed, we could swap how the buttons worked without tearing up the page. Tightening the mobile header so the first \"Turn on\" button sat above the fold lifted mobile opt-ins by +50%, the unified opt-in redesign bumped new users by +42% (+97% during badged launches), and adding hero promos later drove +67% more daily conversions (>135K a day).",
-      ],
-      visual: { title: "Four opt-in flows", caption: "A flow diagram mapping four opt-in pivots across the same card layout.", type: "image", src: "" },
+      copy: "The difficult part wasn't visual craft, it was policy thrash. Leadership changed the opt-in rules several times: individual switches, membership, themed bundles, and finally one \"Turn on\" button that enabled everything across the board. Because UX didn't get the final vote, I kept card content separate from the opt-in controls so we could swap mechanics without rebuilding the page.",
+      visual: { title: "Four opt-in flows", caption: "A diagram of the four opt-in pivots", type: "image", src: "" },
     },
     {
       id: "try-example", label: "From opt-in to trying an experiment",
-      copy: [
-        "Once someone tapped \"Turn on\", the button didn't turn into an on/off switch. It changed to \"Try an example\" and dropped you straight into a live Google Search query.",
-        "Leads hated the idea of Labs turning into a glorified settings page, and the data backed them up. When we tested putting toggles directly on the cards, \"Try an example\" clicks dropped -15.5%, and nearly a quarter of people just flicked switches on and off within twenty seconds like a fidget toy. Swapping toggles for example queries cut accidental turn-offs by -80% and actually got people into the features, helping big launches pull in +52,000 opt-ins in a single day.",
-      ],
-      visual: { title: "From opt-in to a live Search query", caption: "Tapping \"Turn on\" flips the card button to \"Try an example\".", type: "image", src: "" },
+      copy: "After clicking, \"Turn on\" swapped to \"Try an example\" so Labs would lead users straight into the experience. Previously, nearly a quarter of users flicked switches on and off like a fidget toy. Moving toggles to Settings cut those quick turn-offs by 80%, and when we tested putting toggles back on cards, clicks into live features dropped 15.5%. Above-the-fold buttons lifted mobile opt-ins 5%, and hero promos drove 67% more daily conversions.",
+      visual: { title: "From opt-in to a live Search query", caption: "Enabling an experiment, \"Turn on\" swapping into \"Try an example\".", type: "image", src: "" },
     },
     {
       id: "design-system", label: "Self-serve launches and mobile performance",
-      copy: "With a small team, we couldn't hand-hold every launch. I put together a self-serve design system covering card layouts, detail pages, 48px tap targets, and the little lab-beaker badge inside Search results. A surprising amount of my nights went into policing file sizes (500KB max for images, 1MB for video previews) so twenty different teams shipping animated demos wouldn't tank load times across 120+ countries. Partner teams shipped +17 new AI experiments through that kit without needing custom frontend work from us.",
-      visual: { title: "A self-serve design system", caption: "The Search Labs design system, card specs, and in-product beaker badging.", type: "image", src: "" },
+      copy: "To stop being a bottleneck, I packaged everything into a self-serve kit (card specs, file size limits, branding requirements) so partner teams could ship new experiments across 120+ countries without custom front-end work every time.",
+      visual: { title: "A self-serve design system", caption: "Design system, asset specs, and branding requirements.", type: "image", src: "" },
     },
   ],
   results: {
-    copy: "Over two years, Search Labs added +47M net-new users and hit 5M daily active users, with 71% of users saying Google Search felt more innovative after trying it. More importantly, it gave AI Overviews (now at 1B+ users) and AI Mode room to grow up in public before moving into core Search.",
+    copy: "It isn't how I'd design it today, and it isn't going in a museum. Keeping it simple is just how we survived while the rules kept shifting underneath us. Labs added +47 million net-new users and hit 5M daily active users, giving AI Overviews and AI Mode room to grow.",
   },
-  next: "If I'm being honest, the final UI isn't my favorite thing I've ever designed, and it isn't how I'd build it today. It's a little plain. But keeping it simple is why twenty teams could ship on time while the rules kept changing underneath us. Eventually AI Mode matured enough that we deleted the Labs beaker from Search altogether, which felt like the right ending.",
 };

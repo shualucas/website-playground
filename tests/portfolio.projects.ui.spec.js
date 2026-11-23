@@ -29,7 +29,7 @@ test("recent projects use one column with native reader links and restore focus 
   for(let i=0;i<titles.length-1;i++) {
     await links.nth(i).click(); await expect(page.getByRole('heading',{name:i===0?nudgesTitle:i===2?'Stadia Store Redesign':titles[i],exact:true})).toBeFocused();
     await expect(page.locator('.case-showcase-introduction')).toContainText(['In 2026, I defined','From 2023 to 2025, I was one of two designers','In 2022, I led the redesign'][i]);
-    if(i===1)await expect(page.locator('.case-showcase-introduction')).toContainText('Another designer owned the brand');
+    if(i===1)await expect(page.locator('.case-showcase-introduction')).toContainText('While the other designer owned the brand');
     await expect(page.locator('.case-study-facts,.case-study .eyebrow,.case-star-story')).toHaveCount(0);
     await expect(page.locator('.case-study-cartridge')).toHaveCount(1);
     await expect(page.locator('.case-study-cartridge')).toHaveAttribute('data-cartridge',i===2?'stadia':'search');
@@ -46,9 +46,9 @@ test("recent projects use one column with native reader links and restore focus 
     expect(await page.locator('.case-study-hero-figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.querySelector('.case-showcase-introduction'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).not.toBeEmpty();
     if(i===1){
-      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).toContainText('Google needed a way to test experimental AI features in public');
-      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy > p')).toHaveCount(2);
-      await expect(page.locator('[data-showcase-section="opt-in"] > .case-showcase-copy > p')).toHaveCount(3);
+      await expect(page.locator('[data-showcase-section="problem"] > .case-showcase-copy')).toContainText('Search needed a place to test experimental AI features without disrupting the core experience');
+      await expect(page.locator('[data-showcase-section="problem"] > p.case-showcase-copy')).toHaveCount(1);
+      await expect(page.locator('[data-showcase-section="opt-in"] > p.case-showcase-copy')).toHaveCount(1);
     }
     if(i===2){
       const paragraph=page.locator('[data-showcase-section="problem"] > p');
@@ -71,7 +71,7 @@ test("recent projects use one column with native reader links and restore focus 
     await expect(story.locator('.case-story-media')).toHaveCount(i===2?5:4);
     await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===1?4:0);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    await expect(story.locator('[data-takeaways] p')).toHaveCount(2);
+    await expect(story.locator('[data-takeaways] p')).toHaveCount(i===1?1:2);
     await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(i===2?7:6);
     const sizes=await page.locator('.case-study-editorial').evaluate(root=>{
       const body=[...root.querySelectorAll('.case-study-deck,.case-study-facts dt,.case-study-facts dd,.case-editorial-section > p,.case-showcase-copy,.case-showcase-introduction,.case-section-content > p,.case-section-content h3,.case-patterns dt,.case-patterns dd,.case-pattern-status,.case-result-list li,.case-decisions h3,.case-decisions p,figcaption,.eyebrow,.case-impact,.case-outcome-grid:not(.case-highlight-grid) dt')];
@@ -120,7 +120,8 @@ test("recent projects use one column with native reader links and restore focus 
   const before=await navigation.evaluate(el=>({height:el.getBoundingClientRect().height,top:el.getBoundingClientRect().top+scrollY}));
   await expect(navigation.locator('.recent-project-preview')).toHaveCSS('opacity','1');
   await expect(navigation.locator('.recent-project-arrow')).toHaveCount(0);
-  await expect(links.nth(1)).toHaveCSS('opacity','0.4');
+  await expect(links.nth(1)).toHaveCSS('opacity','1');
+  await expect(links.nth(1).locator('.recent-project-copy')).toHaveCSS('opacity','0.4');
   const copyBox=()=>links.first().locator('.recent-project-copy').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y+scrollY,width:r.width,height:r.height}});
   const titleBefore=await copyBox();
   await links.nth(1).hover();await links.nth(2).hover();await links.last().hover();

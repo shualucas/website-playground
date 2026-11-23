@@ -20,7 +20,7 @@ export function CaseStudyShowcase({ study }) {
         {study.results.title && <h2 id="case-result-title">{study.results.title}</h2>}
         <p>{study.results.copy}</p>
       </div>
-      <p data-reveal className="case-showcase-copy case-showcase-next">{study.next}</p>
+      {study.next && <p data-reveal className="case-showcase-copy case-showcase-next">{study.next}</p>}
     </section>
   </div>;
 }
