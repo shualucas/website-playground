@@ -79,17 +79,17 @@ test("the camera loads only in its hover preview and pauses when that preview is
 
 test("the bio appears without a loader, and stale project URLs start with no selection", async ({ page }) => {
   let release; const gate = new Promise(resolve => { release = resolve; });
-  await page.route("**/src/cartridge/CartridgeScene*", async route => { await gate; await route.continue(); });
+  await page.route("**/src/cartridge/CaseStudyCartridgeScene*", async route => { await gate; await route.continue(); });
   await page.goto("/?project=gmail");
   await expect(page.locator(".portfolio-name")).toBeVisible();
   await expect(page.locator(".miniature-loader")).toHaveCount(0);
-  await expect(page.locator(".collection")).toHaveAttribute("data-selected", "");
+  await expect(page.locator(".hero-cartridge")).toHaveAttribute("data-cartridge", "personal");
   release(); await expect(page.locator(".collection")).toHaveAttribute("data-status", "ready", {timeout:60000});
-  await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-selected", "");
+  await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-cartridge", "personal");
   await expect(page).not.toHaveURL(/project=/);
-  const muted = await page.locator(".intro-muted").evaluateAll(elements => elements.map(element => getComputedStyle(element).color));
+  const muted = await page.locator(".random-fact").evaluate(element => getComputedStyle(element).color);
   const bodyColor = await page.locator(".bio-continuation").evaluate(element => getComputedStyle(element).color);
-  expect(muted).toEqual([bodyColor, bodyColor]);
+  expect(muted).toBe(bodyColor);
 });
 
 test("camera preview spins and blinks once before settling, and keyboard entry opens photos",async({page})=>{

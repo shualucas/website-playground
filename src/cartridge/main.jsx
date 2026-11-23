@@ -1,15 +1,13 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/dm-sans/latin-300.css";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
-import { cartridges } from "./config";
-import { portfolioProjects, cartridgeForProject } from "./projects";
+import { portfolioProjects } from "./projects";
 import { Intro } from "./Intro";
 import { PortfolioFooter } from "./PortfolioFooter";
-import { prepareTitleFont } from "../content/typography";
 import { CaseStudy } from "../CaseStudy";
 import { useContentReveal } from "../useContentReveal";
 import { usePageExit } from "../usePageExit";
@@ -20,132 +18,71 @@ import { useDitherHovers } from "../useDitherHovers";
 import "./style.css";
 import "./reader.css";
 
-const requestedProject = () => {
-  const requested = new URL(location.href).searchParams.get("project");
-  return requested === "ai-mode" ? "search" : requested;
+const readRoute=()=>{
+  const url=new URL(location.href),requested=url.searchParams.get("project"),id=requested==="ai-mode"?"search":requested;
+  return url.searchParams.get("view")==="case-study"&&portfolioProjects.some(project=>project.id===id)?id:null;
 };
-const selectedRoute = () => cartridgeForProject(requestedProject());
-const readRoute = () => new URL(location.href).searchParams.get("view") === "case-study" && portfolioProjects.some(project => project.id === requestedProject()) ? requestedProject() : null;
-function Icon({ type }) {
-  return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {type === "sun" ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : type === "moon" ? <path d="M20.9 13.1A9 9 0 0 1 10.9 3.1a.5.5 0 0 0-.6-.6A9.5 9.5 0 1 0 21.5 13.7a.5.5 0 0 0-.6-.6Z" /> : type === "arrow" ? <path d="m6 18 12-12M6 6h12v12" /> : type === "download" ? <path d="M12 3v16m-6-6 6 6 6-6M4 21h16" /> : type === "back" ? <path d="M20 12H4m6-6-6 6 6 6" /> : type === "reset" ? <path d="M4 9a8 8 0 1 1 .7 8M4 4v5h5" /> : <path d="m6 6 12 12M6 18 18 6" />}
-  </svg>;
-}
-function ProjectMedia({ project, controls }) {
-  if (project.previewVideo) return <video src={project.previewVideo} poster={project.previewPoster || undefined} controls={controls} playsInline muted preload="metadata" />;
-  if (project.previewGif || project.previewPoster || project.previewImage) return <img src={project.previewGif || project.previewPoster || project.previewImage} alt={project.imageAlt} />;
+function ProjectMedia({project,controls}) {
+  if(project.previewVideo)return <video src={project.previewVideo} poster={project.previewPoster||undefined} controls={controls} playsInline muted preload="metadata"/>;
+  if(project.previewGif||project.previewPoster||project.previewImage)return <img src={project.previewGif||project.previewPoster||project.previewImage} alt={project.imageAlt}/>;
   return <div className="collection-media-placeholder">Project preview</div>;
 }
 function App() {
   useDitherHovers();
-  const content = useRef(null);
+  const content=useRef(null),restoreFocus=useRef(null);
   const pageExit=usePageExit(content);
-  const host = useRef(null), engine = useRef(null), alive = useRef(true), readingRef = useRef(null), presentedRef = useRef(false);
-  const [selected, setSelected] = useState(null), [hovered, setHovered] = useState(null), [status, setStatus] = useState("loading");
-  const [reading, setReading] = useState(readRoute);
-  useContentReveal(content, `${status}:${selected || ""}:${reading || ""}`);
-  const [previewingProject,setPreviewingProject]=useState(null);
-  const currentSelection = useRef(null); currentSelection.current = selected;
-  const [cartInteractive, setCartInteractive] = useState(false);
-  const presented = true;
-  presentedRef.current = presented;
-  const previousReading = useRef(reading), restoreFocus = useRef(null), buttons = useRef({});
-  const [dark, setDark] = useState(() => { try { return localStorage.getItem("cartridge-color-mode") === "dark"; } catch { return false; } });
-  const selectRef = useRef(null);
-  readingRef.current = reading;
-  const active = cartridges.find((c) => c.id === selected), project = portfolioProjects.find((p) => p.id === reading);
-  const select = (id) => {
-    if (readingRef.current) return;
-    setSelected(id); setHovered(null);
-    const url = new URL(location.href); if (id) url.searchParams.set("project", id); else url.searchParams.delete("project");
-    url.searchParams.delete("view"); history.replaceState(null, "", url);
-  };
-  selectRef.current = select;
-  const open = (id) => {
-    if (readingRef.current) return;
-    restoreFocus.current = document.activeElement;
-    const destination=portfolioProjects.find(project=>project.id===id);
-    if(!destination)return;
-    if(destination.href){pageExit.run(()=>location.assign(destination.href),{navigation:true});return;}
+  const [status,setStatus]=useState("loading"),[reading,setReading]=useState(readRoute),[previewingProject,setPreviewingProject]=useState(null);
+  const readingRef=useRef(reading),previousReading=useRef(reading);readingRef.current=reading;
+  const [dark,setDark]=useState(()=>{try{return localStorage.getItem("cartridge-color-mode")==="dark"}catch{return false}});
+  useContentReveal(content,status+":"+(reading||""));
+  const project=portfolioProjects.find(project=>project.id===reading);
+  const open=id=>{
+    if(readingRef.current)return;
+    const destination=portfolioProjects.find(project=>project.id===id);if(!destination)return;
+    restoreFocus.current=document.activeElement;
+    if(destination.href){pageExit.run(()=>location.assign(destination.href),{navigation:true});return}
     pageExit.run(()=>{
-      setSelected(cartridgeForProject(id)); setHovered(null);
-      const url = new URL(location.href); url.searchParams.set("project", id); url.searchParams.set("view", "case-study");
-      history.pushState({ cartridgeReader: true }, "", url); setReading(id);
+      const url=new URL(location.href);url.searchParams.set("project",id);url.searchParams.set("view","case-study");
+      history.pushState({cartridgeReader:true},"",url);setReading(id);
     });
   };
-  const close = () => {
-    if (history.state?.cartridgeReader) history.back();
-    else { const url = new URL(location.href); url.searchParams.delete("view"); history.replaceState(null, "", url); setSelected(cartridgeForProject(readingRef.current)); setReading(null); }
+  const close=()=>{
+    if(history.state?.cartridgeReader)history.back();
+    else{const url=new URL(location.href);url.searchParams.delete("view");url.searchParams.delete("project");history.replaceState(null,"",url);setReading(null)}
   };
-  useEffect(() => {
-    alive.current = true; let scene;
-    if (!readingRef.current) {
-      const url = new URL(location.href); url.searchParams.delete("project");
-      history.replaceState(history.state, "", url);
-    }
-    Promise.all([import("./CartridgeScene"), prepareTitleFont(), document.fonts.ready]).then(([{ CartridgeScene }]) => {
-      if (!alive.current) return;
-      try {
-        scene = new CartridgeScene(host.current, {
-          onHover: setHovered, onSelect: (id) => selectRef.current(id),
-          onReady: () => { if (alive.current) setStatus("ready"); },
-          onInteractiveReady: () => { if (alive.current) setCartInteractive(true); },
-          onError: () => { if (alive.current) { setStatus("fallback"); engine.current?.setPaused(true); } },
-        });
-        engine.current = scene; scene.setTheme(document.documentElement.dataset.colorMode === "dark");
-        scene.setSelected(currentSelection.current); scene.setPaused(Boolean(readingRef.current) || !presentedRef.current || Boolean(host.current.closest("[data-exiting=\"true\"]")));
-      } catch { setStatus("fallback"); }
-    }).catch(() => { if (alive.current) setStatus("fallback"); });
-    return () => { alive.current = false; scene?.dispose(); engine.current = null; };
-  }, []);
-  useEffect(() => {
-    engine.current?.setTheme(dark);
-  }, [dark]);
-  useLayoutEffect(() => { engine.current?.setSelected(selected); }, [selected]);
-  useEffect(() => { engine.current?.setHovered(hovered); }, [hovered]);
-  useEffect(() => {
-    // The DOM has committed and inert is removed. Restore keyboard focus now,
-    // rather than making it wait behind the resumed scene's GPU frame.
-    if (previousReading.current && !reading) {
-      const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current : buttons.current[selected];
-      target?.focus({ preventScroll: true });
-    }
-    engine.current?.setPaused(Boolean(reading) || pageExit.exiting || Boolean(previewingProject) || !presented || status === "fallback");
-    previousReading.current = reading;
-  }, [reading, presented, status, pageExit.exiting, previewingProject]);
-  useEffect(() => {
-    const pop = () => { pageExit.cancel();setReading(readRoute()); setSelected(selectedRoute()); };
-    const keyboard = (event) => {
-      if (!presentedRef.current) return;
-      if (event.defaultPrevented || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === "Escape") {
-        if(content.current?.dataset.exiting === "true"){pageExit.cancel();event.preventDefault();return;}
-        if (readingRef.current) close();
-        else selectRef.current(null);
+  const closeRef=useRef(close);closeRef.current=close;
+  useEffect(()=>{
+    if(!readingRef.current){const url=new URL(location.href);url.searchParams.delete("project");history.replaceState(history.state,"",url)}
+    const pop=()=>{pageExit.cancel();setReading(readRoute())};
+    const keyboard=event=>{
+      if(event.defaultPrevented||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.metaKey||event.ctrlKey||event.altKey)return;
+      if(event.key==="Escape"){
+        if(content.current?.dataset.exiting==="true")pageExit.cancel();
+        else if(readingRef.current)closeRef.current();
+        else return;
         event.preventDefault();
       }
-      if (event.key.toLowerCase() === "r" && !readingRef.current && host.current?.dataset.interactive === "true") engine.current?.reset();
     };
-    window.addEventListener("popstate", pop); window.addEventListener("keydown", keyboard);
-    return () => { window.removeEventListener("popstate", pop); window.removeEventListener("keydown", keyboard); };
-  }, []);
+    window.addEventListener("popstate",pop);window.addEventListener("keydown",keyboard);
+    return()=>{window.removeEventListener("popstate",pop);window.removeEventListener("keydown",keyboard)};
+  },[]);
+  useEffect(()=>{
+    if(previousReading.current&&!reading){
+      const target=restoreFocus.current?.isConnected&&restoreFocus.current!==document.body?restoreFocus.current:content.current?.querySelector(".recent-project-link");
+      target?.focus({preventScroll:true});
+    }
+    previousReading.current=reading;
+  },[reading]);
   return <>
-    <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-reveal-flow="page" data-status={status} data-presented={presented} data-selected={selected || ""} data-project-browsing={Boolean(previewingProject)} data-exiting={pageExit.exiting} inert={reading || pageExit.exiting || !presented ? true : undefined}>
-      <header className="collection-header"><LocationMeta /><ThemeToggle data-reveal dark={dark} onToggle={setDark} /></header>
-      <section className="collection-hero" aria-label="Introduction and cartridge collection">
-        <Intro active={presented && !previewingProject} />
-        <div className="collection-display" aria-label="Interactive 3D cartridge collection">
-          <div className={`cartridge-stage${status === "fallback" ? " is-fallback" : ""}`} ref={host} data-ready="false" data-interactive={cartInteractive} inert={!cartInteractive}>
-            {status === "ready" && cartridges.map((item, i) => <button key={item.id} className="cartridge-keyboard" style={{ "--control-x": `var(--hit-${i}-x, 50%)`, "--control-y": `var(--hit-${i}-y, 50%)` }} ref={(el) => { buttons.current[item.id] = el; }} aria-label={`View ${item.name} cartridge`} aria-expanded={selected === item.id} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} onClick={() => select(selected === item.id ? null : item.id)} />)}
-            {active && status === "ready" && <button key={active.id} className="cartridge-caption" aria-label={`Open ${active.name}${active.years ? ", " + active.years : ""}`} onClick={() => open(active.id)}><span>{active.name}</span>{active.years && <span className="cartridge-years">{active.years}</span>}</button>}
-          </div>
-          {status === "fallback" && <div className="cartridge-fallback" aria-label="Cartridge collection">{cartridges.map((item) => <button data-reveal data-cartridge={item.id} key={item.id} onPointerEnter={event=>{if(event.pointerType!=="touch")setHovered(item.id)}} onPointerLeave={()=>setHovered(null)} onFocus={()=>setHovered(item.id)} onBlur={()=>setHovered(null)} onClick={() => open(item.id)} aria-label={`Open ${item.name} cartridge`}><span className="fallback-shell" style={{ "--shell": item.shell }}><img src={item.label} alt="" /></span><span>{item.name}</span>{item.years && <span className="cartridge-years">{item.years}</span>}</button>)}</div>}
-        </div>
+    <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-hero="inline" data-reveal-flow="page" data-status={status} data-presented="true" data-project-browsing={Boolean(previewingProject)} data-exiting={pageExit.exiting} inert={reading||pageExit.exiting?true:undefined}>
+      <header className="collection-header"><LocationMeta/><ThemeToggle data-reveal dark={dark} onToggle={setDark}/></header>
+      <section className="collection-hero" aria-label="Introduction and career cartridges">
+        <Intro active={!reading&&!previewingProject&&!pageExit.exiting} onStatusChange={setStatus}/>
       </section>
-      <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status === "ready"} hidden={Boolean(reading)} exiting={pageExit.exiting} />
-      {presented && !reading && <PortfolioFooter dismissHistory={Boolean(previewingProject || hovered)} />}
+      <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status==="ready"} hidden={Boolean(reading)} exiting={pageExit.exiting}/>
+      {!reading&&<PortfolioFooter dismissHistory={Boolean(previewingProject)}/>}
     </main>
-    {project && presented && <CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={setDark} footer={<PortfolioFooter />} />}
+    {project&&<CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={setDark} footer={<PortfolioFooter/>}/>}
   </>;
 }
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(<App/>);

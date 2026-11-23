@@ -168,6 +168,22 @@
 
 .intro-name { font-weight:500; }
 
+/* The intro and project rows share one measure and type scale. */
+.collection[data-hero="inline"] .collection-hero { display:block; width:100%; max-width:calc(772px + var(--hero-gap)); min-height:0; margin:16px auto 48px; }
+.collection[data-hero="inline"] .collection-intro { max-width:50%; margin:0; padding:0; align-self:start; justify-self:start; }
+.collection[data-hero="inline"] .intro-title { font:300 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; letter-spacing:normal; }
+.collection[data-hero="inline"] .random-fact { margin-top:20px; font-size:var(--project-type); line-height:1.6; letter-spacing:normal; }
+.hero-cartridge { position:relative; width:184px; height:140px; margin:0 0 8px; border-radius:8px; touch-action:pan-y; }
+.hero-cartridge-stage,.hero-cartridge-stage canvas { display:block; width:100%; height:100%; }
+.hero-cartridge-stage { touch-action:pan-y; cursor:grab; transform:translateX(-28px); }
+.hero-cartridge-stage[data-dragging="true"] { cursor:grabbing; }
+.hero-cartridge-fallback { position:absolute; inset:28px 14px; padding:18px 9px 10px; background:var(--cartridge-shell); border-radius:4px; box-shadow:2px 4px 0 color-mix(in srgb,var(--cartridge-shell) 75%,#000),3px 8px 14px #0001; transform:rotate(-3deg); }
+.hero-cartridge-fallback img { display:block; width:100%; height:100%; object-fit:contain; border-radius:3px; background:#fff; }
+.hero-company { display:inline; padding:0; margin:0; font:inherit; font-weight:400; line-height:inherit; color:var(--ui-text); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; transition:text-decoration-color 160ms ease; }
+.hero-company:is(:hover,:focus-visible,[aria-pressed="true"]) { color:var(--ui-text); text-decoration-color:currentColor; }
+@media(max-width:760px),(hover:none) { .collection[data-hero="inline"] .collection-intro { max-width:520px; } }
+@media(pointer:coarse) { .hero-company { display:inline-flex; align-items:center; min-height:44px; } }
+
 /* Keep connection links at one idle tone, including the X wordmark. */
 .profile-links { color:var(--ui-muted); }
 .profile-links .social-platform { color:inherit; }

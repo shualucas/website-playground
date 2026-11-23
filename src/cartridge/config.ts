@@ -14,6 +14,15 @@ export const archivedCartridges = [
 ] as const;
 export type CartridgeId = typeof cartridges[number]["id"];
 
+/** The personal cartridge shares the favicon's cream shell and printed black J. */
+export const personalCartridge = {
+  id: "personal", name: "Josh Lucas", label: "/cartridges/labels/j-label.svg",
+  shell: "#d8d2c3", accent: "#6988d8", finish: cartridges[0].finish,
+};
+export type DisplayCartridge = {
+  id:string; name:string; label:string; shell:string; accent:string; finish:ShellFinish;
+};
+
 /** Mamuso's Famicom GLB; source and undeclared license status are in models/SOURCE.md. */
 export const cartridgeModel: { url: string; labelMesh: string; rotation: [number, number, number] } = {
   url: "/cartridges/models/mamuso-famicom.glb", labelMesh: "Label", rotation: [0, 0, 0],

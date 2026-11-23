@@ -112,7 +112,7 @@ test("recent projects use one column with native reader links and restore focus 
     }
     await page.setViewportSize({width:1440,height:1000});await page.goBack(); await expect(page.locator('.case-study')).toHaveCount(0); await expect(links.nth(i)).toBeFocused();
   }
-  await expect(page.locator('.collection-hero')).toHaveCSS('min-height','480px');
+  await expect(page.locator('.collection-hero')).toHaveCSS('min-height','0px');
   await page.emulateMedia({reducedMotion:'no-preference'});
   await page.mouse.move(2,2);
   await links.first().hover();

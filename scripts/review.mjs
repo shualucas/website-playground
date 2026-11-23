@@ -21,7 +21,7 @@ if (args.help) {
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
 if (args.phase !== "settled" && args.motion === "reduce") throw new Error("Mid-animation captures require --motion normal.");
 if (args.phase === "dither" && !args.hover || args.phase === "turn" && args.page !== "zine") throw new Error("dither requires --hover; a turn capture requires --page zine.");
-if(args.phase==='cartridge'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires a case-study --path.');
+if(args.phase==='cartridge'&&args.page!=='home'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires the home page or a case-study --path.');
 const width = Number(args.width), height = Number(args.height), port = Number(args.port);
 if (![width, height, port].every(n => Number.isInteger(n) && n > 0) || port > 65535) throw new Error("Use positive integer dimensions and a valid port.");
 const baseURL = `http://127.0.0.1:${port}`;
@@ -63,30 +63,32 @@ try {
   const errors = []; page.on("pageerror", error => errors.push(error.message));
   await page.route("**/api/listening", route => route.fulfill({ status:204 }));
   await page.route("**/api/weather", route => route.fulfill({ status:204 }));
-  await page.addInitScript(({ theme, phase }) => {
+  await page.addInitScript(({ theme, phase, company }) => {
     localStorage.setItem("cartridge-color-mode", theme); localStorage.setItem("zine-color-mode", theme);
-    window.__review = { armed:phase==='cartridge', frozen:false, held:[], phase };
+    const companyId=({Search:'search','Google Search':'search',Stadia:'stadia',Gmail:'gmail',Blizzard:'blizzard','Blizzard Entertainment':'blizzard'})[company];
+    window.__review = { armed:phase==='cartridge'&&!company, frozen:false, held:[], phase, company:companyId };
     const raf = requestAnimationFrame.bind(window);
     window.requestAnimationFrame = callback => raf(now => {
       const state = window.__review;
       if (state.armed) {
         const dither = document.querySelector('.recent-preview-dither[data-state="revealing"]');
         const book = document.querySelector(".after-hours-book"), progress = Number(book?.dataset.turnProgress);
-        const cartridge=document.querySelector('.case-cartridge-stage[data-dissolve="revealing"]'),reveal=Number(cartridge?.dataset.revealProgress);
+        const cartridge=document.querySelector('.case-cartridge-stage[data-dissolve="revealing"],.hero-cartridge-stage[data-dissolve="revealing"]'),reveal=Number(cartridge?.dataset.revealProgress);
         if (state.phase === "dither" && dither && Number(dither.style.opacity) > .2 || state.phase === "turn" && book?.dataset.phase === "turning" && progress > .35 && progress < .75) state.frozen = true;
-        if(state.phase==='cartridge'&&cartridge&&reveal>.35&&reveal<.75)state.frozen=true;
+        if(state.phase==='cartridge'&&cartridge&&(!state.company||cartridge.dataset.cartridge===state.company)&&reveal>.35&&reveal<.75)state.frozen=true;
       }
       // Freeze only the target animation, leaving Playwright/other RAFs alive.
       const target = state.phase === "cartridge" ? "tick" : state.phase === "dither" ? "paint" : "frame";
       if (state.frozen && callback.name === target) { state.held.push(callback); return; }
       callback(now);
     });
-  }, { theme:args.theme, phase:args.phase });
+  }, { theme:args.theme, phase:args.phase, company:args.cartridge });
   await page.goto(new URL(args.path || paths[args.page], baseURL).href, { waitUntil:"domcontentloaded" });
   await page.evaluate(() => document.fonts.ready);
   const wait = { timeout:60000 };
   if (args.page === "home" && !args.path?.includes("view=case-study")) {
     await expect(page.locator(".collection")).toHaveAttribute("data-status", /ready|fallback/, wait);
+    if(args.phase!=="cartridge"&&await page.locator('.hero-cartridge[data-status="ready"]').count())await expect(page.locator('.hero-cartridge-stage')).toHaveAttribute('data-intro','settled',wait);
     if (await page.locator(".cartridge-stage").count() && await page.locator(".collection").getAttribute("data-status") === "ready") await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-interactive", "true", wait);
   } else if (args.page === "zine") {
     await expect(page.locator(".after-hours")).toHaveAttribute("data-ready", "true", wait);
@@ -107,9 +109,10 @@ try {
     return !rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight || !!el.closest('[aria-hidden="true"]') || blocker && blocker.dataset.revealInert !== "true" || el.dataset.revealReady === "true";
   })), wait).toBe(true);
   if (args.cartridge) {
-    const control = page.getByRole("button", { name:`View ${args.cartridge} cartridge`, exact:true });
-    await control.focus(); await control.press("Enter");
-    await expect(page.locator(".cartridge-stage")).toHaveAttribute("data-settled", "true", wait);
+    const name=({Search:"Google Search","Blizzard Entertainment":"Blizzard"})[args.cartridge]||args.cartridge;
+    if(args.phase!=="settled")await page.evaluate(()=>{window.__review.armed=true});
+    await page.getByRole("button", { name:`Show ${name} cartridge`, exact:true }).hover();
+    if(args.phase==="settled")await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-intro", "settled", wait);
   }
   if (args.phase !== "settled") await page.evaluate(() => { window.__review.armed = true; });
   if (args.hover) {

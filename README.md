@@ -2,11 +2,11 @@
 
 Production: https://website-playground-eta.vercel.app/
 
-React 19, Vite, and imperative Three.js. The home page has four career cartridges, a rotating bio, recent projects with dither/3D hover previews, and server-backed Last.fm listening. Current pages:
+React 19, Vite, and imperative Three.js. The home page has a personal J cartridge that swaps to four career cartridges through the company names in a rotating bio, recent projects with dither/3D hover previews, and server-backed Last.fm listening. Current pages:
 
 | Route | Entry and main files |
 | --- | --- |
-| `/` | `src/cartridge/main.jsx`; `Intro.jsx`, `RecentProjects.jsx`, `CartridgeScene.ts` |
+| `/` | `src/cartridge/main.jsx`; `Intro.jsx`, `HeroCartridge.jsx`, `RecentProjects.jsx`, `CaseStudyCartridgeScene.ts` |
 | Case studies | `src/CaseStudy.jsx`, `src/CaseStudyNarrative.jsx`, `src/content/*-case-study.js` |
 | `/after-hours/` | `src/after-hours/main.jsx`, `flyers.js`, `covers.js`, `src/book/BookScene.ts`, `leaf.ts` |
 | `/resume/` | `src/resume/main.jsx`, `FloatingPaper.ts`, `PaperSurface.ts`, `profile.js` |
@@ -31,7 +31,7 @@ Setup does not build the app. Reuse an existing healthy Vite server. Live proces
 | Change | Start here |
 | --- | --- |
 | Copy, layout, entrances, project index | `npm run test:home -- --project=ui` or `npm run test:projects -- --project=ui` |
-| Cartridges, hit testing, materials | `npm run test:cartridges` |
+| Hero/project cartridges, hit testing, materials | `npm run test:3d -- --grep 'inline hero swaps\|project cartridges dissolve'` |
 | Listening widget | `npm run test:listening` and `npm run test:listening:ui` |
 | Résumé | `npm run test:resume` |
 | Camera/photos | `npm run test:camera` |
@@ -49,6 +49,7 @@ One command starts or reuses Vite, shares the test browser configuration, waits 
 
 ```sh
 npm run review -- --page home
+npm run review -- --page home --cartridge Stadia
 npm run review -- --page home --control '.footer-links a:first-child'
 npm run review -- --page home --hover rave-flyer-zine --phase dither --theme dark
 npm run review -- --path '/?project=ai-mode-nudges&view=case-study' --phase cartridge

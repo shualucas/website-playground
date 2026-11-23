@@ -29,7 +29,7 @@ test("Josh and roles are passive medium-weight text with a stable reduced-motion
   await page.emulateMedia({reducedMotion:'reduce'});
 
   await page.goto('/');const role=page.locator('.role-rotator');
-  await expect(page.locator('.intro-name')).toHaveText('Josh');expect(await role.evaluate(el=>el.tagName)).toBe('SPAN');
+  await expect(page.locator('.intro-name')).toHaveText('Josh Lucas');expect(await role.evaluate(el=>el.tagName)).toBe('SPAN');
   await expect(role).not.toHaveAttribute('tabindex',/.+/);await expect(role).not.toHaveAttribute('aria-pressed',/.+/);
   await expect(role).toHaveAttribute('data-role','product designer');await expect(role).toHaveCSS('font-weight','500');
   await role.hover();await expect(role).toHaveCSS('opacity','1');await role.click();await expect(role).toHaveAttribute('data-role','product designer');
@@ -37,7 +37,7 @@ test("Josh and roles are passive medium-weight text with a stable reduced-motion
   expect(await page.locator('.portfolio-name').evaluate(el=>getComputedStyle(el).fontWeight)).toBe('500');
   for(const width of [1440,390]) {
     await page.setViewportSize({width,height:1000});
-    expect(await page.locator('.intro-title,.intro-name,.role-rotator,.bio-continuation,.random-fact').evaluateAll(els=>els.map(el=>getComputedStyle(el).fontSize))).toEqual(Array(5).fill('23px'));
+    expect(await page.locator('.intro-title,.intro-name,.role-rotator,.bio-continuation,.random-fact').evaluateAll(els=>els.map(el=>getComputedStyle(el).fontSize))).toEqual(Array(5).fill('15px'));
     await expect(page.locator('.bio-continuation')).toHaveCSS('font-weight','300');
   }
   for(const dark of [false,true]) {
@@ -130,8 +130,8 @@ test("footer and reader content reveal on entry and stay immediate for reduced m
     const item=page.locator(selector); await expect(item).toHaveAttribute("data-reveal-state","visible");
     expect(await item.evaluate(el=>getComputedStyle(el).animationName)).toBe("content-reveal");
   }
-  await page.getByRole("button",{name:"Open Stadia cartridge",exact:true}).click();
-  const reader=page.getByRole("region",{name:"Stadia case study"});
+  await page.getByRole("link",{name:/Store Redesign/}).click();
+  const reader=page.getByRole("region",{name:"Stadia Store Redesign case study"});
   await expect(reader.locator("h1")).toHaveAttribute("data-reveal-state","visible");
   await reader.locator("footer").scrollIntoViewIfNeeded(); await expect(reader.locator(".footer-links")).toHaveAttribute("data-reveal-state","visible");
   await page.emulateMedia({reducedMotion:"reduce"});

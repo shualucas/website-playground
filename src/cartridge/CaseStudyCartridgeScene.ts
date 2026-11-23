@@ -3,10 +3,9 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { applyCartridgeTheme } from "./cartridge-theme";
 import { ditherShadow } from "./dither-shadow";
 import { CartridgeDissolve } from "./cartridge-dissolve";
-import { cartridges } from "./config";
+import { type DisplayCartridge } from "./config";
 import { loadExternalShell } from "./model";
 
-type Cartridge = typeof cartridges[number];
 type Callbacks = { onReady: () => void; onError: () => void };
 
 /** One original home-page cartridge, framed for a readable case-study introduction. */
@@ -34,6 +33,11 @@ export class CaseStudyCartridgeScene {
   private ready = false;
   private dissolve = new CartridgeDissolve();
   private disposed = false;
+  private paused = false;
+  private requested = "";
+  private generation = 0;
+  private models = new Map<string,Promise<THREE.Group | null>>();
+  private loaded = new Set<THREE.Group>();
   private control: HTMLElement;
   private ray = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
@@ -42,7 +46,7 @@ export class CaseStudyCartridgeScene {
   private spinVelocity = new THREE.Vector2();
   private drag: { id:number; x:number; y:number; startX:number; startY:number; moved:boolean } | null = null;
 
-  constructor(private host:HTMLElement,private cartridge:Cartridge,private callbacks:Callbacks) {
+  constructor(private host:HTMLElement,private cartridge:DisplayCartridge,private callbacks:Callbacks,private transparentBackground=false) {
     this.control=host.parentElement||host;
     this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -59,7 +63,7 @@ export class CaseStudyCartridgeScene {
     const room=new RoomEnvironment();this.environment=this.pmrem.fromScene(room,.045);room.dispose();
     this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.65;
     this.scene.environmentRotation.set(.32,.34,0);
-    this.scene.background=this.background;
+    this.scene.background=this.transparentBackground?null:this.background;
     this.scene.add(new THREE.HemisphereLight("#ffffff","#d6d3cd",.35));
     this.key.position.set(-1.1,2.5,45);this.key.castShadow=true;
     this.key.shadow.mapSize.set(512,512);this.key.shadow.radius=8;this.key.shadow.blurSamples=8;
@@ -76,16 +80,17 @@ export class CaseStudyCartridgeScene {
     host.addEventListener("pointerdown",this.down);host.addEventListener("pointermove",this.move);
     host.addEventListener("pointerup",this.up);host.addEventListener("pointercancel",this.up);host.addEventListener("lostpointercapture",this.up);
     this.control.addEventListener("keydown",this.keydown);window.addEventListener("blur",this.cancelDrag);
-    this.resize();void this.prepare();
+    this.resize();void this.setCartridge(cartridge);
   }
-  private async prepare() {
-    try {
-      const label=await new THREE.TextureLoader().loadAsync(this.cartridge.label);
-      if(this.disposed){label.dispose();return}
+  private loadModel(cartridge:DisplayCartridge) {
+    const existing=this.models.get(cartridge.id);if(existing)return existing;
+    const pending=(async()=>{
+      const label=await new THREE.TextureLoader().loadAsync(cartridge.label);
+      if(this.disposed){label.dispose();return null}
       this.textures.add(label);label.colorSpace=THREE.SRGBColorSpace;label.anisotropy=Math.min(8,this.renderer.capabilities.getMaxAnisotropy());
-      const model=await loadExternalShell(label,this.cartridge.shell,undefined,this.cartridge.finish,this.cartridge.id==="gmail");
+      const model=await loadExternalShell(label,cartridge.shell,undefined,cartridge.finish,cartridge.id==="gmail");
       if(!model)throw new Error("Cartridge model unavailable");
-      if(this.disposed){this.disposeModel(model);return}
+      if(this.disposed){this.disposeModel(model);return null}
       model.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
         const materials=Array.isArray(object.material)?object.material:[object.material];
@@ -93,12 +98,33 @@ export class CaseStudyCartridgeScene {
         object.castShadow=!object.userData.label&&materials.some(material=>material.visible&&!((material as THREE.MeshPhysicalMaterial).transmission>.05));
         object.receiveShadow=Boolean(object.userData.label);
       });
-      this.root.add(model);applyCartridgeTheme(this.root,document.documentElement.dataset.colorMode==="dark");this.root.updateMatrixWorld(true);
+      this.loaded.add(model);applyCartridgeTheme(model,document.documentElement.dataset.colorMode==="dark");
+      await this.renderer.compileAsync(model,this.camera,this.scene);
+      return this.disposed?null:model;
+    })();
+    this.models.set(cartridge.id,pending);
+    return pending;
+  }
+  async preload(cartridges:readonly DisplayCartridge[]) {
+    await Promise.allSettled(cartridges.map(cartridge=>this.loadModel(cartridge)));
+  }
+  async setCartridge(cartridge:DisplayCartridge) {
+    if(this.disposed||this.requested===cartridge.id)return;
+    this.requested=cartridge.id;const generation=++this.generation;
+    try {
+      const model=await this.loadModel(cartridge);
+      if(this.disposed||!model||generation!==this.generation)return;
+      this.cancelDrag();this.cartridge=cartridge;this.root.clear();this.root.add(model);
+      this.spin.set(0,0);this.targetSpin.set(0,0);this.spinVelocity.set(0,0);this.time=0;this.last=0;
+      this.setPose();this.updateTheme();this.root.updateMatrixWorld(true);
       new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
-      await this.renderer.compileAsync(this.scene,this.camera);
-      if(this.disposed)return;
+      this.host.dataset.cartridge=cartridge.id;
       this.ready=true;this.draw();this.callbacks.onReady();this.sync();
-    } catch { if(!this.disposed){this.dispose();this.callbacks.onError()} }
+    } catch { if(!this.disposed&&generation===this.generation){this.dispose();this.callbacks.onError()} }
+  }
+  setPaused(paused:boolean) {
+    if(this.paused===paused)return;
+    this.paused=paused;this.sync();
   }
   private setPose() {
     const t=this.motion.matches?0:this.time;
@@ -116,7 +142,7 @@ export class CaseStudyCartridgeScene {
     this.host.dataset.interactive=String(this.canInteract());
   }
   private canInteract() {
-    return this.ready&&!this.disposed&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=1.1)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
+    return this.ready&&!this.disposed&&!this.paused&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=1.1)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
   }
   private down=(event:PointerEvent)=>{
     if(event.button!==0||!event.isPrimary||this.drag||!this.canInteract()||event.target!==this.renderer.domElement)return;
@@ -161,7 +187,9 @@ export class CaseStudyCartridgeScene {
     const dark=document.documentElement.dataset.colorMode==="dark";
     applyCartridgeTheme(this.root,dark);this.host.dataset.shellTheme=dark?"dark":"light";
     this.background.set(dark?"#101110":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
-    this.dissolve.ink.value.set(this.cartridge.id==='search'?'#6988d8':'#e5633d').multiplyScalar(dark?1:.65);
+    if(this.transparentBackground)this.renderer.setClearColor(this.background,0);
+    const ink=this.cartridge.id==='search'||this.cartridge.id==='personal'?'#6988d8':this.cartridge.id==='stadia'?'#e5633d':this.cartridge.accent;
+    this.dissolve.ink.value.set(ink).multiplyScalar(dark?1:.65);
     if(this.ready)this.draw();
   };
   private resize=()=>{
@@ -176,10 +204,10 @@ export class CaseStudyCartridgeScene {
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
-    if(!this.visible||document.hidden)this.cancelDrag();
-    const animate=this.visible&&!document.hidden&&!this.motion.matches;
+    if(!this.visible||document.hidden||this.paused)this.cancelDrag();
+    const animate=this.visible&&!document.hidden&&!this.paused&&!this.motion.matches;
     this.host.dataset.motion=this.motion.matches?"reduced":animate?"ambient":"idle";
-    if(this.visible&&!document.hidden)this.draw();
+    if(this.visible&&!document.hidden&&!this.paused)this.draw();
     if(animate)this.frame=requestAnimationFrame(this.tick);
   };
   private tick=(now:number)=>{
@@ -214,11 +242,13 @@ export class CaseStudyCartridgeScene {
     this.host.removeEventListener("pointerup",this.up);this.host.removeEventListener("pointercancel",this.up);this.host.removeEventListener("lostpointercapture",this.up);
     this.control.removeEventListener("keydown",this.keydown);window.removeEventListener("blur",this.cancelDrag);
     this.renderer.domElement.removeEventListener("webglcontextlost",this.contextLost);
-    this.disposeModel(this.root);this.receiver.geometry.dispose();this.shadow.dispose();this.key.shadow.dispose();
+    const models=new THREE.Group();for(const model of this.loaded)models.add(model);this.loaded.clear();this.models.clear();
+    this.disposeModel(models);this.receiver.geometry.dispose();this.shadow.dispose();this.key.shadow.dispose();
     this.environment.dispose();this.pmrem.dispose();this.renderer.dispose();this.renderer.forceContextLoss();this.renderer.domElement.remove();
     delete this.host.dataset.motion;
     delete this.host.dataset.intro;delete this.host.dataset.float;
     delete this.host.dataset.rotation;delete this.host.dataset.dragging;delete this.host.dataset.interactive;
     delete this.host.dataset.dissolve;delete this.host.dataset.revealProgress;
+    delete this.host.dataset.cartridge;
   }
 }

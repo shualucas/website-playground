@@ -2,12 +2,17 @@ import { test, expect, funFacts, names, dates, body, load, choose, point } from 
 
 test.use({ webgl: false });
 
-test("without WebGL all four career cartridges retain team/year captions and open their readers", async ({ page }) => {
-
+test("without WebGL all four companies still swap the personal cartridge through their text controls", async ({ page }) => {
+  await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
-  await expect(page.locator(".cartridge-fallback img")).toHaveCount(4);
-  await page.getByRole("button", { name: "Open Gmail cartridge", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Gmail case study" })).toBeVisible(); await expect(page.getByRole("region", { name: "Gmail case study" }).getByText("Summer 2019", { exact: true })).toBeVisible();
+  const hero=page.locator('.hero-cartridge');await expect(hero).toHaveAttribute('data-cartridge','personal');
+  await expect(hero.locator('img')).toHaveAttribute('src','/cartridges/labels/j-label.svg');
+  for(const company of ['search','gmail','stadia','blizzard']){
+    const button=page.locator(`[data-company="${company}"]`);await button.hover();await expect(hero).toHaveAttribute('data-cartridge',company);
+    await expect(button).toHaveAttribute('aria-pressed','true');await expect(hero.locator('img')).toHaveJSProperty('complete',true);
+    expect(await hero.locator('img').evaluate(el=>el.naturalWidth)).toBeGreaterThan(0);
+  }
+  await page.mouse.move(2,2);await expect(hero).toHaveAttribute('data-cartridge','personal');await expect(page.locator('.case-study')).toHaveCount(0);
 });
 
 test("an unconfigured deployment has a quiet client fallback and does not pretend to be live", async ({ page }) => {
@@ -32,7 +37,7 @@ test('reload and full-page navigation always start at the top across the site',a
 test('content cannot hover, click or receive keyboard focus until its entrance completes',async({page})=>{
  await page.setViewportSize({width:1440,height:1200});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  await page.addStyleTag({content:'[data-reveal-state="visible"],.intro-word {animation-play-state:paused !important}'});
- const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('[data-project="search-labs"]'),google=page.locator('.hero-google-link'),footer=page.locator('.footer-links');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.locator('[data-project="search-labs"]'),google=page.locator('[data-company="search"]'),footer=page.locator('.footer-links');
  await expect(row).toHaveAttribute('data-reveal-state','visible');await expect(row).toHaveAttribute('data-reveal-ready','false');expect(await row.evaluate(el=>el.inert)).toBe(true);await expect(row.locator('a')).toHaveCSS('pointer-events','none');
  const rect=await row.boundingBox();await page.mouse.click(rect.x+140,rect.y+rect.height/2);await expect(nav).toHaveAttribute('data-preview-active','false');expect(new URL(page.url()).searchParams.has('view')).toBe(false);
  await google.evaluate(el=>el.focus());expect(await google.evaluate(el=>document.activeElement===el)).toBe(false);await expect(google).toHaveCSS('pointer-events','none');expect(await footer.evaluate(el=>el.inert)).toBe(true);
