@@ -2,7 +2,7 @@
 
 Production: https://website-playground-eta.vercel.app/
 
-React 19, Vite, and imperative Three.js. The home page has a personal J cartridge that swaps to four career cartridges through the company names in a rotating bio, recent projects with dither/3D hover previews, and server-backed Last.fm listening. Current pages:
+React 19, Vite, and imperative Three.js. The home page has a white dithered cartridge that swaps to four career cartridges through the company names in a rotating bio, recent projects with dither/3D hover previews, and server-backed Last.fm listening. Current pages:
 
 | Route | Entry and main files |
 | --- | --- |

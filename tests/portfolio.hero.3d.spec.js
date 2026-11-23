@@ -10,17 +10,20 @@ test('inline hero swaps all five cartridges in one renderer with GPU dissolve an
  });
  await page.goto('/');const hero=page.locator('.hero-cartridge'),stage=hero.locator('.hero-cartridge-stage');
  await expect(hero).toHaveAttribute('data-status','ready',{timeout:60000});await expect(stage).toHaveAttribute('data-intro','settled',{timeout:30000});await expect(stage).toHaveAttribute('data-cartridge','personal');
+ await expect(stage).toHaveAttribute('data-render-style','dither');
  await stage.locator('canvas').evaluate(el=>{window.heroCanvas=el});
  const dimensions=await hero.boundingBox();
  for(const id of ['search','gmail','stadia','blizzard']){
   await page.locator(`[data-company="${id}"]`).hover();await expect(stage).toHaveAttribute('data-cartridge',id,{timeout:30000});
   await expect(stage).toHaveAttribute('data-dissolve','complete',{timeout:30000});
+  await expect(stage).toHaveAttribute('data-render-style','model');
   expect(await page.evaluate(id=>window.heroReveals.some(frame=>frame.id===id&&frame.state==='revealing'&&frame.progress<1),id)).toBe(true);
   await expect(hero.locator('canvas')).toHaveCount(1);expect(await stage.locator('canvas').evaluate(el=>el===window.heroCanvas)).toBe(true);
   expect(await hero.boundingBox()).toEqual(dimensions);
  }
  for(const id of ['search','gmail','stadia','blizzard'])await page.locator(`[data-company="${id}"]`).hover();
  await expect(stage).toHaveAttribute('data-cartridge','blizzard');await page.mouse.move(2,2);await expect(stage).toHaveAttribute('data-cartridge','personal');await expect(stage).toHaveAttribute('data-intro','settled',{timeout:30000});
+ await expect(stage).toHaveAttribute('data-render-style','dither');
  const quality=await stage.locator('canvas').evaluate(el=>({ratio:el.width/el.clientWidth,expected:Math.min(devicePixelRatio,1.5),antialias:el.getContext('webgl2').getContextAttributes().antialias}));expect(quality.ratio).toBeCloseTo(quality.expected,1);expect(quality.antialias).toBe(true);expect(await page.evaluate(()=>window.heroReadbacks)).toBe(0);
  await page.locator('.collection-header .theme-toggle').click();await expect(stage).toHaveAttribute('data-shell-theme','dark');expect(await stage.locator('canvas').evaluate(el=>el===window.heroCanvas)).toBe(true);
  await page.locator('[data-project="ai-mode-nudges"] .recent-project-link').hover();await expect(stage).toHaveAttribute('data-motion','idle');

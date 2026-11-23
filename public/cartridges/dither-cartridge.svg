@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="184" height="140" viewBox="0 0 184 140">
+  <title>White dithered game cartridge</title>
+  <defs>
+    <pattern id="pixels" width="4" height="4" patternUnits="userSpaceOnUse">
+      <path d="M0 0h2v4H0Zm2 2h2v2H2Z" fill="#fff"/>
+    </pattern>
+    <mask id="dither"><rect width="184" height="140" fill="url(#pixels)"/></mask>
+  </defs>
+  <g transform="rotate(-4 70 70)" mask="url(#dither)">
+    <path d="M12 30h114l6 6v64l-6 6H12l-4-6V36Z" fill="#fff" stroke="#92959c" stroke-width="1"/>
+    <path d="M9 35h122v8H9Zm-1 65h124l-6 6H12Z" fill="#b8bbc1"/>
+    <path d="M18 32h9v4h-9Zm90 0h9v4h-9Z" fill="#b8bbc1"/>
+    <rect x="21" y="46" width="98" height="51" rx="3" fill="#fff" stroke="#b8bbc1" stroke-width=".6"/>
+    <path d="M14 47v46m112-46v46" stroke="#b8bbc1"/>
+  </g>
+</svg>

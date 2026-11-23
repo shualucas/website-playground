@@ -181,6 +181,7 @@
 .hero-cartridge-stage[data-dragging="true"] { cursor:grabbing; }
 .hero-cartridge-fallback { position:absolute; inset:28px 14px; padding:18px 9px 10px; background:var(--cartridge-shell); border-radius:4px; box-shadow:2px 4px 0 color-mix(in srgb,var(--cartridge-shell) 75%,#000),3px 8px 14px #0001; transform:rotate(-3deg); }
 .hero-cartridge-fallback img { display:block; width:100%; height:100%; object-fit:contain; border-radius:3px; background:#fff; }
+.hero-dither-fallback { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 .hero-company { display:inline; padding:0; margin:0; font:inherit; line-height:inherit; color:var(--copy-muted); text-decoration:none; text-underline-offset:3px; transition:color 160ms ease; }
 .hero-company[data-company="search"] { color:var(--ui-text); text-decoration:underline dotted; }
 .hero-company:is(:hover,:focus-visible,[aria-pressed="true"]) { color:var(--ui-text); }

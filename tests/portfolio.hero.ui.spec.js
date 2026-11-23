@@ -2,7 +2,7 @@ import {test,expect,disableWebGL} from './support/portfolio.js';
 
 test.use({webgl:false,ignoreHTTPSErrors:Boolean(process.env.PORTFOLIO_REVIEW_URL)});
 
-test('inline hero matches project typography and keeps the J cartridge above the left-aligned copy',async({page})=>{
+test('inline hero matches project typography and keeps the default cartridge above the left-aligned copy',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
  const hero=page.locator('.hero-cartridge'),title=page.locator('.intro-title');
  await expect(title).toContainText('Josh Lucas, product designer');await expect(page.locator('.bio-continuation')).toHaveText('based in California, building stuff on Google Search, previously Gmail, Stadia, & Blizzard.');

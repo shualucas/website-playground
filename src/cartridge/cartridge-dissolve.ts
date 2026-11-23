@@ -5,9 +5,10 @@ export class CartridgeDissolve {
   readonly progress={value:0};
   readonly pixelSize={value:2};
   readonly ink={value:new Color('#6988d8')};
+  readonly persistent={value:0};
   private applied=new WeakSet<Material>();
 
-  apply(material:Material) {
+  apply(material:Material,ditherSurface=true) {
     if(this.applied.has(material))return;this.applied.add(material);
     const compile=material.onBeforeCompile,cache=material.customProgramCacheKey();
     material.onBeforeCompile=(shader,renderer)=>{
@@ -15,11 +16,13 @@ export class CartridgeDissolve {
       shader.uniforms.uCartridgeReveal=this.progress;
       shader.uniforms.uCartridgePixel=this.pixelSize;
       shader.uniforms.uCartridgeInk=this.ink;
+      shader.uniforms.uCartridgePersistent=this.persistent;
       shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`
         #include <common>
         uniform float uCartridgeReveal;
         uniform float uCartridgePixel;
         uniform vec3 uCartridgeInk;
+        uniform float uCartridgePersistent;
         float cartridgeRank(vec2 cell) {
           vec2 p=mod(cell,4.0);
           vec4 row=p.y<1.0?vec4(0.0,8.0,2.0,10.0):p.y<2.0?vec4(12.0,4.0,14.0,6.0):p.y<3.0?vec4(3.0,11.0,1.0,9.0):vec4(15.0,7.0,13.0,5.0);
@@ -34,9 +37,16 @@ export class CartridgeDissolve {
       `).replace('#include <tonemapping_fragment>',`
         if (uCartridgeReveal<1.0) gl_FragColor.rgb=mix(uCartridgeInk,gl_FragColor.rgb,smoothstep(0.25,1.0,uCartridgeReveal));
         #include <tonemapping_fragment>
+        ${ditherSurface?`
+          if (uCartridgePersistent>0.5) {
+            float light=clamp(dot(normalize(normal),normalize(vec3(-0.35,0.55,1.0))),0.0,1.0);
+            if (cartridgeRank(floor(gl_FragCoord.xy/uCartridgePixel))>0.22+0.58*light) discard;
+            gl_FragColor.rgb=vec3(mix(0.48,1.0,smoothstep(0.0,0.7,light)));
+          }
+        `:''}
       `);
     };
-    material.customProgramCacheKey=()=>`${cache}|cartridge-dissolve-v1`;
+    material.customProgramCacheKey=()=>`${cache}|cartridge-dissolve-v2-${ditherSurface}`;
     material.needsUpdate=true;
   }
 }

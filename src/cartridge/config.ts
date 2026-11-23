@@ -14,10 +14,10 @@ export const archivedCartridges = [
 ] as const;
 export type CartridgeId = typeof cartridges[number]["id"];
 
-/** The personal cartridge shares the favicon's cream shell and printed black J. */
+/** A blank white cartridge for the hero's persistent dither silhouette. */
 export const personalCartridge = {
-  id: "personal", name: "Josh Lucas", label: "/cartridges/labels/j-label.svg",
-  shell: "#d8d2c3", accent: "#6988d8", finish: cartridges[0].finish,
+  id: "personal", name: "Josh Lucas", label: "/cartridges/labels/white-label.svg",
+  shell: "#ffffff", accent: "#ffffff", finish: matte,
 };
 export type DisplayCartridge = {
   id:string; name:string; label:string; shell:string; accent:string; finish:ShellFinish;

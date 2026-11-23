@@ -58,7 +58,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.toneMappingExposure=.95;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.VSMShadowMap;
     this.renderer.domElement.setAttribute("aria-hidden","true");this.renderer.domElement.dataset.cartridgeRenderer='webgl';host.append(this.renderer.domElement);
-    this.dissolve.pixelSize.value=2*this.renderer.getPixelRatio();this.dissolve.apply(this.shadow);
+    this.dissolve.pixelSize.value=2*this.renderer.getPixelRatio();this.dissolve.apply(this.shadow,false);
     this.camera.position.set(0,0,8);this.camera.lookAt(0,0,0);
     this.camera.zoom=.9;
     this.pmrem=new THREE.PMREMGenerator(this.renderer);
@@ -189,11 +189,14 @@ export class CaseStudyCartridgeScene {
   }
   private updateTheme=()=>{
     const dark=document.documentElement.dataset.colorMode==="dark";
+    const personal=this.cartridge.id==='personal';
+    this.dissolve.persistent.value=personal?1:0;
+    this.host.dataset.renderStyle=personal?'dither':'model';
     applyCartridgeTheme(this.root,dark);this.host.dataset.shellTheme=dark?"dark":"light";
     this.background.set(dark?"#101110":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
     if(this.transparentBackground)this.renderer.setClearColor(this.background,0);
-    const ink=this.cartridge.id==='search'||this.cartridge.id==='personal'?'#6988d8':this.cartridge.id==='stadia'?'#e5633d':this.cartridge.accent;
-    this.dissolve.ink.value.set(ink).multiplyScalar(dark?1:.65);
+    const ink=personal?'#ffffff':this.cartridge.id==='search'?'#6988d8':this.cartridge.id==='stadia'?'#e5633d':this.cartridge.accent;
+    this.dissolve.ink.value.set(ink).multiplyScalar(dark||personal?1:.65);
     if(this.ready)this.draw();
   };
   private resize=()=>{
@@ -254,5 +257,6 @@ export class CaseStudyCartridgeScene {
     delete this.host.dataset.rotation;delete this.host.dataset.dragging;delete this.host.dataset.interactive;
     delete this.host.dataset.dissolve;delete this.host.dataset.revealProgress;
     delete this.host.dataset.cartridge;
+    delete this.host.dataset.renderStyle;
   }
 }

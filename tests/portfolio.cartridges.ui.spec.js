@@ -6,7 +6,7 @@ test("without WebGL all four companies still swap the personal cartridge through
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-status", "fallback");
   const hero=page.locator('.hero-cartridge');await expect(hero).toHaveAttribute('data-cartridge','personal');
-  await expect(hero.locator('img')).toHaveAttribute('src','/cartridges/labels/j-label.svg');
+  await expect(hero.locator('img')).toHaveAttribute('src','/cartridges/dither-cartridge.svg');
   for(const company of ['search','gmail','stadia','blizzard']){
     const button=page.locator(`[data-company="${company}"]`);await button.hover();await expect(hero).toHaveAttribute('data-cartridge',company);
     await expect(button).toHaveAttribute('aria-pressed','true');await expect(hero.locator('img')).toHaveJSProperty('complete',true);
