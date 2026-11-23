@@ -6,9 +6,13 @@ test('inline hero matches project typography and keeps the default cartridge abo
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto(process.env.PORTFOLIO_REVIEW_URL||'/');
  const hero=page.locator('.hero-cartridge'),title=page.locator('.intro-title');
  await expect(title).toContainText('Josh Lucas, product designer');await expect(page.locator('.bio-continuation')).toHaveText('based in California, building stuff on Google Search, previously Gmail, Stadia, & Blizzard.');
+ await page.evaluate(()=>document.fonts.ready);
  for(const width of [1440,900,390,320]){
   await page.setViewportSize({width,height:900});
-  const row=page.locator('.recent-project-link').first(),copy=await title.boundingBox(),cart=await hero.boundingBox(),project=await row.boundingBox();
+  // Read together so a viewport update cannot split these measurements across layouts.
+  const bounds=()=>page.evaluate(()=>Object.fromEntries(Object.entries({copy:'.intro-title',cart:'.hero-cartridge',project:'.recent-project-link'}).map(([name,selector])=>[name,document.querySelector(selector).getBoundingClientRect().toJSON()])));
+  await expect.poll(async()=>{const {copy,cart,project}=await bounds();return Math.max(Math.abs(cart.x-copy.x),Math.abs(copy.x-project.x))}).toBeLessThan(.5);
+  const row=page.locator('.recent-project-link').first(),{copy,cart,project}=await bounds();
   expect(cart.x).toBeCloseTo(copy.x,0);expect(copy.x).toBeCloseTo(project.x,0);expect(cart.y+cart.height).toBeLessThan(copy.y);
   expect(await title.evaluate(el=>getComputedStyle(el).fontSize)).toBe(await row.evaluate(el=>getComputedStyle(el).fontSize));
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
