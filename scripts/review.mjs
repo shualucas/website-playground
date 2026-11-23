@@ -115,7 +115,10 @@ try {
     const control=page.getByRole("button", { name:`Show ${name} cartridge`, exact:true });
     await control.hover();
     await expect(page.locator('.hero-cartridge-stage')).toHaveAttribute('data-cartridge',await control.getAttribute('data-company'),wait);
-    if(args.phase==="settled")await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-intro", "settled", wait);
+    if(args.phase==="settled"){
+      await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-intro", "settled", wait);
+      await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-turn-state", "settled", wait);
+    }
   }
   if (args.phase !== "settled") await page.evaluate(() => { window.__review.armed = true; });
   if (args.hover) {

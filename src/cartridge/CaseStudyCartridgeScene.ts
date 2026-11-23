@@ -31,6 +31,9 @@ export class CaseStudyCartridgeScene {
   private frame = 0;
   private last = 0;
   private time = 0;
+  private turn = 0;
+  private turnTarget = 0;
+  private turnVelocity = 0;
   private visible = true;
   private ready = false;
   private dissolve = new CartridgeDissolve();
@@ -123,6 +126,10 @@ export class CaseStudyCartridgeScene {
         this.root.rotation.set(.26,-.22,-.05);this.root.updateMatrixWorld(true);
         new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
       }
+      if(!initial&&!this.motion.matches&&this.time>=entranceDuration){
+        // Aim for a readable full turn ahead without queuing a spin for every crossed link.
+        this.turnTarget=Math.ceil((this.turn+Math.PI/2)/(Math.PI*2))*Math.PI*2;
+      }
       this.host.dataset.cartridge=cartridge.id;
       this.updateTheme();
       if(initial){this.ready=true;this.draw();this.callbacks.onReady();this.sync()}
@@ -139,12 +146,14 @@ export class CaseStudyCartridgeScene {
     this.dissolve.progress.value=p;
     this.host.dataset.dissolve=p<1?'revealing':'complete';
     this.host.dataset.revealProgress=p.toFixed(4);
-    const turn=Math.max(0,t-entranceDuration)*Math.PI*2/45;
-    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-entranceTurn*(1-ease)+turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
+    const ambientTurn=Math.max(0,t-entranceDuration)*Math.PI*2/45;
+    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
     this.root.position.y=Math.sin(t*.7)*.055;
     this.host.dataset.intro=p<1?"spinning":"settled";
     this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
     this.host.dataset.rotation=[this.spin.x,this.spin.y].map(value=>value.toFixed(5)).join(",");
+    this.host.dataset.turn=[this.turn,this.turnVelocity,this.turnTarget].map(value=>value.toFixed(5)).join(",");
+    this.host.dataset.turnState=Math.abs(this.turnTarget-this.turn)<.005&&Math.abs(this.turnVelocity)<.05?'settled':'spinning';
     this.host.dataset.interactive=String(this.canInteract());
   }
   private canInteract() {
@@ -209,7 +218,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.setSize(w,h,false);if(this.ready)this.draw();
   };
   private draw() {if(!this.disposed&&this.host.clientWidth&&this.host.clientHeight){this.setPose();this.renderer.render(this.scene,this.camera)}}
-  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.sync()};
+  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.turnTarget=this.turn;this.turnVelocity=0;this.sync()};
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
@@ -223,6 +232,12 @@ export class CaseStudyCartridgeScene {
     this.frame=0;if(this.disposed)return;
     const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
     if(!this.drag)this.time+=dt;
+    if(!this.drag)for(let i=0;i<4;i++){
+      this.turnVelocity+=((this.turnTarget-this.turn)*140-this.turnVelocity*24)*dt/4;
+      this.turnVelocity=THREE.MathUtils.clamp(this.turnVelocity,-18,18);
+      this.turn+=this.turnVelocity*dt/4;
+    }
+    if(Math.abs(this.turnTarget-this.turn)<.005&&Math.abs(this.turnVelocity)<.05){this.turn=this.turnTarget;this.turnVelocity=0}
     // Direct manipulation while held; spring settling for keyboard changes.
     if(!this.drag)for(let i=0;i<4;i++)for(const axis of ["x","y"] as const){
       this.spinVelocity[axis]+=((this.targetSpin[axis]-this.spin[axis])*230-this.spinVelocity[axis]*27)*dt/4;
@@ -260,5 +275,6 @@ export class CaseStudyCartridgeScene {
     delete this.host.dataset.dissolve;delete this.host.dataset.revealProgress;
     delete this.host.dataset.cartridge;
     delete this.host.dataset.renderStyle;
+    delete this.host.dataset.turn;delete this.host.dataset.turnState;
   }
 }
