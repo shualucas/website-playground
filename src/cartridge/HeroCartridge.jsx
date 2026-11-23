@@ -19,7 +19,7 @@ export function HeroCartridge({ id, active, onStatusChange }) {
         scene=new CaseStudyCartridgeScene(host.current,current.current,{
           onReady:()=>{update("ready");void scene?.preload(cartridges)},
           onError:()=>update("fallback"),
-        },true);
+        },{transparentBackground:true,entranceScale:.75});
         engine.current=scene;scene.setPaused(!enabled.current);
       }catch{update("fallback")}
     }).catch(()=>update("fallback"));

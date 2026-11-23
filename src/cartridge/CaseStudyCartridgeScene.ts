@@ -7,12 +7,14 @@ import { type DisplayCartridge } from "./config";
 import { loadExternalShell } from "./model";
 
 type Callbacks = { onReady: () => void; onError: () => void };
-const entranceDuration=1.1*.75;
-const entranceTurn=Math.PI*2*.75;
+type Options = { transparentBackground?:boolean; entranceScale?:number };
 
 /** One original home-page cartridge, framed for a readable case-study introduction. */
 export class CaseStudyCartridgeScene {
   private renderer: THREE.WebGLRenderer;
+  private readonly transparentBackground:boolean;
+  private readonly entranceDuration:number;
+  private readonly entranceTurn:number;
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera(-2,2,1.5,-1.5,.1,80);
   private root = new THREE.Group();
@@ -51,7 +53,10 @@ export class CaseStudyCartridgeScene {
   private spinVelocity = new THREE.Vector2();
   private drag: { id:number; x:number; y:number; startX:number; startY:number; moved:boolean } | null = null;
 
-  constructor(private host:HTMLElement,private cartridge:DisplayCartridge,private callbacks:Callbacks,private transparentBackground=false) {
+  constructor(private host:HTMLElement,private cartridge:DisplayCartridge,private callbacks:Callbacks,options:Options={}) {
+    this.transparentBackground=options.transparentBackground??false;
+    this.entranceDuration=1.1*(options.entranceScale??1);
+    this.entranceTurn=Math.PI*2*(options.entranceScale??1);
     this.control=host.parentElement||host;
     this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -126,7 +131,7 @@ export class CaseStudyCartridgeScene {
         this.root.rotation.set(.26,-.22,-.05);this.root.updateMatrixWorld(true);
         new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
       }
-      if(!initial&&!this.motion.matches&&this.time>=entranceDuration){
+      if(!initial&&!this.motion.matches&&this.time>=this.entranceDuration){
         // Aim for a readable full turn ahead without queuing a spin for every crossed link.
         this.turnTarget=Math.ceil((this.turn+Math.PI/2)/(Math.PI*2))*Math.PI*2;
       }
@@ -141,13 +146,13 @@ export class CaseStudyCartridgeScene {
   }
   private setPose() {
     const t=this.motion.matches?0:this.time;
-    // A shorter three-quarter turn resolves into the same gentle ambient drift.
-    const p=this.motion.matches?1:Math.min(1,t/entranceDuration),ease=1-Math.pow(1-p,4);
+    // Each surface has its own entrance, followed by the same gentle ambient drift.
+    const p=this.motion.matches?1:Math.min(1,t/this.entranceDuration),ease=1-Math.pow(1-p,4);
     this.dissolve.progress.value=p;
     this.host.dataset.dissolve=p<1?'revealing':'complete';
     this.host.dataset.revealProgress=p.toFixed(4);
-    const ambientTurn=Math.max(0,t-entranceDuration)*Math.PI*2/45;
-    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
+    const ambientTurn=Math.max(0,t-this.entranceDuration)*Math.PI*2/45;
+    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-this.entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
     this.root.position.y=Math.sin(t*.7)*.055;
     this.host.dataset.intro=p<1?"spinning":"settled";
     this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
@@ -157,7 +162,7 @@ export class CaseStudyCartridgeScene {
     this.host.dataset.interactive=String(this.canInteract());
   }
   private canInteract() {
-    return this.ready&&!this.disposed&&!this.paused&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=entranceDuration)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
+    return this.ready&&!this.disposed&&!this.paused&&this.visible&&!document.hidden&&(this.motion.matches||this.time>=this.entranceDuration)&&this.control.dataset.revealReady==="true"&&!this.control.closest("[inert]");
   }
   private down=(event:PointerEvent)=>{
     if(event.button!==0||!event.isPrimary||this.drag||!this.canInteract()||event.target!==this.renderer.domElement)return;
@@ -218,7 +223,7 @@ export class CaseStudyCartridgeScene {
     this.renderer.setSize(w,h,false);if(this.ready)this.draw();
   };
   private draw() {if(!this.disposed&&this.host.clientWidth&&this.host.clientHeight){this.setPose();this.renderer.render(this.scene,this.camera)}}
-  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.turnTarget=this.turn;this.turnVelocity=0;this.sync()};
+  private preference=()=>{this.cancelDrag();this.time=this.motion.matches?0:this.entranceDuration;this.spin.copy(this.targetSpin);this.spinVelocity.set(0,0);this.turnTarget=this.turn;this.turnVelocity=0;this.sync()};
   private sync=()=>{
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
