@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { cartridges, personalCartridge } from "./config";
 
-/** One persistent renderer; company hovers replay the project-page spin and GPU dissolve. */
+/** One persistent renderer and motion clock; company hovers only change the cartridge's appearance. */
 export function HeroCartridge({ id, active, onStatusChange }) {
   const host=useRef(null),engine=useRef(null),current=useRef(null),enabled=useRef(active);
   const [status,setStatus]=useState("loading");

@@ -22,6 +22,7 @@ if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", 
 if (args.phase !== "settled" && args.motion === "reduce") throw new Error("Mid-animation captures require --motion normal.");
 if (args.phase === "dither" && !args.hover || args.phase === "turn" && args.page !== "zine") throw new Error("dither requires --hover; a turn capture requires --page zine.");
 if(args.phase==='cartridge'&&args.page!=='home'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires the home page or a case-study --path.');
+if(args.phase==='cartridge'&&args.cartridge)throw new Error('Use --phase cartridge without --cartridge for the initial entrance; company swaps preserve the current motion.');
 const width = Number(args.width), height = Number(args.height), port = Number(args.port);
 if (![width, height, port].every(n => Number.isInteger(n) && n > 0) || port > 65535) throw new Error("Use positive integer dimensions and a valid port.");
 const baseURL = `http://127.0.0.1:${port}`;
@@ -111,7 +112,9 @@ try {
   if (args.cartridge) {
     const name=({Search:"Google Search","Blizzard Entertainment":"Blizzard"})[args.cartridge]||args.cartridge;
     if(args.phase!=="settled")await page.evaluate(()=>{window.__review.armed=true});
-    await page.getByRole("button", { name:`Show ${name} cartridge`, exact:true }).hover();
+    const control=page.getByRole("button", { name:`Show ${name} cartridge`, exact:true });
+    await control.hover();
+    await expect(page.locator('.hero-cartridge-stage')).toHaveAttribute('data-cartridge',await control.getAttribute('data-company'),wait);
     if(args.phase==="settled")await expect(page.locator(".hero-cartridge-stage")).toHaveAttribute("data-intro", "settled", wait);
   }
   if (args.phase !== "settled") await page.evaluate(() => { window.__review.armed = true; });

@@ -116,14 +116,16 @@ export class CaseStudyCartridgeScene {
     try {
       const model=await this.loadModel(cartridge);
       if(this.disposed||!model||generation!==this.generation)return;
-      this.cancelDrag();this.cartridge=cartridge;this.root.clear();this.root.add(model);
-      this.spin.set(0,0);this.targetSpin.set(0,0);this.spinVelocity.set(0,0);this.time=0;this.last=0;
-      this.setPose();this.updateTheme();
-      // Measure the resting pose so the entrance angle never changes camera framing.
-      this.root.rotation.set(.26,-.22,-.05);this.root.updateMatrixWorld(true);
-      new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
+      const initial=!this.ready;
+      this.cartridge=cartridge;this.root.clear();this.root.add(model);
+      if(initial){
+        // Frame the shared geometry once; later swaps inherit the live pose and camera.
+        this.root.rotation.set(.26,-.22,-.05);this.root.updateMatrixWorld(true);
+        new THREE.Box3().setFromObject(this.root).getSize(this.size);this.resize();
+      }
       this.host.dataset.cartridge=cartridge.id;
-      this.ready=true;this.draw();this.callbacks.onReady();this.sync();
+      this.updateTheme();
+      if(initial){this.ready=true;this.draw();this.callbacks.onReady();this.sync()}
     } catch { if(!this.disposed&&generation===this.generation){this.dispose();this.callbacks.onError()} }
   }
   setPaused(paused:boolean) {
