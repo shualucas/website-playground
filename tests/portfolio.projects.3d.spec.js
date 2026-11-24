@@ -100,7 +100,7 @@ test("camera preview spins and blinks once before settling, and keyboard entry o
  await link.hover();await expect(camera).toHaveAttribute('data-status','ready',{timeout:60000});await expect(camera).toHaveAttribute('data-intro','settled',{timeout:15000});
  await expect(camera).toHaveAttribute('data-ready-light','off');expect(await page.evaluate(()=>window.cameraLights.includes('on'))).toBe(true);
  await expect(camera).toHaveAttribute('data-rotation','0,0,0');await expect(link.locator('.camera-model')).toHaveCount(0);
- await page.mouse.move(2,2);await link.focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(/\/photos\/$/);await expect(page.locator('.polaroid')).toHaveCount(filmPhotos.length);
+ await page.mouse.move(2,2);await link.focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(/\/photos\/$/);await expect(page.locator('.floating-photo-hit')).toHaveCount(filmPhotos.length);
  await expect(page.locator('.photo-entry-camera')).toHaveCount(0);
 });
 

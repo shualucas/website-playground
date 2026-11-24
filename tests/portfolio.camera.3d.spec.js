@@ -21,24 +21,6 @@ test("camera flash clears the grip and the strap sags in world gravity after a c
   for(const pose of [result.initial,result.rotated]){expect(pose.bottom).toBeLessThan(pose.anchor[1]-.15);expect(pose.stretch).toBeLessThan(.15);}
 });
 
-test('photos use a loose Polaroid spread and retain the zine at its own address',async({page})=>{
-  const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/photos/');
-  await expect(page.getByRole('heading',{name:'Film photographs'})).toHaveCount(1);
-  await page.getByRole('button',{name:/Open \d+ film photographs/}).click();await expect(page.locator('.photos-page')).toHaveAttribute('data-envelope-state','open');await expect(page.locator('.polaroid')).toHaveCount(filmPhotos.length);await expect(page.locator('.after-hours-book,.photo-entry-camera')).toHaveCount(0);
-  for(const width of [1440,390,320]){
-    await page.setViewportSize({width,height:900});
-    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-    await expect.poll(()=>page.locator('.polaroid').evaluateAll(cards=>cards.every(card=>card.clientWidth>100))).toBe(true);
-    const layout=await page.locator('.polaroid').evaluateAll(cards=>cards.map(card=>getComputedStyle(card).transform));
-    expect(new Set(layout).size).toBeGreaterThan(3);
-  }
-  await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
-  await page.getByRole('link',{name:'Home'}).click();
-  await page.getByRole('link',{name:/Zine of Extracurriculars/}).click();await expect(page).toHaveURL(/after-hours/);
-  expect(errors).toEqual([]);
-});
-
 test('camera and zine dither sample their live render and release capture after revealing',async({page})=>{
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});
  await page.addInitScript(()=>{window.previewCoverage={};new MutationObserver(()=>{

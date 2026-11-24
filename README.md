@@ -10,10 +10,12 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 | Case studies | `src/CaseStudy.jsx`, `src/CaseStudyNarrative.jsx`, `src/content/*-case-study.js` |
 | `/after-hours/` | `src/after-hours/main.jsx`, `flyers.js`, `covers.js`, `src/book/BookScene.ts`, `leaf.ts` |
 | `/resume/` | `src/resume/main.jsx`, `FloatingPaper.ts`, `PaperSurface.ts`, `profile.js` |
-| `/photos/` | `src/photos/main.jsx`, `PhotoTable.jsx`, `PhotoLightbox.jsx`, `src/content/film-photos.js` |
+| `/photos/` | `src/photos/main.jsx`, `FloatingPhotos.ts`, `floating-shaders.ts`, `PhotoLightbox.jsx`, `src/content/film-photos.js` |
 | `/zine/` | Archived portfolio: `src/main.jsx`, `src/style.css`. Preserve it. |
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
+
+The photos page is a borderless Three.js field with one animation clock for drift, camera sway, and a pointer-driven color wake. Its original shaders study [Ribcage by Luis Bizarro](https://webgpu.toys/ribcage/): a 4×4 Bayer matrix, nine tonal levels, a 360-row pixel grid, and 24 Hz grain. Reduced motion freezes drift and grain; without WebGL, ordered-dither thumbnails preserve navigation, dragging, and the original-image lightbox.
 
 The Last.fm footer uses `ListeningWidget.jsx` and `listening.css`: right-aligned song information, randomized song-change announcements, and rounded cover art. It preserves recent-song history, respects reduced motion, and stays hidden on mobile.
 
@@ -36,7 +38,7 @@ Setup does not build the app. Reuse an existing healthy Vite server. Live proces
 | Hero/project cartridges, hit testing, materials | `npm run test:3d -- --grep 'inline hero swaps\|project cartridges dissolve'` |
 | Listening widget | `npm run test:listening` and `npm run test:listening:ui` |
 | Résumé | `npm run test:resume` |
-| Camera/photos | `npm run test:camera` |
+| Camera/photos | `npm run test:camera` and `npx playwright test portfolio.floating-photos` |
 | Current flyer zine | `npm run test:flyers` |
 | Archived portfolio | `npm run test:zine` |
 | Shared helpers/API/math | `npm run test:unit` |
@@ -61,7 +63,7 @@ npm run review -- --path '/?project=ai-mode-nudges&view=case-study' --phase cart
 npm run review -- --page zine --phase turn
 npm run review -- --page resume --width 390 --height 844
 npm run review -- --page photos --motion reduce
-npm run review -- --page photos --open-photos
+npm run review -- --page photos --theme dark
 npm run review -- --page photos --photo 1
 ```
 

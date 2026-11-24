@@ -20,7 +20,7 @@ export function PhotoLightbox({photos,initial,opener,onClose}) {
   const close=async()=>{
     if(closing.current)return;closing.current=true;
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
-      const node=image.current,rect=node.getBoundingClientRect(),source=(document.querySelector(`.photo-slot[data-photo-index="${index}"] .photo-print`)||opener)?.getBoundingClientRect();
+      const node=image.current,rect=node.getBoundingClientRect(),source=(document.querySelector(`.floating-photo-hit[data-photo-index="${index}"]`)||opener)?.getBoundingClientRect();
       dialog.current.dataset.closing='true';
       const target=source?`translate(${source.left+source.width/2-rect.left-rect.width/2}px,${source.top+source.height/2-rect.top-rect.height/2}px) scale(${source.width/rect.width})`:'scale(.96)';
       const zoom=node.animate([{opacity:1,transform:'none'},{opacity:0,transform:target}],{duration:240,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'});

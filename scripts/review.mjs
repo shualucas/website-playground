@@ -17,7 +17,7 @@ const { values: args } = parseArgs({ options: {
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1] [--scatter-at 800]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1]");
   process.exit(0);
 }
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "resolve", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
@@ -155,27 +155,20 @@ try {
   }
   if (args.phase !== "settled") await expect.poll(() => page.evaluate(() => window.__review.frozen), wait).toBe(true);
   else await page.evaluate(async () => { const root = document.querySelector(".collection"); if (root) await Promise.allSettled(root.getAnimations().map(animation => animation.finished)); });
-  if(args['open-photos']||args.photo||args['scatter-at']){
-    if(args.page!=='photos')throw new Error('Use --open-photos and --photo with --page photos.');
-    await expect(page.locator('.film-envelope-stage')).toHaveAttribute('data-reveal-ready','true',wait);
-    const box=await page.getByRole('button',{name:/Open \d+ film photographs/}).boundingBox();
-    await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
-    if(args['scatter-at']){
-      const time=Number(args['scatter-at']);
-      if(args.motion==='reduce'||args.photo||!Number.isFinite(time)||time<0||time>1600)throw new Error('Use --scatter-at 0..1600 with normal motion, without --photo.');
-      await expect.poll(()=>page.locator('.film-envelope-scene').evaluate(el=>el.getAnimations()[0]?.playState),wait).toBe('running');
-      await page.evaluate(time=>{for(const el of document.querySelectorAll('.film-envelope-scene,.film-envelope-stage,.photo-print'))for(const a of el.getAnimations()){a.pause();a.currentTime=time}},time);
-    }else await expect(page.locator('.photos-page')).toHaveAttribute('data-envelope-state','open',wait);
+  if(args.page==='photos'){
+    await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-status',/ready|fallback/,wait);
+    if(args['scatter-at'])throw new Error('The photo mailer has been replaced by a floating gallery.');
     if(args.photo){
-      const index=Number(args.photo)-1,prints=page.locator('.photo-print');
-      if(!Number.isInteger(index)||index<0||index>=await prints.count())throw new Error('Use a valid 1-based --photo number.');
-      await prints.nth(index).click();await expect(page.getByRole('dialog')).toBeVisible(wait);
+      const index=Number(args.photo)-1,photos=page.locator('.floating-photo-hit');
+      if(!Number.isInteger(index)||index<0||index>=await photos.count())throw new Error('Use a valid 1-based --photo number.');
+      await photos.nth(index).focus();await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toBeVisible(wait);
       await page.getByRole('dialog').locator('img').evaluate(async el=>{await Promise.allSettled(el.getAnimations().map(a=>a.finished))});
     }
   }
   if(args.control){
-    const control=page.locator(args.control);await control.hover();
-    if(args.motion!=="reduce")await expect(control.locator('.control-dither')).toHaveAttribute('data-filled','true',wait);
+    const control=page.locator(args.control);
+    if(args.page==='photos'){const box=await control.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2,{steps:12});await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-wake','active',wait)}else await control.hover();
+    if(args.page!=='photos'&&args.motion!=="reduce")await expect(control.locator('.control-dither')).toHaveAttribute('data-filled','true',wait);
   }
   if(args.history){await page.getByRole('button',{name:'Show last five songs',exact:true}).click();await expect(page.getByRole('region',{name:'Recently listened'})).toBeVisible(wait)}
   await mkdir(dirname(output), { recursive:true }); await page.screenshot({ path:output });
