@@ -275,8 +275,12 @@
 .random-fact .about-inline:is(:hover,:focus-visible) { color:var(--ui-text); }
 
 .collection-main { position:relative; isolation:isolate; }
-.about-dither-color { position:absolute; inset:0; z-index:5; pointer-events:none; opacity:0; mix-blend-mode:color; background:#d8bd76; }
 .about-inline-link { text-decoration:underline dotted; text-underline-offset:4px; transition:color 160ms ease; }
 .about-inline-link:is(:hover,:focus-visible) { color:var(--ui-text); }
-@media(prefers-reduced-motion:reduce) { .about-dither-color { display:none; } }
-.collection-main[data-dissolving="true"] { background:var(--scene-bg); }
+
+.collection-intro .intro-title,.random-fact > .intro-word,.about-fact-colon { transition:opacity 180ms ease; }
+.collection-intro[data-about-spotlight="true"] .intro-title,.collection-intro[data-about-spotlight="true"] .random-fact > .intro-word:not(.about-link-word),.collection-intro[data-about-spotlight="true"] .about-fact-colon { opacity:.3; }
+.hero-cartridge[data-about-motion="hover"] .hero-dither-fallback,.hero-cartridge[data-about-motion="exit"] .hero-dither-fallback { animation:about-cartridge-spin 2.24s linear infinite; }
+.hero-cartridge[data-about-motion="exit"] .hero-dither-fallback { animation-duration:1.12s; }
+@keyframes about-cartridge-spin { to { transform:perspective(800px) rotateY(360deg); } }
+@media(prefers-reduced-motion:reduce) { .hero-cartridge .hero-dither-fallback { animation:none !important; } }

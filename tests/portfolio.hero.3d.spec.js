@@ -81,3 +81,25 @@ test('inline hero swaps all five cartridges with continuous enter spins and exit
  }
  expect(errors).toEqual([]);
 });
+
+test('About hover and dither exit spin the persistent cartridge without pausing its clock',async({page})=>{
+ test.setTimeout(90000);await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
+ const hero=page.locator('.hero-cartridge'),stage=hero.locator('.hero-cartridge-stage'),main=page.locator('.collection-main');
+ await expect(hero).toHaveAttribute('data-status','ready',{timeout:60000});await expect(stage).toHaveAttribute('data-intro','settled',{timeout:30000});
+ await page.getByRole('button',{name:'about me',exact:true}).hover();await expect(stage).toHaveAttribute('data-about-motion','hover');
+ await expect.poll(async()=>Number(await stage.getAttribute('data-about-turn'))).toBeGreaterThan(.4);
+ const before=Number(await stage.getAttribute('data-about-turn'));
+ await page.getByRole('button',{name:'about me',exact:true}).click();
+ await main.evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=160});
+ await expect(stage).toHaveAttribute('data-about-motion','exit');
+ await expect.poll(async()=>Number(await stage.getAttribute('data-about-turn'))).toBeGreaterThan(before+.4);
+ await expect(main).toHaveAttribute('data-about','false');await expect(hero.locator('canvas')).toHaveCount(1);
+ await main.evaluate(el=>el.getAnimations()[0].finish());await expect(main).toHaveAttribute('data-about','true');
+ await expect(page.getByRole('heading',{name:'A little about me.'})).toBeFocused();
+ await page.getByRole('button',{name:'Back to my work'}).click();await expect(main).toHaveAttribute('data-about','false');
+ await expect(hero).toHaveAttribute('data-status','ready');await expect(hero.locator('canvas')).toHaveCount(1);
+ await page.emulateMedia({reducedMotion:'reduce'});await page.getByRole('button',{name:'about me',exact:true}).hover();
+ const pose=await stage.getAttribute('data-float');await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await expect(stage).toHaveAttribute('data-float',pose);
+ expect(errors).toEqual([]);
+});

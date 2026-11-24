@@ -19,14 +19,16 @@ const factStart=2+lines.flat().length;
 const count=factStart+Math.max(...funFacts.map(fact=>words(fact).length));
 const delay=index=>({"--reveal-delay":`${entrance.introStart+index*entrance.introSpread/(count-1)}ms`});
 
-export function Intro({active,previewColor,onStatusChange,onAbout}) {
+export function Intro({active,previewColor,onStatusChange,onAbout,aboutExiting=false}) {
   const [fact]=useState(pickFunFact);
+  const [aboutHovered,setAboutHovered]=useState(false),[aboutFocused,setAboutFocused]=useState(false);
+  const aboutSpotlight=aboutHovered||aboutFocused||aboutExiting;
   const [hovered,setHovered]=useState(null),[focused,setFocused]=useState(null),[pinned,setPinned]=useState(null);
   const pointer=useRef("mouse");
   const selected=hovered||focused||pinned;
   const reset=event=>{if(event.key==="Escape"){setHovered(null);setFocused(null);setPinned(null);event.preventDefault()}};
-  return <div className="collection-intro" onKeyDown={reset}>
-    <HeroCartridge id={selected} active={active} previewColor={previewColor} onStatusChange={onStatusChange}/>
+  return <div className="collection-intro" data-about-spotlight={aboutSpotlight} onKeyDown={reset}>
+    <HeroCartridge aboutMotion={aboutExiting?'exit':aboutSpotlight?'hover':'idle'} id={selected} active={active} previewColor={previewColor} onStatusChange={onStatusChange}/>
     <h1 className="intro-title">
       <span className="intro-line intro-identity">
         <span data-reveal-gate className="portfolio-name intro-word" style={delay(0)}><span className="intro-name">Joshua Lucas</span>,</span>{" "}
@@ -46,7 +48,7 @@ export function Intro({active,previewColor,onStatusChange,onAbout}) {
     </h1>
     <p className="random-fact">
       {words("A fun fact ").map((word,index)=><React.Fragment key={index}><span data-reveal-gate className="intro-word" style={delay(factStart+index)}>{word.trimEnd()}</span>{" "}</React.Fragment>)}
-      <span data-reveal-gate className="intro-word" style={delay(factStart+3)}><button type="button" className="about-link about-inline about-return-anchor" onClick={onAbout}>about me</button>:</span>{" "}
+      <span data-reveal-gate className="intro-word about-link-word" style={delay(factStart+3)}><button type="button" className="about-link about-inline about-return-anchor" onPointerEnter={event=>{if(event.pointerType!=='touch')setAboutHovered(true)}} onPointerLeave={()=>setAboutHovered(false)} onFocus={event=>{if(event.target.matches(':focus-visible'))setAboutFocused(true)}} onBlur={()=>setAboutFocused(false)} onClick={onAbout}>about me</button><span className="about-fact-colon">:</span></span>{" "}
       {words(fact.split("about me: ")[1]).map((word,index)=><React.Fragment key={index}><span data-reveal-gate className="intro-word" style={delay(factStart+5+index)}>{word.trimEnd()}</span>{word.slice(word.trimEnd().length)}</React.Fragment>)}
     </p>
   </div>;

@@ -83,12 +83,12 @@ function App() {
   return <>
     <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-hero="inline" data-reveal-flow="page" data-status={status} data-presented="true" data-project-browsing={Boolean(previewingProject)} data-exiting={pageExit.exiting} inert={reading||pageExit.exiting?true:undefined}>
       <header className="collection-header"><LocationMeta/><ThemeToggle data-reveal dark={dark} onToggle={setDark}/></header>
-      <AboutContent about={about} onBack={()=>showAbout(false)}>
+      <AboutContent about={about} onBack={()=>showAbout(false)}>{displayed=><>
       <section className="collection-hero" aria-label="Introduction and career cartridges">
-        <Intro active={!about&&!reading&&!pageExit.exiting} previewColor={previewingProject?.color} onStatusChange={setStatus} onAbout={()=>showAbout(true)}/>
+        <Intro aboutExiting={about&&!displayed} active={!displayed&&!reading&&!pageExit.exiting} previewColor={previewingProject?.color} onStatusChange={setStatus} onAbout={()=>showAbout(true)}/>
       </section>
       <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status==="ready"} hidden={Boolean(reading)} exiting={pageExit.exiting}/>
-      </AboutContent>
+      </>}</AboutContent>
       {!reading&&<PortfolioFooter dismissHistory={Boolean(previewingProject)}/>}
     </main>
     {project&&<CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={setDark} footer={<PortfolioFooter/>}/>}

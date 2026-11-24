@@ -54,6 +54,9 @@ export class CaseStudyCartridgeScene {
   private tintDelay = 0;
   private materializeTime = .7;
   private previewTint:string|null = null;
+  private aboutMode:"idle"|"hover"|"exit"="idle";
+  private aboutSpeed=0;
+  private aboutTurn=0;
   private tintColor = new THREE.Color();
   private tintTarget = new THREE.Color();
   private control: HTMLElement;
@@ -179,6 +182,13 @@ export class CaseStudyCartridgeScene {
     if(this.paused===paused)return;
     this.paused=paused;this.sync();
   }
+  setAboutMotion(mode:"idle"|"hover"|"exit") {
+    if(this.aboutMode===mode)return;
+    this.aboutMode=mode;
+    if(mode!=="idle")this.cancelDrag();
+    this.host.dataset.aboutMotion=mode;
+    this.sync();
+  }
   setPreviewColor(color?:string|null) {
     const tint=color||null;if(this.previewTint===tint)return;
     this.previewTint=tint;this.host.dataset.previewTint=tint||'';
@@ -237,7 +247,7 @@ export class CaseStudyCartridgeScene {
     // Hero hover turns always land at the front; project pages retain their ambient rotation.
     const ambientTurn=this.hoverToFront?0:Math.max(0,t-this.entranceDuration)*Math.PI*2/45;
     const drift=this.hoverToFront?(this.appearances.get('personal')?.weight??0):0;
-    this.root.rotation.set(.26+Math.sin(t*.55)*(.035+.035*drift)+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*(.055+.18*drift)-this.entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y,-.05+Math.sin(t*.35)*(.02+.025*drift));
+    this.root.rotation.set(.26+Math.sin(t*.55)*(.035+.035*drift)+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*(.055+.18*drift)-this.entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y+(this.motion.matches?0:this.aboutTurn),-.05+Math.sin(t*.35)*(.02+.025*drift));
     this.root.position.y=Math.sin(t*.7)*(.055+.035*drift);
     this.host.dataset.intro=p<1?"spinning":"settled";
     this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
@@ -326,6 +336,11 @@ export class CaseStudyCartridgeScene {
     this.frame=0;if(this.disposed)return;
     const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
     if(!this.drag)this.time+=dt*(this.previewTint?2:1);
+    const aboutTarget=this.aboutMode==='exit'?5.6:this.aboutMode==='hover'?2.8:0;
+    this.aboutSpeed+=(aboutTarget-this.aboutSpeed)*(1-Math.exp(-dt*10));
+    this.aboutTurn+=this.aboutSpeed*dt;
+    if(this.aboutMode==='idle')this.aboutTurn+=Math.atan2(Math.sin(-this.aboutTurn),Math.cos(-this.aboutTurn))*(1-Math.exp(-dt*5));
+    this.host.dataset.aboutTurn=this.aboutTurn.toFixed(5);
     this.updateAppearance(dt);this.updateTint(dt);
     if(!this.drag)for(let i=0;i<4;i++){
       if(this.turnBraking){
@@ -378,6 +393,6 @@ export class CaseStudyCartridgeScene {
     delete this.host.dataset.turn;delete this.host.dataset.turnState;
     delete this.host.dataset.appearanceState;delete this.host.dataset.fadeProgress;
     delete this.host.dataset.surfaceReveal;delete this.host.dataset.ditherInk;
-    delete this.host.dataset.previewTint;
+    delete this.host.dataset.previewTint;delete this.host.dataset.aboutMotion;delete this.host.dataset.aboutTurn;
   }
 }
