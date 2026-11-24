@@ -13,15 +13,15 @@ import {useDitherHovers} from '../useDitherHovers';
 import {filmPhotos} from '../content/film-photos';
 import {FloatingEnvelope} from './FloatingEnvelope';
 import {ParcelStickers,StickerArt,parcelStickers} from './ParcelStickers';
+import {PhotoTable} from './PhotoTable';
+import {PhotoLightbox} from './PhotoLightbox';
 
-const placeholders=Array.from({length:6},(_,index)=>({id:`placeholder-${index}`,alt:'Film photograph placeholder',placeholder:true}));
-const frames=filmPhotos.length?filmPhotos:placeholders;
-const angles=[-7,4,-3,5,-5,6];
+const frames=filmPhotos;
 function Photos(){
   useDitherHovers();
   const page=useRef(null),spread=useRef(null),stage=useRef(null),envelope=useRef(null),motion=useRef(null);
   const entry=useRef(window.__cameraEntry||null);
-  const [placed,setPlaced]=useState({});
+  const [placed,setPlaced]=useState({}),[selected,setSelected]=useState(null);
   const placeSticker=(sticker,position)=>setPlaced(current=>({...current,[sticker.id]:position}));
   const [phase,setPhase]=useState('closed'),[captionVisible,setCaptionVisible]=useState(Boolean(entry.current));
   const exit=usePageExit(page);
@@ -46,24 +46,37 @@ function Photos(){
     motion.current?.setActive(false);
     const preference=matchMedia('(prefers-reduced-motion: reduce)');
     if(preference.matches){setPhase('open');return;}
-    const source=envelope.current.getBoundingClientRect(),x=source.right-source.width*.08,y=source.top+source.height*.5;
-    const animations=[...spread.current.querySelectorAll('.polaroid')].map((card,index)=>{
-      const rect=card.getBoundingClientRect(),dx=x-rect.left-rect.width/2,dy=y-rect.top-rect.height/2,angle=angles[index%angles.length];
-      return card.animate([
-        {opacity:0,transform:`translate(${dx}px,${dy}px) rotate(${angle-12}deg) scale(.22)`,filter:'blur(2px)'},
-        {offset:.2,opacity:1,transform:`translate(${dx*.94}px,${dy-95}px) rotate(${angle-8}deg) scale(.4)`,filter:'blur(0)'},
-        {offset:.8,opacity:1,transform:`translate(${dx*.05}px,${dy*.03-12}px) rotate(${angle+2}deg) scale(1.015)`,filter:'blur(0)'},
-        {opacity:1,transform:`rotate(${angle}deg)`,filter:'none'},
-      ],{duration:1000,delay:300+Math.min(index,8)*75,easing:'cubic-bezier(.22,.7,.2,1)',fill:'both'});
+    const source=envelope.current.getBoundingClientRect(),x=source.right-source.width*.08-65,y=source.top+source.height*.5-25;
+    const animations=[...spread.current.querySelectorAll('.photo-print')].map((card,index)=>{
+      const rect=card.getBoundingClientRect(),dx=x-rect.left-rect.width/2,dy=y-rect.top-rect.height/2;
+      const angle=parseFloat(card.style.getPropertyValue('--photo-angle'));
+      const animation=card.animate([
+        {opacity:0,transform:`translate(${dx}px,${dy}px) rotate(${angle-18}deg) scale(.45)`,boxShadow:'0 18px 35px #0003'},
+        {offset:.12,opacity:1,transform:`translate(${dx+45}px,${dy+32}px) rotate(${angle+14}deg) scale(.72)`,boxShadow:'0 22px 32px #0003'},
+        {offset:.74,opacity:1,transform:`translate(${dx*.03}px,${dy*.025-12}px) rotate(${angle-3}deg) scale(1.03)`,boxShadow:'0 12px 18px #0002'},
+        {offset:.9,opacity:1,transform:`translate(0,2px) rotate(${angle+1}deg) scale(.995)`,boxShadow:'0 1px 2px #0003'},
+        {opacity:1,transform:`rotate(${angle}deg)`,boxShadow:'0 1px 2px #0003,0 5px 11px #0002'},
+      ],{duration:1050+(index%3)*65,delay:250+Math.floor(index/4)*190+(index%4)*32,easing:'cubic-bezier(.25,.65,.3,1)',fill:'both'});
+      animation.pause();return animation;
     });
-    animations.push(stage.current.animate([{opacity:1,transform:'translateY(0) scale(1)'},{opacity:0,transform:'translateY(35px) scale(.93)'}],{duration:420,delay:520+Math.min(frames.length-1,8)*75,easing:'ease-in',fill:'both'}));
+    const scene=stage.current.querySelector('.film-envelope-scene');
+    const shake=scene.animate([
+      {transform:'none'},
+      {offset:.16,transform:'translate(-65px,-70px) rotate(16deg)'},
+      ...Array.from({length:8},(_,i)=>({offset:.22+i*.075,transform:`translate(${i%2?-55:-78}px,${i%2?-82:-58}px) rotate(${i%2?13:23}deg)`})),
+      {transform:'translate(-65px,-70px) rotate(16deg)'},
+    ],{duration:1600,easing:'ease-in-out',fill:'both'});shake.pause();animations.push(shake);
+    const depart=stage.current.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translate(-80px,-55px) scale(.93)'}],{duration:420,delay:1500,easing:'ease-in',fill:'both'});depart.pause();animations.push(depart);
     let active=true;
     const finish=()=>{if(active)setPhase('open')};
+    let preparationTimer;
+    const decoded=Promise.all([...spread.current.querySelectorAll('img')].map(img=>img.decode().catch(()=>{})));
+    Promise.race([decoded,new Promise(resolve=>{preparationTimer=setTimeout(resolve,700)})]).then(()=>{if(active)animations.forEach(animation=>animation.play())});
     Promise.all(animations.map(animation=>animation.finished)).then(finish).catch(()=>{});
     const settle=()=>{animations.forEach(animation=>animation.finish());finish()};
     const reduce=()=>{if(preference.matches)settle()};
     preference.addEventListener('change',reduce);window.addEventListener('resize',settle);
-    return()=>{active=false;preference.removeEventListener('change',reduce);window.removeEventListener('resize',settle);animations.forEach(animation=>animation.cancel())};
+    return()=>{active=false;clearTimeout(preparationTimer);preference.removeEventListener('change',reduce);window.removeEventListener('resize',settle);animations.forEach(animation=>animation.cancel())};
   },[phase]);
   return <main ref={page} onClick={exit.onLinkClick} data-exiting={exit.exiting} inert={exit.exiting} className="photos-page" data-reveal-flow="page" data-ready="true" data-camera-entry={Boolean(entry.current)} data-arrived="true" data-envelope-state={phase}>
     <header className="zine-header-shell"><nav data-reveal data-reveal-at="0" className="zine-header" aria-label="Main navigation">
@@ -87,11 +100,9 @@ function Photos(){
       </div>
       <ParcelStickers envelope={envelope} placed={placed} onPlace={placeSticker} disabled={phase!=='closed'}/>
     </div>}
-    <div ref={spread} id="film-prints" className="photo-spread" role="region" tabIndex={-1} aria-label="Film photograph collection" aria-hidden={phase!=='open'} inert={phase!=='open'}>{frames.map((photo,index)=><div key={photo.id||photo.src} className="photo-slot"><figure className="polaroid" style={{'--photo-angle':`${angles[index%angles.length]}deg`}}>
-      {photo.placeholder?<div className={`polaroid-image photo-placeholder photo-placeholder-${index%3}`} role="img" aria-label={photo.alt}><span>photo coming soon</span></div>:<img className="polaroid-image" src={photo.src} alt={photo.alt} width={photo.width} height={photo.height} loading={index<6?'eager':'lazy'} decoding="async"/>}
-      <figcaption>{photo.caption||photo.film||<span aria-hidden="true">{String(index+1).padStart(2,'0')}</span>}</figcaption>
-    </figure></div>)}</div>
-    <span className="sr-only" role="status">{phase==='open'?`${frames.length} film photographs are now displayed.`:phase==='opening'?'Opening the film envelope.':'Open the envelope to view the photographs.'}</span>
+    <PhotoTable tableRef={spread} photos={frames} phase={phase} onSelect={(index,opener)=>setSelected({index,opener})}/>
+    {selected&&<PhotoLightbox photos={frames} initial={selected.index} opener={selected.opener} onClose={()=>setSelected(null)}/>}
+    <span className="sr-only" role="status">{phase==='open'?`${frames.length} film photographs are now displayed.`:phase==='opening'?'Shaking photographs out of the mailer.':'Open the envelope to view the photographs.'}</span>
     {captionVisible&&<span className="photo-entry-caption" style={{left:`${(entry.current?.camera?.x??.3)*100}%`,top:`${(entry.current?.camera?.y??.75)*100}%`}} onAnimationEnd={()=>setCaptionVisible(false)} aria-hidden="true">say cheese</span>}
   </main>;
 }

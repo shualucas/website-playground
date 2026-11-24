@@ -10,7 +10,7 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 | Case studies | `src/CaseStudy.jsx`, `src/CaseStudyNarrative.jsx`, `src/content/*-case-study.js` |
 | `/after-hours/` | `src/after-hours/main.jsx`, `flyers.js`, `covers.js`, `src/book/BookScene.ts`, `leaf.ts` |
 | `/resume/` | `src/resume/main.jsx`, `FloatingPaper.ts`, `PaperSurface.ts`, `profile.js` |
-| `/photos/` | `src/photos/main.jsx`, `src/content/film-photos.js` |
+| `/photos/` | `src/photos/main.jsx`, `PhotoTable.jsx`, `PhotoLightbox.jsx`, `src/content/film-photos.js` |
 | `/zine/` | Archived portfolio: `src/main.jsx`, `src/style.css`. Preserve it. |
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
@@ -61,6 +61,8 @@ npm run review -- --path '/?project=ai-mode-nudges&view=case-study' --phase cart
 npm run review -- --page zine --phase turn
 npm run review -- --page resume --width 390 --height 844
 npm run review -- --page photos --motion reduce
+npm run review -- --page photos --open-photos
+npm run review -- --page photos --photo 1
 ```
 
 Use `--help` for a custom local path, viewport, output, or port. Output defaults to ignored `test-results/review/`. The script stops only servers it owns. Software WebGL is the cloud default; keep 3D captures sequential. `CHROMIUM_EXECUTABLE_PATH` overrides the system browser; `BROWSER_RENDERER=hardware` opts into an available local GPU. The harness bypasses proxies only for loopback traffic.
