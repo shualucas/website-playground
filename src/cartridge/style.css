@@ -246,3 +246,12 @@
 .recent-preview-dither[hidden] { display:none; }
 @media(prefers-reduced-motion:reduce) { .recent-preview-dither { display:none; } }
 .intro-identity { height:1.6em; }
+
+/* Keep the header separate, center the main group, and reserve the footer's own row. */
+.collection[data-hero="inline"] { display:flex; flex-direction:column; min-height:100svh; }
+.collection[data-hero="inline"] > .collection-header { flex:0 0 64px; }
+.collection-main { flex:1 0 auto; display:flex; flex-direction:column; justify-content:center; width:100%; padding:24px 0; }
+.collection[data-hero="inline"] .collection-hero { margin-top:0; }
+.collection-main .recent-projects { margin-top:0; margin-bottom:0; }
+.collection[data-hero="inline"] > .collection-footer { flex:0 0 auto; margin-top:auto; }
+.recent-projects h2 { font:400 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; letter-spacing:normal; color:var(--copy-muted); }

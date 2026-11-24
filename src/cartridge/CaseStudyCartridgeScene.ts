@@ -325,7 +325,7 @@ export class CaseStudyCartridgeScene {
   private tick=(now:number)=>{
     this.frame=0;if(this.disposed)return;
     const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
-    if(!this.drag)this.time+=dt;
+    if(!this.drag)this.time+=dt*(this.previewTint?2:1);
     this.updateAppearance(dt);this.updateTint(dt);
     if(!this.drag)for(let i=0;i<4;i++){
       if(this.turnBraking){

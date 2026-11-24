@@ -25,3 +25,20 @@ test('song changes briefly announce a random phrase without a waveform, then res
  await page.clock.fastForward(1601);await expect(page.locator('.now-playing-title')).toHaveText(title);await expect(page.locator('.now-playing-artist')).toHaveText('Artist');
  await page.clock.fastForward(20001);await expect(page.locator('.now-playing-title')).toHaveText(title);
 });
+
+test('main content centers between the header and bottom footer and matches muted heading typography',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await page.evaluate(()=>document.fonts.ready);
+ for(const [width,height]of [[1440,1200],[900,1100],[390,1100]]){
+  await page.setViewportSize({width,height});
+  const layout=await page.evaluate(()=>{const rect=s=>document.querySelector(s).getBoundingClientRect().toJSON();return{main:rect('.collection-main'),hero:rect('.collection-hero'),projects:rect('.recent-projects'),footer:rect('.collection-footer'),header:rect('.collection-header')}});
+  expect((layout.hero.y+layout.projects.bottom)/2).toBeCloseTo((layout.main.y+layout.main.bottom)/2,0);
+  expect(layout.footer.bottom).toBeCloseTo(height-(width<880?28:30),0);expect(layout.hero.y).toBeGreaterThanOrEqual(layout.header.bottom);
+  const styles=await page.locator('.recent-projects h2,.bio-continuation').evaluateAll(els=>els.map(el=>{const s=getComputedStyle(el);return[s.color,s.fontSize,s.fontWeight,s.letterSpacing,s.lineHeight]}));expect(styles[0]).toEqual(styles[1]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+test('light tooltip waits for the completed theme transition then expires',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');await page.getByRole('button',{name:'Switch to light mode'}).click();
+ const tip=page.getByRole('tooltip');await expect(page.locator('html')).toHaveClass(/theme-transition/);await expect(tip).toHaveCount(0);
+ await expect(page.locator('html')).not.toHaveClass(/theme-transition/);await expect(tip).toBeVisible();await expect(tip).toHaveCount(0,{timeout:4000});
+});
