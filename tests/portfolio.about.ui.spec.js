@@ -51,14 +51,15 @@ test('about deep links and reduced motion remain responsive on mobile',async({pa
  expect(await page.locator('.collection-main').evaluate(el=>el.getAnimations().length)).toBe(0);
 });
 
-test('About hover dims only the other hero text and requests an exit spin on click',async({page})=>{
+test('About hover dims hero text and recent projects and requests an exit spin on click',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const about=page.getByRole('button',{name:'about me',exact:true});await about.hover();
  await expect(page.locator('.intro-title')).toHaveCSS('opacity','0.3');
+ await expect(page.locator('.recent-projects')).toHaveCSS('opacity','0.3');
  for(const word of await page.locator('.random-fact > .intro-word:not(.about-link-word)').all())await expect(word).toHaveCSS('opacity','0.3');
  await expect(about).toHaveCSS('opacity','1');await expect(page.locator('.hero-cartridge')).toHaveCSS('opacity','1');
  await expect(page.locator('.hero-cartridge')).toHaveAttribute('data-about-motion','hover');
- await page.mouse.move(2,2);await expect(page.locator('.intro-title')).toHaveCSS('opacity','1');
+ await page.mouse.move(2,2);await expect(page.locator('.intro-title')).toHaveCSS('opacity','1');await expect(page.locator('.recent-projects')).toHaveCSS('opacity','1');
  await about.click();await expect(page.locator('.hero-cartridge')).toHaveAttribute('data-about-motion','exit');
  await expect(page.locator('.collection-main')).toHaveAttribute('data-dissolving','true');
  await expect(page.getByRole('heading',{name:'A little about me.'})).toBeFocused();

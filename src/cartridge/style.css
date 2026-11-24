@@ -284,3 +284,5 @@
 .hero-cartridge[data-about-motion="exit"] .hero-dither-fallback { animation-duration:1.12s; }
 @keyframes about-cartridge-spin { to { transform:perspective(800px) rotateY(360deg); } }
 @media(prefers-reduced-motion:reduce) { .hero-cartridge .hero-dither-fallback { animation:none !important; } }
+.recent-projects { transition:opacity 180ms ease; }
+.home-content:has(.collection-intro[data-about-spotlight="true"]) .recent-projects { opacity:.3; }
