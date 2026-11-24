@@ -1,16 +1,12 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { bayer, hash } from "./clove-dither";
+import { bayer } from "./clove-dither";
 
 // Small, fixed cells dissolve in place rather than sweeping across the page.
 const masks = Array.from({length:17},(_,step)=>{
   const cells=bayer.map((rank,i)=>rank<step/16?`<rect x="${i%4*3}" y="${Math.floor(i/4)*3}" width="3" height="3"/>`:"").join("");
   return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12">${cells}</svg>`)}")`;
 });
-
-// Every cell gets one existing project color, independent of its dissolve rank.
-const projectColors=['#6988d8','#cd29db','#e5633d','#e5b840','#429f68'];
-const scatteredColors=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48">${Array.from({length:256},(_,i)=>`<rect x="${i%16*3}" y="${Math.floor(i/16)*3}" width="3" height="3" fill="${projectColors[Math.floor(hash(i%16,Math.floor(i/16))*projectColors.length)]}"/>`).join('')}</svg>`)}")`;
 
 export function AboutContent({about,children,onBack}) {
   const host=useRef(null),tint=useRef(null),current=useRef(about),started=useRef(false);
@@ -54,6 +50,6 @@ export function AboutContent({about,children,onBack}) {
         <button className="about-link" type="button" onClick={onBack}>Back to my work</button>
       </div>
     </section>
-    <span ref={tint} className="about-dither-color" style={{backgroundImage:scatteredColors}} aria-hidden="true"/>
+    <span ref={tint} className="about-dither-color" aria-hidden="true"/>
   </div>;
 }
