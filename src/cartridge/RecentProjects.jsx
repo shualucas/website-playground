@@ -9,7 +9,7 @@ import {LoopVideo} from "../LoopVideo";
 
 const previews={
   "ai-mode-nudges":{team:"Search",accent:"#6988d8",kind:"ai",video:"/videos/nudges/nudges-hero-1280.mp4",poster:"/videos/nudges/nudges-hero-poster.jpg",width:1280,height:800},
-  "search-labs":{team:"Search",accent:"#cd29db",kind:"search",placeholder:true},
+  "search-labs":{team:"Search",accent:"#cd29db",kind:"search",video:"/videos/search-labs/search-labs-hero-1280.mp4",poster:"/videos/search-labs/search-labs-hero-poster.jpg",label:"Search Labs initial sizzle",width:1280,height:800},
   "stadia-store-redesign":{team:"Stadia",accent:"#e5633d",kind:"stadia",video:"/videos/stadia/lilycove-hero-1280.mp4",poster:"/videos/stadia/lilycove-hero-poster.jpg",label:"Stadia Store Redesign motion study",width:1280,height:800},
   "rave-flyer-zine":{team:"Fun",accent:"#e5b840",kind:"zine"},
   film:{team:"Fun",accent:"#429f68",kind:"film"},

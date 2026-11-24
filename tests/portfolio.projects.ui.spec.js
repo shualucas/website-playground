@@ -745,16 +745,30 @@ test('thumbnail dither replays for row swaps and keyboard browsing',async({page}
  for(const index of [2,3,4]){await links.nth(index).focus();const dither=nav.locator('.recent-preview-dither');await expect(dither).toHaveAttribute('data-state','revealing');await expect(dither).toHaveAttribute('data-state','complete',{timeout:15000});}
 });
 
-test('Search Labs uses a uniform solid placeholder in both themes without requesting old media',async({page})=>{
- const requests=[];page.on('request',request=>{if(request.url().includes('stadia-store-redesign.'))requests.push(request.url())});
+test('Search Labs hover shows the initial sizzle poster in both themes with reduced motion',async({page})=>{
+ const requests=[];page.on('request',request=>{if(request.url().includes('/videos/search-labs/')&&request.url().endsWith('.mp4'))requests.push(request.url())});
  await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const nav=page.getByRole('navigation',{name:'Recent projects'});
- for(const dark of [false,true]){
-  if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
-  await nav.getByRole('link',{name:/Search Labs/}).hover();const visual=nav.locator('.recent-solid-visual');await expect(visual).toBeVisible();await expect(visual).toHaveAttribute('data-placeholder','true');await expect(visual).toHaveCSS('background-image','none');await expect(visual.locator('img,video,canvas')).toHaveCount(0);await expect(nav.locator('.recent-preview-dither')).toBeHidden();
-  expect(await visual.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+ for(const mode of ['light','dark']){
+  if(await page.locator('html').getAttribute('data-color-mode')!==mode)await page.getByRole('button',{name:'Switch to '+mode+' mode'}).click();
+  await nav.getByRole('link',{name:/Search Labs/}).hover();const visual=nav.locator('.recent-solid-visual');
+  await expect(visual).toBeVisible();await expect(visual.locator('.loop-video-poster')).toHaveAttribute('src','/videos/search-labs/search-labs-hero-poster.jpg');
+  await expect(visual.locator('video')).not.toHaveAttribute('src');await expect(nav.locator('.recent-preview-dither')).toBeHidden();
  }
  expect(requests).toEqual([]);
+});
+
+test('Search Labs initial sizzle plays through the homepage dither and resets on exit',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.getByRole('link',{name:/Search Labs/});
+ await expect(nav.locator('video[src]')).toHaveCount(0);await row.hover();
+ const video=nav.locator('.loop-video video');
+ await expect(video).toHaveAttribute('src','/videos/search-labs/search-labs-hero-1280.mp4');
+ await expect(video).toHaveAttribute('data-ready','true');await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+ await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');
+ expect(await video.evaluate(el=>el.muted&&el.loop&&el.playsInline&&el.duration>19)).toBe(true);
+ const bounds=await nav.locator('.recent-preview-art').boundingBox();expect(bounds.width/bounds.height).toBeCloseTo(1.6,2);
+ await page.mouse.move(2,2);await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(true);await expect.poll(()=>video.evaluate(el=>el.currentTime)).toBeLessThan(.1);
 });
 
 test('Stadia story comps play in order with responsive sources and pause offscreen',async({page},testInfo)=>{
