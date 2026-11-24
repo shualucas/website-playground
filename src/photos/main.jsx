@@ -7,7 +7,7 @@ import '../after-hours/style.css';
 import './style.css';
 import {useContentReveal} from '../useContentReveal';
 import {usePageExit} from '../usePageExit';
-import {useDitherHovers} from '../useDitherHovers';
+import {useLinkHovers} from '../useLinkHovers';
 import {filmPhotos} from '../content/film-photos';
 import {PhotoLightbox} from './PhotoLightbox';
 
@@ -29,7 +29,7 @@ function FloatingGallery({active,onSelect,controllerRef,onPaletteChange}){
  </section>;
 }
 function Photos(){
- useDitherHovers();const page=useRef(null),gallery=useRef(null),busy=useRef(false),restore=useRef(null),[transitioning,setTransitioning]=useState(false),[selected,setSelected]=useState(null),[chosenPalette,setChosenPalette]=useState(null),exit=usePageExit(page);
+ useLinkHovers();const page=useRef(null),gallery=useRef(null),busy=useRef(false),restore=useRef(null),[transitioning,setTransitioning]=useState(false),[selected,setSelected]=useState(null),[chosenPalette,setChosenPalette]=useState(null),exit=usePageExit(page);
  const select=async(index,opener)=>{
   if(busy.current||selected||transitioning)return;busy.current=true;setTransitioning(true);
   await gallery.current?.dissolve(index,false);setSelected({index,opener});setTransitioning(false);busy.current=false;
@@ -46,10 +46,8 @@ function Photos(){
    </nav></header>
   <h1 className="sr-only">Film photographs</h1>
   <FloatingGallery controllerRef={gallery} onPaletteChange={(colors,accent)=>setChosenPalette({colors,accent})} active={!selected&&!transitioning&&!exit.exiting} onSelect={select}/>
-  <div className="floating-photo-help">
-   <p id="floating-photo-help">Hold to develop. Drag to drift. Click to look closer.<span className="sr-only"> Focus a photograph and hold Space to develop it, use arrow keys to move it, or Enter to open it.</span></p>
-   <button className="photo-change-palette" type="button" title="Change palette, or click any empty space" onClick={()=>gallery.current?.cyclePalette()}>Change palette<span aria-hidden="true" style={{background:chosenPalette?.accent||'#bdc2b5'}}/></button>
-  </div>
+  <p id="floating-photo-help" className="sr-only">Hold a photograph to develop it, drag to move it, or click to open it. Click empty space to change the palette. With the keyboard, hold Space to develop a focused photograph, use arrow keys to move it, or Enter to open it.</p>
+  <button className="photo-change-palette sr-only" type="button" onClick={()=>gallery.current?.cyclePalette()}>Change palette</button>
   {selected&&<PhotoLightbox photos={filmPhotos} initial={selected.index} opener={selected.opener} chosenPalette={chosenPalette} onPalette={(colors,accent)=>gallery.current?.setPalette(colors,accent)} onClose={close}/>}
  </main>;
 }

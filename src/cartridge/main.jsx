@@ -15,7 +15,7 @@ import { usePageExit } from "../usePageExit";
 import { LocationMeta } from "./LocationMeta";
 import { RecentProjects } from "./RecentProjects";
 import { ThemeToggle } from "../ThemeToggle";
-import { useDitherHovers } from "../useDitherHovers";
+import { useLinkHovers } from "../useLinkHovers";
 import "./style.css";
 import "./reader.css";
 
@@ -29,7 +29,7 @@ function ProjectMedia({project,controls}) {
   return <div className="collection-media-placeholder">Project preview</div>;
 }
 function App() {
-  useDitherHovers();
+  useLinkHovers();
   const content=useRef(null),restoreFocus=useRef(null);
   const pageExit=usePageExit(content);
   const [status,setStatus]=useState(()=>new URL(location.href).searchParams.get("view")==="about"?"ready":"loading"),[reading,setReading]=useState(readRoute),[previewingProject,setPreviewingProject]=useState(null);

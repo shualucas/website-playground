@@ -13,9 +13,11 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 | `/photos/` | `src/photos/main.jsx`, `FloatingPhotos.ts`, `floating-shaders.ts`, `PhotoLightbox.jsx`, `src/content/film-photos.js` |
 | `/zine/` | Archived portfolio: `src/main.jsx`, `src/style.css`. Preserve it. |
 
+Navigation links use print registration marks and footer links share one traveling dot via `useLinkHovers.js`. Both keep labels and hit areas fixed, support keyboard focus, and become immediate under reduced motion. `?hover=marks` and `?hover=dot` preview either treatment on all of those controls.
+
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
 
-The photos page is a dark-only, borderless Three.js field with a fixed viewpoint. One animation clock owns the slow staggered dither entrance, drift, release inertia, hold-to-develop, palette transitions, and pointer color wake. Its original shaders study [Ribcage by Luis Bizarro](https://webgpu.toys/ribcage/): a 4×4 Bayer matrix, nine tonal levels, a 360-row pixel grid, and 24 Hz grain. A stationary press develops the original image; dragging throws it gently; clicking opens a dithered lightbox with arrows beside the actual image. Space develops the focused photo, arrows arrange it, and Enter opens it. Lightbox swatches apply the extracted palette to the gallery; clicking empty space or “Change palette” cycles the portfolio colors. The viewer has an opaque background. Edit the optional `caption` in `src/content/film-photos.js` to change its text (`""` hides it). Reduced motion skips drift, momentum and entrance delays; the page keeps the home-page theme preference intact. Without WebGL, ordered-dither thumbnails retain the same controls.
+The photos page is a dark-only, borderless Three.js field with a fixed viewpoint. One animation clock owns the slow staggered dither entrance, drift, release inertia, hold-to-develop, palette transitions, and pointer color wake. Its original shaders study [Ribcage by Luis Bizarro](https://webgpu.toys/ribcage/): a 4×4 Bayer matrix, nine tonal levels, a 360-row pixel grid, and 24 Hz grain. A stationary press develops the original image; dragging throws it gently; clicking opens a dithered lightbox with arrows beside the actual image. Space develops the focused photo, arrows arrange it, and Enter opens it. Lightbox swatches apply the extracted palette to the gallery; clicking empty space cycles the portfolio colors, with a keyboard-only palette button available on focus. Visible helper copy is omitted. The viewer has an opaque background. Edit the optional `caption` in `src/content/film-photos.js` to change its text (`""` hides it). Reduced motion skips drift, momentum and entrance delays; the page keeps the home-page theme preference intact. Without WebGL, ordered-dither thumbnails retain the same controls.
 
 The Last.fm footer uses `ListeningWidget.jsx` and `listening.css`: right-aligned song information, randomized song-change announcements, and rounded cover art. It preserves recent-song history, respects reduced motion, and stays hidden on mobile.
 
@@ -34,6 +36,7 @@ Setup does not build the app. Reuse an existing healthy Vite server. Live proces
 
 | Change | Start here |
 | --- | --- |
+| Link hover treatments | `npx playwright test portfolio.link-hovers --project=ui` |
 | Copy, layout, entrances, project index | `npm run test:home -- --project=ui` or `npm run test:projects -- --project=ui` |
 | Hero/project cartridges, hit testing, materials | `npm run test:3d -- --grep 'inline hero swaps\|project cartridges dissolve'` |
 | Listening widget | `npm run test:listening` and `npm run test:listening:ui` |

@@ -15,10 +15,10 @@ import { NoteDialog } from "./NoteDialog";
 import { loadPaperPhysics } from "../book/paper-physics";
 import { PhysicsPanel } from "./PhysicsPanel";
 import { ThemeToggle } from "../ThemeToggle";
-import { useDitherHovers } from "../useDitherHovers";
+import { useLinkHovers } from "../useLinkHovers";
 
 function AfterHours() {
-  useDitherHovers();
+  useLinkHovers();
   const content = useRef(null);
   const pageExit=usePageExit(content);
   const host = useRef(null), engine = useRef(null);

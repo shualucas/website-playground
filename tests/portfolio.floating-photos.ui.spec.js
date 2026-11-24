@@ -7,7 +7,7 @@ async function open(page,width=1440){
 }
 
 test('borderless fallback photos preserve proportions, dither and keyboard lightbox access',async({page})=>{
- await open(page);const photos=page.locator('.floating-photo-hit');await expect(photos).toHaveCount(filmPhotos.length);
+ await open(page);await expect(page.locator('.floating-photo-help')).toHaveCount(0);await expect(page.getByRole('button',{name:'Change palette',exact:true})).toHaveCSS('clip-path','inset(50%)');const photos=page.locator('.floating-photo-hit');await expect(photos).toHaveCount(filmPhotos.length);
  await expect(page.locator('.film-envelope-stage,.parcel-sticker-tray,figcaption')).toHaveCount(0);
  for(const photo of await photos.all()){
   await expect(photo.locator('.floating-dither-fallback')).toHaveAttribute('src',/^data:image\/png/);

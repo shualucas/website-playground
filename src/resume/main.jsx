@@ -8,7 +8,7 @@ import "./style.css";
 import { usePageExit } from "../usePageExit";
 import { useContentReveal } from "../useContentReveal";
 import { ThemeToggle } from "../ThemeToggle";
-import { useDitherHovers } from "../useDitherHovers";
+import { useLinkHovers } from "../useLinkHovers";
 import { FloatingPaper } from "./FloatingPaper";
 import { AmbientGradient } from "./AmbientGradient";
 import { DownloadMotion } from "./DownloadMotion";
@@ -33,7 +33,7 @@ function ResumeDocument({ hidden = false }) {
 }
 
 function Resume() {
-  useDitherHovers();
+  useLinkHovers();
   const content = useRef(null), sheet = useRef(null), controller = useRef(null), explicitView = useRef(false);
   const openRead = useRef(null), readSheet=useRef(null), displayedReading=useRef(false), previewWaiters=useRef([]);
   const pageExit=usePageExit(content);

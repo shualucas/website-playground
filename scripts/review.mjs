@@ -166,7 +166,7 @@ try {
       const photo=page.locator('.floating-photo-hit').nth(Number(args.develop)-1);await photo.focus();await page.keyboard.down(' ');await expect(photo).toHaveAttribute('data-develop','1.000',wait);
     }
     if(args.palette){
-      for(let i=0;i<Number(args.palette);i++)await page.getByRole('button',{name:'Change palette',exact:true}).click();
+      for(let i=0;i<Number(args.palette);i++)await page.mouse.click(2,140);
       await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-palette-state','settled',wait);
     }
     if(args.photo){
@@ -182,7 +182,11 @@ try {
   if(args.control){
     const control=page.locator(args.control);
     if(args.page==='photos'&&await control.evaluate(el=>el.matches('.floating-photo-hit'))){const box=await control.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2,{steps:12});await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-wake','active',wait)}else await control.hover();
-    if(args.page!=='photos'&&args.motion!=="reduce")await expect(control.locator('.control-dither')).toHaveAttribute('data-filled','true',wait);
+    if(await control.evaluate(el=>el.classList.contains('control-hover-target'))){
+      await expect(control).toHaveAttribute('data-hover-active','true',wait);
+      if(await control.getAttribute('data-hover-kind')==='dot')await expect.poll(()=>page.locator('.traveling-dot[data-active="true"]').evaluate(el=>el.getAnimations().length),wait).toBe(0);
+      else await expect.poll(()=>control.locator('.registration-marks').evaluate(el=>el.getAnimations({subtree:true}).length),wait).toBe(0);
+    }
   }
   if(args.history){await page.getByRole('button',{name:'Show last five songs',exact:true}).click();await expect(page.getByRole('region',{name:'Recently listened'})).toBeVisible(wait)}
   await mkdir(dirname(output), { recursive:true }); await page.screenshot({ path:output });
