@@ -398,7 +398,7 @@ test('case studies reuse the home footer with one music widget and working histo
   const track={title:'Footer track',artist:'Footer artist',url:'https://www.last.fm/music/footer',artwork:'/cartridges/labels/search-tonal.svg',playing:true};
   await page.route('**/api/listening',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({track,recent:[{...track,title:'Previous track',playing:false}]})}));
   await page.goto('/');const links=await page.locator('.collection-footer .profile-links a').evaluateAll(elements=>elements.map(el=>el.getAttribute('href')));
-  const titles=['AI Mode Nudges','Search Labs','Stadia Store Redesign'];
+  const titles=['AI Mode Nudges','Search Labs','Store Redesign'];
   for(let i=0;i<titles.length;i++){
     await page.getByRole('link',{name:new RegExp(titles[i])}).click();const study=page.locator('.case-study'),footer=study.locator('.collection-footer');
     await footer.scrollIntoViewIfNeeded();await expect(page.locator('.listening-widget')).toHaveCount(1);

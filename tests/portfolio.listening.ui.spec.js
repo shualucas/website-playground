@@ -42,10 +42,10 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   });
   await page.goto("/"); const footer=page.locator(".now-playing");
   await expect(footer).toHaveAttribute("data-track","Fixture track"); await expect(footer).toContainText(/now-ish listening|currently spinning|in the rotation/);
-  await expect(footer).toContainText("Fixture artist"); await expect(footer.locator(".listening-indicator")).toHaveCount(1);
+  await expect(footer).toContainText("Fixture artist"); await expect(page.locator('.listening-widget')).toHaveAttribute('data-playing','true');
   await expect(footer.locator("img")).toHaveAttribute("src","/cartridges/labels/search-tonal.svg");
   const toggle=page.getByRole("button",{name:"Show last five songs"}); await toggle.scrollIntoViewIfNeeded();
-  await expect(toggle.locator("svg")).toHaveCSS("width","12px");await expect(toggle.locator("svg")).toHaveCSS("height","12px");
+  await expect(toggle.locator("svg")).toHaveCSS("width","18px");await expect(toggle.locator("svg")).toHaveCSS("height","18px");
   await page.evaluate(()=>document.fonts.ready);await expect(page.locator('.listening-current')).toHaveAttribute('data-reveal-ready','true');await toggle.focus();
   const before=await page.evaluate(()=>({scrollY, height:document.documentElement.scrollHeight, current:document.querySelector('.listening-current').getBoundingClientRect().y}));
   await toggle.click();
@@ -63,13 +63,12 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   expect(after).toEqual(before);
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
   const pastArt=await dialog.locator(".listening-artwork").first().boundingBox(),pastCopy=await dialog.locator(".listening-song").first().boundingBox();
-  expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x).toBeCloseTo(copy.x,1);
-  expect(art.height).toBeCloseTo(copy.height,1);expect(copy.height).toBeCloseTo(37.96875,1);await expect(page.locator('.listening-widget')).toHaveCSS('width','200px');await expect(footer.locator('.now-playing-title')).toHaveCSS('font-size','9.375px');await expect(dialog.locator("ol")).toHaveCSS("gap","7.5px");
-  expect(art.x+art.width).toBeLessThan(copy.x);expect(art.height).toBeCloseTo(pastArt.height,2);expect(art.width).toBeCloseTo(pastArt.width,2);
-  const green=await footer.locator(".listening-indicator").evaluate(el=>getComputedStyle(el).backgroundColor.match(/\d+/g).map(Number));
-  expect(green[1]).toBeGreaterThan(green[0]);expect(green[1]).toBeGreaterThan(green[2]);
+  expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x+pastCopy.width).toBeCloseTo(copy.x+copy.width,1);
+  expect(art.height).toBe(44);expect(copy.height).toBeGreaterThan(34);expect(copy.height).toBeLessThan(40);await expect(page.locator('.listening-widget')).toHaveCSS('width','440px');await expect(footer.locator('.now-playing-title')).toHaveCSS('font-size','14px');await expect(dialog.locator("ol")).toHaveCSS("gap","8px");
+  expect(copy.x+copy.width).toBeLessThan(art.x);expect(art.height).toBeCloseTo(pastArt.height,2);expect(art.width).toBeCloseTo(pastArt.width,2);
+  const wave=await page.locator('.listening-waveform').boundingBox();expect(wave.x+wave.width).toBeLessThan(copy.x);
   await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);await expect(toggle).toBeFocused();
-  await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer.locator(".listening-indicator")).toHaveCount(0);expect(request).toBe(2);
+  await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(page.locator('.listening-widget')).toHaveAttribute('data-playing','false');expect(request).toBe(2);
   await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer).toHaveAttribute("data-track","Fixture track");
   await expect(page.locator(".listening-widget")).toHaveAttribute("data-listening-status","unavailable");
   await toggle.click();await expect(dialog).toContainText("Showing your last available history.");
@@ -101,7 +100,7 @@ test("listening history animates closed, can reopen mid-exit, and dismisses imme
 });
 
 test("empty listening history, unavailable artwork and API failure remain usable", async ({ page }) => {
-  await page.setViewportSize({width:390,height:844});
+  await page.setViewportSize({width:900,height:844});
 
   let payload={track:null,recent:[]},failed=false;
   await page.route("**/api/listening",route=>route.fulfill({status:failed?502:200,contentType:"application/json",body:JSON.stringify(payload)}));
@@ -143,13 +142,13 @@ test('history songs share the current-track gap and dismiss for project browsing
   await page.route('**/api/listening',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({track,recent:Array.from({length:5},(_,i)=>({...track,title:`Previous ${i+1}`,playing:false}))})}));
   await page.goto('/');await expect(page.locator('.collection')).toHaveAttribute('data-status','fallback');
   const toggle=page.getByRole('button',{name:'Show last five songs'}),history=page.locator('.listening-history');
-  for(const width of [1440,390]){
+  for(const width of [1440,900]){
     await page.setViewportSize({width,height:1000});await toggle.click();await expect(history).toHaveCount(1);
     const gaps=await page.evaluate(()=>{
       const all=[...document.querySelectorAll('.listening-history .listening-artwork'),document.querySelector('.listening-current .listening-artwork')].map(el=>el.getBoundingClientRect());
       return all.slice(1).map((art,i)=>art.top-all[i].bottom);
     });
-    expect(gaps).toHaveLength(5);for(const gap of gaps)expect(gap).toBeCloseTo(7.5,1);
+    expect(gaps).toHaveLength(5);for(const gap of gaps)expect(gap).toBeCloseTo(8,1);
     await toggle.click();await expect(history).toHaveCount(0);
   }
   await page.setViewportSize({width:1440,height:1000});
@@ -159,9 +158,30 @@ test('history songs share the current-track gap and dismiss for project browsing
     await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(history).toHaveCount(0);
     await page.mouse.move(2,2);await expect(toggle).toHaveAttribute('aria-expanded','false');
   }
-  await toggle.click();await expect(history).toHaveCount(1);await page.getByRole('button',{name:'Open Search cartridge',exact:true}).hover();await expect(history).toHaveCount(0);
+  await toggle.click();await expect(history).toHaveCount(1);await page.getByRole('button',{name:'Show Google cartridge',exact:true}).hover();await expect(history).toHaveCount(1);await page.keyboard.press('Escape');await expect(history).toHaveCount(0);
   await page.mouse.move(2,2);await toggle.click();await expect(history).toHaveCount(1);
   await links.first().focus();await page.keyboard.press('Tab');await expect(links.nth(1)).toBeFocused();await expect(history).toHaveCount(0);
   await page.emulateMedia({reducedMotion:'no-preference'});await toggle.click();await expect(history).toHaveAttribute('data-state','open');
   await links.first().hover();await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(history).toHaveAttribute('data-state','closing');await expect(history).toHaveCount(0);
+});
+
+test('reference waveform moves only while listening and visible; long track names fit both themes',async({page})=>{
+ await page.setViewportSize({width:1440,height:620});await page.emulateMedia({reducedMotion:'no-preference'});
+ const track={title:'A very long track title that should stay inside the music widget',artist:'An artist with an equally long name',url:'https://www.last.fm/music/fixture',artwork:'',playing:true};
+ await page.route('**/api/listening',route=>route.fulfill({json:{track,recent:[]}}));await page.goto('/');
+ const widget=page.locator('.listening-widget'),wave=widget.locator('.listening-waveform');await expect(widget).toHaveAttribute('data-playing','true');
+ await wave.scrollIntoViewIfNeeded();await expect(wave).toHaveAttribute('data-animate','true');await expect(wave).toHaveAttribute('aria-hidden','true');
+ const bar=wave.locator('rect').nth(10),transform=await bar.evaluate(el=>getComputedStyle(el).transform);
+ await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).transform)).not.toBe(transform);
+ await page.evaluate(()=>scrollTo(0,0));await expect(wave).toHaveAttribute('data-animate','false');await expect(bar).toHaveCSS('animation-play-state','paused');
+ await page.emulateMedia({reducedMotion:'reduce'});await widget.scrollIntoViewIfNeeded();await expect(bar).toHaveCSS('animation-name','none');
+ for(const dark of [false,true]){
+  if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
+  for(const width of [1440,900,761]){
+   await page.setViewportSize({width,height:900});await widget.scrollIntoViewIfNeeded();
+   const layout=await widget.evaluate(el=>{const bounds=el.getBoundingClientRect();return{left:bounds.left,right:bounds.right,parts:[...el.querySelectorAll('.listening-waveform,.listening-history-toggle,.now-playing,.listening-artwork')].map(child=>{const r=child.getBoundingClientRect();return[r.left,r.right]}),overflow:document.documentElement.scrollWidth>innerWidth}});
+   for(const [left,right]of layout.parts){expect(left).toBeGreaterThanOrEqual(layout.left-.5);expect(right).toBeLessThanOrEqual(layout.right+.5)}expect(layout.overflow).toBe(false);
+   await expect(widget.locator('.now-playing')).toHaveAttribute('aria-label',`Currently listening: ${track.title} by ${track.artist} on Last.fm`);
+  }
+ }
 });

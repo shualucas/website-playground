@@ -1,6 +1,6 @@
 import { chromium, expect } from "@playwright/test";
 import { spawn } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
@@ -12,6 +12,7 @@ const { values: args } = parseArgs({ options: {
   theme:{ type:"string", default:"light" }, motion:{ type:"string", default:"normal" },
   hover:{ type:"string" }, control:{ type:"string" }, cartridge:{ type:"string" }, phase:{ type:"string", default:"settled" },
   output:{ type:"string" }, port:{ type:"string", default:"3000" }, help:{ type:"boolean" },
+  listening:{ type:"string" }, history:{ type:"boolean" },
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
@@ -63,7 +64,8 @@ try {
   browser = await chromium.launch(browserOptions);
   const page = await browser.newPage({ viewport:{ width, height }, reducedMotion:args.motion === "reduce" ? "reduce" : "no-preference" });
   const errors = []; page.on("pageerror", error => errors.push(error.message));
-  await page.route("**/api/listening", route => route.fulfill({ status:204 }));
+  const listening=args.listening?JSON.parse(await readFile(resolve(args.listening),'utf8')):null;
+  await page.route("**/api/listening", route => route.fulfill(listening?{json:listening}:{status:204}));
   await page.route("**/api/weather", route => route.fulfill({ status:204 }));
   await page.addInitScript(({ theme, phase, company }) => {
     localStorage.setItem("cartridge-color-mode", theme); localStorage.setItem("zine-color-mode", theme);
@@ -156,6 +158,7 @@ try {
     const control=page.locator(args.control);await control.hover();
     if(args.motion!=="reduce")await expect(control.locator('.control-dither')).toHaveAttribute('data-filled','true',wait);
   }
+  if(args.history){await page.getByRole('button',{name:'Show last five songs',exact:true}).click();await expect(page.getByRole('region',{name:'Recently listened'})).toBeVisible(wait)}
   await mkdir(dirname(output), { recursive:true }); await page.screenshot({ path:output });
   console.log(`Saved ${output}`);
   if (errors.length) throw new Error(errors.join("\n"));

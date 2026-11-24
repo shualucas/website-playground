@@ -15,6 +15,8 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
 
+The Last.fm footer uses `ListeningWidget.jsx`, `ListeningWaveform.jsx`, and `listening.css`: a decorative waveform, right-aligned song information, and rounded cover art. It preserves recent-song history, pauses activity offscreen and for reduced motion, and stays hidden on mobile.
+
 ## Start
 
 Node 24 is the verified cloud runtime. Dependencies use the committed npm lockfile.
@@ -46,6 +48,8 @@ Run `npm run typecheck` for TypeScript changes. Run one final `npm run build` fo
 ## Visual review
 
 One command starts or reuses Vite, shares the test browser configuration, waits for scene/entrance readiness, and saves a screenshot. Remote API responses are mocked, so captures need no credentials.
+
+For music captures, `--listening /path/to/response.json` supplies a saved `/api/listening` response and `--history` opens the recent-song list.
 
 ```sh
 npm run review -- --page home
