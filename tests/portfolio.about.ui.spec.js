@@ -2,6 +2,7 @@ import {test,expect} from './support/portfolio.js';
 test.use({webgl:false});
 
 test('about dissolves only the main content and browser Back restores work',async({page},testInfo)=>{
+ await page.setViewportSize({width:1440,height:1000});
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const about=page.getByRole('button',{name:/about me/i,exact:true});await expect(about).toBeVisible();
  await expect(about).toHaveCSS('text-decoration-style','dotted');
