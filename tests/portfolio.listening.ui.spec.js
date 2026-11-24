@@ -1,6 +1,7 @@
 import { test, expect, funFacts, names, dates, body, load, choose, point } from "./support/portfolio.js";
 
 test.use({ webgl: false });
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem("cartridge-color-mode","light"))});
 
 test("mobile footer links stay centered with music hidden without WebGL", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -64,9 +65,9 @@ test("Last.fm refreshes every 20 seconds and reveals history above the song with
   const art=await footer.locator(".listening-artwork").boundingBox(),copy=await footer.locator(".now-playing-copy").boundingBox();
   const pastArt=await dialog.locator(".listening-artwork").first().boundingBox(),pastCopy=await dialog.locator(".listening-song").first().boundingBox();
   expect(pastArt.x).toBeCloseTo(art.x,1);expect(pastCopy.x+pastCopy.width).toBeCloseTo(copy.x+copy.width,1);
-  expect(art.height).toBe(44);expect(copy.height).toBeGreaterThan(34);expect(copy.height).toBeLessThan(40);await expect(page.locator('.listening-widget')).toHaveCSS('width','440px');await expect(footer.locator('.now-playing-title')).toHaveCSS('font-size','14px');await expect(dialog.locator("ol")).toHaveCSS("gap","8px");
+  expect(art.height).toBe(44);expect(copy.height).toBeGreaterThan(34);expect(copy.height).toBeLessThan(40);await expect(page.locator('.listening-widget')).toHaveCSS('width','280px');await expect(footer.locator('.now-playing-title')).toHaveCSS('font-size','14px');await expect(dialog.locator("ol")).toHaveCSS("gap","8px");
   expect(copy.x+copy.width).toBeLessThan(art.x);expect(art.height).toBeCloseTo(pastArt.height,2);expect(art.width).toBeCloseTo(pastArt.width,2);
-  const wave=await page.locator('.listening-waveform').boundingBox();expect(wave.x+wave.width).toBeLessThan(copy.x);
+  await expect(page.locator('.listening-waveform')).toHaveCount(0);
   await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);await expect(toggle).toBeFocused();
   await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(page.locator('.listening-widget')).toHaveAttribute('data-playing','false');expect(request).toBe(2);
   await page.clock.fastForward(20000);await expect(footer).toContainText("last listened");await expect(footer).toHaveAttribute("data-track","Fixture track");
@@ -165,16 +166,12 @@ test('history songs share the current-track gap and dismiss for project browsing
   await links.first().hover();await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(history).toHaveAttribute('data-state','closing');await expect(history).toHaveCount(0);
 });
 
-test('reference waveform moves only while listening and visible; long track names fit both themes',async({page})=>{
+test('long track names fit the compact music widget in both themes',async({page})=>{
  await page.setViewportSize({width:1440,height:620});await page.emulateMedia({reducedMotion:'no-preference'});
  const track={title:'A very long track title that should stay inside the music widget',artist:'An artist with an equally long name',url:'https://www.last.fm/music/fixture',artwork:'',playing:true};
  await page.route('**/api/listening',route=>route.fulfill({json:{track,recent:[]}}));await page.goto('/');
- const widget=page.locator('.listening-widget'),wave=widget.locator('.listening-waveform');await expect(widget).toHaveAttribute('data-playing','true');
- await wave.scrollIntoViewIfNeeded();await expect(wave).toHaveAttribute('data-animate','true');await expect(wave).toHaveAttribute('aria-hidden','true');
- const bar=wave.locator('rect').nth(10),transform=await bar.evaluate(el=>getComputedStyle(el).transform);
- await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).transform)).not.toBe(transform);
- await page.evaluate(()=>scrollTo(0,0));await expect(wave).toHaveAttribute('data-animate','false');await expect(bar).toHaveCSS('animation-play-state','paused');
- await page.emulateMedia({reducedMotion:'reduce'});await widget.scrollIntoViewIfNeeded();await expect(bar).toHaveCSS('animation-name','none');
+ const widget=page.locator('.listening-widget');await expect(widget).toHaveAttribute('data-playing','true');await expect(page.locator('.listening-waveform')).toHaveCount(0);
+ await page.emulateMedia({reducedMotion:'reduce'});
  for(const dark of [false,true]){
   if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
   for(const width of [1440,900,761]){

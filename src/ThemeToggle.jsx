@@ -1,9 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
   const [localDark, setLocalDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
   const transition = useRef(null);
+  const [tip,setTip]=useState(false),tipId=useId();
+  useEffect(()=>{if(!tip)return;const timer=setTimeout(()=>setTip(false),5000);return()=>clearTimeout(timer)},[tip]);
   useEffect(() => {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content',document.documentElement.dataset.colorMode==='dark'?'#101110':'#f0f0f0');
     return () => transition.current?.skipTransition();
@@ -14,6 +16,7 @@ export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
     const next = !dark, root = document.documentElement;
     const update = () => {
       root.dataset.colorMode = next ? "dark" : "light";
+      setTip(!next);
       document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#101110" : "#f0f0f0");
       try { localStorage.setItem("cartridge-color-mode", next ? "dark" : "light"); } catch {}
       if (onToggle) onToggle(next); else setLocalDark(next);
@@ -36,5 +39,5 @@ export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
     };
     wipe.ready.catch(() => {}); wipe.finished.then(cleanup, cleanup);
   };
-  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" /></button>;
+  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} onKeyDown={event=>{if(event.key==='Escape'&&tip){setTip(false);event.stopPropagation()}}} aria-describedby={tip?tipId:undefined} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" />{tip&&!dark&&<span id={tipId} role="tooltip" className="theme-preference-tip">Josh prefers dark theme on this site.</span>}</button>;
 }

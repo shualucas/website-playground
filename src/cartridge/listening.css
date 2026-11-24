@@ -1,12 +1,5 @@
-.listening-widget { --listening-track-gap:8px; --art-size:44px; --art-radius:7px; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:100%; max-width:440px; min-width:0; font-size:13px; }
-.listening-current { display:grid; grid-template-columns:minmax(48px,1fr) 44px minmax(130px,1.5fr); align-items:center; gap:8px; min-height:44px; }
-.listening-waveform { display:block; min-width:0; height:44px; color:var(--ui-text); overflow:hidden; }
-.listening-waveform svg { display:block; width:100%; height:100%; overflow:visible; }
-.listening-waveform g { transition:transform 600ms cubic-bezier(.22,1,.36,1),opacity 300ms ease; }
-.listening-waveform rect { fill:currentColor; transform-box:fill-box; transform-origin:center; animation:music-wave 1400ms ease-in-out infinite alternate; animation-play-state:paused; }
-.listening-waveform[data-animate="true"] rect { animation-play-state:running; }
-[inert] .listening-waveform rect { animation-play-state:paused; }
-@keyframes music-wave { 0%,100% { transform:scaleY(.62); } 45% { transform:scaleY(1); } 75% { transform:scaleY(.8); } }
+.listening-widget { --listening-track-gap:8px; --art-size:44px; --art-radius:7px; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:100%; max-width:280px; min-width:0; font-size:13px; }
+.listening-current { display:grid; grid-template-columns:44px minmax(130px,1fr); align-items:center; gap:8px; min-height:44px; }
 .listening-widget .now-playing { display:flex; align-items:center; min-width:0; min-height:44px; color:var(--ui-text); border-radius:8px; }
 .now-playing-transition { position:relative; display:block; width:100%; min-width:0; overflow:clip; }
 .now-playing-track { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width:0; min-height:44px; }
@@ -38,5 +31,5 @@
 .listening-song > span:last-child { font-size:13px; }
 .listening-empty,.listening-history-note { margin:4px 0 8px; color:var(--ui-muted); font-size:13px; line-height:1.5; text-align:right; }
 @keyframes listening-text-in { from { opacity:0; filter:blur(1px); transform:translateY(3px); } to { opacity:1; filter:blur(0); transform:none; } }
-@media(prefers-reduced-motion:reduce) { .listening-waveform rect,.listening-history li .listening-artwork,.listening-history .listening-song > span,.now-playing-track.is-entering { animation:none; } .listening-waveform g { transition:none; } .listening-history[data-state="closing"],.now-playing-outgoing { display:none; } }
+@media(prefers-reduced-motion:reduce) { .listening-history li .listening-artwork,.listening-history .listening-song > span,.now-playing-track.is-entering { animation:none; } .listening-history[data-state="closing"],.now-playing-outgoing { display:none; } }
 @media(max-width:760px) { .listening-widget { display:none; } }

@@ -4,7 +4,7 @@ test('inline hero swaps all five cartridges with continuous enter spins and exit
  test.setTimeout(120000);await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='error'&&/WebGLProgram|VALIDATE_STATUS|shader error/.test(message.text()))errors.push(message.text())});
  await page.addInitScript(()=>{
-  window.heroReveals=[];window.heroReadbacks=0;window.heroSwaps=[];let previous=null;
+  localStorage.setItem('cartridge-color-mode','light');window.heroReveals=[];window.heroReadbacks=0;window.heroSwaps=[];let previous=null;
   const read=WebGL2RenderingContext.prototype.readPixels;WebGL2RenderingContext.prototype.readPixels=function(...args){if(this.canvas.closest('.hero-cartridge'))window.heroReadbacks++;return read.apply(this,args)};
   new MutationObserver(changes=>{for(const {target}of changes)if(target.matches('.hero-cartridge-stage')){
    const state={id:target.dataset.cartridge,state:target.dataset.dissolve,progress:Number(target.dataset.revealProgress),appearance:target.dataset.appearanceState,fade:Number(target.dataset.fadeProgress),surface:Number(target.dataset.surfaceReveal),style:target.dataset.renderStyle,ink:target.dataset.ditherInk,pose:(target.dataset.float||'').split(',').map(Number),turn:(target.dataset.turn||'').split(',').map(Number)};
@@ -13,7 +13,7 @@ test('inline hero swaps all five cartridges with continuous enter spins and exit
  });
  await page.goto('/');const hero=page.locator('.hero-cartridge'),stage=hero.locator('.hero-cartridge-stage');
  await expect(hero).toHaveAttribute('data-status','ready',{timeout:60000});await expect(stage).toHaveAttribute('data-intro','settled',{timeout:30000});await expect(stage).toHaveAttribute('data-cartridge','personal');
- await expect(stage).toHaveAttribute('data-render-style','dither');
+ await expect(stage).toHaveAttribute('data-render-style','dither');await expect(stage).toHaveAttribute('data-shadow','false');
  expect(await page.evaluate(()=>window.heroReveals.some(frame=>frame.state==='revealing'&&frame.progress<1))).toBe(true);
  await page.evaluate(()=>{window.heroReveals=[]});
  await stage.locator('canvas').evaluate(el=>{window.heroCanvas=el});
@@ -56,14 +56,14 @@ test('inline hero swaps all five cartridges with continuous enter spins and exit
  const exitAngle=await page.evaluate(()=>window.heroSwaps.findLast(swap=>swap.after.id==='personal').after.turn[0]);
  // An interrupted spin coasts by at most 18/24 radians rather than adding a turn.
  expect(Number((await stage.getAttribute('data-turn')).split(',')[0])-exitAngle).toBeLessThan(.8);
- await expect(stage).toHaveAttribute('data-render-style','dither');
+ await expect(stage).toHaveAttribute('data-render-style','dither');await expect(stage).toHaveAttribute('data-shadow','false');
  expect(await page.evaluate(()=>window.heroReveals.every(frame=>frame.state==='complete'&&frame.progress===1))).toBe(true);
  const swaps=await page.evaluate(()=>window.heroSwaps);expect(swaps.length).toBeGreaterThanOrEqual(5);
  for(const swap of swaps)expect(Math.max(...swap.after.pose.map((value,i)=>Math.abs(value-swap.before.pose[i])))).toBeLessThan(.1);
  const quality=await stage.locator('canvas').evaluate(el=>({ratio:el.width/el.clientWidth,expected:Math.min(devicePixelRatio,1.5),antialias:el.getContext('webgl2').getContextAttributes().antialias}));expect(quality.ratio).toBeCloseTo(quality.expected,1);expect(quality.antialias).toBe(true);expect(await page.evaluate(()=>window.heroReadbacks)).toBe(0);
  await page.locator('.collection-header .theme-toggle').click();await expect(stage).toHaveAttribute('data-shell-theme','dark');expect(await stage.locator('canvas').evaluate(el=>el===window.heroCanvas)).toBe(true);
  await page.locator('[data-project="ai-mode-nudges"] .recent-project-link').hover();await expect(stage).toHaveAttribute('data-motion','ambient');
- await expect(stage).toHaveAttribute('data-cartridge','personal');await expect(stage).toHaveAttribute('data-render-style','dither');
+ await expect(stage).toHaveAttribute('data-cartridge','personal');await expect(stage).toHaveAttribute('data-render-style','dither');await expect(stage).toHaveAttribute('data-shadow','false');
  await expect(stage).toHaveAttribute('data-preview-tint','#6988d8');await expect(stage).toHaveAttribute('data-dither-ink','#6988d8');
  const pose=await stage.getAttribute('data-float');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect.poll(()=>stage.getAttribute('data-float')).not.toBe(pose);
  await page.mouse.move(2,2);await expect(stage).toHaveAttribute('data-motion','ambient');

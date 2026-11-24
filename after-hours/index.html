@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-color-mode="dark">
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -15,7 +15,7 @@
     <title>Josh Lucas — Product Designer</title>
     <script>
       try {
-        document.documentElement.dataset.colorMode = localStorage.getItem("cartridge-color-mode") === "dark" ? "dark" : "light";
+        document.documentElement.dataset.colorMode = localStorage.getItem("cartridge-color-mode") === "light" ? "light" : "dark";
         const entered = Number(sessionStorage.getItem("camera-entry"));
         sessionStorage.removeItem("camera-entry");
         if (Date.now() - entered < 10000 && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.dataset.cameraEntry = "true";

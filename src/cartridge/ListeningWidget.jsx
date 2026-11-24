@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useListening } from "./useListening";
-import { ListeningWaveform } from "./ListeningWaveform";
 import { entrance } from "./entrance";
 import "./listening.css";
 
@@ -14,13 +13,13 @@ function TrackArtwork({ track, className = "" }) {
   </span>;
 }
 
-function TrackView({ track, playing, label, emptyTitle, entering = false }) {
+function TrackView({ track, playing, label, emptyTitle, announcement, entering = false }) {
   return <span className={`now-playing-track${entering ? " is-entering" : ""}`}>
     <TrackArtwork track={track} />
     <span className="now-playing-copy">
       <span className="listening-status sr-only">{label}</span>
-      <span className="now-playing-title">{track?.title || emptyTitle}</span>
-      {track && <span className="now-playing-artist">{track.artist}</span>}
+      <span className="now-playing-title">{announcement || track?.title || emptyTitle}</span>
+      {track && !announcement && <span className="now-playing-artist">{track.artist}</span>}
     </span>
   </span>;
 }
@@ -28,7 +27,17 @@ function TrackView({ track, playing, label, emptyTitle, entering = false }) {
 function TrackTransition(view) {
   const identity = view.track ? JSON.stringify([view.track.title, view.track.artist, view.track.url]) : "";
   const previous = useRef(null);
+  const [announcement,setAnnouncement]=useState(null);
+
   const [outgoing, setOutgoing] = useState(null);
+  useLayoutEffect(() => {
+    const old = previous.current;
+    if(old?.track&&old.identity!==identity&&view.track){
+      setAnnouncement(["Now playing","Now scrobbling","Now jammin"][Math.floor(Math.random()*3)]);
+      const timer=setTimeout(()=>setAnnouncement(null),1600);
+      return()=>clearTimeout(timer);
+    }
+  },[identity]);
   useLayoutEffect(() => {
     const old = previous.current;
     if (!old?.track || old.identity === identity || !view.track || matchMedia("(prefers-reduced-motion: reduce)").matches) { setOutgoing(null); return; }
@@ -38,7 +47,7 @@ function TrackTransition(view) {
   }, [identity]);
   useLayoutEffect(() => { previous.current = { ...view, identity }; });
   return <span className="now-playing-transition" data-changing={Boolean(outgoing)}>
-    <TrackView key={identity} {...view} entering={Boolean(outgoing)} />
+    <TrackView key={identity} {...view} announcement={announcement} entering={Boolean(outgoing)} />
     {outgoing && <span className="now-playing-outgoing" aria-hidden="true"><TrackView {...outgoing} /></span>}
   </span>;
 }
@@ -78,7 +87,6 @@ export function ListeningWidget({ dismissHistory = false }) {
       {recent.length ? <><ol>{recent.map((song, i) => <li key={`${song.playedAt ?? i}-${song.title}`} style={{ "--history-delay": `${(recent.length - 1 - i) * 65}ms` }}><a href={song.url || profile} target="_blank" rel="noopener noreferrer"><TrackArtwork track={song} /><span className="listening-song"><span>{song.title}</span><span>{song.artist}</span></span></a></li>)}</ol>{stale && <p className="listening-history-note">Showing your last available history.</p>}</> : <p className="listening-empty">{status === "loading" ? "Loading your recent songs…" : status === "unavailable" ? "Listening history is temporarily unavailable. Try again shortly." : status === "unconfigured" ? "Listening history will appear here once connected." : "Your first scrobbles will appear here."}</p>}
     </section>}
     <div className="listening-current" data-reveal data-reveal-at={entrance.footerStart + 90}>
-      <ListeningWaveform track={track} playing={playing}/>
       <button ref={toggle} type="button" className="listening-history-toggle" aria-label="Show last five songs" title="Recently played" aria-expanded={open} aria-controls={historyId} onClick={() => setOpen(value => !value)}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 11h11M4 16h7m5-1 4 3-4 3z" /></svg>
       </button>

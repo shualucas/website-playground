@@ -33,7 +33,7 @@ function App() {
   const pageExit=usePageExit(content);
   const [status,setStatus]=useState("loading"),[reading,setReading]=useState(readRoute),[previewingProject,setPreviewingProject]=useState(null);
   const readingRef=useRef(reading),previousReading=useRef(reading);readingRef.current=reading;
-  const [dark,setDark]=useState(()=>{try{return localStorage.getItem("cartridge-color-mode")==="dark"}catch{return false}});
+  const [dark,setDark]=useState(()=>{try{return localStorage.getItem("cartridge-color-mode")!=="light"}catch{return true}});
   useContentReveal(content,status+":"+(reading||""));
   const project=portfolioProjects.find(project=>project.id===reading);
   const open=id=>{

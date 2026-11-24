@@ -222,12 +222,15 @@ export class CaseStudyCartridgeScene {
     const resolve=this.appearances.get(this.cartridge.id)?.dissolve.resolve.value??1;
     this.host.dataset.surfaceReveal=resolve.toFixed(4);
     this.host.dataset.renderStyle=this.cartridge.id==='personal'||resolve<1?'dither':'model';
+
   }
   private setPose() {
     const t=this.motion.matches?0:this.time;
     // Each surface has its own entrance, followed by the same gentle ambient drift.
     const p=this.motion.matches?1:Math.min(1,t/this.entranceDuration),ease=1-Math.pow(1-p,4);
     this.dissolve.progress.value=p;
+    this.receiver.visible=p===1&&this.cartridge.id!=='personal'&&(this.appearances.get(this.cartridge.id)?.dissolve.resolve.value??1)===1;
+    this.host.dataset.shadow=String(this.receiver.visible);
     for(const appearance of this.appearances.values())appearance.dissolve.progress.value=p;
     this.host.dataset.dissolve=p<1?'revealing':'complete';
     this.host.dataset.revealProgress=p.toFixed(4);
