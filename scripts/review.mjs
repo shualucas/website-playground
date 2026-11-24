@@ -13,11 +13,11 @@ const { values: args } = parseArgs({ options: {
   hover:{ type:"string" }, control:{ type:"string" }, cartridge:{ type:"string" }, phase:{ type:"string", default:"settled" },
   output:{ type:"string" }, port:{ type:"string", default:"3000" }, help:{ type:"boolean" },
   listening:{ type:"string" }, history:{ type:"boolean" },
-  "open-photos":{type:"boolean"}, "photo-dither":{type:"boolean"}, photo:{type:"string"}, "scatter-at":{type:"string"},
+  "open-photos":{type:"boolean"}, "photo-dither":{type:"boolean"}, develop:{type:"string"}, palette:{type:"string"}, photo:{type:"string"}, "scatter-at":{type:"string"},
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1] [--photo-dither]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1] [--photo-dither] [--develop 1] [--palette 1]");
   process.exit(0);
 }
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "resolve", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
@@ -26,6 +26,8 @@ if (args.phase === "dither" && !args.hover || args.phase === "turn" && args.page
 if(args.phase==='cartridge'&&args.page!=='home'&&!args.path?.includes('view=case-study'))throw new Error('A cartridge capture requires the home page or a case-study --path.');
 if(args.phase==='cartridge'&&args.cartridge)throw new Error('Use --phase cartridge without --cartridge for the initial entrance; company swaps preserve the current motion.');
 if(['fade','resolve'].includes(args.phase)&&(!args.cartridge||args.page!=='home'||args.path?.includes('view=case-study')))throw new Error('A fade or resolve capture requires --page home and --cartridge.');
+if(args.develop&&(!Number.isInteger(Number(args.develop))||Number(args.develop)<1||args.page!=='photos'||args.photo))throw new Error('Use --develop with a valid 1-based photo on --page photos, without --photo.');
+if(args.palette&&(!Number.isInteger(Number(args.palette))||Number(args.palette)<1||Number(args.palette)>6||args.page!=='photos'))throw new Error('Use --palette 1..6 with --page photos.');
 const width = Number(args.width), height = Number(args.height), port = Number(args.port);
 if (![width, height, port].every(n => Number.isInteger(n) && n > 0) || port > 65535) throw new Error("Use positive integer dimensions and a valid port.");
 const baseURL = `http://127.0.0.1:${port}`;
@@ -157,8 +159,16 @@ try {
   else await page.evaluate(async () => { const root = document.querySelector(".collection"); if (root) await Promise.allSettled(root.getAnimations().map(animation => animation.finished)); });
   if(args.page==='photos'){
     await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-status',/ready|fallback/,wait);
+    await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-entrance','complete',wait);
     await expect(page.locator('.zine-header')).toHaveAttribute('data-reveal-ready','true',wait);
     if(args['scatter-at'])throw new Error('The photo mailer has been replaced by a floating gallery.');
+    if(args.develop){
+      const photo=page.locator('.floating-photo-hit').nth(Number(args.develop)-1);await photo.focus();await page.keyboard.down(' ');await expect(photo).toHaveAttribute('data-develop','1.000',wait);
+    }
+    if(args.palette){
+      for(let i=0;i<Number(args.palette);i++)await page.getByRole('button',{name:'Change palette',exact:true}).click();
+      await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-palette-state','settled',wait);
+    }
     if(args.photo){
       const index=Number(args.photo)-1,photos=page.locator('.floating-photo-hit');
       if(!Number.isInteger(index)||index<0||index>=await photos.count())throw new Error('Use a valid 1-based --photo number.');
@@ -171,7 +181,7 @@ try {
   }
   if(args.control){
     const control=page.locator(args.control);
-    if(args.page==='photos'){const box=await control.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2,{steps:12});await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-wake','active',wait)}else await control.hover();
+    if(args.page==='photos'&&await control.evaluate(el=>el.matches('.floating-photo-hit'))){const box=await control.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2,{steps:12});await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-wake','active',wait)}else await control.hover();
     if(args.page!=='photos'&&args.motion!=="reduce")await expect(control.locator('.control-dither')).toHaveAttribute('data-filled','true',wait);
   }
   if(args.history){await page.getByRole('button',{name:'Show last five songs',exact:true}).click();await expect(page.getByRole('region',{name:'Recently listened'})).toBeVisible(wait)}

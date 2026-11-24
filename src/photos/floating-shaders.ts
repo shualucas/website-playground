@@ -45,7 +45,7 @@ void main(){
  vec4 wake=texture2D(flow,uv);
  vec2 distortion=wake.xy*.012*(1.-reduced);
  vec4 sampleColor=texture2D(sceneTexture,clamp(uv-distortion,0.,1.));
- float alpha=sampleColor.a;
+ float alpha=step(.01,sampleColor.a);
  vec3 original=srgb(sampleColor.rgb);
  float value=dot(original,vec3(.299,.587,.114));
  float grain=(hash(cell+floor(time*24.))-.5)*.035*(.6+value);
@@ -58,5 +58,11 @@ void main(){
  vec3 color=ramp(stepped);
  vec3 painted=clamp(floor((original+grain)*levels+threshold)/levels,0.,1.);
  color=mix(color,painted,step(bayer(cell),reveal));
+ // Alpha encodes development on the topmost opaque photo; empty space stays zero.
+ vec4 sharp=texture2D(sceneTexture,vUv);
+ float developed=clamp((1.-sharp.a)*2.,0.,1.)*step(.01,sharp.a);
+ float developedCell=step(bayer(cell),developed);
+ color=mix(color,srgb(sharp.rgb),developedCell);
+ alpha=mix(alpha,step(.01,sharp.a),developedCell);
  gl_FragColor=vec4(mix(background,color,alpha),1.);
 }`;

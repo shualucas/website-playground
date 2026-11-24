@@ -2,7 +2,7 @@ import React,{useLayoutEffect,useRef,useState} from 'react';
 import {ditherAnimation} from './dither-transition';
 import {photoPalette} from './photo-palette';
 
-export function PhotoLightbox({photos,initial,opener,onClose}){
+export function PhotoLightbox({photos,initial,opener,onClose,chosenPalette,onPalette}){
  const dialog=useRef(null),image=useRef(null),animation=useRef(null),closing=useRef(false),sequence=useRef(0),mounted=useRef(false);
  const [index,setIndex]=useState(initial),[palette,setPalette]=useState([]),[phase,setPhase]=useState('entering');
  useLayoutEffect(()=>{
@@ -44,13 +44,15 @@ export function PhotoLightbox({photos,initial,opener,onClose}){
    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();event.stopPropagation();void change(event.key==='ArrowRight'?1:-1)}
   }}>
   <button type="button" className="photo-viewer-close" autoFocus aria-label="Close photograph" onClick={close}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  <div className="photo-viewer-stage" style={{'--photo-aspect':photo.width/photo.height}}>
   <button type="button" className="photo-viewer-previous" aria-label="Previous photograph" onClick={()=>change(-1)}>←</button>
   <img ref={image} src={photo.src} alt={photo.alt} width={photo.width} height={photo.height} draggable={false}/>
+  <button type="button" className="photo-viewer-next" aria-label="Next photograph" onClick={()=>change(1)}>→</button>
+  </div>
   <div className="photo-viewer-details">
-   {palette.length>0&&<ul className="photo-palette" aria-label="Colors extracted from this photograph">{palette.map((color,i)=><li key={i} style={{backgroundColor:color}} aria-label={color} title={color}/>)}</ul>}
+   {palette.length>0&&<ul className="photo-palette" aria-label="Colors extracted from this photograph">{palette.map((color,i)=><li key={i} aria-label={color}><button type="button" style={{'--swatch':color}} aria-label={`Use ${color} as gallery accent`} title={`Use ${color} as gallery accent`} aria-pressed={chosenPalette?.colors.join(',')===palette.join(',')&&chosenPalette?.accent===color} onClick={()=>onPalette?.(palette,color)}><span style={{backgroundColor:color}}/></button></li>)}</ul>}
    {photo.caption&&<p className="photo-caption">{photo.caption}</p>}
   </div>
-  <button type="button" className="photo-viewer-next" aria-label="Next photograph" onClick={()=>change(1)}>→</button>
   <span className="sr-only" role="status">Photograph {index+1} of {photos.length}: {photo.alt}</span>
  </dialog>;
 }

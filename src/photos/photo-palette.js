@@ -26,8 +26,12 @@ const cache=new Map();
 export function photoPalette(image){
  const key=image.currentSrc||image.src;if(cache.has(key))return cache.get(key);
  const pending=(async()=>{
-  await image.decode();if((image.currentSrc||image.src)!==key)throw new Error('Photograph changed during decode');const canvas=document.createElement('canvas');canvas.width=96;canvas.height=Math.max(1,Math.round(96*image.naturalHeight/image.naturalWidth));
+  // A dedicated source stays stable while the viewer changes, masks, or replaces its image.
+  const sample=new Image();
+  await new Promise((resolve,reject)=>{sample.onload=resolve;sample.onerror=reject;sample.src=key;if(sample.complete&&sample.naturalWidth)resolve()});
+  sample.onload=sample.onerror=null;
+  const canvas=document.createElement('canvas');canvas.width=96;canvas.height=Math.max(1,Math.round(96*sample.naturalHeight/sample.naturalWidth));
   const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)return [];
-  ctx.drawImage(image,0,0,canvas.width,canvas.height);return extractPalette(ctx.getImageData(0,0,canvas.width,canvas.height).data);
+  ctx.drawImage(sample,0,0,canvas.width,canvas.height);return extractPalette(ctx.getImageData(0,0,canvas.width,canvas.height).data);
  })().catch(()=>{cache.delete(key);return []});cache.set(key,pending);return pending;
 }

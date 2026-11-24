@@ -15,7 +15,7 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
 
-The photos page is a borderless Three.js field with one animation clock for drift, camera sway, and a pointer-driven color wake. Its original shaders study [Ribcage by Luis Bizarro](https://webgpu.toys/ribcage/): a 4×4 Bayer matrix, nine tonal levels, a 360-row pixel grid, and 24 Hz grain. The gallery shares the home-page background in both themes; light-mode tonal values remain positive. Each photo dithers out before dithering into the centered lightbox. A five-color palette is extracted from its original pixels. Edit the optional `caption` on each entry in `src/content/film-photos.js` to change the text beneath the palette (`""` hides it). Reduced motion freezes drift and grain; without WebGL, ordered-dither thumbnails preserve navigation, dragging, and the original-image lightbox.
+The photos page is a dark-only, borderless Three.js field with a fixed viewpoint. One animation clock owns the slow staggered dither entrance, drift, release inertia, hold-to-develop, palette transitions, and pointer color wake. Its original shaders study [Ribcage by Luis Bizarro](https://webgpu.toys/ribcage/): a 4×4 Bayer matrix, nine tonal levels, a 360-row pixel grid, and 24 Hz grain. A stationary press develops the original image; dragging throws it gently; clicking opens a dithered lightbox with arrows beside the actual image. Space develops the focused photo, arrows arrange it, and Enter opens it. Lightbox swatches apply the extracted palette to the gallery; clicking empty space or “Change palette” cycles the portfolio colors. The viewer has an opaque background. Edit the optional `caption` in `src/content/film-photos.js` to change its text (`""` hides it). Reduced motion skips drift, momentum and entrance delays; the page keeps the home-page theme preference intact. Without WebGL, ordered-dither thumbnails retain the same controls.
 
 The Last.fm footer uses `ListeningWidget.jsx` and `listening.css`: right-aligned song information, randomized song-change announcements, and rounded cover art. It preserves recent-song history, respects reduced motion, and stays hidden on mobile.
 
@@ -65,6 +65,8 @@ npm run review -- --page resume --width 390 --height 844
 npm run review -- --page photos --motion reduce
 npm run review -- --page photos --theme dark
 npm run review -- --page photos --photo 1
+npm run review -- --page photos --develop 1
+npm run review -- --page photos --palette 2
 ```
 
 Use `--help` for a custom local path, viewport, output, or port. Output defaults to ignored `test-results/review/`. The script stops only servers it owns. Software WebGL is the cloud default; keep 3D captures sequential. `CHROMIUM_EXECUTABLE_PATH` overrides the system browser; `BROWSER_RENDERER=hardware` opts into an available local GPU. The harness bypasses proxies only for loopback traffic.
