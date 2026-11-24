@@ -1,4 +1,5 @@
 // Original film photographs supplied by Josh. Preserve each composition.
+// Edit each optional caption below to change its lightbox text. Use "" to hide it.
 export const filmPhotos = [
   {
     "src": "/photos/golden-gate-bicycles.jpg",

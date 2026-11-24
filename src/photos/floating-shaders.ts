@@ -29,7 +29,7 @@ export const photoFragment=`precision highp float;
 varying vec2 vUv;
 uniform sampler2D sceneTexture,flow;
 uniform vec2 resolution,pointer,focus;
-uniform vec3 ramp0,ramp1,ramp2,ramp3,ramp4;
+uniform vec3 background,ramp0,ramp1,ramp2,ramp3,ramp4;
 uniform float time,aspect,reduced,hasFocus,hovering;
 float bayer(vec2 cell){
  int x=int(mod(cell.x,4.)),y=int(mod(cell.y,4.));int i=y*4+x;
@@ -58,5 +58,5 @@ void main(){
  vec3 color=ramp(stepped);
  vec3 painted=clamp(floor((original+grain)*levels+threshold)/levels,0.,1.);
  color=mix(color,painted,step(bayer(cell),reveal));
- gl_FragColor=vec4(mix(ramp0,color,alpha),1.);
+ gl_FragColor=vec4(mix(background,color,alpha),1.);
 }`;

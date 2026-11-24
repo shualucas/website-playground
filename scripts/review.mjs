@@ -13,11 +13,11 @@ const { values: args } = parseArgs({ options: {
   hover:{ type:"string" }, control:{ type:"string" }, cartridge:{ type:"string" }, phase:{ type:"string", default:"settled" },
   output:{ type:"string" }, port:{ type:"string", default:"3000" }, help:{ type:"boolean" },
   listening:{ type:"string" }, history:{ type:"boolean" },
-  "open-photos":{type:"boolean"}, photo:{type:"string"}, "scatter-at":{type:"string"},
+  "open-photos":{type:"boolean"}, "photo-dither":{type:"boolean"}, photo:{type:"string"}, "scatter-at":{type:"string"},
 } });
 const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1] [--photo-dither]");
   process.exit(0);
 }
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "resolve", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
@@ -157,12 +157,16 @@ try {
   else await page.evaluate(async () => { const root = document.querySelector(".collection"); if (root) await Promise.allSettled(root.getAnimations().map(animation => animation.finished)); });
   if(args.page==='photos'){
     await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-status',/ready|fallback/,wait);
+    await expect(page.locator('.zine-header')).toHaveAttribute('data-reveal-ready','true',wait);
     if(args['scatter-at'])throw new Error('The photo mailer has been replaced by a floating gallery.');
     if(args.photo){
       const index=Number(args.photo)-1,photos=page.locator('.floating-photo-hit');
       if(!Number.isInteger(index)||index<0||index>=await photos.count())throw new Error('Use a valid 1-based --photo number.');
       await photos.nth(index).focus();await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toBeVisible(wait);
-      await page.getByRole('dialog').locator('img').evaluate(async el=>{await Promise.allSettled(el.getAnimations().map(a=>a.finished))});
+      if(args['photo-dither']){
+        await expect.poll(()=>page.getByRole('dialog').locator('img').evaluate(el=>el.getAnimations().length),wait).toBeGreaterThan(0);
+        await page.getByRole('dialog').locator('img').evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=a.effect.getTiming().duration*.55});
+      }else await expect(page.getByRole('dialog')).toHaveAttribute('data-phase','visible',wait);
     }
   }
   if(args.control){

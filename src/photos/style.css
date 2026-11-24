@@ -1,5 +1,4 @@
-.photos-page { --scene-bg:#e7ecee; min-height:100svh; background:var(--scene-bg); color:var(--ui-text); overflow:hidden; }
-:root[data-color-mode="dark"] .photos-page { --scene-bg:#03060b; }
+.photos-page { min-height:100svh; background:var(--scene-bg); color:var(--ui-text); overflow:hidden; }
 .floating-photo-gallery { position:fixed; inset:100px 20px 66px; overflow:clip; isolation:isolate; touch-action:none; }
 .floating-photos-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
 .floating-photo-hit { position:absolute; display:block; padding:0; margin:0; border:0; border-radius:0; background:transparent; transform:translate(-50%,-50%); transform-origin:center; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
@@ -10,16 +9,22 @@
 .floating-photo-gallery[data-status="fallback"] .floating-photo-hit:is(:hover,:focus-visible) .floating-original { opacity:1; z-index:1; }
 .floating-photo-help { position:fixed; left:20px; right:20px; bottom:20px; margin:0; text-align:center; color:var(--ui-muted); font:400 11px/1.6 "DM Sans",sans-serif; pointer-events:none; }
 @media(max-width:600px) { .floating-photo-gallery { inset:90px 8px 74px; } .floating-photo-help { max-width:250px; margin-inline:auto; bottom:20px; } }
-.photo-lightbox { position:fixed; inset:0; margin:0; width:100%; height:100%; max-width:none; max-height:none; padding:54px 70px; border:0; background:transparent; color:#f7f6f2; overflow:hidden; }
+.photo-lightbox { position:fixed; inset:0; margin:0; width:100%; height:100%; max-width:none; max-height:none; padding:54px 70px 128px; border:0; background:transparent; color:#f7f6f2; overflow:hidden; }
 .photo-lightbox[open] { display:grid; place-items:center; }
 .photo-lightbox::backdrop { background:#080909e8; backdrop-filter:blur(9px); }
-.photo-lightbox > img { display:block; width:auto; height:auto; max-width:min(100%,1400px); max-height:calc(100svh - 108px); object-fit:contain; border:0; box-shadow:0 12px 50px #0006; }
+.photo-lightbox > img { display:block; width:auto; height:auto; max-width:min(100%,1400px); max-height:calc(100svh - 182px); mask-size:8px 8px; mask-repeat:repeat; object-fit:contain; border:0; box-shadow:0 12px 50px #0006; }
 .photo-lightbox > button { position:absolute; display:grid; place-items:center; width:44px; height:44px; border-radius:50%; color:#eee; background:#ffffff0d; transition:background 150ms ease; }
 .photo-lightbox > button:hover { color:white; background:#ffffff20; }
 .photo-viewer-close { right:20px; top:20px; }
 .photo-viewer-previous { left:14px; top:calc(50% - 22px); font-size:23px; }
 .photo-viewer-next { right:14px; top:calc(50% - 22px); font-size:23px; }
 
-@media(max-width:600px) { .photo-lightbox { padding:60px 20px 90px; } .photo-lightbox > img { max-height:calc(100svh - 150px); border-width:0; } .photo-viewer-previous,.photo-viewer-next { top:auto; bottom:20px; } .photo-viewer-previous { left:calc(50% - 54px); } .photo-viewer-next { right:calc(50% - 54px); } }
+@media(max-width:600px) { .photo-lightbox { padding:60px 20px 164px; } .photo-lightbox > img { max-height:calc(100svh - 224px); border-width:0; } .photo-viewer-previous,.photo-viewer-next { top:auto; bottom:20px; } .photo-viewer-previous { left:calc(50% - 54px); } .photo-viewer-next { right:calc(50% - 54px); } }
 .photo-lightbox[data-closing="true"]::backdrop { animation:photo-backdrop-out 240ms ease forwards; }
 @keyframes photo-backdrop-out { to { background:transparent; backdrop-filter:blur(0); } }
+
+.photo-viewer-details { position:absolute; bottom:38px; left:76px; right:76px; display:flex; align-items:center; flex-direction:column; gap:12px; }
+.photo-palette { display:flex; width:150px; height:20px; margin:0; padding:0; list-style:none; overflow:hidden; border-radius:3px; }
+.photo-palette li { flex:1; }
+.photo-caption { margin:0; max-width:560px; text-align:center; color:#d0d0cf; font:400 13px/1.5 "DM Sans",sans-serif; }
+@media(max-width:600px){ .photo-viewer-details { bottom:82px; left:20px; right:20px; gap:8px; } .photo-caption { font-size:12px; } }

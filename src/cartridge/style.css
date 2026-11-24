@@ -261,7 +261,7 @@
 .home-content { width:100%; }
 .home-content[hidden] { display:block; visibility:hidden; pointer-events:none; }
 .about-content[hidden] { display:none; }
-.about-link { display:inline-flex; align-items:center; min-height:44px; padding:0; margin-top:8px; color:var(--copy-muted); font:400 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; text-decoration:underline dotted; text-underline-offset:4px; text-decoration-thickness:1px; transition:color 160ms ease; }
+.about-link { display:inline-flex; align-items:center; min-height:44px; padding:0; margin-top:8px; color:var(--copy-muted); font:400 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; transition:color 160ms ease; }
 .about-link:is(:hover,:focus-visible) { color:var(--ui-text); }
 .about-content { display:grid; grid-template-columns:minmax(0,280px) minmax(0,380px); align-items:center; gap:48px; width:100%; max-width:calc(772px + var(--hero-gap)); margin-inline:auto; padding-block:20px; }
 .about-photo { display:block; width:100%; height:auto; aspect-ratio:848/1280; object-fit:cover; border-radius:5px; }
@@ -275,7 +275,7 @@
 .random-fact .about-inline:is(:hover,:focus-visible) { color:var(--ui-text); }
 
 .collection-main { position:relative; isolation:isolate; }
-.about-inline-link { text-decoration:underline dotted; text-underline-offset:4px; transition:color 160ms ease; }
+.about-inline-link { transition:color 160ms ease; }
 .about-inline-link:is(:hover,:focus-visible) { color:var(--ui-text); }
 
 .collection-intro .intro-title,.random-fact > .intro-word,.about-fact-colon { transition:opacity 180ms ease; }
@@ -288,3 +288,7 @@
 .home-content:has(.collection-intro[data-about-spotlight="true"]) .recent-projects { opacity:.3; }
 .collection[data-project-browsing="true"] .intro-title,.collection[data-project-browsing="true"] .random-fact > .intro-word { opacity:.3; }
 .collection[data-project-browsing="true"] .about-fact-colon { opacity:1; }
+
+/* Dotted links share one baseline and dot spacing, including inline buttons. */
+:is(.about-link,.about-inline-link) { text-decoration-line:underline; text-decoration-style:dotted; text-decoration-thickness:1px; text-underline-offset:4px; text-decoration-skip-ink:none; text-underline-position:from-font; }
+.random-fact .about-inline { display:inline; vertical-align:baseline; line-height:inherit; }

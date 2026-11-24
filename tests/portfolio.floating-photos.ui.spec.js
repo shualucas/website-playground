@@ -17,7 +17,10 @@ test('borderless fallback photos preserve proportions, dither and keyboard light
  }
  const first=photos.first();await first.focus();await page.keyboard.press('Enter');const dialog=page.getByRole('dialog',{name:'Photograph viewer'});
  await expect(dialog).toBeVisible();await expect(dialog.locator('img')).toHaveAttribute('src',filmPhotos[0].src);await expect(dialog.locator('img')).toHaveCSS('border-top-width','0px');
- await expect(page.getByRole('button',{name:'Close photograph'})).toBeFocused();await page.keyboard.press('ArrowRight');await expect(dialog.locator('img')).toHaveAttribute('src',filmPhotos[1].src);
+ await expect(dialog.locator('.photo-palette li')).toHaveCount(5);await expect(dialog.locator('.photo-caption')).toHaveText(filmPhotos[0].caption);
+ const palette=await dialog.locator('.photo-palette li').evaluateAll(items=>items.map(el=>el.getAttribute('aria-label')));expect(new Set(palette).size).toBe(5);
+ await expect(page.getByRole('button',{name:'Close photograph'})).toBeFocused();await page.keyboard.press('ArrowRight');await expect(dialog.locator('img')).toHaveAttribute('src',filmPhotos[1].src);await expect(dialog.locator('.photo-caption')).toHaveText(filmPhotos[1].caption);await expect(dialog.locator('.photo-palette li')).toHaveCount(5);
+ await expect.poll(()=>dialog.locator('.photo-palette li').evaluateAll(items=>items.map(el=>el.getAttribute('aria-label')))).not.toEqual(palette);
  for(let i=0;i<6;i++){await page.keyboard.press('Tab');expect(await page.evaluate(()=>document.querySelector('.photo-lightbox').contains(document.activeElement))).toBe(true)}
  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);await expect(first).toBeFocused();await expect(page.locator('body')).not.toHaveCSS('overflow','hidden');
 });
@@ -26,10 +29,10 @@ test('drag and keyboard arranging do not open the viewer, and interruption resto
  await open(page);const photo=page.locator('.floating-photo-hit').last();await photo.focus();
  const before=await photo.boundingBox(),x=before.x+before.width/2,y=before.y+before.height/2;
  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+45,y+30,{steps:6});await expect(photo).toHaveAttribute('data-dragging','true');await page.mouse.up();
- await expect(page.getByRole('dialog')).toHaveCount(0);const after=await photo.boundingBox();expect(after.x-before.x).toBeCloseTo(45,0);expect(after.y-before.y).toBeCloseTo(30,0);
- await page.keyboard.press('ArrowRight');expect((await photo.boundingBox()).x).toBeGreaterThan(after.x+10);
+ await expect(page.getByRole('dialog')).toHaveCount(0);await expect.poll(async()=>(await photo.boundingBox()).x-before.x).toBeCloseTo(45,0);await expect.poll(async()=>(await photo.boundingBox()).y-before.y).toBeCloseTo(30,0);const after=await photo.boundingBox();
+ await page.keyboard.press('ArrowRight');await expect.poll(async()=>(await photo.boundingBox()).x).toBeGreaterThan(after.x+10);
  const a=await photo.boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(a.x+a.width/2+30,a.y+a.height/2+20,{steps:3});await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await page.mouse.up();
- await expect(photo).toHaveAttribute('data-dragging','false');expect((await photo.boundingBox()).x).toBeCloseTo(a.x,0);
+ await expect(photo).toHaveAttribute('data-dragging','false');await expect.poll(async()=>(await photo.boundingBox()).x).toBeCloseTo(a.x,0);
 });
 
 test('mobile resizing and theme changes keep photos accessible without overflow',async({page})=>{

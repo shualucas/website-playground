@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import {ditherMask} from './dither-transition';
 import {screenVertex,fluidFragment,photoFragment} from './floating-shaders';
 type Photo={src:string;alt:string;width:number;height:number};
-type Item={mesh:THREE.Mesh<THREE.PlaneGeometry,THREE.MeshBasicMaterial>;button:HTMLButtonElement;photo:Photo;base:THREE.Vector3;seed:number;angle:number;width:number;height:number};
-const palettes={dark:['#03060b','#0f1f2e','#4f7390','#b9d3e4','#f2f9ff'],light:['#e7ecee','#b9c3c8','#6f7d86','#26313a','#070a0d']};
+type Item={mesh:THREE.Mesh<THREE.PlaneGeometry,THREE.MeshBasicMaterial>;button:HTMLButtonElement;photo:Photo;base:THREE.Vector3;seed:number;angle:number;width:number;height:number;reveal:{value:number}};
+const palettes={dark:['#0b0c0b','#30332f','#777b73','#bdc2b5','#f0f0eb'],light:['#171a16','#484e44','#878e7f','#c1c7b9','#f0f0f0']};
 const random=(i:number)=>{const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)};
 const rgb=(hex:string)=>new THREE.Vector3(...[1,3,5].map(n=>parseInt(hex.slice(n,n+2),16)/255) as [number,number,number]);
 
@@ -17,6 +18,7 @@ export class FloatingPhotos {
  private width=1;private height=1;private active=true;private visible=true;private disposed=false;
  private pointer=new THREE.Vector2(-2,-2);private previous=new THREE.Vector2(-2,-2);private hovering=false;private focused=-1;
  private drag:null|{id:number;index:number;x:number;y:number;point:THREE.Vector3;base:THREE.Vector3;moved:boolean}=null;
+ private fades=new Map<number,{from:number;to:number;start:number;done:()=>void}>();
  private suppress=false;private ray=new THREE.Raycaster();private motion=matchMedia('(prefers-reduced-motion: reduce)');
  private resizeObserver:ResizeObserver;private themeObserver:MutationObserver;private observer:IntersectionObserver;
  constructor(private host:HTMLElement,photos:Photo[],private onReady:(status:string)=>void){
@@ -28,15 +30,30 @@ export class FloatingPhotos {
    this.target=new THREE.WebGLRenderTarget(1,1,{depthBuffer:true});
    this.fields=[0,1].map(()=>new THREE.WebGLRenderTarget(192,128,{type:THREE.HalfFloatType,depthBuffer:false}));
    this.fluidMaterial=new THREE.ShaderMaterial({vertexShader:screenVertex,fragmentShader:fluidFragment,uniforms:{previous:{value:this.fields[0].texture},texel:{value:new THREE.Vector2(1/192,1/128)},pointer:{value:this.pointer},lastPointer:{value:this.previous},dt:{value:0},aspect:{value:1},deposit:{value:0}},depthTest:false,depthWrite:false});
-   this.post=new THREE.ShaderMaterial({vertexShader:screenVertex,fragmentShader:photoFragment,uniforms:{sceneTexture:{value:this.target.texture},flow:{value:this.fields[0].texture},resolution:{value:new THREE.Vector2(1,1)},pointer:{value:this.pointer},focus:{value:new THREE.Vector2(-2,-2)},ramp0:{value:new THREE.Vector3()},ramp1:{value:new THREE.Vector3()},ramp2:{value:new THREE.Vector3()},ramp3:{value:new THREE.Vector3()},ramp4:{value:new THREE.Vector3()},time:{value:0},aspect:{value:1},reduced:{value:0},hasFocus:{value:0},hovering:{value:0}},depthTest:false,depthWrite:false});
+   this.post=new THREE.ShaderMaterial({vertexShader:screenVertex,fragmentShader:photoFragment,uniforms:{sceneTexture:{value:this.target.texture},flow:{value:this.fields[0].texture},resolution:{value:new THREE.Vector2(1,1)},pointer:{value:this.pointer},focus:{value:new THREE.Vector2(-2,-2)},background:{value:new THREE.Vector3()},ramp0:{value:new THREE.Vector3()},ramp1:{value:new THREE.Vector3()},ramp2:{value:new THREE.Vector3()},ramp3:{value:new THREE.Vector3()},ramp4:{value:new THREE.Vector3()},time:{value:0},aspect:{value:1},reduced:{value:0},hasFocus:{value:0},hovering:{value:0}},depthTest:false,depthWrite:false});
    this.fluidScene.add(new THREE.Mesh(this.geometry,this.fluidMaterial));this.screen.add(new THREE.Mesh(this.geometry,this.post));
    for(const field of this.fields){this.renderer.setRenderTarget(field);this.renderer.clear()}this.renderer.setRenderTarget(null);
   }catch{this.renderer?.dispose();this.renderer?.domElement.remove();this.renderer=null}
   photos.forEach((photo,index)=>{
    const material=new THREE.MeshBasicMaterial({transparent:true,opacity:0,side:THREE.DoubleSide,toneMapped:false});
+   const reveal={value:1};
+   material.onBeforeCompile=shader=>{
+    shader.uniforms.photoReveal=reveal;
+    shader.fragmentShader='uniform float photoReveal;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+     vec2 cell=mod(floor(gl_FragCoord.xy/3.),4.);
+     float rank=0.;
+     if(cell.y<1.){if(cell.x<1.)rank=0.;else if(cell.x<2.)rank=8.;else if(cell.x<3.)rank=2.;else rank=10.;}
+     else if(cell.y<2.){if(cell.x<1.)rank=12.;else if(cell.x<2.)rank=4.;else if(cell.x<3.)rank=14.;else rank=6.;}
+     else if(cell.y<3.){if(cell.x<1.)rank=3.;else if(cell.x<2.)rank=11.;else if(cell.x<3.)rank=1.;else rank=9.;}
+     else{if(cell.x<1.)rank=15.;else if(cell.x<2.)rank=7.;else if(cell.x<3.)rank=13.;else rank=5.;}
+     if((rank+.5)/16.>photoReveal)discard;
+    `);
+   };
+   material.customProgramCacheKey=()=>'floating-photo-dissolve-v1';
    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),material);this.scene.add(mesh);
    const button=host.querySelector<HTMLButtonElement>(`[data-photo-index="${index}"]`)!;
-   this.items.push({mesh,button,photo,base:new THREE.Vector3(),seed:random(index+1)*Math.PI*2,angle:(random(index+30)-.5)*.4,width:1,height:1});
+   this.items.push({mesh,button,photo,base:new THREE.Vector3(),seed:random(index+1)*Math.PI*2,angle:(random(index+30)-.5)*.4,width:1,height:1,reveal});
   });
   host.addEventListener('pointerdown',this.down);host.addEventListener('pointermove',this.move);host.addEventListener('pointerup',this.up);host.addEventListener('pointercancel',this.cancel);host.addEventListener('lostpointercapture',this.cancel);host.addEventListener('pointerleave',this.leave);host.addEventListener('click',this.click,true);host.addEventListener('keydown',this.key);host.addEventListener('focusin',this.focus);host.addEventListener('focusout',this.blur);
   window.addEventListener('blur',this.cancel);document.addEventListener('visibilitychange',this.sync);this.motion.addEventListener('change',this.sync);
@@ -61,6 +78,7 @@ export class FloatingPhotos {
  }
  private theme=()=>{
   const palette=palettes[document.documentElement.dataset.colorMode==='dark'?'dark':'light'];
+  if(this.post){const bg=new THREE.Color(getComputedStyle(this.host).getPropertyValue('--scene-bg').trim());bg.convertLinearToSRGB();this.post.uniforms.background.value.set(bg.r,bg.g,bg.b)}
   palette.forEach((color,i)=>{if(this.post)this.post.uniforms['ramp'+i].value.copy(rgb(color))});
   if(!this.renderer)for(const item of this.items)if(item.mesh.material.map)this.fallback(item,item.mesh.material.map.image);
   this.draw(0);
@@ -110,11 +128,21 @@ export class FloatingPhotos {
   const i=this.index(event);if(i<0)return;const v:{[key:string]:number[]}={ArrowLeft:[-.15,0],ArrowRight:[.15,0],ArrowUp:[0,.15],ArrowDown:[0,-.15]};
   if(event.key==='Escape'){this.cancel();return}if(!v[event.key])return;event.preventDefault();this.items[i].base.x+=v[event.key][0];this.items[i].base.y+=v[event.key][1];this.clamp(this.items[i]);this.draw(0);
  };
+ dissolve(index:number,show:boolean):Promise<void>{
+  const item=this.items[index];if(!item||this.disposed)return Promise.resolve();this.fades.get(index)?.done();
+  return new Promise(done=>{this.fades.set(index,{from:item.reveal.value,to:show?1:0,start:performance.now(),done});this.sync()});
+ }
  setActive(active:boolean){this.active=active;if(!active)this.cancel();this.sync()}
- private sync=()=>{this.host.dataset.motion=this.motion.matches?'reduced':this.active&&this.visible&&!document.hidden?'floating':'paused';cancelAnimationFrame(this.frame);this.frame=0;this.last=0;if(document.hidden)this.cancel();if(this.active&&this.visible&&!document.hidden){this.draw(0);if(!this.motion.matches)this.frame=requestAnimationFrame(this.tick)}};
- private tick=(now:number)=>{this.frame=0;if(this.disposed)return;const dt=this.last?Math.min(.05,(now-this.last)/1000):0;this.last=now;this.time+=dt;this.draw(dt);if(this.active&&this.visible&&!document.hidden&&!this.motion.matches)this.frame=requestAnimationFrame(this.tick)};
+ private sync=()=>{this.host.dataset.motion=this.motion.matches?'reduced':this.active&&this.visible&&!document.hidden?'floating':'paused';cancelAnimationFrame(this.frame);this.frame=0;this.last=0;if(document.hidden)this.cancel();if((this.active||this.fades.size)&&this.visible&&!document.hidden){this.draw(0);if(!this.motion.matches)this.frame=requestAnimationFrame(this.tick)}};
+ private tick=(now:number)=>{this.frame=0;if(this.disposed)return;const dt=this.last?Math.min(.05,(now-this.last)/1000):0;this.last=now;if(this.active)this.time+=dt;this.draw(dt);if((this.active||this.fades.size)&&this.visible&&!document.hidden&&!this.motion.matches)this.frame=requestAnimationFrame(this.tick)};
  private draw(dt:number){
   if(this.disposed)return;const t=this.motion.matches?0:this.time;
+  for(const [index,fade] of this.fades){
+   const p=this.motion.matches?1:Math.min(1,(performance.now()-fade.start)/320),item=this.items[index];
+   item.reveal.value=fade.from+(fade.to-fade.from)*p;item.button.dataset.reveal=item.reveal.value.toFixed(3);
+   item.button.style.maskSize='12px 12px';item.button.style.maskImage=this.renderer?'none':ditherMask(item.reveal.value);
+   if(p===1){this.fades.delete(index);fade.done()}
+  }
   this.camera.position.x=this.hovering&&!this.motion.matches?(this.pointer.x-.5)*.08:0;this.camera.position.y=this.hovering&&!this.motion.matches?(this.pointer.y-.5)*.06:0;this.camera.updateMatrixWorld();
   this.items.forEach((item,i)=>{
    const moving=this.drag?.index!==i;
@@ -134,7 +162,7 @@ export class FloatingPhotos {
   }
   this.host.dataset.time=this.time.toFixed(3);this.host.dataset.motion=this.motion.matches?'reduced':this.active&&this.visible&&!document.hidden?'floating':'paused';this.host.dataset.wake=this.hovering?'active':'fading';
  }
- dispose(){this.disposed=true;this.cancel();cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.themeObserver.disconnect();this.observer.disconnect();this.motion.removeEventListener('change',this.sync);window.removeEventListener('blur',this.cancel);document.removeEventListener('visibilitychange',this.sync);
+ dispose(){this.disposed=true;this.fades.forEach(fade=>fade.done());this.fades.clear();this.cancel();cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.themeObserver.disconnect();this.observer.disconnect();this.motion.removeEventListener('change',this.sync);window.removeEventListener('blur',this.cancel);document.removeEventListener('visibilitychange',this.sync);
   this.host.removeEventListener('click',this.click,true);
   this.host.removeEventListener('pointerdown',this.down);this.host.removeEventListener('pointermove',this.move);this.host.removeEventListener('pointerup',this.up);this.host.removeEventListener('pointercancel',this.cancel);this.host.removeEventListener('lostpointercapture',this.cancel);this.host.removeEventListener('pointerleave',this.leave);this.host.removeEventListener('keydown',this.key);this.host.removeEventListener('focusin',this.focus);this.host.removeEventListener('focusout',this.blur);
   this.items.forEach(item=>{item.mesh.geometry.dispose();item.mesh.material.dispose()});this.textures.forEach(texture=>texture.dispose());this.geometry.dispose();this.fluidMaterial?.dispose();this.post?.dispose();this.fields.forEach(target=>target.dispose());this.target?.dispose();this.renderer?.dispose();this.renderer?.domElement.remove();

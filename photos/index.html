@@ -22,7 +22,8 @@
     }catch{}
   </script>
   <style>
-    html[data-camera-entry="true"]::after{content:"";position:fixed;inset:0;background:white;z-index:100;pointer-events:none}
+    html{background:#f0f0f0}html[data-color-mode="dark"]{background:#0b0c0b}
+    html[data-camera-entry="true"]::after{content:"";position:fixed;inset:0;background:white;z-index:100;pointer-events:none;animation:photo-flash-clear 420ms 850ms ease-out both}
     html[data-camera-entry="true"][data-page-ready="true"]::after{animation:photo-flash-clear 420ms ease-out both}
     @keyframes photo-flash-clear{to{opacity:0}}
     @media(prefers-reduced-motion:reduce){html::after{display:none}}

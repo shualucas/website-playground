@@ -11,6 +11,17 @@ test('camera click flashes once and opens the floating mobile gallery',async({pa
  await expect(page).toHaveURL(/\/photos\/$/);expect(await page.evaluate(()=>sessionStorage.getItem('camera-flash-tested'))).toBe('yes');
  await expect(page.getByRole('region',{name:'Film photograph collection'})).toHaveAttribute('data-status','fallback');
  await expect(page.locator('.floating-photo-hit')).toHaveCount(filmPhotos.length);
+ await expect(page.locator('html')).toHaveAttribute('data-page-ready','true');
+ await expect.poll(()=>page.evaluate(()=>Number(getComputedStyle(document.documentElement,'::after').opacity))).toBe(0);
  await expect(page.locator('.film-envelope-stage,.photo-entry-camera,.parcel-sticker-tray')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+
+test('the incoming flash clears even while the gallery module is delayed',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.addInitScript(()=>sessionStorage.setItem('camera-entry',JSON.stringify({at:Date.now()})));
+ let release;const held=new Promise(resolve=>release=resolve);await page.route('**/src/photos/FloatingPhotos.ts',async route=>{await held;await route.continue()});
+ await page.goto('/photos/');await expect(page.locator('html')).toHaveAttribute('data-camera-entry','true');
+ await expect.poll(()=>page.evaluate(()=>Number(getComputedStyle(document.documentElement,'::after').opacity))).toBe(0);
+ release();await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-status','fallback');
 });
