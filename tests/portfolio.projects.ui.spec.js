@@ -69,7 +69,7 @@ test("recent projects use one column with native reader links and restore focus 
     await expect(story.locator('.case-showcase-passage')).toHaveCount(i===2?5:4);
     await expect(story.getByRole('heading')).toHaveCount(i===0?1:0);
     await expect(story.locator('.case-story-media')).toHaveCount(i===2?5:4);
-    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(i===1?4:0);
+    await expect(story.locator('.case-story-media-placeholder')).toHaveCount(0);
     for(const passage of await story.locator('.case-showcase-passage').all())expect(await passage.locator('figure').evaluate(el=>Boolean(el.compareDocumentPosition(el.parentElement.parentElement.querySelector('.case-showcase-copy'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await expect(story.locator('[data-takeaways] p')).toHaveCount(i===1?1:2);
     await expect(page.getByRole('navigation',{name:'Case study media'}).getByRole('button')).toHaveCount(i===2?7:6);
@@ -929,4 +929,26 @@ test('scrolling navigation keeps contrast over opposite-theme media on desktop a
    }
   }
  }
+});
+
+test('Search Labs motion comps follow the story with responsive playback and reduced-motion stills',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.goto('/?project=search-labs&view=case-study');
+ const players=page.locator('.case-study-hero-figure .loop-video,.case-showcase-story .loop-video');
+ await expect(players).toHaveCount(5);
+ const clips=['hero','evolution','pivots','toggle-flip','kit'];
+ for(const [width,height,size]of [[1440,1000,1600],[390,844,1280]]){
+  await page.setViewportSize({width,height});
+  for(let i=0;i<clips.length;i++){
+   const frame=players.nth(i),video=frame.locator('video');await frame.scrollIntoViewIfNeeded();
+   await expect.poll(()=>video.evaluate(el=>el.currentSrc)).toContain('/search-labs-'+clips[i]+'-'+size+'.mp4');
+   await expect(video).toHaveAttribute('data-ready','true');await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
+   expect(await video.evaluate(el=>el.muted&&el.loop&&el.playsInline&&el.videoWidth>0&&el.duration>6)).toBe(true);
+   await expect(frame.locator('img')).toHaveAttribute('src','/videos/search-labs/search-labs-'+clips[i]+'-poster.jpg');
+  }
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(players.locator('video[src]')).toHaveCount(0);
+ await page.reload();await expect(players.locator('img')).toHaveCount(5);await expect(players.locator('video[src]')).toHaveCount(0);
+ expect(errors).toEqual([]);
 });
