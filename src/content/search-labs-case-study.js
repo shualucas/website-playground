@@ -11,7 +11,7 @@ export const searchLabsCaseStudy = {
     { value: "+47M", label: "Net-new users" },
     { value: "5M", label: "Daily active users" },
   ],
-  hero: { title: "Search Labs overview", type: "video", loop: true, src: "/videos/search-labs/search-labs-hero-1600.mp4", srcSmall: "/videos/search-labs/search-labs-hero-1280.mp4", poster: "/videos/search-labs/search-labs-hero-poster.jpg" },
+  hero: { title: "Search Labs overview", type: "video", loop: true, src: "/videos/search-labs/search-labs-hero-sync-1600.mp4", srcSmall: "/videos/search-labs/search-labs-hero-sync-1280.mp4", poster: "/videos/search-labs/search-labs-hero-sync-poster.jpg" },
   story: [
     {
       id: "problem", label: "Explorations and the shipped card system",
@@ -31,7 +31,7 @@ export const searchLabsCaseStudy = {
     {
       id: "design-system", label: "Self-serve launches and mobile performance",
       copy: "To stop being a bottleneck, I packaged everything into a self-serve kit (card specs, file size limits, branding requirements) so partner teams could ship new experiments across 120+ countries without custom front-end work every time.",
-      visual: { title: "A self-serve design system", caption: "Design system, asset specs, and branding requirements.", type: "video", loop: true, src: "/videos/search-labs/search-labs-kit-1600.mp4", srcSmall: "/videos/search-labs/search-labs-kit-1280.mp4", poster: "/videos/search-labs/search-labs-kit-poster.jpg" },
+      visual: { title: "A self-serve design system", caption: "Design system, asset specs, and branding requirements.", type: "video", loop: true, src: "/videos/search-labs/search-labs-kit-sync-1600.mp4", srcSmall: "/videos/search-labs/search-labs-kit-sync-1280.mp4", poster: "/videos/search-labs/search-labs-kit-sync-poster.jpg" },
     },
   ],
   results: {

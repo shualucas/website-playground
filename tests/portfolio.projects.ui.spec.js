@@ -752,7 +752,7 @@ test('Search Labs hover shows the initial sizzle poster in both themes with redu
  for(const mode of ['light','dark']){
   if(await page.locator('html').getAttribute('data-color-mode')!==mode)await page.getByRole('button',{name:'Switch to '+mode+' mode'}).click();
   await nav.getByRole('link',{name:/Search Labs/}).hover();const visual=nav.locator('.recent-solid-visual');
-  await expect(visual).toBeVisible();await expect(visual.locator('.loop-video-poster')).toHaveAttribute('src','/videos/search-labs/search-labs-hero-poster.jpg');
+  await expect(visual).toBeVisible();await expect(visual.locator('.loop-video-poster')).toHaveAttribute('src','/videos/search-labs/search-labs-hero-sync-poster.jpg');
   await expect(visual.locator('video')).not.toHaveAttribute('src');await expect(nav.locator('.recent-preview-dither')).toBeHidden();
  }
  expect(requests).toEqual([]);
@@ -763,7 +763,7 @@ test('Search Labs initial sizzle plays through the homepage dither and resets on
  const nav=page.getByRole('navigation',{name:'Recent projects'}),row=nav.getByRole('link',{name:/Search Labs/});
  await expect(nav.locator('video[src]')).toHaveCount(0);await row.hover();
  const video=nav.locator('.loop-video video');
- await expect(video).toHaveAttribute('src','/videos/search-labs/search-labs-hero-1280.mp4');
+ await expect(video).toHaveAttribute('src','/videos/search-labs/search-labs-hero-sync-1280.mp4');
  await expect(video).toHaveAttribute('data-ready','true');await expect.poll(()=>video.evaluate(el=>el.paused)).toBe(false);
  await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');
  expect(await video.evaluate(el=>el.muted&&el.loop&&el.playsInline&&el.duration>19)).toBe(true);
@@ -951,7 +951,7 @@ test('Search Labs motion comps follow the story with responsive playback and red
  await page.goto('/?project=search-labs&view=case-study');
  const players=page.locator('.case-study-hero-figure .loop-video,.case-showcase-story .loop-video');
  await expect(players).toHaveCount(5);
- const clips=['hero','evolution','pivots','toggle-flip','kit'];
+ const clips=['hero-sync','evolution','pivots','toggle-flip','kit-sync'];
  for(const [width,height,size]of [[1440,1000,1600],[390,844,1280]]){
   await page.setViewportSize({width,height});
   for(let i=0;i<clips.length;i++){
