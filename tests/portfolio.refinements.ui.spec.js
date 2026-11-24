@@ -42,3 +42,15 @@ test('light tooltip waits for the completed theme transition then expires',async
  const tip=page.getByRole('tooltip');await expect(page.locator('html')).toHaveClass(/theme-transition/);await expect(tip).toHaveCount(0);
  await expect(page.locator('html')).not.toHaveClass(/theme-transition/);await expect(tip).toBeVisible();await expect(tip).toHaveCount(0,{timeout:4000});
 });
+
+test('theme preference unfolds compactly and remains mounted through its folding exit',async({page},testInfo)=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');await page.getByRole('button',{name:'Switch to light mode'}).click();
+ await expect(page.locator('html')).not.toHaveClass(/theme-transition/);
+ const tip=page.locator('.theme-preference-tip');await expect(tip).toHaveAttribute('data-state','open');
+ await expect(tip).toHaveText('Josh prefers dark theme on this site.');
+ await tip.evaluate(async el=>{await Promise.allSettled(el.getAnimations({subtree:true}).map(a=>a.finished))});
+ const size=await tip.boundingBox();expect(size.height).toBeLessThan(40);expect(size.width).toBeLessThanOrEqual(240);
+ await tip.screenshot({path:testInfo.outputPath('compact-theme-tooltip.png')});
+ await page.keyboard.press('Escape');await expect(tip).toHaveAttribute('data-state','closing');await expect(tip).toHaveAttribute('aria-hidden','true');
+ await expect(page.getByRole('tooltip')).toHaveCount(0);await expect(tip).toHaveCount(0);
+});

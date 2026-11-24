@@ -4,7 +4,12 @@ import { flushSync } from "react-dom";
 export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
   const [localDark, setLocalDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
   const transition = useRef(null),mounted=useRef(true);
-  const [tip,setTip]=useState(false),tipId=useId();
+  const [tip,setTip]=useState(false),[tipPresent,setTipPresent]=useState(false),tipId=useId();
+  useEffect(()=>{
+    if(tip){setTipPresent(true);return}
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches){setTipPresent(false);return}
+    const timer=setTimeout(()=>setTipPresent(false),260);return()=>clearTimeout(timer);
+  },[tip]);
   useEffect(()=>{if(!tip)return;const timer=setTimeout(()=>setTip(false),2200);return()=>clearTimeout(timer)},[tip]);
   useEffect(() => {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content',document.documentElement.dataset.colorMode==='dark'?'#101110':'#f0f0f0');
@@ -41,5 +46,5 @@ export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
     };
     wipe.ready.catch(() => {}); wipe.finished.then(cleanup, cleanup);
   };
-  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} onKeyDown={event=>{if(event.key==='Escape'&&tip){setTip(false);event.stopPropagation()}}} aria-describedby={tip?tipId:undefined} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" />{tip&&!dark&&<span id={tipId} role="tooltip" className="theme-preference-tip">Josh prefers dark theme on this site.</span>}</button>;
+  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} onKeyDown={event=>{if(event.key==='Escape'&&tip){setTip(false);event.stopPropagation()}}} aria-describedby={tip?tipId:undefined} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" />{tipPresent&&!dark&&<span id={tipId} role="tooltip" aria-hidden={!tip} data-state={tip?'open':'closing'} className="theme-preference-tip">{"Josh prefers dark theme on this site.".split(' ').map((word,i)=><React.Fragment key={word}>{i>0&&' '}<span className="theme-tip-word" style={{'--word':i}}>{word}</span></React.Fragment>)}</span>}</button>;
 }
