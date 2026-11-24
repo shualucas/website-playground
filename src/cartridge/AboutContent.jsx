@@ -42,9 +42,9 @@ export function AboutContent({about,children,onBack}) {
       <img className="about-photo" src="/about/joshua-film-portrait.jpg" alt="Joshua standing beneath a canopy of trees, photographed on film" width="848" height="1280"/>
       <div className="about-copy">
         <h1 className="about-title" tabIndex={-1}>A little about me.</h1>
-        <p>I'm Joshua, a product designer who wants to build a future where technology makes the mundane effortless and gives us more time for the things that make life wonderful. I believe technology should enhance the texture of everyday life, not flatten it.</p>
-        <p>Recreationally, I'm a bit all over the place. I love attempting to print with riso, playing tennis at Dolores Park weekly, and spending some time playing my shadow priest or Aurora mid on Summoner's Rift.</p>
-        <p>If you're here just passing by, then thank you for coming to my little corner of the internet.</p>
+        <p>I'm Joshua, a product designer who wants to build a future where technology enhances the texture of everyday life instead of flattening it. My goal is to make the mundane effortless, giving us more time for the things that make life beautiful.</p>
+        <p>Recreationally, I've been enjoying printing riso, playing tennis at the park, and spending time playing my shadow priest or aurora mid on summoner's rift.</p>
+        <p>If you're here just passing by, then thanks for checkin' out my tiny corner of the internet!</p>
         <button className="about-link" type="button" onClick={onBack}>Back to my work</button>
       </div>
     </section>

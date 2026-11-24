@@ -29,7 +29,7 @@ test('about dissolves only the main content and browser Back restores work',asyn
  expect(await page.locator('.collection-header,.collection-footer').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().toJSON()))).toEqual(chrome);
  expect(await page.locator('.about-photo').evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);
  await expect(page.locator('.about-photo')).toHaveAttribute('src','/about/joshua-film-portrait.jpg');
- await expect(page.locator('.about-copy')).toContainText('technology should enhance the texture of everyday life');
+ await expect(page.locator('.about-copy')).toContainText('technology enhances the texture of everyday life');
  await page.goBack();await expect(about).toBeFocused();await expect(page.locator('.recent-projects')).toBeVisible();
  await about.click();await expect(page.locator('.collection-main')).toHaveAttribute('data-dissolving','false');
  await page.getByRole('button',{name:'Back to my work'}).click();await expect(about).toBeFocused();
