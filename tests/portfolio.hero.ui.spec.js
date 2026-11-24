@@ -7,7 +7,8 @@ test('inline hero matches project typography and keeps the default cartridge abo
  const hero=page.locator('.hero-cartridge'),title=page.locator('.intro-title');
  await expect(title).toContainText('Joshua Lucas, product designer');
  await expect(title.locator('.intro-line')).toHaveCount(3);
- await expect(page.locator('.bio-continuation .intro-line')).toHaveText(['AI Mode at Google','Previously, Stadia, Gmail, & Blizzard.']);
+ await expect(title.locator('.role-label')).toHaveText(/product\s*designer\./);
+ await expect(page.locator('.bio-continuation .intro-line')).toHaveText(['AI Mode at Google','Previously Stadia, Gmail, & Blizzard.']);
  await page.evaluate(()=>document.fonts.ready);
  for(const width of [1440,900,390,320]){
   await page.setViewportSize({width,height:900});
@@ -31,7 +32,7 @@ test('project hovers tint only the default dither cartridge with the matching pr
  await expect(hero).toHaveAttribute('data-status','fallback');
  for(const dark of [false,true]){
   if(dark)await page.getByRole('button',{name:'Switch to dark mode'}).click();
-  for(const [id,light,color] of [['ai-mode-nudges','#e761c6','#e347bd'],['search-labs','#d447e0','#cd29db'],['stadia-store-redesign','#e97958','#e5633d'],['rave-flyer-zine','#e9c25b','#e5b840'],['film','#5cac7d','#429f68']]){
+  for(const [id,light,color] of [['ai-mode-nudges','#7e99dd','#6988d8'],['search-labs','#d447e0','#cd29db'],['stadia-store-redesign','#e97958','#e5633d'],['rave-flyer-zine','#e9c25b','#e5b840'],['film','#5cac7d','#429f68']]){
    await page.locator(`[data-project="${id}"] .recent-project-link`).hover();
    await expect(hero).toHaveAttribute('data-cartridge','personal');await expect(hero.locator('.hero-cartridge-fallback')).toHaveCount(0);
    const accent=await nav.evaluate(el=>el.style.getPropertyValue('--preview-accent'));expect(accent).toBe(dark?color:light);

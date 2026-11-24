@@ -50,6 +50,8 @@ export class CaseStudyCartridgeScene {
   private loaded = new Set<THREE.Group>();
   private appearances = new Map<string,Appearance>();
   private appearanceTime = .18;
+  private appearanceDuration = .18;
+  private tintDelay = 0;
   private materializeTime = .7;
   private previewTint:string|null = null;
   private tintColor = new THREE.Color();
@@ -142,7 +144,14 @@ export class CaseStudyCartridgeScene {
         appearance.from=appearance.weight;
         appearance.resolveFrom=appearance.weight>0?appearance.dissolve.resolve.value:0;
       }
-      this.cartridge=cartridge;this.appearanceTime=(initial||this.motion.matches) ? .18 : 0;
+      const exiting=!initial&&cartridge.id==='personal'&&this.cartridge.id!=='personal';
+      if(exiting&&!this.motion.matches&&!this.previewTint){
+        const ink=this.appearances.get(this.cartridge.id)?.dissolve.ink.value;
+        if(ink)this.tintColor.copy(ink);
+        this.tintDelay=.12;
+      }
+      this.appearanceDuration=exiting?.32:.18;
+      this.cartridge=cartridge;this.appearanceTime=(initial||this.motion.matches) ? this.appearanceDuration : 0;
       this.materializeTime=(initial||this.motion.matches||cartridge.id==='personal') ? .7 : 0;
       this.updateAppearance(0);
       if(initial){
@@ -180,16 +189,17 @@ export class CaseStudyCartridgeScene {
     return Math.max(Math.abs(this.tintColor.r-this.tintTarget.r),Math.abs(this.tintColor.g-this.tintTarget.g),Math.abs(this.tintColor.b-this.tintTarget.b))>.001;
   }
   private updateTint(dt:number) {
-    this.tintColor.lerp(this.tintTarget,1-Math.exp(-dt/.085));
+    if(this.tintDelay>0)this.tintDelay=Math.max(0,this.tintDelay-dt);
+    else this.tintColor.lerp(this.tintTarget,1-Math.exp(-dt/.085));
     if(!this.tintMoving())this.tintColor.copy(this.tintTarget);
     const personal=this.appearances.get('personal');
     if(personal)personal.dissolve.ink.value.copy(this.tintColor);
     if(this.cartridge.id==='personal')this.host.dataset.ditherInk=`#${this.tintColor.getHexString()}`;
   }
   private updateAppearance(dt:number) {
-    this.appearanceTime=Math.min(.18,this.appearanceTime+dt);
+    this.appearanceTime=Math.min(this.appearanceDuration,this.appearanceTime+dt);
     this.materializeTime=Math.min(.7,this.materializeTime+dt);
-    const p=this.appearanceTime/.18,ease=p*p*(3-2*p);
+    const p=this.appearanceTime/this.appearanceDuration,ease=p*p*(3-2*p);
     let edge=0;
     // Disjoint ranges of the same Bayer pattern crossfade surfaces without alpha sorting.
     for(const appearance of this.appearances.values()){
@@ -202,6 +212,7 @@ export class CaseStudyCartridgeScene {
         const modelIn=THREE.MathUtils.smoothstep(this.materializeTime,.38,.7);
         dissolve.resolve.value=THREE.MathUtils.lerp(appearance.resolveFrom,0,inkIn)+modelIn;
       }
+      else if(this.cartridge.id==='personal')dissolve.resolve.value=THREE.MathUtils.lerp(appearance.resolveFrom,0,THREE.MathUtils.smoothstep(this.appearanceTime,0,.12));
       model.visible=appearance.weight>0;
       if(model.visible&&model.parent!==this.root){applyCartridgeTheme(model,document.documentElement.dataset.colorMode==='dark');this.root.add(model)}
       else if(!model.visible&&model.parent===this.root)this.root.remove(model);
@@ -222,8 +233,9 @@ export class CaseStudyCartridgeScene {
     this.host.dataset.revealProgress=p.toFixed(4);
     // Hero hover turns always land at the front; project pages retain their ambient rotation.
     const ambientTurn=this.hoverToFront?0:Math.max(0,t-this.entranceDuration)*Math.PI*2/45;
-    this.root.rotation.set(.26+Math.sin(t*.55)*.035+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*.055-this.entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y,-.05+Math.sin(t*.35)*.02);
-    this.root.position.y=Math.sin(t*.7)*.055;
+    const drift=this.hoverToFront?(this.appearances.get('personal')?.weight??0):0;
+    this.root.rotation.set(.26+Math.sin(t*.55)*(.035+.035*drift)+Math.sin(p*Math.PI)*.12+this.spin.x,-.22+Math.sin(t*.4)*(.055+.18*drift)-this.entranceTurn*(1-ease)+ambientTurn+this.turn+this.spin.y,-.05+Math.sin(t*.35)*(.02+.025*drift));
+    this.root.position.y=Math.sin(t*.7)*(.055+.035*drift);
     this.host.dataset.intro=p<1?"spinning":"settled";
     this.host.dataset.float=[this.root.position.y,this.root.rotation.x,this.root.rotation.y,this.root.rotation.z].map(value=>value.toFixed(5)).join(",");
     this.host.dataset.rotation=[this.spin.x,this.spin.y].map(value=>value.toFixed(5)).join(",");
@@ -302,17 +314,17 @@ export class CaseStudyCartridgeScene {
     cancelAnimationFrame(this.frame);this.frame=0;this.last=0;
     if(this.disposed||!this.ready)return;
     if(!this.visible||document.hidden||this.paused)this.cancelDrag();
-    const animate=this.visible&&!document.hidden&&!this.paused&&!this.motion.matches&&(!this.previewTint||this.tintMoving()||this.appearanceTime<.18);
-    this.host.dataset.motion=this.motion.matches?"reduced":animate&&!this.previewTint?"ambient":"idle";
+    const animate=this.visible&&!document.hidden&&!this.paused&&!this.motion.matches;
+    this.host.dataset.motion=this.motion.matches?"reduced":animate?"ambient":"idle";
     if(this.visible&&!document.hidden&&!this.paused)this.draw();
     if(animate)this.frame=requestAnimationFrame(this.tick);
   };
   private tick=(now:number)=>{
     this.frame=0;if(this.disposed)return;
     const dt=this.last?Math.min(.1,(now-this.last)/1000):0;this.last=now;
-    if(!this.drag&&!this.previewTint)this.time+=dt;
+    if(!this.drag)this.time+=dt;
     this.updateAppearance(dt);this.updateTint(dt);
-    if(!this.drag&&!this.previewTint)for(let i=0;i<4;i++){
+    if(!this.drag)for(let i=0;i<4;i++){
       if(this.turnBraking){
         const decay=Math.exp(-24*dt/4);
         this.turn+=this.turnVelocity*(1-decay)/24;this.turnVelocity*=decay;
@@ -324,12 +336,12 @@ export class CaseStudyCartridgeScene {
     }
     if(Math.abs(this.turnTarget-this.turn)<.005&&Math.abs(this.turnVelocity)<.05){this.turn=this.turnTarget;this.turnVelocity=0}
     // Direct manipulation while held; spring settling for keyboard changes.
-    if(!this.drag&&!this.previewTint)for(let i=0;i<4;i++)for(const axis of ["x","y"] as const){
+    if(!this.drag)for(let i=0;i<4;i++)for(const axis of ["x","y"] as const){
       this.spinVelocity[axis]+=((this.targetSpin[axis]-this.spin[axis])*230-this.spinVelocity[axis]*27)*dt/4;
       this.spin[axis]+=this.spinVelocity[axis]*dt/4;
     }
     this.draw();
-    if(!this.previewTint||this.tintMoving()||this.appearanceTime<.18)this.frame=requestAnimationFrame(this.tick);
+    this.frame=requestAnimationFrame(this.tick);
   };
   private contextLost=(event:Event)=>{event.preventDefault();this.dispose();this.callbacks.onError()};
   private disposeModel(root:THREE.Object3D) {

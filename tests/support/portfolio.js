@@ -26,7 +26,7 @@ export { expect, funFacts };
 
 export const names = ["Search", "Stadia", "Gmail", "Blizzard Entertainment"];
 export const dates = ["2022 – now", "2020 – 2022", "2019", "2017"];
-export const body = "AI Mode at Google Previously, Stadia, Gmail, & Blizzard.";
+export const body = "AI Mode at Google Previously Stadia, Gmail, & Blizzard.";
 export async function load(page, path = "/") {
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto(path);
   await expect(page.locator(".collection")).toHaveAttribute("data-status", "ready", { timeout: 60000 });

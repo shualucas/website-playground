@@ -36,11 +36,11 @@ export function RotatingRole({ active = true }) {
   const [first, ...rest] = role.label.split(" ");
   return <span className="role-rotator"
     data-ready={ready} data-phase={leaving ? "leaving" : "visible"} data-role={role.label} data-effect={role.effect} data-paused={!active || !ready || reduced || !visible}>
-    <span className="sr-only">product designer</span>
-    {roles.map((item) => <span className="role-measure" aria-hidden="true" key={item.label}>{item.label}</span>)}
+    <span className="sr-only">product designer.</span>
+    {roles.map((item) => <span className="role-measure" aria-hidden="true" key={item.label}>{item.label}.</span>)}
     <span key={role.label} className={`role-label${leaving ? " is-leaving" : ""}`} aria-hidden="true">
-      <span className={`role-first role-${role.effect}`}><RoleWord word={first} effect={role.effect} /></span>
-      {rest.length > 0 && <span className="role-suffix">{rest.join(" ")}</span>}
+      <span className={`role-first role-${role.effect}`}><RoleWord word={first} effect={role.effect} />{!rest.length&&"."}</span>
+      {rest.length > 0 && <span className="role-suffix">{rest.join(" ")}.</span>}
     </span>
   </span>;
 }

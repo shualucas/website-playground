@@ -44,6 +44,8 @@ test('inline hero swaps all five cartridges with continuous enter spins and exit
  await page.mouse.move(2,2);await expect(stage).toHaveAttribute('data-cartridge','personal');
  await expect(stage).toHaveAttribute('data-appearance-state','settled');await expect(stage).toHaveAttribute('data-turn-state','settled');
  expect(Number((await stage.getAttribute('data-turn')).split(',')[0])).toBeCloseTo(settledAngle,4);
+ const exitInk=await page.evaluate(()=>window.heroSwaps.findLast(swap=>swap.after.id==='personal').after.ink);expect(exitInk).not.toBe('#000000');expect(exitInk).not.toBe('#ffffff');
+ await expect(stage).toHaveAttribute('data-dither-ink','#000000');
  expect(await page.evaluate(()=>window.heroReveals.some(frame=>frame.id==='personal'&&frame.appearance==='fading'&&frame.fade>0&&frame.fade<1))).toBe(true);
  for(const id of ['search','gmail','stadia','blizzard'])await page.locator(`[data-company="${id}"]`).hover();
  await expect(stage).toHaveAttribute('data-cartridge','blizzard');await expect(stage).toHaveAttribute('data-turn-state','spinning');
@@ -60,10 +62,10 @@ test('inline hero swaps all five cartridges with continuous enter spins and exit
  for(const swap of swaps)expect(Math.max(...swap.after.pose.map((value,i)=>Math.abs(value-swap.before.pose[i])))).toBeLessThan(.1);
  const quality=await stage.locator('canvas').evaluate(el=>({ratio:el.width/el.clientWidth,expected:Math.min(devicePixelRatio,1.5),antialias:el.getContext('webgl2').getContextAttributes().antialias}));expect(quality.ratio).toBeCloseTo(quality.expected,1);expect(quality.antialias).toBe(true);expect(await page.evaluate(()=>window.heroReadbacks)).toBe(0);
  await page.locator('.collection-header .theme-toggle').click();await expect(stage).toHaveAttribute('data-shell-theme','dark');expect(await stage.locator('canvas').evaluate(el=>el===window.heroCanvas)).toBe(true);
- await page.locator('[data-project="ai-mode-nudges"] .recent-project-link').hover();await expect(stage).toHaveAttribute('data-motion','idle');
+ await page.locator('[data-project="ai-mode-nudges"] .recent-project-link').hover();await expect(stage).toHaveAttribute('data-motion','ambient');
  await expect(stage).toHaveAttribute('data-cartridge','personal');await expect(stage).toHaveAttribute('data-render-style','dither');
- await expect(stage).toHaveAttribute('data-preview-tint','#e347bd');await expect(stage).toHaveAttribute('data-dither-ink','#e347bd');
- const pose=await stage.getAttribute('data-float');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect(stage).toHaveAttribute('data-float',pose);
+ await expect(stage).toHaveAttribute('data-preview-tint','#6988d8');await expect(stage).toHaveAttribute('data-dither-ink','#6988d8');
+ const pose=await stage.getAttribute('data-float');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect.poll(()=>stage.getAttribute('data-float')).not.toBe(pose);
  await page.mouse.move(2,2);await expect(stage).toHaveAttribute('data-motion','ambient');
  await expect(stage).toHaveAttribute('data-dither-ink','#ffffff');
  await page.emulateMedia({reducedMotion:'reduce'});await page.locator('[data-company="gmail"]').hover();await expect(stage).toHaveAttribute('data-cartridge','gmail');await expect(stage).toHaveAttribute('data-reveal-progress','1.0000');

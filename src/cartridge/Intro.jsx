@@ -9,7 +9,7 @@ const lines=[[
   ...words("AI Mode at ").map(text=>({text})),
   {id:"search",text:"Google"},
 ],[
-  {text:"Previously, "},
+  {text:"Previously "},
   {id:"stadia",text:"Stadia",punctuation:","},
   {id:"gmail",text:"Gmail",punctuation:","},
   {text:"& "},
@@ -30,7 +30,7 @@ export function Intro({active,previewColor,onStatusChange}) {
     <h1 className="intro-title">
       <span className="intro-line intro-identity">
         <span data-reveal-gate className="portfolio-name intro-word" style={delay(0)}><span className="intro-name">Joshua Lucas</span>,</span>{" "}
-        <span data-reveal-gate className="role-entrance intro-word" style={delay(1)}><RotatingRole active={active&&!previewColor}/></span>
+        <span data-reveal-gate className="role-entrance intro-word" style={delay(1)}><RotatingRole active={active}/></span>
       </span>
       <span className="bio-continuation">{lines.map((parts,line)=><React.Fragment key={line}>
         {line>0&&" "}<span className="intro-line">{parts.map((part,index)=><React.Fragment key={index}>

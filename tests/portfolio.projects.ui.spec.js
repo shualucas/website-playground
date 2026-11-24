@@ -613,7 +613,7 @@ test('touch projects expand inline, show full descriptions and navigate only thr
  await page.route('**/api/listening',r=>r.fulfill({status:204}));await page.route('**/api/weather',r=>r.fulfill({status:204}));await disableWebGL(page);
  await page.goto('http://127.0.0.1:3000/');const nav=page.getByRole('navigation',{name:'Recent projects'});await expect(nav).toHaveAttribute('data-preview-mode','inline');
  const ai=nav.getByRole('button',{name:/AI Mode Nudges/});await ai.tap();const preview=page.getByRole('region',{name:'AI Mode Nudges preview'});await expect(preview).toBeVisible();await expect(preview).toContainText('Helping users go from initial search to task completion');await expect(ai).toHaveAttribute('aria-expanded','true');
- const row=await ai.boundingBox(),box=await preview.boundingBox();expect(box.y).toBeGreaterThanOrEqual(row.y+row.height-1);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');
+ const row=await ai.boundingBox(),box=await preview.boundingBox();expect(box.y).toBeGreaterThanOrEqual(row.y+row.height-1);await expect(page).toHaveURL(/\/$/);await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','false');
  await ai.tap();await expect(preview).toHaveCount(0);const labs=nav.getByRole('button',{name:/Search Labs/});await labs.tap();const labsPreview=page.getByRole('region',{name:'Search Labs preview'});await expect(labsPreview).toContainText('Launching AI experiments on Search to 48M+ users');await expect(page.locator('.recent-inline-preview')).toHaveCount(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await labsPreview.getByRole('link',{name:'Open project'}).tap();await expect(page.getByRole('heading',{name:'Search Labs',exact:true})).toBeVisible();await context.close();
 });
@@ -681,9 +681,9 @@ test('all thumbnails fade through dither in matching frames while row numbers st
  await page.emulateMedia({reducedMotion:'reduce'});await links.first().hover();await expect(nav.locator('.recent-preview-dither')).toHaveAttribute('data-state','complete');await expect(nav.locator('.recent-preview-dither')).toBeHidden();
 });
 
-test('browsing projects lets an entering role finish before its rotation pauses',async({page})=>{
+test('browsing projects keeps the rotating role active',async({page})=>{
  await page.goto('/');await expect(page.locator('.role-rotator')).toHaveAttribute('data-ready','true');
- await page.locator('.role-label').evaluate(el=>el.getAnimations().forEach(animation=>animation.currentTime=1));await page.locator('.recent-project-link').first().hover();await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','true');await expect(page.locator('.role-label')).toHaveCSS('opacity','1');await expect(page.locator('.role-label')).toHaveCSS('animation-play-state','running');
+ await page.locator('.role-label').evaluate(el=>el.getAnimations().forEach(animation=>animation.currentTime=1));await page.locator('.recent-project-link').first().hover();await expect(page.locator('.role-rotator')).toHaveAttribute('data-paused','false');await expect(page.locator('.role-label')).toHaveCSS('opacity','1');await expect(page.locator('.role-label')).toHaveCSS('animation-play-state','running');
 });
 
 test('hover previews fit the right column across desktop sizes and Search Labs keeps its magenta hue',async({page})=>{
