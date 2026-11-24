@@ -13,6 +13,8 @@ test('about dissolves only the main content and browser Back restores work',asyn
  const main=page.locator('.collection-main');
  await main.evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=240});
  const middle=await main.evaluate(el=>getComputedStyle(el).maskImage);
+ await page.locator('.about-dither-color').evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=240});
+ await expect(page.locator('.about-dither-color')).toHaveCSS('opacity','1');
  const endpoints=await main.evaluate(el=>{const a=el.getAnimations()[0];return a.effect.getKeyframes().filter((_,i)=>i===0||i===16).map(k=>k.maskImage)});
  expect(endpoints).not.toContain(middle);
  await page.screenshot({path:testInfo.outputPath('about-mid-exit.png')});
@@ -20,11 +22,14 @@ test('about dissolves only the main content and browser Back restores work',asyn
  await expect(main).toHaveAttribute('data-about','true');
  await main.evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=320});
  expect(await main.evaluate(el=>getComputedStyle(el).maskImage)).toBe(middle);
+ await page.locator('.about-dither-color').evaluate(el=>{const a=el.getAnimations()[0];a.pause();a.currentTime=320});
  await page.screenshot({path:testInfo.outputPath('about-mid-enter.png')});
  await main.evaluate(el=>el.getAnimations()[0].finish());
  await expect(page.locator('.collection-main')).toHaveAttribute('data-dissolving','false');
  await expect(page.getByRole('heading',{name:'A little about me.'})).toBeFocused();
  await expect(main).toHaveCSS('mask-image','none');
+ await expect(page.locator('.about-dither-color')).toHaveCSS('opacity','0');
+ await expect(page.getByRole('link',{name:'tennis at the park'})).toHaveAttribute('href','https://www.youtube.com/watch?v=q-cJEEdw39M');
  await expect(page.locator('.recent-projects')).not.toBeVisible();
  expect(await page.locator('.collection-header,.collection-footer').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().toJSON()))).toEqual(chrome);
  expect(await page.locator('.about-photo').evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);

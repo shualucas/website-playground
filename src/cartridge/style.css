@@ -273,3 +273,11 @@
 
 .random-fact .about-inline { display:inline; min-height:0; margin:0; padding:0; font:inherit; color:inherit; }
 .random-fact .about-inline:is(:hover,:focus-visible) { color:var(--ui-text); }
+
+.collection-main { position:relative; isolation:isolate; }
+.about-dither-color { position:absolute; inset:0; z-index:5; pointer-events:none; opacity:0; mix-blend-mode:lighten; background:linear-gradient(110deg,#e5633d 0%,#e5b840 24%,#429f68 46%,#6988d8 68%,#cd29db 90%); }
+.about-inline-link { text-decoration:underline dotted; text-underline-offset:4px; transition:color 160ms ease; }
+.about-inline-link:is(:hover,:focus-visible) { color:var(--ui-text); }
+@media(prefers-reduced-motion:reduce) { .about-dither-color { display:none; } }
+.collection-main[data-dissolving="true"] { background:var(--scene-bg); }
+:root[data-color-mode="dark"] .about-dither-color { mix-blend-mode:darken; }
