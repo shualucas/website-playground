@@ -19,7 +19,7 @@ const factStart=2+lines.flat().length;
 const count=factStart+Math.max(...funFacts.map(fact=>words(fact).length));
 const delay=index=>({"--reveal-delay":`${entrance.introStart+index*entrance.introSpread/(count-1)}ms`});
 
-export function Intro({active,previewColor,onStatusChange}) {
+export function Intro({active,previewColor,onStatusChange,onAbout}) {
   const [fact]=useState(pickFunFact);
   const [hovered,setHovered]=useState(null),[focused,setFocused]=useState(null),[pinned,setPinned]=useState(null);
   const pointer=useRef("mouse");
@@ -45,5 +45,6 @@ export function Intro({active,previewColor,onStatusChange}) {
       </React.Fragment>)}</span></React.Fragment>)}</span>
     </h1>
     <p className="random-fact">{words(fact).map((word,index)=><React.Fragment key={index}><span data-reveal-gate className="intro-word" style={delay(factStart+index)}>{word.trimEnd()}</span>{word.slice(word.trimEnd().length)}</React.Fragment>)}</p>
+    <button type="button" className="about-link about-return-anchor" onClick={onAbout}>About me</button>
   </div>;
 }

@@ -293,7 +293,7 @@ export class CaseStudyCartridgeScene {
     this.tintTarget.set(this.previewTint||(dark?'#ffffff':'#000000'));
     if(!this.ready||this.motion.matches)this.tintColor.copy(this.tintTarget);
     applyCartridgeTheme(this.root,dark);this.host.dataset.shellTheme=dark?"dark":"light";
-    this.background.set(dark?"#101110":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
+    this.background.set(dark?"#0b0c0b":"#f0f0f0");this.shadow.opacity=dark?.16:.085;
     if(this.transparentBackground)this.renderer.setClearColor(this.background,0);
     for(const {cartridge,dissolve} of this.appearances.values()){
       const monochrome=cartridge.id==='personal';

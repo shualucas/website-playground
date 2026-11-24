@@ -7,6 +7,7 @@ import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/cormorant-garamond/latin-400-italic.css";
 import { portfolioProjects } from "./projects";
 import { Intro } from "./Intro";
+import { AboutContent } from "./AboutContent";
 import { PortfolioFooter } from "./PortfolioFooter";
 import { CaseStudy } from "../CaseStudy";
 import { useContentReveal } from "../useContentReveal";
@@ -31,7 +32,13 @@ function App() {
   useDitherHovers();
   const content=useRef(null),restoreFocus=useRef(null);
   const pageExit=usePageExit(content);
-  const [status,setStatus]=useState("loading"),[reading,setReading]=useState(readRoute),[previewingProject,setPreviewingProject]=useState(null);
+  const [status,setStatus]=useState(()=>new URL(location.href).searchParams.get("view")==="about"?"ready":"loading"),[reading,setReading]=useState(readRoute),[previewingProject,setPreviewingProject]=useState(null);
+  const [about,setAbout]=useState(()=>new URL(location.href).searchParams.get('view')==='about');
+  const showAbout=next=>{
+    const url=new URL(location.href);url.searchParams.delete('project');
+    if(next)url.searchParams.set('view','about');else url.searchParams.delete('view');
+    history.pushState({about:next},'',url);setAbout(next);setPreviewingProject(null);
+  };
   const readingRef=useRef(reading),previousReading=useRef(reading);readingRef.current=reading;
   const [dark,setDark]=useState(()=>{try{return localStorage.getItem("cartridge-color-mode")!=="light"}catch{return true}});
   useContentReveal(content,status+":"+(reading||""));
@@ -53,7 +60,7 @@ function App() {
   const closeRef=useRef(close);closeRef.current=close;
   useEffect(()=>{
     if(!readingRef.current){const url=new URL(location.href);url.searchParams.delete("project");history.replaceState(history.state,"",url)}
-    const pop=()=>{pageExit.cancel();setReading(readRoute())};
+    const pop=()=>{pageExit.cancel();setReading(readRoute());setAbout(new URL(location.href).searchParams.get('view')==='about');setPreviewingProject(null)};
     const keyboard=event=>{
       if(event.defaultPrevented||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.metaKey||event.ctrlKey||event.altKey)return;
       if(event.key==="Escape"){
@@ -76,12 +83,12 @@ function App() {
   return <>
     <main ref={content} onClick={pageExit.onLinkClick} className="collection" data-hero="inline" data-reveal-flow="page" data-status={status} data-presented="true" data-project-browsing={Boolean(previewingProject)} data-exiting={pageExit.exiting} inert={reading||pageExit.exiting?true:undefined}>
       <header className="collection-header"><LocationMeta/><ThemeToggle data-reveal dark={dark} onToggle={setDark}/></header>
-      <div className="collection-main">
+      <AboutContent about={about} onBack={()=>showAbout(false)}>
       <section className="collection-hero" aria-label="Introduction and career cartridges">
-        <Intro active={!reading&&!pageExit.exiting} previewColor={previewingProject?.color} onStatusChange={setStatus}/>
+        <Intro active={!about&&!reading&&!pageExit.exiting} previewColor={previewingProject?.color} onStatusChange={setStatus} onAbout={()=>showAbout(true)}/>
       </section>
       <RecentProjects onPreviewChange={setPreviewingProject} onOpen={open} dark={dark} ready={status==="ready"} hidden={Boolean(reading)} exiting={pageExit.exiting}/>
-      </div>
+      </AboutContent>
       {!reading&&<PortfolioFooter dismissHistory={Boolean(previewingProject)}/>}
     </main>
     {project&&<CaseStudy project={project} onBack={close} Media={ProjectMedia} backLabel="Home" identity="" dark={dark} onToggleTheme={setDark} footer={<PortfolioFooter/>}/>}

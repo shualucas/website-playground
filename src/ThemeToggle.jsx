@@ -1,20 +1,12 @@
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
   const [localDark, setLocalDark] = useState(() => document.documentElement.dataset.colorMode === "dark");
-  const transition = useRef(null),mounted=useRef(true);
-  const [tip,setTip]=useState(false),[tipPresent,setTipPresent]=useState(false),tipId=useId();
-  useEffect(()=>{
-    if(tip){setTipPresent(true);return}
-    if(matchMedia('(prefers-reduced-motion: reduce)').matches){setTipPresent(false);return}
-    const timer=setTimeout(()=>setTipPresent(false),260);return()=>clearTimeout(timer);
-  },[tip]);
-  useEffect(()=>{if(!tip)return;const timer=setTimeout(()=>setTip(false),2200);return()=>clearTimeout(timer)},[tip]);
+  const transition = useRef(null);
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',document.documentElement.dataset.colorMode==='dark'?'#101110':'#f0f0f0');
-    mounted.current=true;
-    return () => {mounted.current=false;transition.current?.skipTransition()};
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',document.documentElement.dataset.colorMode==='dark'?'#0b0c0b':'#f0f0f0');
+    return () => {transition.current?.skipTransition()};
   }, []);
   const dark = controlledDark ?? localDark;
   const toggle = event => {
@@ -22,13 +14,12 @@ export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
     const next = !dark, root = document.documentElement;
     const update = () => {
       root.dataset.colorMode = next ? "dark" : "light";
-      setTip(false);
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#101110" : "#f0f0f0");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#0b0c0b" : "#f0f0f0");
       try { localStorage.setItem("cartridge-color-mode", next ? "dark" : "light"); } catch {}
       if (onToggle) onToggle(next); else setLocalDark(next);
     };
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    if (!document.startViewTransition || motion.matches) { update(); setTip(!next); return; }
+    if (!document.startViewTransition || motion.matches) { update(); return; }
     // Capture both themes once, then reveal the new page from the dot's center.
     const box = event.currentTarget.getBoundingClientRect(), x = box.left + box.width / 2, y = box.top + box.height / 2;
     root.style.setProperty('--theme-origin-x', `${x}px`); root.style.setProperty('--theme-origin-y', `${y}px`);
@@ -39,12 +30,11 @@ export function ThemeToggle({ dark:controlledDark, onToggle, ...props }) {
     const settle = () => wipe.skipTransition(), reduce = () => { if (motion.matches) settle(); };
     motion.addEventListener('change', reduce); window.addEventListener('resize', settle);
     const cleanup = () => {
-      if(mounted.current&&!next&&root.dataset.colorMode==='light')setTip(true);
       transition.current = null; root.classList.remove('theme-transition');
       for (const property of ['--theme-origin-x','--theme-origin-y','--theme-radius']) root.style.removeProperty(property);
       motion.removeEventListener('change', reduce); window.removeEventListener('resize', settle);
     };
     wipe.ready.catch(() => {}); wipe.finished.then(cleanup, cleanup);
   };
-  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} onKeyDown={event=>{if(event.key==='Escape'&&tip){setTip(false);event.stopPropagation()}}} aria-describedby={tip?tipId:undefined} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" />{tipPresent&&!dark&&<span id={tipId} role="tooltip" aria-hidden={!tip} data-state={tip?'open':'closing'} className="theme-preference-tip">{"Josh prefers dark theme on this site.".split(' ').map((word,i)=><React.Fragment key={word}>{i>0&&' '}<span className="theme-tip-word" style={{'--word':i}}>{word}</span></React.Fragment>)}</span>}</button>;
+  return <button {...props} className="tool-button theme-toggle" type="button" onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}><span className="theme-dot" aria-hidden="true" /></button>;
 }
