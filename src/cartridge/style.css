@@ -256,17 +256,20 @@
 .collection[data-hero="inline"] > .collection-footer { flex:0 0 auto; margin-top:auto; }
 .recent-projects h2 { font:400 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; letter-spacing:normal; color:var(--copy-muted); }
 
-.collection-main { display:grid; align-content:center; }
-.home-content,.about-content { grid-area:1 / 1; }
+.collection-main { display:grid; grid-template-columns:minmax(0,1fr); align-content:center; }
+.home-content,.about-content { grid-area:1 / 1; align-self:center; }
 .home-content { width:100%; }
 .home-content[hidden] { display:block; visibility:hidden; pointer-events:none; }
-.about-content[hidden] { display:grid; visibility:hidden; pointer-events:none; }
+.about-content[hidden] { display:none; }
 .about-link { display:inline-flex; align-items:center; min-height:44px; padding:0; margin-top:8px; color:var(--copy-muted); font:400 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; text-decoration:underline dotted; text-underline-offset:4px; text-decoration-thickness:1px; transition:color 160ms ease; }
 .about-link:is(:hover,:focus-visible) { color:var(--ui-text); }
 .about-content { display:grid; grid-template-columns:minmax(0,280px) minmax(0,380px); align-items:center; gap:48px; width:100%; max-width:calc(772px + var(--hero-gap)); margin-inline:auto; padding-block:20px; }
-.about-photo { display:block; width:100%; height:auto; aspect-ratio:4/5; object-fit:cover; border-radius:5px; }
+.about-photo { display:block; width:100%; height:auto; aspect-ratio:848/1280; object-fit:cover; border-radius:5px; }
 .about-copy { color:var(--copy-muted); font:400 var(--project-type)/1.6 "DM Sans",Arial,sans-serif; }
 .about-title { margin:0 0 20px; color:var(--ui-text); font:inherit; }
 .about-title:focus { outline:none; }
 .about-copy p { margin:0 0 16px; }
-@media(max-width:640px) { .about-content { grid-template-columns:1fr; gap:24px; max-width:420px; } .about-photo { max-width:240px; aspect-ratio:1; } }
+@media(max-width:640px) { .about-content { grid-template-columns:1fr; gap:24px; max-width:420px; } .about-photo { max-width:240px; } }
+
+.random-fact .about-inline { display:inline; min-height:0; margin:0; padding:0; font:inherit; color:inherit; }
+.random-fact .about-inline:is(:hover,:focus-visible) { color:var(--ui-text); }

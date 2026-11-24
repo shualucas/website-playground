@@ -44,7 +44,10 @@ export function Intro({active,previewColor,onStatusChange,onAbout}) {
         </>:part.text.trimEnd()}</span>{part.id&&part.punctuation!=="."?" ":part.text.slice(part.text.trimEnd().length)}
       </React.Fragment>)}</span></React.Fragment>)}</span>
     </h1>
-    <p className="random-fact">{words(fact).map((word,index)=><React.Fragment key={index}><span data-reveal-gate className="intro-word" style={delay(factStart+index)}>{word.trimEnd()}</span>{word.slice(word.trimEnd().length)}</React.Fragment>)}</p>
-    <button type="button" className="about-link about-return-anchor" onClick={onAbout}>About me</button>
+    <p className="random-fact">
+      {words("A fun fact ").map((word,index)=><React.Fragment key={index}><span data-reveal-gate className="intro-word" style={delay(factStart+index)}>{word.trimEnd()}</span>{" "}</React.Fragment>)}
+      <span data-reveal-gate className="intro-word" style={delay(factStart+3)}><button type="button" className="about-link about-inline about-return-anchor" onClick={onAbout}>about me</button>:</span>{" "}
+      {words(fact.split("about me: ")[1]).map((word,index)=><React.Fragment key={index}><span data-reveal-gate className="intro-word" style={delay(factStart+5+index)}>{word.trimEnd()}</span>{word.slice(word.trimEnd().length)}</React.Fragment>)}
+    </p>
   </div>;
 }

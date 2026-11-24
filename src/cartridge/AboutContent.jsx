@@ -17,8 +17,10 @@ export function AboutContent({about,children,onBack}) {
     let cancelled=false,animation;
     const dissolve=async entering=>{
       if(motion.matches)return;
-      const frames=(entering?masks:[...masks].reverse()).map(maskImage=>({maskImage,webkitMaskImage:maskImage}));
-      animation=node.animate(frames,{duration:entering?480:320,easing:'steps(1,end)',fill:'forwards'});
+      const frames=(entering?masks:[...masks].reverse()).map(maskImage=>({maskImage,webkitMaskImage:maskImage,easing:'steps(1,end)'}));
+      const previous=animation;
+      animation=node.animate(frames,{duration:entering?640:480,easing:'linear',fill:'forwards'});
+      previous?.cancel();
       await animation.finished.catch(()=>{});
     };
     const change=async()=>{
@@ -37,11 +39,12 @@ export function AboutContent({about,children,onBack}) {
   return <div ref={host} className="collection-main" data-about={displayed} data-dissolving={busy} inert={busy?true:undefined}>
     <div className="home-content" hidden={displayed}>{children}</div>
     <section className="about-content" hidden={!displayed} aria-label="About Josh">
-      <img className="about-photo" src="/photos/park-break.jpg" alt="A quiet afternoon in a coastal park, photographed on film" width="848" height="1280"/>
+      <img className="about-photo" src="/about/joshua-film-portrait.jpg" alt="Joshua standing beneath a canopy of trees, photographed on film" width="848" height="1280"/>
       <div className="about-copy">
         <h1 className="about-title" tabIndex={-1}>A little about me.</h1>
-        <p>I’m Joshua Lucas, a designer based in California, building things on Google Search. Previously, I worked on Gmail, Stadia, and Heroes of the Storm and StarCraft at Blizzard.</p>
-        <p>I care about making useful, intuitive experiences at scale. Outside of work, I shoot film, make zines, and listen to a lot of Above &amp; Beyond. I also owe a huge amount of my career to World of Warcraft.</p>
+        <p>I'm Joshua, a product designer who wants to build a future where technology makes the mundane effortless and gives us more time for the things that make life wonderful. I believe technology should enhance the texture of everyday life, not flatten it.</p>
+        <p>Recreationally, I'm a bit all over the place. I love attempting to print with riso, playing tennis at Dolores Park weekly, and spending some time playing my shadow priest or Aurora mid on Summoner's Rift.</p>
+        <p>If you're here just passing by, then thank you for coming to my little corner of the internet.</p>
         <button className="about-link" type="button" onClick={onBack}>Back to my work</button>
       </div>
     </section>
