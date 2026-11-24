@@ -286,3 +286,5 @@
 @media(prefers-reduced-motion:reduce) { .hero-cartridge .hero-dither-fallback { animation:none !important; } }
 .recent-projects { transition:opacity 180ms ease; }
 .home-content:has(.collection-intro[data-about-spotlight="true"]) .recent-projects { opacity:.3; }
+.collection[data-project-browsing="true"] .intro-title,.collection[data-project-browsing="true"] .random-fact > .intro-word { opacity:.3; }
+.collection[data-project-browsing="true"] .about-fact-colon { opacity:1; }
