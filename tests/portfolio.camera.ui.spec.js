@@ -22,7 +22,8 @@ test("camera click uses a single flash, with an accessible fallback and mobile d
     }).observe(document,{childList:true,subtree:true});
   });
   await page.goto("/"); await expect(page.locator(".collection")).toHaveAttribute("data-presented", "true", { timeout: 15000 });
-  await page.getByRole("link", { name: /Explore film photographs/ }).click();
+  await page.getByRole("button", { name: /Explore film photographs/ }).click();
+  await page.getByRole("region", {name:"Say cheese! preview"}).getByRole("link",{name:"Open project"}).click();
   await expect(page).toHaveURL(/\/photos\/$/);
   expect(await page.evaluate(() => sessionStorage.getItem('camera-flash-tested'))).toBe('yes');
   await expect(page.locator("html")).toHaveAttribute("data-camera-entry", "true");
@@ -68,6 +69,7 @@ test('film photos retain original proportions on small screens and open by keybo
   for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);if(width!==320){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:testInfo.outputPath(`film-spread-${width}.png`)})}
   }
+  if(await page.locator('html').getAttribute('data-color-mode')==='dark')await page.getByRole('button',{name:'Switch to light mode'}).click();
   await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');
 });
 
@@ -78,4 +80,24 @@ test('changing size or motion preferences during the envelope reveal settles wit
     if(change==='resize')await page.setViewportSize({width:900,height:700});else await page.emulateMedia({reducedMotion:'reduce'});
     await expect(page.locator('.photos-page')).toHaveAttribute('data-envelope-state','open');await expect(page.locator('.film-envelope-stage')).toHaveCount(0);await expect(page.locator('.photo-spread')).toHaveAttribute('aria-hidden','false');expect(await page.locator('.photo-spread').evaluate(el=>el.getAnimations({subtree:true}).length)).toBe(0);
   }
+});
+
+test('padded photo mailer accepts dragged and keyboard stickers without opening',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/photos/');
+ const envelope=page.getByRole('button',{name:/Open \d+ film photographs/});await expect(envelope).toBeVisible();
+ const sticker=page.getByRole('button',{name:'Place 35 mm film sticker'}),a=await sticker.boundingBox(),b=await envelope.boundingBox();
+ await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width*.7,b.y+b.height*.4,{steps:8});await page.mouse.up();
+ await expect(page.locator('.parcel-sticker-placed')).toHaveCount(1);await expect(sticker).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.photos-page')).toHaveAttribute('data-envelope-state','closed');
+ const second=page.getByRole('button',{name:'Place California sunshine sticker'});await second.focus();await page.keyboard.press('Enter');
+ await expect(page.locator('.parcel-sticker-placed')).toHaveCount(2);await expect(page.locator('.parcel-sticker-ghost')).toHaveCount(0);
+ await envelope.click();await expect(page.locator('.photos-page')).toHaveAttribute('data-envelope-state','open');await expect(page.locator('.parcel-sticker-tray')).toHaveCount(0);
+});
+
+test('photo mailer stickers are tappable and fit a mobile viewport',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/photos/');
+ await page.getByRole('button',{name:'Place Keep the good ones sticker'}).click();await expect(page.locator('.parcel-sticker-placed')).toHaveCount(1);
+ const box=await page.locator('.parcel-sticker-tray').boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(390);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.getByRole('button',{name:/Open \d+ film photographs/}).click();await expect(page.getByRole('region',{name:'Film photograph collection'})).toBeVisible();
 });

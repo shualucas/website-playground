@@ -2,6 +2,7 @@ import React,{useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import '@fontsource/dm-sans/latin-400.css';
 import '@fontsource/dm-sans/latin-500.css';
+import '@fontsource/dm-sans/latin-700.css';
 import '../site.css';
 import '../after-hours/style.css';
 import './style.css';
@@ -11,6 +12,7 @@ import {ThemeToggle} from '../ThemeToggle';
 import {useDitherHovers} from '../useDitherHovers';
 import {filmPhotos} from '../content/film-photos';
 import {FloatingEnvelope} from './FloatingEnvelope';
+import {ParcelStickers,StickerArt,parcelStickers} from './ParcelStickers';
 
 const placeholders=Array.from({length:6},(_,index)=>({id:`placeholder-${index}`,alt:'Film photograph placeholder',placeholder:true}));
 const frames=filmPhotos.length?filmPhotos:placeholders;
@@ -19,6 +21,8 @@ function Photos(){
   useDitherHovers();
   const page=useRef(null),spread=useRef(null),stage=useRef(null),envelope=useRef(null),motion=useRef(null);
   const entry=useRef(window.__cameraEntry||null);
+  const [placed,setPlaced]=useState({});
+  const placeSticker=(sticker,position)=>setPlaced(current=>({...current,[sticker.id]:position}));
   const [phase,setPhase]=useState('closed'),[captionVisible,setCaptionVisible]=useState(Boolean(entry.current));
   const exit=usePageExit(page);
   useContentReveal(page,'photos-envelope');
@@ -42,7 +46,7 @@ function Photos(){
     motion.current?.setActive(false);
     const preference=matchMedia('(prefers-reduced-motion: reduce)');
     if(preference.matches){setPhase('open');return;}
-    const source=envelope.current.getBoundingClientRect(),x=source.left+source.width/2,y=source.top+source.height*.2;
+    const source=envelope.current.getBoundingClientRect(),x=source.right-source.width*.08,y=source.top+source.height*.5;
     const animations=[...spread.current.querySelectorAll('.polaroid')].map((card,index)=>{
       const rect=card.getBoundingClientRect(),dx=x-rect.left-rect.width/2,dy=y-rect.top-rect.height/2,angle=angles[index%angles.length];
       return card.animate([
@@ -73,10 +77,15 @@ function Photos(){
         <button ref={envelope} type="button" className="film-envelope" aria-label={`Open ${frames.length} film photographs`} aria-expanded={phase!=='closed'} aria-controls="film-prints" disabled={phase==='opening'} onClick={()=>setPhase('opening')}>
           <span className="film-envelope-back" aria-hidden="true"/>
           <span className="film-envelope-print-stack" aria-hidden="true"/>
-          <span className="film-envelope-front" aria-hidden="true"><span className="envelope-wordmark">JOSH LUCAS<span>FILM ARCHIVE</span></span><span className="envelope-stamp">{String(frames.length).padStart(2,'0')}<span>PRINTS</span></span><span className="envelope-serial">SCAN / KEEP / REPEAT <i/></span></span>
+          <span className="film-envelope-front" aria-hidden="true">
+            <span className="envelope-wordmark">say cheese!</span>
+            <span className="envelope-postmark"><span>35 MM · FILM ARCHIVE</span><span>{frames.length} little moments, kept.</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M12 3v18M3 12h18M6 6l12 12M6 18 18 6"/></svg></span>
+            {parcelStickers.filter(sticker=>placed[sticker.id]).map(sticker=><span key={sticker.id} className="parcel-sticker-placed" style={{left:placed[sticker.id].x+'%',top:placed[sticker.id].y+'%','--sticker-angle':sticker.angle+'deg'}}><StickerArt sticker={sticker}/></span>)}
+          </span>
           <span className="film-envelope-flap" aria-hidden="true"/>
         </button>
       </div>
+      <ParcelStickers envelope={envelope} placed={placed} onPlace={placeSticker} disabled={phase!=='closed'}/>
     </div>}
     <div ref={spread} id="film-prints" className="photo-spread" role="region" tabIndex={-1} aria-label="Film photograph collection" aria-hidden={phase!=='open'} inert={phase!=='open'}>{frames.map((photo,index)=><div key={photo.id||photo.src} className="photo-slot"><figure className="polaroid" style={{'--photo-angle':`${angles[index%angles.length]}deg`}}>
       {photo.placeholder?<div className={`polaroid-image photo-placeholder photo-placeholder-${index%3}`} role="img" aria-label={photo.alt}><span>photo coming soon</span></div>:<img className="polaroid-image" src={photo.src} alt={photo.alt} width={photo.width} height={photo.height} loading={index<6?'eager':'lazy'} decoding="async"/>}
