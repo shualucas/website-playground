@@ -45,7 +45,7 @@ export function AboutContent({about,children,onBack}) {
       <div className="about-copy">
         <h1 className="about-title" tabIndex={-1}>A little about me.</h1>
         <p>I'm Joshua, a product designer who wants to build a future where technology enhances the texture of everyday life instead of flattening it. My goal is to make the mundane effortless, giving us more time for the things that make life beautiful.</p>
-        <p>Recreationally, I've been enjoying printing riso, playing <a className="about-inline-link" href="https://www.youtube.com/watch?v=q-cJEEdw39M" target="_blank" rel="noopener noreferrer">tennis at the park</a>, and spending time playing my shadow priest or aurora mid on summoner's rift.</p>
+        <p>Recreationally, I've been enjoying printing riso, playing <a className="about-inline-link" href="https://www.youtube.com/watch?v=q-cJEEdw39M" target="_blank" rel="noopener noreferrer">tennis at the park</a>, leveling my shadow priest on azeroth or grinding summoner's rift</p>
         <p>If you're here just passing by, then thanks for checkin' out my tiny corner of the internet!</p>
         <button className="about-link" type="button" onClick={onBack}>Back to my work</button>
       </div>
