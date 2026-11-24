@@ -1,0 +1,21 @@
+import {test,expect} from './support/portfolio.js';
+test.use({webgl:false});
+test('song copy slides behind a stationary album while the covers exchange dither pixels',async({page},testInfo)=>{
+ await page.clock.install();await page.emulateMedia({reducedMotion:'no-preference'});
+ let track={title:'First song',artist:'First artist',url:'https://www.last.fm/music/first',artwork:'/cartridges/labels/search-tonal.svg',playing:true};
+ await page.route('**/api/listening',r=>r.fulfill({json:{track,recent:[]}}));await page.goto('/');
+ const link=page.locator('.now-playing'),album=link.locator('.listening-album-stack');await expect(link).toHaveAttribute('data-track','First song');await link.scrollIntoViewIfNeeded();await page.clock.fastForward(5000);await expect(page.locator('.listening-current')).toHaveAttribute('data-reveal-state','visible');await page.locator('.listening-current').evaluate(el=>el.getAnimations().forEach(a=>a.finish()));
+ const before=await album.boundingBox();await expect(album).toHaveAttribute('data-dissolving','false');
+ track={...track,title:'Second song',artist:'Second artist',url:'https://www.last.fm/music/second',artwork:'/cartridges/labels/stadia-label.jpg'};
+ await page.clock.fastForward(20001);await expect(link).toHaveAttribute('data-track','Second song');await expect(album).toHaveAttribute('data-dissolving','true');
+ await expect(album.locator('.album-outgoing img')).toHaveAttribute('src','/cartridges/labels/search-tonal.svg');await expect(album.locator('.album-incoming img')).toHaveAttribute('src','/cartridges/labels/stadia-label.jpg');
+ await expect(album.locator('.album-incoming')).toHaveCSS('animation-name','album-dither');await expect(link.locator('.listening-text-stack')).toHaveCSS('overflow-x','hidden');
+ const mask=await album.locator('.album-incoming').evaluate(el=>getComputedStyle(el).maskImage);expect(mask).not.toBe('none');
+ await album.locator('.album-incoming,.album-outgoing').evaluateAll(els=>els.forEach(el=>el.getAnimations().forEach(a=>{a.pause();a.currentTime=340})));await page.clock.runFor(340);expect(await album.boundingBox()).toEqual(before);expect(await album.locator('.album-incoming').evaluate(el=>getComputedStyle(el).maskImage)).not.toBe(mask);
+ await page.locator('.listening-widget').screenshot({path:testInfo.outputPath('album-mid-dither.png')});
+ await page.clock.fastForward(400);await expect(album.locator('.album-outgoing')).toHaveCount(0);await expect(album).toHaveAttribute('data-dissolving','false');
+ await page.clock.fastForward(1000);await expect(link.locator('.listening-text-stack > .now-playing-track .now-playing-title')).toHaveText('Second song');await expect(link.locator('.listening-text-stack > .now-playing-track .now-playing-artist')).toHaveText('Second artist');
+ await page.clock.fastForward(20001);await expect(album).toHaveAttribute('data-dissolving','false');
+ track={...track,artwork:'/cartridges/labels/search-tonal.svg'};await page.clock.fastForward(20001);await expect(album.locator('img')).toHaveAttribute('src',track.artwork);await expect(album).toHaveAttribute('data-dissolving','false');
+ await page.emulateMedia({reducedMotion:'reduce'});track={...track,title:'Third song'};await page.clock.fastForward(20001);await expect(link).toHaveAttribute('data-track','Third song');await expect(album.locator('.album-outgoing')).toHaveCount(0);await expect(album.locator('.album-incoming')).toHaveCount(0);
+});

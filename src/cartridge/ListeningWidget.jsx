@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useListening } from "./useListening";
 import { entrance } from "./entrance";
 import "./listening.css";
@@ -13,43 +13,63 @@ function TrackArtwork({ track, className = "" }) {
   </span>;
 }
 
-function TrackView({ track, playing, label, emptyTitle, announcement, entering = false }) {
-  return <span className={`now-playing-track${entering ? " is-entering" : ""}`}>
-    <TrackArtwork track={track} />
-    <span className="now-playing-copy">
-      <span className="listening-status sr-only">{label}</span>
-      <span className="now-playing-title">{announcement || track?.title || emptyTitle}</span>
-      {track && !announcement && <span className="now-playing-artist">{track.artist}</span>}
-    </span>
-  </span>;
+const ranks=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+const albumMasks=Object.fromEntries(Array.from({length:9},(_,step)=>{
+  const mask=inverse=>{
+    const cells=ranks.map((rank,i)=>(inverse?rank>=step*2:rank<step*2)?`<rect x="${i%4*2}" y="${Math.floor(i/4)*2}" width="2" height="2" fill="white"/>`:'').join('');
+    return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">${cells}</svg>`)}")`;
+  };
+  return [[`--album-mask-${step}`,mask(false)],[`--album-out-mask-${step}`,mask(true)]];
+}).flat());
+
+function TrackView({track,label,emptyTitle,announcement,entering=false}){
+ return <span className={`now-playing-track${entering?' is-entering':''}`}>
+  <span className="now-playing-copy"><span className="listening-status sr-only">{label}</span>
+   <span className="now-playing-title">{announcement||track?.title||emptyTitle}</span>
+   {track&&!announcement&&<span className="now-playing-artist">{track.artist}</span>}
+  </span>
+ </span>;
 }
-
-function TrackTransition(view) {
-  const identity = view.track ? JSON.stringify([view.track.title, view.track.artist, view.track.url]) : "";
-  const previous = useRef(null);
-  const [announcement,setAnnouncement]=useState(null);
-
-  const [outgoing, setOutgoing] = useState(null);
-  useLayoutEffect(() => {
-    const old = previous.current;
-    if(old?.track&&old.identity!==identity&&view.track){
-      setAnnouncement(["Now playing","Now scrobbling","Now jammin"][Math.floor(Math.random()*3)]);
-      const timer=setTimeout(()=>setAnnouncement(null),1600);
-      return()=>clearTimeout(timer);
-    }
-  },[identity]);
-  useLayoutEffect(() => {
-    const old = previous.current;
-    if (!old?.track || old.identity === identity || !view.track || matchMedia("(prefers-reduced-motion: reduce)").matches) { setOutgoing(null); return; }
-    setOutgoing(old);
-    const timer = setTimeout(() => setOutgoing(null), 400);
-    return () => clearTimeout(timer);
-  }, [identity]);
-  useLayoutEffect(() => { previous.current = { ...view, identity }; });
-  return <span className="now-playing-transition" data-changing={Boolean(outgoing)}>
-    <TrackView key={identity} {...view} announcement={announcement} entering={Boolean(outgoing)} />
-    {outgoing && <span className="now-playing-outgoing" aria-hidden="true"><TrackView {...outgoing} /></span>}
-  </span>;
+function TrackCopy(view){
+ const identity=JSON.stringify([view.track?.title,view.track?.artist,view.announcement]);
+ const previous=useRef(null),[outgoing,setOutgoing]=useState(null);
+ useLayoutEffect(()=>{
+  const old=previous.current;
+  if(!old?.track||!view.track||old.identity===identity||matchMedia('(prefers-reduced-motion: reduce)').matches){setOutgoing(null);return}
+  setOutgoing(old);const timer=setTimeout(()=>setOutgoing(null),400);return()=>clearTimeout(timer);
+ },[identity]);
+ useLayoutEffect(()=>{previous.current={...view,identity}});
+ return <span className="listening-text-stack"><TrackView key={identity} {...view} entering={Boolean(outgoing)}/>
+  {outgoing&&<span className="now-playing-outgoing" aria-hidden="true"><TrackView {...outgoing}/></span>}
+ </span>;
+}
+function TrackTransition(view){
+ const identity=view.track?JSON.stringify([view.track.title,view.track.artist,view.track.url]):'';
+ const previous=useRef(null),[announcement,setAnnouncement]=useState(null),[oldArt,setOldArt]=useState(null),[displayedArt,setDisplayedArt]=useState(view.track);
+ const phrase=useMemo(()=>['Now playing','Now scrobbling','Now jammin'][Math.floor(Math.random()*3)],[identity]);
+ const changing=Boolean(previous.current?.track&&previous.current.identity!==identity&&view.track);
+ useLayoutEffect(()=>{
+  const old=previous.current;
+  if(!old?.track||old.identity===identity||!view.track){setAnnouncement(null);return}
+  setAnnouncement(phrase);
+  const timer=setTimeout(()=>setAnnouncement(null),1600);return()=>clearTimeout(timer);
+ },[identity]);
+ useLayoutEffect(()=>{
+  const old=previous.current;
+  if(!old?.track||old.identity===identity||!view.track||matchMedia('(prefers-reduced-motion: reduce)').matches){setOldArt(null);setDisplayedArt(view.track);return}
+  let alive=true,started=false,timer;const image=new Image();
+  const start=()=>{if(!alive||started)return;started=true;setOldArt(displayedArt);setDisplayedArt(view.track);timer=setTimeout(()=>setOldArt(null),720)};
+  if(view.track.artwork){image.onload=image.onerror=start;image.src=view.track.artwork}else start();
+  return()=>{alive=false;image.onload=image.onerror=null;clearTimeout(timer)};
+ },[identity,view.track?.artwork]);
+ useLayoutEffect(()=>{previous.current={...view,identity}});
+ return <span className="now-playing-transition" data-changing={Boolean(oldArt)}>
+  <TrackCopy {...view} announcement={changing?phrase:announcement}/>
+  <span className="listening-album-stack" style={albumMasks} data-dissolving={Boolean(oldArt)}>
+   <span key={identity} className={oldArt?'album-incoming':''}><TrackArtwork track={displayedArt}/></span>
+   {oldArt&&<span className="album-outgoing" aria-hidden="true"><TrackArtwork track={oldArt}/></span>}
+  </span>
+ </span>;
 }
 
 export function ListeningWidget({ dismissHistory = false }) {

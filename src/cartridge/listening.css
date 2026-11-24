@@ -1,12 +1,13 @@
 .listening-widget { --listening-track-gap:8px; --art-size:44px; --art-radius:7px; position:relative; display:flex; flex-direction:column; align-items:stretch; justify-self:end; align-self:end; width:100%; max-width:280px; min-width:0; font-size:13px; }
 .listening-current { display:grid; grid-template-columns:44px minmax(130px,1fr); align-items:center; gap:8px; min-height:44px; }
 .listening-widget .now-playing { display:flex; align-items:center; min-width:0; min-height:44px; color:var(--ui-text); border-radius:8px; }
-.now-playing-transition { position:relative; display:block; width:100%; min-width:0; overflow:clip; }
+.now-playing-transition { position:relative; display:flex; align-items:center; gap:10px; width:100%; min-width:0; }
+.listening-text-stack { position:relative; flex:1; min-width:0; overflow:hidden; }
 .now-playing-track { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width:0; min-height:44px; }
-.now-playing-track.is-entering { animation:track-enter 420ms cubic-bezier(.22,1,.36,1) both; }
-.now-playing-outgoing { position:absolute; inset:0; pointer-events:none; animation:track-leave 260ms ease-out both; }
-@keyframes track-enter { from { opacity:0; filter:blur(3px); transform:translateY(7px); } to { opacity:1; filter:none; transform:none; } }
-@keyframes track-leave { from { opacity:1; filter:none; transform:none; } to { opacity:0; filter:blur(3px); transform:translateY(-7px); } }
+.now-playing-track.is-entering { animation:track-enter 400ms cubic-bezier(.22,1,.36,1) both; }
+.now-playing-outgoing { position:absolute; inset:0; pointer-events:none; animation:track-leave 320ms ease-out both; }
+@keyframes track-enter { from { opacity:0; filter:blur(1px); transform:translateX(100%); } to { opacity:1; filter:none; transform:none; } }
+@keyframes track-leave { from { opacity:1; filter:none; transform:none; } to { opacity:0; filter:blur(1px); transform:translateX(100%); } }
 .now-playing-copy { display:flex; flex:1; flex-direction:column; justify-content:center; gap:1px; min-width:0; text-align:right; line-height:1.35; }
 .now-playing-title,.now-playing-artist { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .listening-widget .now-playing-title { color:var(--ui-text); font-size:14px; font-weight:400; }
@@ -33,3 +34,19 @@
 @keyframes listening-text-in { from { opacity:0; filter:blur(1px); transform:translateY(3px); } to { opacity:1; filter:blur(0); transform:none; } }
 @media(prefers-reduced-motion:reduce) { .listening-history li .listening-artwork,.listening-history .listening-song > span,.now-playing-track.is-entering { animation:none; } .listening-history[data-state="closing"],.now-playing-outgoing { display:none; } }
 @media(max-width:760px) { .listening-widget { display:none; } }
+
+.listening-album-stack { position:relative; flex:0 0 var(--art-size); width:var(--art-size); height:var(--art-size); overflow:hidden; border-radius:var(--art-radius); isolation:isolate; }
+.listening-album-stack > span { display:block; }
+.listening-album-stack .album-outgoing { position:absolute; inset:0; pointer-events:none; }
+.album-incoming,.album-outgoing { mask-size:8px 8px; mask-repeat:repeat; }
+.album-incoming { animation:album-dither 680ms steps(1,end) both; }
+.album-outgoing { animation:album-dither-out 680ms steps(1,end) both; }
+@keyframes album-dither {
+ 0% { mask-image:var(--album-mask-0); } 12.5% { mask-image:var(--album-mask-1); } 25% { mask-image:var(--album-mask-2); } 37.5% { mask-image:var(--album-mask-3); }
+ 50% { mask-image:var(--album-mask-4); } 62.5% { mask-image:var(--album-mask-5); } 75% { mask-image:var(--album-mask-6); } 87.5% { mask-image:var(--album-mask-7); } 100% { mask-image:var(--album-mask-8); }
+}
+@keyframes album-dither-out {
+ 0% { mask-image:var(--album-out-mask-0); } 12.5% { mask-image:var(--album-out-mask-1); } 25% { mask-image:var(--album-out-mask-2); } 37.5% { mask-image:var(--album-out-mask-3); }
+ 50% { mask-image:var(--album-out-mask-4); } 62.5% { mask-image:var(--album-out-mask-5); } 75% { mask-image:var(--album-out-mask-6); } 87.5% { mask-image:var(--album-out-mask-7); } 100% { mask-image:var(--album-out-mask-8); }
+}
+@media(prefers-reduced-motion:reduce) { .album-incoming { animation:none; mask-image:none; } .album-outgoing { display:none; } }
