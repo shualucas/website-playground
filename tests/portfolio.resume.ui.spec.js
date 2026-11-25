@@ -22,7 +22,7 @@ test("resume keeps its dithered paper preview usable without WebGL", async ({pag
   await expect.poll(()=>sheet.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--paper-emphasis')))).toBe(1);await expect(sheet).toHaveAttribute('data-hover-scale','1.0000');
   await page.mouse.move(8,8);await expect.poll(()=>sheet.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--paper-emphasis')))).toBe(0);
   await page.getByRole('button',{name:'Open résumé in reading view'}).click();
-  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();
 });
 
 test('resume Read keeps its title clear of navigation when shared styles load last',async({page})=>{

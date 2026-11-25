@@ -3,7 +3,7 @@ import { profileLinks } from "../profile.js";
 // Shared source for the web résumé and PDF. Experience, tools, skills, and email
 // come from jlucas_resume_2026.pdf; the summary/location were supplied previously.
 export const resume = {
-  name: "Joshua Lucas",
+  name: "Josh Lucas",
   title: "Senior Product Designer at Google",
   location: "San Francisco, California",
   summary: "I'm a systems thinker with a knack for micro interactions and finer details. I like figuring out what should exist, what it should feel like, and how to make it happen.",

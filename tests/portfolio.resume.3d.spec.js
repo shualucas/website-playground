@@ -22,7 +22,7 @@ test("resume page preserves original artwork and downloads its one-page PDF with
   const links=pdf.getPage(0).node.lookup(PDFName.of('Annots'),PDFArray).asArray().map(ref=>pdf.context.lookup(ref,PDFDict).lookup(PDFName.of('A'),PDFDict).get(PDFName.of('URI')).decodeText());
   expect(links).toContain('https://www.linkedin.com/in/joshglucas/');expect(links).toContain('mailto:joshglucas@gmail.com');
   await page.getByRole('button',{name:'Read',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();
   await expect(sheet).toHaveAttribute('data-motion','paused');
   await expect(page.locator('.resume-job')).toHaveCount(1);await expect(page.locator('.resume-job').first()).toContainText('May 2019 - Present');
   await expect(page.locator('.resume-job li')).toHaveCount(6);await expect(page.locator('.resume-job')).toContainText('+12% game sales');
@@ -83,7 +83,7 @@ test("floating resume opens Read on a click or keyboard activation, never after 
 
 test("mobile resume defaults to readable text and an unavailable preview falls back to reading", async ({ page }) => {
   await page.setViewportSize({width:390,height:844});await page.goto('/resume/');await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
-  await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-artwork img')).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-artwork img')).toHaveCount(0);
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(r=>r.name.includes('resume-art-')))).toBe(false);
   await page.route('**/resume/resume-art-*.png',route=>route.abort());await page.getByRole('button',{name:'Page',exact:true}).click();
   await expect(page.getByRole('button',{name:'Page',exact:true})).toBeDisabled();await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');
@@ -110,7 +110,7 @@ test("rapid resume view changes honor the final requested mode", async ({ page }
   await page.locator('.resume-view-switch').evaluate(group=>{group.children[1].click();group.children[0].click()});
   await page.waitForTimeout(650);await expect(page.locator('.resume-page')).toHaveAttribute('data-view','page');
   await page.locator('.resume-view-switch').evaluate(group=>{group.children[1].click();group.children[0].click();group.children[1].click()});
-  await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();expect(errors).toEqual([]);
+  await expect(page.locator('.resume-page')).toHaveAttribute('data-view','read');await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
 
 test('resume keeps its rendered sheet ready and controls fixed through both view transitions',async({page})=>{
@@ -194,6 +194,6 @@ test('floating paper keeps opaque tonal dithering and retains an original PDF an
  })));
  await expect.poll(async()=>(await tones()).clear).toBeLessThan(.005);await expect.poll(async()=>(await tones()).stock).toBeGreaterThan(.5);await expect.poll(async()=>(await tones()).ink).toBeGreaterThan(50);await expect.poll(async()=>(await tones()).levels).toBeGreaterThan(3);
  await expect(page.getByRole('link',{name:'Download PDF'})).toHaveAttribute('href','/resume/josh-lucas-resume.pdf');
- await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-paper-canvas')).toBeHidden();
+ await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.getByRole('heading',{name:'Josh Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-paper-canvas')).toBeHidden();
  expect(errors).toEqual([]);
 });

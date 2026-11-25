@@ -27,9 +27,10 @@ test("favicon shows a single cartridge with a black J on every current page", as
 
 test("hero text uses one regular weight with a stable passive reduced-motion role", async ({ page }) => {
   await page.emulateMedia({reducedMotion:'reduce'});
+  await page.addInitScript(()=>localStorage.setItem('cartridge-color-mode','light'));
 
   await page.goto('/');const role=page.locator('.role-rotator');
-  await expect(page.locator('.intro-name')).toHaveText('Joshua Lucas');expect(await role.evaluate(el=>el.tagName)).toBe('SPAN');
+  await expect(page.locator('.intro-name')).toHaveText('Josh Lucas');expect(await role.evaluate(el=>el.tagName)).toBe('SPAN');
   await expect(role).not.toHaveAttribute('tabindex',/.+/);await expect(role).not.toHaveAttribute('aria-pressed',/.+/);
   await expect(role).toHaveAttribute('data-role','product designer');await expect(role).toHaveCSS('font-weight','400');
   await role.hover();await expect(role).toHaveCSS('opacity','1');await role.click();await expect(role).toHaveAttribute('data-role','product designer');

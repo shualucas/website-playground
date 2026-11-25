@@ -41,10 +41,10 @@ export function AboutContent({about,children,onBack}) {
   return <div ref={host} className="collection-main" data-about={displayed} data-dissolving={busy} inert={busy?true:undefined}>
     <div className="home-content" hidden={displayed}>{typeof children==='function'?children(displayed):children}</div>
     <section className="about-content" hidden={!displayed} aria-label="About Josh">
-      <img ref={photo} className="about-photo" src="/about/joshua-film-portrait.jpg" alt="Joshua standing beneath a canopy of trees, photographed on film" width="848" height="1280"/>
+      <img ref={photo} className="about-photo" src="/about/joshua-film-portrait.jpg" alt="Josh standing beneath a canopy of trees, photographed on film" width="848" height="1280"/>
       <div className="about-copy">
         <h1 className="about-title" tabIndex={-1}>A little about me.</h1>
-        <p>I'm Joshua, a product designer who wants to build a future where technology enhances the texture of everyday life instead of flattening it. My goal is to make the mundane effortless, giving us more time for the things that make life beautiful.</p>
+        <p>I'm Josh, a product designer who wants to build a future where technology enhances the texture of everyday life instead of flattening it. My goal is to make the mundane effortless, giving us more time for the things that make life beautiful.</p>
         <p>Recreationally, I've been enjoying printing riso, playing <a className="about-inline-link" href="https://www.youtube.com/watch?v=q-cJEEdw39M" target="_blank" rel="noopener noreferrer">tennis at the park</a>, leveling my shadow priest on azeroth or grinding summoner's rift</p>
         <p>If you're here just passing by, then thanks for checkin' out my tiny corner of the internet!</p>
         <button className="about-link" type="button" onClick={onBack}>Back to my work</button>

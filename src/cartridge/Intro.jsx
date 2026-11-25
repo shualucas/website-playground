@@ -31,7 +31,7 @@ export function Intro({active,previewColor,onStatusChange,onAbout,aboutExiting=f
     <HeroCartridge aboutMotion={aboutExiting?'exit':aboutSpotlight?'hover':'idle'} id={selected} active={active} previewColor={previewColor} onStatusChange={onStatusChange}/>
     <h1 className="intro-title">
       <span className="intro-line intro-identity">
-        <span data-reveal-gate className="portfolio-name intro-word" style={delay(0)}><span className="intro-name">Joshua Lucas</span>,</span>{" "}
+        <span data-reveal-gate className="portfolio-name intro-word" style={delay(0)}><span className="intro-name">Josh Lucas</span>,</span>{" "}
         <span data-reveal-gate className="role-entrance intro-word" style={delay(1)}><RotatingRole active={active}/></span>
       </span>
       <span className="bio-continuation">{lines.map((parts,line)=><React.Fragment key={line}>
