@@ -195,7 +195,7 @@ export class FloatingPaper {
     this.host.style.setProperty("--paper-scale",String(this.scale));
     const emphasis=this.motion.matches?Number(this.active&&this.hovered&&!this.grip):Math.max(0,Math.min(1.2,(this.scale-1)/.06));
     this.host.style.setProperty("--paper-emphasis",emphasis.toFixed(4));
-    this.surface?.render({pitch,yaw,roll,lift,scale:this.scale,emphasis,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
+    this.surface?.render({time:this.motion.matches?0:this.time,pitch,yaw,roll,lift,scale:this.scale,emphasis,bendX:this.bendX,bendY:this.bendY,grabX:this.grabX,grabY:this.grabY});
   }
   dispose() {
     this.disposed = true; this.release(); cancelAnimationFrame(this.frame);

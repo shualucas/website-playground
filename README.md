@@ -15,7 +15,7 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 
 Navigation links use print registration marks and footer links share one traveling dot via `useLinkHovers.js`. They keep labels and hit areas fixed, support keyboard focus, and become immediate under reduced motion. `?hover=marks`, `?hover=dot`, and `?hover=stamp` preview registration marks, a traveling dot, or a dithered ink stamp on all of those controls.
 
-The floating résumé applies fine monochrome dithering to its live paper material, with a matching static canvas fallback. Its existing clock still owns tilt, folds, and floating motion. Read mode and the downloadable PDF keep their original presentation.
+The floating résumé uses the photos' nine-level ordered dithering and subtle film grain while retaining opaque paper and printed lettering, with a matching static canvas fallback. Its existing clock still owns tilt, folds, floating motion, and grain. Read mode and the downloadable PDF keep their original presentation.
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
 

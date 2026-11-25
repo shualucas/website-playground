@@ -181,15 +181,18 @@ test('resume navigation responds before paper morph finishes and Read uses body 
  });
 
 
-test('floating paper renders actual dither pixels and retains an original PDF and clear Read view',async({page})=>{
+test('floating paper keeps opaque tonal dithering and retains an original PDF and clear Read view',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|shader error/i.test(m.text()))errors.push(m.text())});
  await page.setViewportSize({width:1440,height:1000});await page.goto('/resume/');const sheet=page.locator('.resume-sheet');
  await expect(sheet).toHaveAttribute('data-surface','webgl');await expect(sheet).toHaveAttribute('data-render-style','dither');
- const coverage=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>{
-  const canvas=document.querySelector('.resume-paper-canvas'),gl=canvas.getContext('webgl2'),size=64,pixels=new Uint8Array(size*size*4);gl.readPixels(Math.floor(canvas.width/2-size/2),Math.floor(canvas.height/2-size/2),size,size,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
-  let clear=0,solid=0;for(let i=3;i<pixels.length;i+=4){if(pixels[i]<64)clear++;if(pixels[i]>224)solid++}resolve({clear:clear/(size*size),solid:solid/(size*size)});
+ const tones=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>{
+  const canvas=document.querySelector('.resume-paper-canvas'),gl=canvas.getContext('webgl2'),size=192,pixels=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+  let clear=0,ink=0,stock=0;const levels=new Set();
+  // Inspect stock in the sheet's center, and lettering across the entire sheet.
+  for(let y=Math.floor(canvas.height/2)-size/2;y<Math.floor(canvas.height/2)+size/2;y++)for(let x=Math.floor(canvas.width/2)-size/2;x<Math.floor(canvas.width/2)+size/2;x++){const i=(y*canvas.width+x)*4;if(pixels[i+3]<224)clear++;if((pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114)/255>.8)stock++}
+  for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>224){const value=(pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114)/255;if(value<.4)ink++;levels.add(Math.round(value*9))}resolve({clear:clear/(size*size),ink,stock:stock/(size*size),levels:levels.size});
  })));
- await expect.poll(async()=>(await coverage()).clear).toBeGreaterThan(.04);await expect.poll(async()=>(await coverage()).solid).toBeGreaterThan(.04);
+ await expect.poll(async()=>(await tones()).clear).toBeLessThan(.005);await expect.poll(async()=>(await tones()).stock).toBeGreaterThan(.5);await expect.poll(async()=>(await tones()).ink).toBeGreaterThan(50);await expect.poll(async()=>(await tones()).levels).toBeGreaterThan(3);
  await expect(page.getByRole('link',{name:'Download PDF'})).toHaveAttribute('href','/resume/josh-lucas-resume.pdf');
  await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-paper-canvas')).toBeHidden();
  expect(errors).toEqual([]);

@@ -7,6 +7,8 @@ test("resume keeps its dithered paper preview usable without WebGL", async ({pag
   await page.goto('/resume/');const sheet=page.locator('.resume-sheet');
   await expect(sheet).toHaveAttribute('data-surface','fallback');
   await expect(sheet).toHaveAttribute('data-render-style','dither');await expect(page.locator('.resume-dither-fallback')).toHaveCount(1);await expect(page.locator('.resume-artwork picture')).toHaveCSS('opacity','0');
+  const toned=await page.locator('.resume-dither-fallback').evaluate(canvas=>{const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let clear=0,ink=0;const levels=new Set();for(let i=0;i<pixels.length;i+=4){if(pixels[i+3]<255)clear++;if(pixels[i]<100)ink++;levels.add(pixels[i])}return{clear,ink,levels:levels.size}});
+  expect(toned.clear).toBe(0);expect(toned.ink).toBeGreaterThan(100);expect(toned.levels).toBeGreaterThan(3);
   await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
   await expect(page.locator('.resume-paper-stage')).toHaveAttribute('data-reveal-ready','true');
   const idleGlow=await sheet.evaluate(el=>getComputedStyle(el).boxShadow),box=await sheet.boundingBox();
