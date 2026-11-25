@@ -1,10 +1,10 @@
 import {test,expect,disableWebGL} from './support/portfolio.js';
 test.use({webgl:false});
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('cartridge-color-mode','light'))});
-const active='.traveling-dot[data-active="true"],.control-hover-target[data-hover-kind="marks"][data-hover-active="true"] .registration-marks';
+const active='.traveling-dot[data-active="true"],.control-hover-target[data-hover-active="true"] :is(.registration-marks,.ink-stamp,.ink-impression)';
 
-test('footer links share a traveling dot and keep their text and native targets still',async({page})=>{
- await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');await page.evaluate(()=>document.fonts.ready);
+test('the dot preview shares a traveling dot and keeps footer text and native targets still',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/?hover=dot');await page.evaluate(()=>document.fonts.ready);
  const footer=page.getByRole('navigation',{name:'Connect with Josh'}),linkedin=footer.getByRole('link',{name:'LinkedIn'}),resume=footer.getByRole('link',{name:'Résumé',exact:true});
  for(const dark of [false,true]){
   if(dark){await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).not.toHaveClass(/theme-transition/);}
@@ -22,6 +22,25 @@ test('footer links share a traveling dot and keep their text and native targets 
  await resume.evaluate(el=>el.blur());await page.getByRole('button',{name:'Switch to light mode'}).hover();await expect(page.locator('.theme-toggle .control-hover-indicator')).toHaveCount(0);await expect(page.locator(active)).toHaveCount(0);
  const padding=await footer.locator('a').evaluateAll(links=>links.map(el=>Number.parseFloat(getComputedStyle(el).paddingLeft)));expect(new Set(padding).size).toBe(1);expect(padding[0]).toBeGreaterThanOrEqual(16);
  await expect(page.locator('.control-dither')).toHaveCount(0);
+});
+
+test('footer ink impressions print and erase without shifting labels or changing native links',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');await page.evaluate(()=>document.fonts.ready);
+ const footer=page.getByRole('navigation',{name:'Connect with Josh'}),links=footer.getByRole('link');
+ for(const dark of [false,true]){
+  if(dark){await page.getByRole('button',{name:'Switch to dark mode'}).click();await expect(page.locator('html')).not.toHaveClass(/theme-transition/)}
+  for(const link of await links.all()){
+   const box=await link.boundingBox(),copy=await link.locator('.link-copy').boundingBox(),href=await link.getAttribute('href');
+   await link.hover();await expect(link).toHaveAttribute('data-hover-kind','impression');const plate=link.locator('.ink-impression');await expect(plate).toHaveAttribute('data-state','printed');await expect(plate).toHaveCSS('pointer-events','none');await expect(plate.locator('i')).toHaveCount(2);await expect(link.locator('.link-copy')).toHaveCSS('color','rgb(11, 12, 11)');await expect(link.locator('.link-copy')).toHaveCSS('text-decoration-line','none');
+   expect((await link.boundingBox()).width).toBeCloseTo(box.width,1);expect((await link.locator('.link-copy').boundingBox()).x).toBeCloseTo(copy.x,1);expect((await link.locator('.link-copy').boundingBox()).y).toBeCloseTo(copy.y,1);await expect(link).toHaveAttribute('href',href);
+   const contrast=await link.evaluate(el=>{const ink=getComputedStyle(el).getPropertyValue('--control-ink').trim(),values=ink.match(/[a-f\d]{2}/gi).map(v=>parseInt(v,16)/255),luminance=rgb=>rgb.map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);return(luminance(values)+.05)/(luminance([11/255,12/255,11/255])+.05)});expect(contrast).toBeGreaterThan(4.5);
+   await page.mouse.move(2,2);await expect(plate).toHaveAttribute('data-state','hidden');await expect(plate).toHaveCSS('opacity','0');
+  }
+ }
+ const resume=footer.getByRole('link',{name:'Résumé',exact:true});await page.keyboard.press('Tab');await resume.focus();await expect(resume.locator('.ink-impression')).toHaveAttribute('data-state','printed');await expect(resume).toHaveAttribute('href','/resume/');
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(resume.locator('.ink-impression')).toHaveCSS('transition-duration','0s');await expect(footer.locator('.traveling-dot')).toHaveCount(0);
+ await resume.evaluate(el=>el.blur());await resume.hover();await page.mouse.move(2,2);await resume.hover();await expect(resume.locator('.ink-impression')).toHaveAttribute('data-state','printed');
+ await resume.click();await expect(page).toHaveURL(/\/resume\/$/);
 });
 
 test('resume decorates its back control while other resume controls retain their own behavior',async({page})=>{

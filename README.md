@@ -13,7 +13,7 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 | `/photos/` | `src/photos/main.jsx`, `FloatingPhotos.ts`, `floating-shaders.ts`, `PhotoLightbox.jsx`, `src/content/film-photos.js` |
 | `/zine/` | Archived portfolio: `src/main.jsx`, `src/style.css`. Preserve it. |
 
-Navigation links use print registration marks and footer links share one traveling dot via `useLinkHovers.js`. They keep labels and hit areas fixed, support keyboard focus, and become immediate under reduced motion. `?hover=marks`, `?hover=dot`, and `?hover=stamp` preview registration marks, a traveling dot, or a dithered ink stamp on all of those controls.
+Navigation links use print registration marks. Footer links print a colored label with worn dithered edges and a faint offset second impression via `useLinkHovers.js`. Labels and hit areas stay fixed; keyboard focus gets the same treatment, and reduced motion makes it immediate. `?hover=marks`, `?hover=dot`, and `?hover=stamp` retain the alternative previews on all of those controls.
 
 The floating résumé uses the photos' nine-level ordered dithering and subtle film grain while retaining opaque paper and printed lettering, with a matching static canvas fallback. Its existing clock still owns tilt, folds, floating motion, and grain. Read mode and the downloadable PDF keep their original presentation.
 

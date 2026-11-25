@@ -11,3 +11,23 @@ export function inkStampFrames(entering=true){
  });
  return (entering?masks:[...masks].reverse()).map((maskImage,i)=>({maskImage,webkitMaskImage:maskImage,transform:`rotate(-7deg) scale(${entering?1.16-.16*i/8:1})`}));
 }
+
+const impressions=new Map();
+/** A worn printing plate: solid through the type, porous around its edges. */
+export function inkImpressionFrames(width,height,entering=true){
+ const w=Math.ceil(width/1.5),h=Math.ceil(height/1.5),key=w+':'+h;
+ let frames=impressions.get(key);
+ if(!frames){
+  frames=Array.from({length:9},(_,step)=>{
+   let pixels='';
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const edge=Math.min(x+.5,w-x-.5,y+.5,h-y-.5),seed=Math.sin(x*127.1+y*311.7)*43758.5453;
+    const density=edge>2?.99:Math.min(.99,.22+edge*.28+(seed-Math.floor(seed))*.22);
+    if((bayer[y%4*4+x%4]+.5)/16<density*step/8)pixels+=`<rect x="${x}" y="${y}" width="1" height="1" fill="white"/>`;
+   }
+   return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" shape-rendering="crispEdges">${pixels}</svg>`)}")`;
+  });
+  impressions.set(key,frames);
+ }
+ return (entering?frames:[...frames].reverse()).map(maskImage=>({maskImage,webkitMaskImage:maskImage}));
+}

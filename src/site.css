@@ -69,3 +69,12 @@ svg { display:block; flex-shrink:0; }
 .ink-stamp { position:absolute; display:block; width:12px; height:12px; background:currentColor; mask-repeat:no-repeat; mask-size:100% 100%; opacity:0; transform-origin:center; transition:opacity 100ms ease; }
 .control-hover-target[data-hover-kind="stamp"][data-hover-active="true"] .ink-stamp { opacity:1; }
 @media(prefers-reduced-motion:reduce){ .ink-stamp { transition:none!important; } }
+
+/* Two slightly misregistered ink passes, with the real label kept above them. */
+.ink-impression { position:absolute; display:block; z-index:-1; opacity:0; transform:rotate(-3deg) scale(.97,.88); transition:opacity 140ms ease,transform 220ms cubic-bezier(.2,.8,.25,1); }
+.ink-impression i { position:absolute; display:block; inset:0; background:var(--control-ink); mask-repeat:no-repeat; mask-size:100% 100%; }
+.ink-impression-echo { opacity:.38; transform:translate(2px,2px) rotate(1.5deg); }
+.control-hover-target[data-hover-kind="impression"] .link-copy { position:relative; transition:color 130ms ease; text-decoration:none; }
+.control-hover-target[data-hover-kind="impression"][data-hover-active="true"] .ink-impression { opacity:1; transform:rotate(-1.2deg) scale(1); }
+.control-hover-target[data-hover-kind="impression"][data-hover-active="true"] .link-copy { color:#0b0c0b; text-decoration:none; }
+@media(prefers-reduced-motion:reduce){ .ink-impression,.control-hover-target[data-hover-kind="impression"] .link-copy { transition:none!important; } }

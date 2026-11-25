@@ -184,7 +184,8 @@ try {
     if(args.page==='photos'&&await control.evaluate(el=>el.matches('.floating-photo-hit'))){const box=await control.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2,{steps:12});await expect(page.locator('.floating-photo-gallery')).toHaveAttribute('data-wake','active',wait)}else await control.hover();
     if(await control.evaluate(el=>el.classList.contains('control-hover-target'))){
       await expect(control).toHaveAttribute('data-hover-active','true',wait);
-      if(await control.getAttribute('data-hover-kind')==='stamp')await expect(control.locator('.ink-stamp')).toHaveAttribute('data-state','printed',wait);
+      if(await control.getAttribute('data-hover-kind')==='impression'){await expect(control.locator('.ink-impression')).toHaveAttribute('data-state','printed',wait);await control.locator('.ink-impression').evaluate(async el=>{await Promise.allSettled(el.getAnimations().map(a=>a.finished))});}
+      else if(await control.getAttribute('data-hover-kind')==='stamp')await expect(control.locator('.ink-stamp')).toHaveAttribute('data-state','printed',wait);
       else if(await control.getAttribute('data-hover-kind')==='dot')await expect.poll(()=>page.locator('.traveling-dot[data-active="true"]').evaluate(el=>el.getAnimations().length),wait).toBe(0);
       else await expect.poll(()=>control.locator('.registration-marks').evaluate(el=>el.getAnimations({subtree:true}).length),wait).toBe(0);
     }
