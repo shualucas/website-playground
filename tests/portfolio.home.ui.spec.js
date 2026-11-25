@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 
 test.use({ webgl: false });
 
-test("favicon shows a single cartridge with a black J on every current page", async ({ page }, testInfo) => {
+test("favicon shows a transparent cartridge with an outlined serif J on every current page", async ({ page }, testInfo) => {
   await page.emulateMedia({reducedMotion:"reduce"});
   const icon=page.locator('link[rel="icon"]');
   const pixels=()=>icon.evaluate(async el=>{
@@ -11,18 +11,19 @@ test("favicon shows a single cartridge with a black J on every current page", as
     const canvas=document.createElement("canvas");canvas.width=canvas.height=64;
     const context=canvas.getContext("2d");context.drawImage(image,0,0,64,64);
     const pixel=(x,y)=>Array.from(context.getImageData(x,y,1,1).data);
-    return {corner:pixel(0,0),background:pixel(2,32),letter:pixel(37,31),shell:pixel(10,33),png:canvas.toDataURL("image/png")};
+    const data=context.getImageData(20,22,24,26).data;let ink=0;for(let i=0;i<data.length;i+=4)if(data[i]+data[i+1]+data[i+2]<30&&data[i+3]>250)ink++;
+    return {corner:pixel(0,0),background:pixel(2,32),ink,shell:pixel(10,33),png:canvas.toDataURL("image/png")};
   });
   for(const path of ["/","/resume/","/after-hours/","/photos/"]) {
     await page.goto(path);
-    await expect(icon).toHaveAttribute("href","/favicon.svg");
+    await expect(icon).toHaveAttribute("href","/favicon.svg?v=2");
     const image=await pixels();
-    expect(image.corner[3]).toBe(0);expect(image.background).toEqual([255,255,255,255]);
-    expect(image.letter).toEqual([0,0,0,255]);expect(image.shell[3]).toBe(255);expect(image.shell).not.toEqual(image.background);
+    expect(image.corner[3]).toBe(0);expect(image.background[3]).toBe(0);
+    expect(image.ink).toBeGreaterThan(35);expect(image.shell[3]).toBe(255);expect(image.shell).not.toEqual(image.background);
     if(path==="/")await writeFile(testInfo.outputPath("cartridge-favicon.png"),Buffer.from(image.png.split(",")[1],"base64"));
   }
   await page.emulateMedia({reducedMotion:"no-preference"});
-  await expect(icon).toHaveAttribute("href","/favicon.svg");await expect(icon).toHaveAttribute("type","image/svg+xml");
+  await expect(icon).toHaveAttribute("href","/favicon.svg?v=2");await expect(icon).toHaveAttribute("type","image/svg+xml");
 });
 
 test("hero text uses one regular weight with a stable passive reduced-motion role", async ({ page }) => {
