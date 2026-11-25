@@ -1,13 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>A game cartridge with a serif J</title>
-  <g transform="rotate(-4 32 33)">
-    <path d="M10 14h44l3 4v31l-3 3H10l-3-3V18Z" fill="#d8d2c3" stroke="#c3bdae" stroke-width=".6"/>
-    <rect x="9" y="16" width="46" height="4" rx="1" fill="#eeeae1"/>
-    <path d="M12 15h4v2h-4Zm36 0h4v2h-4Z" fill="#bab4a7"/>
-    <path d="M7 49h50l-3 3H10Z" fill="#b9b3a6"/>
-    <path d="M10 23v22m44-22v22" stroke="#b9b3a6" stroke-width="1"/>
-    <rect x="13" y="21" width="38" height="27" rx="2" fill="#fff"/>
-    <!-- Cormorant Garamond Bold Italic, outlined; see licenses/Cormorant-Garamond-OFL.txt. -->
-    <path d="M-25 -193Q-27 -194 -30.0 -189.0Q-33 -184 -30 -182Q17 -154 42.5 -98.0Q68 -42 83 40L172 544Q180 587 170.0 600.0Q160 613 122 613Q119 613 119.0 619.0Q119 625 122 625Q145 625 172.5 623.5Q200 622 232 622Q267 622 295.0 623.5Q323 625 345 625Q348 625 348.0 619.0Q348 613 345 613Q318 613 304.0 607.0Q290 601 283.5 586.0Q277 571 271 542L187 67Q173 -11 147.5 -60.0Q122 -109 80.0 -139.0Q38 -169 -25 -193Z" transform="translate(27.2612 40.9656) scale(0.029945 -0.029945)" fill="#000"/>
+  <title>Josh Lucas — dithered J</title>
+  <style>
+    .ink { fill:#18181b }
+    @media (prefers-color-scheme:dark) { .ink { fill:#eee } }
+  </style>
+  <defs>
+    <mask id="printed-edge" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M43 8h3v3h-3Zm3 3h3v3h-3Zm-3 6h3v3h-3Z" fill="#000"/>
+    </mask>
+  </defs>
+  <g class="ink">
+    <path d="M19 8h30v10h-6v22c0 11-7 18-18 18S7 51 7 40h12c0 5 2 8 6 8s6-3 6-8V18H19Z" mask="url(#printed-edge)"/>
+    <path d="M49 8h3v3h-3Zm0 6h3v3h-3Zm3-3h3v3h-3Zm3-3h2v2h-2Zm0 9h2v2h-2Zm4-4h2v2h-2Z"/>
   </g>
 </svg>

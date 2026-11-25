@@ -3,27 +3,30 @@ import { writeFile } from "node:fs/promises";
 
 test.use({ webgl: false });
 
-test("favicon shows a transparent cartridge with an outlined serif J on every current page", async ({ page }, testInfo) => {
+test("dithered J favicon stays transparent and legible in light and dark browser themes", async ({ page }, testInfo) => {
   await page.emulateMedia({reducedMotion:"reduce"});
   const icon=page.locator('link[rel="icon"]');
-  const pixels=()=>icon.evaluate(async el=>{
+  const pixels=(size,ink)=>icon.evaluate(async(el,{size,ink})=>{
     const image=new Image();image.src=el.href;await image.decode();
-    const canvas=document.createElement("canvas");canvas.width=canvas.height=64;
-    const context=canvas.getContext("2d");context.drawImage(image,0,0,64,64);
+    const canvas=document.createElement("canvas");canvas.width=canvas.height=size;
+    const context=canvas.getContext("2d");context.drawImage(image,0,0,size,size);
+    const data=context.getImageData(0,0,size,size).data;let solid=0,clear=0;
+    for(let i=0;i<data.length;i+=4){if(data[i+3]===0)clear++;if(data[i+3]>240&&ink.every((v,c)=>Math.abs(data[i+c]-v)<3))solid++}
     const pixel=(x,y)=>Array.from(context.getImageData(x,y,1,1).data);
-    const data=context.getImageData(20,22,24,26).data;let ink=0;for(let i=0;i<data.length;i+=4)if(data[i]+data[i+1]+data[i+2]<30&&data[i+3]>250)ink++;
-    return {corner:pixel(0,0),background:pixel(2,32),ink,shell:pixel(10,33),png:canvas.toDataURL("image/png")};
-  });
-  for(const path of ["/","/resume/","/after-hours/","/photos/"]) {
-    await page.goto(path);
-    await expect(icon).toHaveAttribute("href","/favicon.svg?v=2");
-    const image=await pixels();
-    expect(image.corner[3]).toBe(0);expect(image.background[3]).toBe(0);
-    expect(image.ink).toBeGreaterThan(35);expect(image.shell[3]).toBe(255);expect(image.shell).not.toEqual(image.background);
-    if(path==="/")await writeFile(testInfo.outputPath("cartridge-favicon.png"),Buffer.from(image.png.split(",")[1],"base64"));
+    return {corner:pixel(0,0),outside:pixel(2,Math.floor(size/2)),solid,clear,png:canvas.toDataURL("image/png")};
+  },{size,ink});
+  for(const colorScheme of ['light','dark']){
+    await page.emulateMedia({colorScheme});const ink=colorScheme==='dark'?[238,238,238]:[24,24,27];
+    for(const path of ["/","/resume/","/after-hours/","/photos/"]) {
+      await page.goto(path);await expect(icon).toHaveAttribute("href","/favicon.svg?v=3");await expect(icon).toHaveAttribute("type","image/svg+xml");
+      const image=await pixels(64,ink);expect(image.corner[3]).toBe(0);expect(image.outside[3]).toBe(0);expect(image.solid).toBeGreaterThan(900);expect(image.clear).toBeGreaterThan(2000);
+      const tab=await pixels(16,ink);expect(tab.solid).toBeGreaterThan(30);expect(tab.corner[3]).toBe(0);
+      if(path==="/"){
+        await writeFile(testInfo.outputPath(`dither-j-${colorScheme}-64.png`),Buffer.from(image.png.split(",")[1],"base64"));
+        await writeFile(testInfo.outputPath(`dither-j-${colorScheme}-16.png`),Buffer.from(tab.png.split(",")[1],"base64"));
+      }
+    }
   }
-  await page.emulateMedia({reducedMotion:"no-preference"});
-  await expect(icon).toHaveAttribute("href","/favicon.svg?v=2");await expect(icon).toHaveAttribute("type","image/svg+xml");
 });
 
 test("hero text uses one regular weight with a stable passive reduced-motion role", async ({ page }) => {
