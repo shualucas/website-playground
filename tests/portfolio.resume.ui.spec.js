@@ -2,12 +2,13 @@ import { test, expect, funFacts, names, dates, body, load, choose, point } from 
 
 test.use({ webgl: false });
 
-test("resume keeps its original paper preview usable without WebGL", async ({page})=>{
+test("resume keeps its dithered paper preview usable without WebGL", async ({page})=>{
 
   await page.goto('/resume/');const sheet=page.locator('.resume-sheet');
   await expect(sheet).toHaveAttribute('data-surface','fallback');
-  await expect(page.locator('.resume-artwork picture')).toHaveCSS('opacity','1');
+  await expect(sheet).toHaveAttribute('data-render-style','dither');await expect(page.locator('.resume-dither-fallback')).toHaveCount(1);await expect(page.locator('.resume-artwork picture')).toHaveCSS('opacity','0');
   await expect(page.locator('.resume-paper-canvas')).toHaveCount(0);
+  await expect(page.locator('.resume-paper-stage')).toHaveAttribute('data-reveal-ready','true');
   const idleGlow=await sheet.evaluate(el=>getComputedStyle(el).boxShadow),box=await sheet.boundingBox();
   await expect(sheet).toHaveCSS('outline-color','rgb(228, 59, 250)');
   await page.mouse.move(box.x+box.width/2,box.y+box.height*.4);

@@ -133,3 +133,8 @@
 .resume-back-nav:is(:hover,:focus-within) svg { transform:translateX(-3px); }
 .resume-back-nav:active svg { transform:translateX(-5px) scale(.94); }
 @media(prefers-reduced-motion:reduce) { .resume-header-shell::before,.resume-back-nav > :is(a,button),.resume-back-nav svg { transition:none; } .resume-back-nav:is(:hover,:focus-within,:active) svg { transform:none; } }
+
+.resume-sheet[data-render-style="dither"] { background:none; }
+.resume-dither-fallback { position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none; border-radius:7px; }
+.resume-sheet[data-surface="fallback"][data-render-style="dither"] .resume-artwork picture { opacity:0; }
+@media print { .resume-dither-fallback { display:none!important; } .resume-sheet[data-render-style="dither"] .resume-artwork picture { opacity:1!important; } }

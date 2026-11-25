@@ -25,6 +25,7 @@ export class FloatingPaper {
   private tapEligible = false;
   private input: HTMLElement;
   private surface: PaperSurface | null = null;
+  private fallbackDither:(()=>void)|null=null;
   private grabX = 0;
   private grabY = 0;
   private bendX = 0;
@@ -54,7 +55,10 @@ export class FloatingPaper {
     this.ready=import("./PaperSurface").then(({PaperSurface})=>{
       if(this.disposed)return false;
       this.surface=new PaperSurface(host,()=>this.paint());this.paint();return true;
-    }).catch(()=>{if(!this.disposed)host.dataset.surface="fallback";return true});
+    }).catch(async()=>{
+      if(!this.disposed){const {createPaperDitherFallback}=await import('./paper-dither');if(!this.disposed){this.fallbackDither=createPaperDitherFallback(host);host.dataset.surface="fallback"}}
+      return true;
+    });
   }
   setActive(active:boolean){this.active=active;this.hovered=false;this.velocityScale=0;this.tapEligible=false;if(this.grip)this.release();this.paint();this.sync()}
   capture(){this.paint();return this.surface?.capture()??null}
@@ -195,7 +199,7 @@ export class FloatingPaper {
   }
   dispose() {
     this.disposed = true; this.release(); cancelAnimationFrame(this.frame);
-    this.surface?.dispose();this.surface=null;
+    this.surface?.dispose();this.surface=null;this.fallbackDither?.();this.fallbackDither=null;
     this.observer.disconnect(); this.motion.removeEventListener("change", this.onMotion);
     document.removeEventListener("visibilitychange", this.sync);
     this.input.removeEventListener("pointerdown", this.onDown);

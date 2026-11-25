@@ -1,4 +1,5 @@
 import {useEffect} from 'react';
+import {inkStampFrames} from './ink-stamp';
 
 // Keep the photo/project effects separate from these native navigation controls.
 const targets='.profile-links a,.case-study-nav a,.case-study-nav button:not(.theme-toggle),.zine-header a,.zine-header button:not(.theme-toggle),.resume-home-link,.resume-page-back';
@@ -7,17 +8,27 @@ const targets='.profile-links a,.case-study-nav a,.case-study-nav button:not(.th
 export function useLinkHovers(){
  useEffect(()=>{
   const pointer=matchMedia('(hover:hover) and (pointer:fine)'),reduce=matchMedia('(prefers-reduced-motion: reduce)');
-  const links=new Set(),marks=new Map(),groups=new Map();
+  const links=new Set(),marks=new Map(),groups=new Map(),stamps=new Map(),stampAnimations=new Map();
   let hovered=null,focused=null,current=null,currentDot=null;
   const size=new ResizeObserver(()=>place());
-  const mode=host=>{const preview=new URLSearchParams(location.search).get('hover');return ['marks','dot'].includes(preview)?preview:host.closest('.profile-links')?'dot':'marks'};
+  const mode=host=>{const preview=new URLSearchParams(location.search).get('hover');return ['marks','dot','stamp'].includes(preview)?preview:host.closest('.profile-links')?'dot':'marks'};
   const allowed=host=>host?.isConnected&&!host.closest('[inert],[hidden],[aria-hidden="true"]')&&!host.matches(':disabled');
-  const label=host=>host.querySelector('.link-copy')||host.querySelector(':scope > span')||host;
+  const label=host=>host.querySelector('.link-copy')||host.querySelector(':scope > span:not(.control-hover-indicator)')||host.querySelector('svg')||host;
   const markFor=host=>{
    let marker=marks.get(host);if(marker)return marker;
    marker=document.createElement('span');marker.className='registration-marks control-hover-indicator';marker.setAttribute('aria-hidden','true');
    for(let i=0;i<4;i++)marker.append(document.createElement('i'));
    host.append(marker);marks.set(host,marker);return marker;
+  };
+  const stampFor=host=>{
+   let stamp=stamps.get(host);if(stamp)return stamp;
+   stamp=document.createElement('span');stamp.className='ink-stamp control-hover-indicator';stamp.setAttribute('aria-hidden','true');host.append(stamp);stamps.set(host,stamp);return stamp;
+  };
+  const printStamp=(host,entering)=>{
+   const stamp=stampFor(host),old=stampAnimations.get(host);
+   const motion=stamp.animate(inkStampFrames(entering),{duration:reduce.matches?0:entering?190:130,easing:'linear',fill:'both'});old?.cancel();stampAnimations.set(host,motion);
+   stamp.dataset.state=entering?'printing':'dissolving';
+   motion.finished.then(()=>{if(stampAnimations.get(host)===motion)stamp.dataset.state=entering?'printed':'hidden'}).catch(()=>{});
   };
   const dotFor=host=>{
    const group=host.closest('.profile-links,.case-study-nav-inner,.zine-header,.resume-back-nav')||host.parentElement;
@@ -34,6 +45,9 @@ export function useLinkHovers(){
    if(current.dataset.hoverKind==='marks'){
     const host=current.getBoundingClientRect(),marker=markFor(current);
     Object.assign(marker.style,{left:rect.left-host.left-6+'px',top:rect.top-host.top-4+'px',width:rect.width+12+'px',height:rect.height+8+'px'});
+   }else if(current.dataset.hoverKind==='stamp'){
+    const host=current.getBoundingClientRect(),stamp=stampFor(current);
+    Object.assign(stamp.style,{left:rect.left-host.left-15+'px',top:rect.top-host.top+rect.height/2-6+'px'});
    }else{
     const state=dotFor(current),bounds=state.group.getBoundingClientRect(),x=rect.left-bounds.left-9,y=rect.top-bounds.top+rect.height/2;
     if(currentDot&&currentDot!==state.dot)currentDot.dataset.active='false';currentDot=state.dot;
@@ -46,16 +60,18 @@ export function useLinkHovers(){
   }
   const update=()=>{
    const next=!document.hidden&&(allowed(hovered)?hovered:allowed(focused)?focused:null);
-   if(current!==next){
+   const changed=current!==next;
+   if(changed){
+    if(current?.isConnected&&current.dataset.hoverKind==='stamp')printStamp(current,false);
     if(current)current.dataset.hoverActive='false';if(currentDot)currentDot.dataset.active='false';size.disconnect();current=next||null;
     if(current){current.dataset.hoverKind=mode(current);current.dataset.hoverActive='true';size.observe(current);const copy=label(current);if(copy!==current)size.observe(copy)}
    }
-   if(current)place();
+   if(current){place();if(changed&&current.dataset.hoverKind==='stamp')printStamp(current,true)}
   };
   const scan=()=>{
-   const preview=new URLSearchParams(location.search).get('hover');document.documentElement.dataset.linkHover=['marks','dot'].includes(preview)?preview:'mixed';
+   const preview=new URLSearchParams(location.search).get('hover');document.documentElement.dataset.linkHover=['marks','dot','stamp'].includes(preview)?preview:'mixed';
    for(const link of document.querySelectorAll(targets))if(!links.has(link)){links.add(link);link.classList.add('control-hover-target');link.dataset.hoverKind=mode(link);link.dataset.hoverActive='false'}
-   for(const link of links)if(!link.isConnected){marks.get(link)?.remove();marks.delete(link);links.delete(link)}
+   for(const link of links)if(!link.isConnected){marks.get(link)?.remove();marks.delete(link);stampAnimations.get(link)?.cancel();stampAnimations.delete(link);stamps.get(link)?.remove();stamps.delete(link);links.delete(link)}
    for(const [group,state] of groups)if(!group.isConnected){state.dot.remove();groups.delete(group)}
    if(current&&current.dataset.hoverKind!==mode(current)){current.dataset.hoverActive='false';current=null}
    update();
@@ -70,7 +86,7 @@ export function useLinkHovers(){
   document.addEventListener('pointerover',over);document.addEventListener('pointerout',out);document.addEventListener('focusin',focus);document.addEventListener('focusout',blur);document.addEventListener('visibilitychange',visibility);
   window.addEventListener('resize',place);window.addEventListener('popstate',scan);pointer.addEventListener('change',preference);reduce.addEventListener('change',preference);
   return()=>{
-   observer.disconnect();size.disconnect();marks.forEach(marker=>marker.remove());groups.forEach(state=>{state.dot.remove();state.group.style.position=state.position});
+   observer.disconnect();size.disconnect();stampAnimations.forEach(animation=>animation.cancel());stamps.forEach(stamp=>stamp.remove());marks.forEach(marker=>marker.remove());groups.forEach(state=>{state.dot.remove();state.group.style.position=state.position});
    links.forEach(link=>{link.classList.remove('control-hover-target');delete link.dataset.hoverKind;delete link.dataset.hoverActive;link.style.removeProperty('--control-ink')});
    document.removeEventListener('pointerover',over);document.removeEventListener('pointerout',out);document.removeEventListener('focusin',focus);document.removeEventListener('focusout',blur);document.removeEventListener('visibilitychange',visibility);
    window.removeEventListener('resize',place);window.removeEventListener('popstate',scan);pointer.removeEventListener('change',preference);reduce.removeEventListener('change',preference);

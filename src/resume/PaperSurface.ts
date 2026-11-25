@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {paperDitherRank,paperDitherFragment} from "./paper-dither";
 import { softenShadowEdges } from "../book/effects";
 import { studioEnvironment, surfaceDetail } from "../book/surfaces";
 
@@ -20,9 +21,12 @@ export class PaperSurface {
   private edgeWidth={value:1};
   private edgeTint={value:new THREE.Color("#e43bfa")};
   private glowBase=.23;
+  private ditherInk={value:new THREE.Vector3(.933,.933,.933)};
+  private ditherDark={value:1};
+  private ditherPixel={value:2};
   // A local, depth-tested halo follows the same deformed surface. No full-screen bloom pass.
   private haloMaterial=new THREE.ShaderMaterial({
-    uniforms:{tintTop:{value:new THREE.Color("#c5b2ff")},tintBottom:{value:new THREE.Color("#f6b4e7")},strength:{value:.23},spread:{value:1}},
+    uniforms:{tintTop:{value:new THREE.Color("#c5b2ff")},tintBottom:{value:new THREE.Color("#f6b4e7")},strength:{value:.23},spread:{value:1},paperPixel:{value:2}},
     vertexShader:`varying vec2 vHaloPoint;
       void main(){
         vec3 p=position;
@@ -31,14 +35,18 @@ export class PaperSurface {
         vHaloPoint=(uv-.5)*vec2(${W+HALO_MARGIN*2},${H+HALO_MARGIN*2});
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
-    fragmentShader:`uniform vec3 tintTop;uniform vec3 tintBottom;uniform float strength;uniform float spread;varying vec2 vHaloPoint;
+    fragmentShader:`${paperDitherRank}
+uniform float paperPixel;uniform vec3 tintTop;uniform vec3 tintBottom;uniform float strength;uniform float spread;varying vec2 vHaloPoint;
       void main(){
         vec2 q=abs(vHaloPoint)-(vec2(${W},${H})*.5-.065);
         float d=length(max(q,0.))+min(max(q.x,q.y),0.)-.065;
+        if(d<0.)discard;
         float glow=exp(-pow(max(d,0.)/(.09*spread),1.5));
         float fade=1.-smoothstep(.15,${HALO_MARGIN},d);
         float blend=clamp(.5+(vHaloPoint.x/${W}+vHaloPoint.y/${H})*.5,0.,1.);
-        gl_FragColor=vec4(mix(tintBottom,tintTop,blend),glow*fade*strength);
+        float alpha=glow*fade*strength;
+        if(paperRank(gl_FragCoord.xy,paperPixel)>alpha)discard;
+        gl_FragColor=vec4(mix(tintBottom,tintTop,blend),1.);
         #include <colorspace_fragment>
       }`,
     transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
@@ -68,6 +76,7 @@ export class PaperSurface {
     const image = host.querySelector<HTMLImageElement>(".resume-artwork img")!;
     this.renderer = new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:"low-power"});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+    this.ditherPixel.value=this.renderer.getPixelRatio();this.haloMaterial.uniforms.paperPixel.value=this.ditherPixel.value;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.04;
@@ -93,9 +102,10 @@ export class PaperSurface {
           float paperDistance=length(max(paperQ,0.0))+min(max(paperQ.x,paperQ.y),0.0)-.065;
           if(paperDistance>0.)discard;`);
         if(material!==this.depth){
+          shader.uniforms.paperInk=this.ditherInk;shader.uniforms.paperDark=this.ditherDark;shader.uniforms.paperPixel=this.ditherPixel;
           shader.uniforms.paperEdge=this.edgeTint;
           shader.uniforms.paperEdgeWidth=this.edgeWidth;
-          shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 paperEdge;uniform float paperEdgeWidth;');
+          shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 paperInk;uniform float paperDark;uniform float paperPixel;uniform vec3 paperEdge;uniform float paperEdgeWidth;\n'+paperDitherRank);
           shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
             ${material===this.material?`
             // Let the broad satin response move across the stock without lifting printed blacks.
@@ -110,9 +120,10 @@ export class PaperSurface {
             float paperStroke=1.-smoothstep(edgePixel*.35*paperEdgeWidth,edgePixel*1.4*paperEdgeWidth,-paperDistance);
             outgoingLight=mix(outgoingLight,paperEdge,paperStroke);
             #include <opaque_fragment>`);
+          shader.fragmentShader=shader.fragmentShader.replace('#include <colorspace_fragment>','#include <colorspace_fragment>\n'+paperDitherFragment);
         }
       };
-      material.customProgramCacheKey=()=>`resume-rounded-satin-edge-${material.type}-v4`;
+      material.customProgramCacheKey=()=>`resume-rounded-dither-${material.type}-v5`;
     }
     this.front = new THREE.Mesh(this.geometry,this.material); this.front.castShadow=true;this.front.customDepthMaterial=this.depth;
     this.back = new THREE.Mesh(this.geometry,this.backMaterial);
@@ -134,6 +145,7 @@ export class PaperSurface {
     this.observer=new ResizeObserver(this.resize);this.observer.observe(host);this.observer.observe(host.parentElement!);
     const updateTheme=()=>{
       const dark=document.documentElement.dataset.colorMode==="dark",style=getComputedStyle(host);
+      this.ditherDark.value=dark?1:0;this.ditherInk.value.set(dark?238/255:24/255,dark?238/255:24/255,dark?238/255:27/255);
       this.floorMaterial.opacity=dark?.4:.18;this.glowBase=dark?.32:.23;
       this.haloMaterial.uniforms.tintTop.value.set(style.getPropertyValue("--resume-pink").trim());
       this.haloMaterial.uniforms.tintBottom.value.set(style.getPropertyValue("--resume-warm").trim());
@@ -143,7 +155,7 @@ export class PaperSurface {
     this.theme.observe(document.documentElement,{attributes:true,attributeFilter:["data-color-mode"]});
     updateTheme();
     host.parentElement!.prepend(this.renderer.domElement);
-    this.resize();host.dataset.surface="webgl";
+    this.resize();host.dataset.surface="webgl";host.dataset.renderStyle="dither";
     host.dataset.groundY=String(this.floor.position.y);
     host.dataset.groundNormal="0,1,0";
     this.renderer.domElement.addEventListener("webglcontextlost",this.onLost);
@@ -243,6 +255,6 @@ export class PaperSurface {
     this.floor.geometry.dispose();this.floorMaterial.dispose();this.key.shadow.dispose();
     this.renderer.dispose();this.renderer.forceContextLoss();
     for(const {element,style} of this.contacts){if(style===null)element.removeAttribute("style");else element.setAttribute("style",style)}
-    for(const name of ["surface","bend","paperY","paperNormal","groundY","groundNormal"])delete this.host.dataset[name];
+    for(const name of ["surface","renderStyle","bend","paperY","paperNormal","groundY","groundNormal"])delete this.host.dataset[name];
   }
 }

@@ -179,3 +179,18 @@ test('resume navigation responds before paper morph finishes and Read uses body 
   const fonts=await page.evaluate(()=>[getComputedStyle(document.querySelector('.resume-print-heading > p')).fontFamily,getComputedStyle(document.querySelector('.resume-job li')).fontFamily]);expect(fonts[0]).toBe(fonts[1]);
   const returning=await page.getByRole('button',{name:'Page',exact:true}).evaluate(async button=>{button.click();await Promise.resolve();return document.querySelector('.resume-back-nav').dataset.reading});expect(returning).toBe('false');await expect(main).toHaveAttribute('data-view','page');await expect(nav).toHaveAttribute('data-reading','false');
  });
+
+
+test('floating paper renders actual dither pixels and retains an original PDF and clear Read view',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|shader error/i.test(m.text()))errors.push(m.text())});
+ await page.setViewportSize({width:1440,height:1000});await page.goto('/resume/');const sheet=page.locator('.resume-sheet');
+ await expect(sheet).toHaveAttribute('data-surface','webgl');await expect(sheet).toHaveAttribute('data-render-style','dither');
+ const coverage=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>{
+  const canvas=document.querySelector('.resume-paper-canvas'),gl=canvas.getContext('webgl2'),size=64,pixels=new Uint8Array(size*size*4);gl.readPixels(Math.floor(canvas.width/2-size/2),Math.floor(canvas.height/2-size/2),size,size,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+  let clear=0,solid=0;for(let i=3;i<pixels.length;i+=4){if(pixels[i]<64)clear++;if(pixels[i]>224)solid++}resolve({clear:clear/(size*size),solid:solid/(size*size)});
+ })));
+ await expect.poll(async()=>(await coverage()).clear).toBeGreaterThan(.04);await expect.poll(async()=>(await coverage()).solid).toBeGreaterThan(.04);
+ await expect(page.getByRole('link',{name:'Download PDF'})).toHaveAttribute('href','/resume/josh-lucas-resume.pdf');
+ await page.getByRole('button',{name:'Read',exact:true}).click();await expect(page.getByRole('heading',{name:'Joshua Lucas',exact:true})).toBeVisible();await expect(page.locator('.resume-paper-canvas')).toBeHidden();
+ expect(errors).toEqual([]);
+});

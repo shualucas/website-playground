@@ -45,11 +45,11 @@ test('registration marks decorate current-page navigation without changing Home 
  expect(errors).toEqual([]);
 });
 
-test('both hover designs can be compared on the same footer with reduced-motion keyboard feedback',async({page})=>{
+test('all three hover designs can be compared on the same footer with reduced-motion keyboard feedback',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});
- for(const kind of ['marks','dot']){
+ for(const kind of ['marks','dot','stamp']){
   await page.goto('/?hover='+kind);const link=page.getByRole('link',{name:'LinkedIn'});await link.focus();await expect(link).toHaveAttribute('data-hover-kind',kind);await expect(link).toHaveAttribute('data-hover-active','true');
-  const marker=kind==='marks'?link.locator('.registration-marks'):page.locator('.traveling-dot');await expect(marker).toHaveCSS('opacity','1');await expect(marker).toHaveCSS('transition-duration','0s');
+  const marker=kind==='marks'?link.locator('.registration-marks'):kind==='stamp'?link.locator('.ink-stamp'):page.locator('.traveling-dot');await expect(marker).toHaveCSS('opacity','1');await expect(marker).toHaveCSS('transition-duration','0s');
   await expect(page.locator('.recent-project-link .control-hover-indicator')).toHaveCount(0);
  }
 });
@@ -58,4 +58,14 @@ test('touch navigation leaves no sticky hover decoration',async({browser})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'no-preference'}),page=await context.newPage();
  await disableWebGL(page);await page.addInitScript(()=>localStorage.setItem('cartridge-color-mode','light'));await page.route('**/api/listening',route=>route.fulfill({status:204}));await page.route('**/api/weather',route=>route.fulfill({status:204}));
  await page.goto('http://127.0.0.1:3000/');await page.getByRole('button',{name:'Switch to dark mode'}).tap();await expect(page.locator('html')).toHaveAttribute('data-color-mode','dark');await expect(page.locator(active)).toHaveCount(0);await context.close();
+});
+
+
+test('the ink stamp prints in place, dissolves on exit and keeps link geometry fixed',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/?hover=stamp');
+ const link=page.getByRole('link',{name:'LinkedIn'});await expect(link).toHaveAttribute('data-hover-kind','stamp');const before=await link.boundingBox(),text=await link.locator('.link-copy').boundingBox(),href=await link.getAttribute('href');
+ await link.hover();const stamp=link.locator('.ink-stamp');await expect(stamp).toHaveAttribute('data-state','printed');await expect(stamp).toHaveCSS('pointer-events','none');expect(await stamp.evaluate(el=>getComputedStyle(el).maskImage)).toContain('data:image/svg+xml');
+ expect((await link.boundingBox()).width).toBeCloseTo(before.width,1);expect((await link.locator('.link-copy').boundingBox()).x).toBeCloseTo(text.x,1);await expect(link).toHaveAttribute('href',href);await expect(link).toHaveAttribute('target','_blank');
+ await page.mouse.move(2,2);await expect(stamp).toHaveAttribute('data-state','hidden');await expect(stamp).toHaveCSS('opacity','0');
+ await page.keyboard.press('Tab');await link.focus();await expect(stamp).toHaveAttribute('data-state','printed');
 });

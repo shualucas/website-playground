@@ -13,7 +13,9 @@ React 19, Vite, and imperative Three.js. The home page has a monochrome dithered
 | `/photos/` | `src/photos/main.jsx`, `FloatingPhotos.ts`, `floating-shaders.ts`, `PhotoLightbox.jsx`, `src/content/film-photos.js` |
 | `/zine/` | Archived portfolio: `src/main.jsx`, `src/style.css`. Preserve it. |
 
-Navigation links use print registration marks and footer links share one traveling dot via `useLinkHovers.js`. Both keep labels and hit areas fixed, support keyboard focus, and become immediate under reduced motion. `?hover=marks` and `?hover=dot` preview either treatment on all of those controls.
+Navigation links use print registration marks and footer links share one traveling dot via `useLinkHovers.js`. They keep labels and hit areas fixed, support keyboard focus, and become immediate under reduced motion. `?hover=marks`, `?hover=dot`, and `?hover=stamp` preview registration marks, a traveling dot, or a dithered ink stamp on all of those controls.
+
+The floating résumé applies fine monochrome dithering to its live paper material, with a matching static canvas fallback. Its existing clock still owns tilt, folds, and floating motion. Read mode and the downloadable PDF keep their original presentation.
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
 
@@ -61,6 +63,7 @@ npm run review -- --page home
 npm run review -- --page home --cartridge Stadia
 npm run review -- --page home --cartridge Stadia --phase fade
 npm run review -- --page home --control '.footer-links a:first-child'
+npm run review -- --path '/?hover=stamp' --control '.footer-links a:first-child' --theme dark
 npm run review -- --page home --hover rave-flyer-zine --phase dither --theme dark
 npm run review -- --path '/?project=ai-mode-nudges&view=case-study' --phase cartridge
 npm run review -- --page zine --phase turn
