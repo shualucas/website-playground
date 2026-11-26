@@ -15,9 +15,9 @@ const { values: args } = parseArgs({ options: {
   listening:{ type:"string" }, history:{ type:"boolean" },
   "open-photos":{type:"boolean"}, "photo-dither":{type:"boolean"}, develop:{type:"string"}, palette:{type:"string"}, photo:{type:"string"}, "scatter-at":{type:"string"},
 } });
-const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/" };
+const paths = { home:"/", resume:"/resume/", zine:"/after-hours/", photos:"/photos/", archive:"/zine/", favicon:"/favicon-studies/index.html" };
 if (args.help) {
-  console.log("npm run review -- --page home|resume|zine|photos|archive [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1] [--photo-dither] [--develop 1] [--palette 1]");
+  console.log("npm run review -- --page home|resume|zine|photos|archive|favicon [--hover PROJECT_ID] [--control SELECTOR] [--cartridge 'Stadia'] [--phase settled|dither|cartridge|fade|resolve|turn] [--theme light|dark] [--motion normal|reduce] [--width 1440 --height 1000] [--output test-results/review/image.png] [--path '/?project=ai-mode-nudges&view=case-study'] [--port 3000] [--open-photos] [--photo 1] [--photo-dither] [--develop 1] [--palette 1]");
   process.exit(0);
 }
 if (!paths[args.page] || !["light", "dark"].includes(args.theme) || !["normal", "reduce"].includes(args.motion) || !["settled", "dither", "cartridge", "fade", "resolve", "turn"].includes(args.phase)) throw new Error("Invalid option; use --help.");
@@ -96,6 +96,7 @@ try {
   }, { theme:args.theme, phase:args.phase, company:args.cartridge });
   await page.goto(new URL(args.path || paths[args.page], baseURL).href, { waitUntil:"domcontentloaded" });
   await page.evaluate(() => document.fonts.ready);
+  if(args.page==='favicon'){await expect(page.locator('body')).toHaveClass('favicon-study');await page.locator('img').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));}
   const wait = { timeout:60000 };
   if (args.page === "home" && !args.path?.includes("view=case-study")) {
     await expect(page.locator(".collection")).toHaveAttribute("data-status", /ready|fallback/, wait);

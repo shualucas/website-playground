@@ -19,6 +19,8 @@ The floating résumé uses the photos' nine-level ordered dithering and subtle f
 
 Shared theme/controls/page shell live in `src/site.css`; each page has its own stylesheet. Shared entrances and exits live in `src/useContentReveal.js`, `src/reveal.css`, and `src/usePageExit.js`. The book has one owned clock; preview rotation is isolated in `src/book/preview-spin.ts`. Paper tuning is available at `/after-hours/?tune=1`.
 
+`/favicon-studies/index.html` previews a periwinkle cartridge at native 16/32/64px sizes and an enlarged pixel view. Its own tab uses the candidate SVG; the main site's favicon is independent. The candidate uses a 16×16 Bayer pixel grid so its transparent dither gaps survive at browser-tab size.
+
 The photos page is a dark-only, borderless Three.js field with a fixed viewpoint. One animation clock owns the slow staggered dither entrance, drift, release inertia, hold-to-develop, palette transitions, and pointer color wake. Its original shaders study [Ribcage by Luis Bizarro](https://webgpu.toys/ribcage/): a 4×4 Bayer matrix, nine tonal levels, a 360-row pixel grid, and 24 Hz grain. A stationary press develops the original image; dragging throws it gently; clicking opens a dithered lightbox with arrows beside the actual image. Space develops the focused photo, arrows arrange it, and Enter opens it. Lightbox swatches apply the extracted palette to the gallery; clicking empty space cycles the portfolio colors, with a keyboard-only palette button available on focus. Visible helper copy is omitted. The viewer has an opaque background. Edit the optional `caption` in `src/content/film-photos.js` to change its text (`""` hides it). Reduced motion skips drift, momentum and entrance delays; the page keeps the home-page theme preference intact. Without WebGL, ordered-dither thumbnails retain the same controls.
 
 The Last.fm footer uses `ListeningWidget.jsx` and `listening.css`: right-aligned song information, randomized song-change announcements, and rounded cover art. It preserves recent-song history, respects reduced motion, and stays hidden on mobile.
@@ -68,6 +70,7 @@ npm run review -- --page home --hover rave-flyer-zine --phase dither --theme dar
 npm run review -- --path '/?project=ai-mode-nudges&view=case-study' --phase cartridge
 npm run review -- --page zine --phase turn
 npm run review -- --page resume --width 390 --height 844
+npm run review -- --page favicon --width 1080 --height 850
 npm run review -- --page photos --motion reduce
 npm run review -- --page photos --theme dark
 npm run review -- --page photos --photo 1
