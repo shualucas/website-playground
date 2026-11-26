@@ -3,27 +3,28 @@ import { writeFile } from "node:fs/promises";
 
 test.use({ webgl: false });
 
-test("dithered J favicon stays transparent and legible in light and dark browser themes", async ({ page }, testInfo) => {
+test("green hero cartridge favicon keeps visible dither and a transparent background", async ({ page }, testInfo) => {
   await page.emulateMedia({reducedMotion:"reduce"});
   const icon=page.locator('link[rel="icon"]');
-  const pixels=(size,ink)=>icon.evaluate(async(el,{size,ink})=>{
+  const pixels=size=>icon.evaluate(async(el,size)=>{
     const image=new Image();image.src=el.href;await image.decode();
     const canvas=document.createElement("canvas");canvas.width=canvas.height=size;
     const context=canvas.getContext("2d");context.drawImage(image,0,0,size,size);
     const data=context.getImageData(0,0,size,size).data;let solid=0,clear=0;
-    for(let i=0;i<data.length;i+=4){if(data[i+3]===0)clear++;if(data[i+3]>240&&ink.every((v,c)=>Math.abs(data[i+c]-v)<3))solid++}
+    for(let i=0;i<data.length;i+=4){if(data[i+3]===0)clear++;if(data[i+3]>180&&data[i+1]>data[i]*1.2&&data[i+1]>data[i+2]*1.1)solid++}
     const pixel=(x,y)=>Array.from(context.getImageData(x,y,1,1).data);
-    return {corner:pixel(0,0),outside:pixel(2,Math.floor(size/2)),solid,clear,png:canvas.toDataURL("image/png")};
-  },{size,ink});
+    const center=context.getImageData(size/4,size*3/8,size/2,size/4).data;let gaps=0,ink=0;for(let i=3;i<center.length;i+=4){if(center[i]===0)gaps++;if(center[i]>180)ink++}
+    return {corner:pixel(0,0),outside:pixel(2,Math.floor(size/2)),solid,clear,gaps,ink,png:canvas.toDataURL("image/png")};
+  },size);
   for(const colorScheme of ['light','dark']){
-    await page.emulateMedia({colorScheme});const ink=colorScheme==='dark'?[238,238,238]:[24,24,27];
+    await page.emulateMedia({colorScheme});
     for(const path of ["/","/resume/","/after-hours/","/photos/"]) {
-      await page.goto(path);await expect(icon).toHaveAttribute("href","/favicon.svg?v=3");await expect(icon).toHaveAttribute("type","image/svg+xml");
-      const image=await pixels(64,ink);expect(image.corner[3]).toBe(0);expect(image.outside[3]).toBe(0);expect(image.solid).toBeGreaterThan(900);expect(image.clear).toBeGreaterThan(2000);
-      const tab=await pixels(16,ink);expect(tab.solid).toBeGreaterThan(30);expect(tab.corner[3]).toBe(0);
+      await page.goto(path);await expect(icon).toHaveAttribute("href","/favicon.svg?v=4");await expect(icon).toHaveAttribute("type","image/svg+xml");
+      const image=await pixels(64);expect(image.corner[3]).toBe(0);expect(image.outside[3]).toBe(0);expect(image.solid).toBeGreaterThan(500);expect(image.clear).toBeGreaterThan(2000);
+      const tab=await pixels(16);expect(tab.solid).toBeGreaterThan(30);expect(tab.corner[3]).toBe(0);expect(tab.gaps).toBeGreaterThan(8);expect(tab.ink).toBeGreaterThan(8);
       if(path==="/"){
-        await writeFile(testInfo.outputPath(`dither-j-${colorScheme}-64.png`),Buffer.from(image.png.split(",")[1],"base64"));
-        await writeFile(testInfo.outputPath(`dither-j-${colorScheme}-16.png`),Buffer.from(tab.png.split(",")[1],"base64"));
+        await writeFile(testInfo.outputPath(`green-cartridge-${colorScheme}-64.png`),Buffer.from(image.png.split(",")[1],"base64"));
+        await writeFile(testInfo.outputPath(`green-cartridge-${colorScheme}-16.png`),Buffer.from(tab.png.split(",")[1],"base64"));
       }
     }
   }
